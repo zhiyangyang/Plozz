@@ -806,7 +806,9 @@ final class PlozziOSAppModel {
             )
         )
         let trackerNamespace = profiles.activeNamespace
-        TraktSharedRefreshBootstrap.install()
+        if PlozzCustomization.supportsTrackers {
+            TraktSharedRefreshBootstrap.install()
+        }
         let traktService = TraktServiceFactory.make(namespace: trackerNamespace)
         let simklService = SimklServiceFactory.make(namespace: trackerNamespace)
         let wetrakrService = WetrakrServiceFactory.make(namespace: trackerNamespace)
@@ -1056,19 +1058,21 @@ final class PlozziOSAppModel {
             service: seerService, profiles: profiles, accounts: accountsProviders, plex: plexHomeUsers
         )
         Task {
-            guard !isOfflineMode else { return }
+            guard PlozzCustomization.supportsSeerr, !isOfflineMode else { return }
             await seerService.refreshStatus()
         }
 
         // Bring up CloudKit config auto-sync (no-op unless the Sync & Setup flag is
         // on) and start observing local config changes to publish them.
-        self.traktService.onConnectionAvailable = { [weak self] in
-            Task { await self?.resumeUniversalWatchlistAuthentication() }
-        }
-        self.wetrakrService.onConnectionChanged = { [weak self] in
-            Task {
-                guard let self, let destination = self.wetrakrService.watchlistDestination else { return }
-                await self.trackerWatchlistConnectionChanged(destination: destination)
+        if PlozzCustomization.supportsTrackers {
+            self.traktService.onConnectionAvailable = { [weak self] in
+                Task { await self?.resumeUniversalWatchlistAuthentication() }
+            }
+            self.wetrakrService.onConnectionChanged = { [weak self] in
+                Task {
+                    guard let self, let destination = self.wetrakrService.watchlistDestination else { return }
+                    await self.trackerWatchlistConnectionChanged(destination: destination)
+                }
             }
         }
         prepareMediaAliasLedger()
@@ -1361,6 +1365,7 @@ final class PlozziOSAppModel {
     /// presentation via `pendingPairingInvite`.
     @discardableResult
     func handleIncomingURL(_ url: URL) -> Bool {
+        guard PlozzCustomization.supportsSyncSetup else { return false }
         guard SyncPairingInvite.decode(url.absoluteString) != nil
             || SyncSetupSourceInvite.decode(url.absoluteString) != nil else { return false }
         // Following a pairing link sends this household's servers, profiles and
@@ -1483,7 +1488,7 @@ final class PlozziOSAppModel {
 
         var next: ProfileOnboardingStep? {
             switch self {
-            case .libraries: .seerr
+            case .libraries: PlozzCustomization.supportsSeerr ? .seerr : .theme
             case .seerr: .theme
             case .theme: .lockOffer
             case .lockOffer: nil
@@ -2023,8 +2028,10 @@ final class PlozziOSAppModel {
             await prepareUniversalWatchlist()
         }
 
-        seerService.synchronizeProfile()
-        Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
+        if PlozzCustomization.supportsSeerr {
+            seerService.synchronizeProfile()
+            Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
+        }
     }
 
     @discardableResult
@@ -2082,7 +2089,7 @@ final class PlozziOSAppModel {
     }
 
     private func updateTrackersForActiveProfile() async {
-        guard !isOfflineMode else { return }
+        guard PlozzCustomization.supportsTrackers, !isOfflineMode else { return }
         let namespace = profiles.activeNamespace
         trackerProfileGeneration &+= 1
         let generation = trackerProfileGeneration
@@ -2427,6 +2434,7 @@ final class PlozziOSAppModel {
                 }
             },
             applyTrakt: { intent in
+                guard PlozzCustomization.supportsTrackers else { return }
                 try await trakt.scrobbleResult(
                     item: intent.makeScrobbleItem(),
                     progress: intent.progress,
@@ -2434,6 +2442,7 @@ final class PlozziOSAppModel {
                 )
             },
             applySimkl: { intent in
+                guard PlozzCustomization.supportsTrackers else { return }
                 try await simkl.scrobbleResult(
                     item: intent.makeScrobbleItem(),
                     progress: intent.progress,
@@ -2441,6 +2450,7 @@ final class PlozziOSAppModel {
                 )
             },
             applyAniList: { intent in
+                guard PlozzCustomization.supportsTrackers else { return }
                 try await anilist.scrobbleResult(
                     item: intent.makeScrobbleItem(),
                     progress: intent.progress,
@@ -2448,14 +2458,18 @@ final class PlozziOSAppModel {
                 )
             },
             applyMAL: { intent in
+                guard PlozzCustomization.supportsTrackers else { return }
                 try await mal.scrobbleResult(
                     item: intent.makeScrobbleItem(),
                     progress: intent.progress,
                     event: .stop
                 )
             },
-            wetrakrAccountIdentity: { wetrakr.accountIdentity },
+            wetrakrAccountIdentity: {
+                PlozzCustomization.supportsTrackers ? wetrakr.accountIdentity : nil
+            },
             applyWetrakr: { intent, capturedAt, key, identity in
+                guard PlozzCustomization.supportsTrackers else { return }
                 try await wetrakr.recordWatch(
                     item: intent.makeScrobbleItem(), capturedAt: capturedAt,
                     idempotencyKey: key, expectedAccountIdentity: identity
@@ -2956,8 +2970,10 @@ final class PlozziOSAppModel {
             await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
-        seerService.synchronizeProfile()
-        Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
+        if PlozzCustomization.supportsSeerr {
+            seerService.synchronizeProfile()
+            Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
+        }
     }
 
     var activeSeerrRequestIdentity: SeerRequestIdentity {
@@ -3240,7 +3256,10 @@ final class PlozziOSAppModel {
     }
 
     func confirmFirstRunProfile() {
-        advanceFirstRunStep(to: accounts.isEmpty && allowsStandalonePlayback ? .theme : .seerr)
+        let next: FirstRunStep = accounts.isEmpty && allowsStandalonePlayback
+            ? .theme
+            : (PlozzCustomization.supportsSeerr ? .seerr : .theme)
+        advanceFirstRunStep(to: next)
     }
 
     func completeFirstRunSeerrSetup() {

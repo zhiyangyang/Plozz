@@ -42,6 +42,7 @@ extension PlozziOSAppModel {
     }
 
     static func makeCloudSync(for model: PlozziOSAppModel) -> CloudConfigSyncService? {
+        guard PlozzCustomization.supportsCloudSync else { return nil }
         TraktSharedRefreshBootstrap.install(containerIdentifier: cloudContainerIdentifier)
         guard let baseDir = writableStateDirectory() else { return nil }
         let syncDir = baseDir.appendingPathComponent("PlozzSync", isDirectory: true)
@@ -520,6 +521,7 @@ extension PlozziOSAppModel {
     // MARK: Lifecycle + change observation
 
     func startCloudSyncIfEnabled() {
+        guard PlozzCustomization.supportsCloudSync else { return }
         if initialSetupRestoration.needsRestoration, !Self.isRunningUnitTests {
             restoreInitialICloudSetup()
             return

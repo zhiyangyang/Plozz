@@ -118,6 +118,7 @@ public final class SeerService {
     /// Seerr to request from" — and it flips to hide Request if the user
     /// disconnects Seerr while stale featured items are still on screen.
     public var isConfigured: Bool {
+        guard PlozzCustomization.supportsSeerr else { return false }
         _ = connectionRevision
         return Self.hasUsableEndpoint(config)
     }

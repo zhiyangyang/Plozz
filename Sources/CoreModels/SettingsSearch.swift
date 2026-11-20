@@ -698,8 +698,9 @@ public enum SettingsSearchCatalog {
         featureFlags: RuntimeFeatureFlags = .buildDefault, releaseChannel: AppReleaseChannel = .current
     ) -> [SettingsSearchEntry] {
         entries.filter {
-            $0.isAvailable(on: platform, osVersion: osVersion, isKids: isKids,
-                           featureFlags: featureFlags, releaseChannel: releaseChannel)
+            PlozzCustomization.isSettingsSearchPageVisible($0.page)
+                && $0.isAvailable(on: platform, osVersion: osVersion, isKids: isKids,
+                                  featureFlags: featureFlags, releaseChannel: releaseChannel)
         }
     }
 }

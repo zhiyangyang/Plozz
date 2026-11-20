@@ -254,7 +254,9 @@ struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>
             header()
                 .settingsActionRow()
             ForEach(ProfileSettingsCategory.allCases.filter {
-                !isKidsProfile || ($0 != .seerr && $0 != .downloads)
+                (!isKidsProfile || ($0 != .seerr && $0 != .downloads))
+                    && (PlozzCustomization.supportsSeerr || $0 != .seerr)
+                    && (PlozzCustomization.supportsTrackers || $0 != .trackers)
             }) { category in
                 if category == .language {
                     PlozziOSSettingsLanguagePicker(appLanguage: appLanguage)
@@ -587,11 +589,13 @@ private struct PlozziOSSettingsSplitView: View {
                                 title: KidsProfileCopy.parentalPIN,
                                 systemImage: "figure.and.child.holdinghands"
                             )
-                            settingsRow(
-                                .syncSetup,
-                                title: "iCloud Sync",
-                                systemImage: "icloud"
-                            )
+                            if PlozzCustomization.supportsSyncSetup {
+                                settingsRow(
+                                    .syncSetup,
+                                    title: "iCloud Sync",
+                                    systemImage: "icloud"
+                                )
+                            }
                             settingsRow(
                                 .metadata,
                                 title: "Metadata Providers",
@@ -1170,12 +1174,14 @@ private struct PlozziOSSettingsCompactMenu: View {
                         }
                         .settingsActionRow()
 
-                        SettingsPageLink {
-                            PlozziOSSyncSetupSettingsView(appModel: appModel)
-                        } label: {
-                            Label("iCloud Sync", systemImage: "icloud")
+                        if PlozzCustomization.supportsSyncSetup {
+                            SettingsPageLink {
+                                PlozziOSSyncSetupSettingsView(appModel: appModel)
+                            } label: {
+                                Label("iCloud Sync", systemImage: "icloud")
+                            }
+                            .settingsActionRow()
                         }
-                        .settingsActionRow()
                         // This link needs an explicit destination to keep neighboring actions independent.
                         Button {
                             showMetadata = true

@@ -289,7 +289,8 @@ public struct PlozziOSRootView: View {
         }
         .modifier(PlozziOSSyncSetupOfferPresenter(
             appModel: appModel,
-            canPresent: setupPresentationReady && !releaseNotes.hasPendingStartupNotes
+            canPresent: PlozzCustomization.supportsSyncSetup
+                && setupPresentationReady && !releaseNotes.hasPendingStartupNotes
                 && appModel.isActiveProfileAuthorized && !appModel.managementRequiresParentalPIN
         ))
         .plozzSheet(item: serverPromptBinding, onDismiss: consumeServerPromptFollowUp) { descriptor in
@@ -1179,6 +1180,7 @@ struct PlozziOSTabShell: View {
                 ),
                 requiredEnabled: navigation.requiredNavigationKeys
             ).enabled
+            .filter { PlozzCustomization.supportsDiscover || $0 != NavigationLibraryLayout.discoverKey }
             .compactMap { key -> PlozziOSDestination? in
                 switch key {
                 case NavigationLibraryLayout.homeKey: return .home

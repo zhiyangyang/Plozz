@@ -362,7 +362,7 @@ targets:
     info:
       path: App/PlozziOS/Info.plist
       properties:
-        CFBundleDisplayName: Plozz${PLOZZ_NAME_SUFFIX}
+        CFBundleDisplayName: Plozz Custom${PLOZZ_NAME_SUFFIX}
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
@@ -376,16 +376,10 @@ targets:
         BGTaskSchedulerPermittedIdentifiers:
           - "$(PRODUCT_BUNDLE_IDENTIFIER).downloads.*"
           - "$(PRODUCT_BUNDLE_IDENTIFIER).external-stream.*"
-        # remote-notification lets CloudKit (CKSyncEngine) wake the app to pull
-        # config changes pushed from another device on the same Apple ID.
         UIBackgroundModes:
           # `audio` keeps playback running once the app leaves the foreground,
-          # which is what both Picture in Picture and AirPlay need. The tvOS
-          # target has always declared it; this one did not, so a PiP window or
-          # an AirPlay hand-off would have been silenced the moment the app
-          # backgrounded.
+          # which is what both Picture in Picture and AirPlay need.
           - audio
-          - remote-notification
           - processing
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -426,8 +420,6 @@ targets:
         NSBonjourServices:
           - _jellyfin._tcp
           - _smb._tcp
-          # Sync & Setup device pairing ("set up another device") over the LAN.
-          - ${PLOZZ_PAIRING_SERVICE_TYPE}
         NSCameraUsageDescription: "Plozz uses the camera to scan the setup code shown on your other device."
         OMDBAPIKey: "$(OMDB_API_KEY)"
         TMDBBearerToken: "$(TMDB_BEARER_TOKEN)"
@@ -444,9 +436,9 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         CFBundleURLTypes:
-          - CFBundleURLName: com.thatcube.Plozz.deeplink
+          - CFBundleURLName: dev.zhiyangyang.plozz.deeplink
             CFBundleURLSchemes:
-              - ${PLOZZ_URL_SCHEME}
+              - plozzcustom
               - "$(PRODUCT_BUNDLE_IDENTIFIER).external-player"
         LSApplicationQueriesSchemes:
           - infuse
@@ -459,14 +451,13 @@ targets:
         MALClientID: "$(MAL_CLIENT_ID)"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz${PLOZZ_ID_SUFFIX}
+        PRODUCT_BUNDLE_IDENTIFIER: dev.zhiyangyang.plozz${PLOZZ_ID_SUFFIX}
         PRODUCT_NAME: Plozz
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # Canonical uses the full entitlements; a --branded per-branch build swaps
-        # in the stripped variant (the empty ${PLOZZ_IOS_APP_ENTITLEMENTS} default
-        # keeps the canonical path). Mirrors the tvOS target above.
-        CODE_SIGN_ENTITLEMENTS: ${PLOZZ_IOS_APP_ENTITLEMENTS}
+        # This personal build deliberately has no iCloud, push, or associated
+        # domains. The empty branded entitlements keep those capabilities off.
+        CODE_SIGN_ENTITLEMENTS: App/PlozziOS/PlozziOS.branded.entitlements
         GENERATE_INFOPLIST_FILE: NO
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: YES

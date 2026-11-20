@@ -131,12 +131,16 @@ public enum NavigationDestinationDefaults {
 
     /// The editor's catalogue, not the default enabled tabs.
     public static var iOS: [String] {
-        iOSDefaultVisibleKeys + [
+        var keys = iOSDefaultVisibleKeys + [
             NavigationLibraryLayout.discoverKey,
             NavigationLibraryLayout.watchlistKey,
             NavigationLibraryLayout.liveTVKey,
             NavigationLibraryLayout.settingsKey,
         ]
+        if !PlozzCustomization.supportsDiscover {
+            keys.removeAll { $0 == NavigationLibraryLayout.discoverKey }
+        }
+        return keys
     }
 
     public static func iOS(visibleLibraries: [AggregatedLibrary], hasMusic: Bool = false) -> [String] {

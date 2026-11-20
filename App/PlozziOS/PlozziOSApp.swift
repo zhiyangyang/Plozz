@@ -41,6 +41,7 @@ struct PlozziOSApp: App {
     @UIApplicationDelegateAdaptor(PlozziOSAppDelegate.self) private var appDelegate
 
     init() {
+        PlozzCustomization.applyLaunchDefaultsIfNeeded()
         _ = AppInstallation.current
         _launchPrepared = State(initialValue: SyncSetupLaunchPreparation.prepare())
         ProcessSignalPolicy.ignoreBrokenPipe()

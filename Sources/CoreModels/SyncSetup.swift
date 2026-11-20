@@ -64,6 +64,16 @@ public struct SyncSetupFeatureFlag: Sendable {
         }
     }
 
+    /// Personal builds without iCloud: force every cloud/onboarding gate off
+    /// before the app constructs its models. Safe to call on every launch.
+    public func disableCloudFeatures() {
+        defaults.set(false, forKey: Self.storageKey)
+        defaults.set(false, forKey: Self.onboardingKey)
+        defaults.set(false, forKey: Self.restorationKey)
+        defaults.set(false, forKey: Self.manualSetupKey)
+        defaults.removeObject(forKey: Self.manualSetupCompletionKey)
+    }
+
     public var isEnabled: Bool {
         // After launch preparation, only existing installations retain the
         // historical default. Pending consent and explicit opt-outs stay off.

@@ -124,7 +124,7 @@ struct PlozziOSHomeEmptyState: View {
                             }
                             .plozzPageActionButton()
                             .accessibilityIdentifier("home-add-source")
-                            if let onReceiveSetup {
+                            if let onReceiveSetup, PlozzCustomization.supportsSyncSetup {
                                 Button(action: onReceiveSetup) {
                                     Text("Set Up from Another Device")
                                         .plozzPageActionLabel()

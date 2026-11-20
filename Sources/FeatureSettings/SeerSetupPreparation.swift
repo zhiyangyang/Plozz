@@ -1,4 +1,5 @@
 #if canImport(SwiftUI)
+import CoreModels
 import SeerService
 import SwiftUI
 
@@ -15,6 +16,7 @@ private struct SeerSetupPreparation: ViewModifier {
     func body(content: Content) -> some View {
         content
             .task(id: service.setupDiscoveryScope) {
+                guard PlozzCustomization.supportsSeerr else { return }
                 guard !service.isConfigured,
                       !service.setupDiscoveryScope.sources.isEmpty
                         || service.setupDiscoveryScope.preferredURL != nil else { return }

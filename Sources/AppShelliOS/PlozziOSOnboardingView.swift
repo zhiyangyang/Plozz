@@ -23,7 +23,9 @@ struct PlozziOSOnboardingView: View {
                         Spacer(minLength: geo.size.height * (AppReleaseChannel.current.isBeta ? 0.02 : 0.08))
                         header
                         providerList
-                        receiveButton
+                        if PlozzCustomization.supportsSyncSetup {
+                            receiveButton
+                        }
                         Spacer(minLength: 32)
                     }
                     .frame(maxWidth: 640)
