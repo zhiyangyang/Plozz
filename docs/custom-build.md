@@ -37,6 +37,11 @@ Switches in `PlozzCustomization`:
 | `supportsTrackers` | false | No tracker refresh, settings, or scrobbling |
 | `supportsDiscover` | false | Discover removed from the iPad navigation catalogue |
 
+The detail page also uses `PlozzCustomization` to omit the About, Ratings,
+Details, Crew and Playback blocks from the information band. The hero (including
+its Play/Resume action and rating badges), the Cast & Crew rail, Extras, Related,
+seasons/episodes and Release & Availability stay visible.
+
 ## Custom seams
 
 Keep changes confined to these files when possible:
@@ -46,6 +51,7 @@ Keep changes confined to these files when possible:
 - `Sources/CoreModels/SyncSetup.swift` — `disableCloudFeatures()`
 - `Sources/CoreModels/SettingsSearch.swift` — hide disabled settings pages
 - `Sources/CoreModels/NavigationRailPlan.swift` — remove Discover from iPad catalogue
+- `Sources/CoreUI/DetailInformationSections.swift` — omit the requested detail blocks
 - `App/PlozziOS/PlozziOSApp.swift` — apply cloud-off defaults before model creation
 - `Sources/AppShelliOS/PlozziOSAppModel.swift` — skip Seerr/Tracker lifecycle work
 - `Sources/AppShelliOS/PlozziOSAppModel+CloudSync.swift` — return no cloud service

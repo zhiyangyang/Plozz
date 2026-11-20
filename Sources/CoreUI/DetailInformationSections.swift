@@ -209,7 +209,8 @@ public struct DetailInformationSections: View {
     }
 
     private var isSingleRating: Bool {
-        sortedRatings.count == 1 && familyGuidanceSummary == nil
+        PlozzCustomization.showsDetailRatings()
+            && sortedRatings.count == 1 && familyGuidanceSummary == nil
     }
 
     private var standardSectionBody: some View {
@@ -395,6 +396,7 @@ public struct DetailInformationSections: View {
     }
 
     var hasAbout: Bool {
+        guard PlozzCustomization.showsDetailAbout() else { return false }
         guard let overview = nonempty(item.overview) else { return false }
         return overview != nonempty(overviewAlreadyShown)
     }
@@ -661,7 +663,10 @@ public struct DetailInformationSections: View {
             InformationGroup(id: "crew", title: "Crew", facts: crewFacts),
             InformationGroup(id: "playback", title: "Playback", facts: playbackFacts)
         ]
-        .filter { !$0.facts.isEmpty }
+        .filter {
+            PlozzCustomization.showsDetailInformationGroup(id: $0.id)
+                && !$0.facts.isEmpty
+        }
     }
 
     var sortedRatings: [ExternalRating] {
@@ -675,7 +680,10 @@ public struct DetailInformationSections: View {
         return summary
     }
 
-    var hasRatings: Bool { !sortedRatings.isEmpty || familyGuidanceSummary != nil }
+    var hasRatings: Bool {
+        PlozzCustomization.showsDetailRatings()
+            && (!sortedRatings.isEmpty || familyGuidanceSummary != nil)
+    }
 
     /// "Details" — the editorial facts about the *title* itself.
     private var detailFacts: [InformationFact] {

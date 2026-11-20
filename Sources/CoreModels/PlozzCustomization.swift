@@ -23,6 +23,34 @@ public enum PlozzCustomization {
     public static var supportsTrackers: Bool { !isCustomBuild }
     public static var supportsDiscover: Bool { !isCustomBuild }
 
+    /// The personal detail page keeps the hero, cast rail, extras and related
+    /// titles, but drops the About, Ratings, Details, Crew and Playback blocks
+    /// from the information band below the page.
+    public static func showsDetailAbout(
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> Bool {
+        !customBuild
+    }
+
+    public static func showsDetailRatings(
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> Bool {
+        !customBuild
+    }
+
+    public static func showsDetailInformationGroup(
+        id: String,
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> Bool {
+        guard customBuild else { return true }
+        switch id {
+        case "details", "crew", "playback":
+            return false
+        default:
+            return true
+        }
+    }
+
     /// Pages that only expose a disabled capability stay out of Settings search.
     public static func isSettingsSearchPageVisible(_ page: SettingsSearchPage) -> Bool {
         switch page {
