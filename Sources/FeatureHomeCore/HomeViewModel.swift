@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 import Observation
 import CoreModels
@@ -232,12 +233,22 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 && sectionIssues.isEmpty
         }
 
-        /// Bounds discovery previews for launch persistence, not Continue Watching.
-        /// The complete resume row must survive a relaunch or failed refresh.
-        /// Watchlist likewise keeps its separate full-browsing budget.
-        func bounded(perRow: Int, watchlistLimit: Int) -> Content {
+        /// Bounds discovery previews for launch persistence.
+        /// The live row keeps its request window; the snapshot only needs enough
+        /// cards to cover the launch placeholder and a few scrolls.
+        func bounded(
+            perRow: Int,
+            watchlistLimit: Int,
+            continueWatchingLimit: Int? = nil
+        ) -> Content {
             Content(
-                continueWatching: continueWatching,
+                // Continue Watching previously ignored this bound. A single
+                // account can report thousands of resume entries; decoding and
+                // rehydrating all of them before the first frame costs far more
+                // than the cached preview can show.
+                continueWatching: Array(
+                    continueWatching.prefix(continueWatchingLimit ?? perRow)
+                ),
                 latest: Array(latest.prefix(perRow)),
                 watchlist: Array(watchlist.prefix(watchlistLimit)),
                 libraries: libraries,
@@ -483,13 +494,14 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     public private(set) var rowFailures: [HomeRowKind: AppError] = [:]
     public private(set) var continueWatchingDiagnostic: LibraryLoadDiagnostic?
     public var hasLiveContinueWatching: Bool { hasReceivedLiveContent }
-    /// Whether a Home snapshot actually exists on disk right now.
+    /// Whether a Home snapshot existed when this model was built (and was
+    /// subsequently saved or cleared).
     ///
-    /// Diagnostic-only, and deliberately cheap: the content store memoizes its first
-    /// decode. Exists so launch telemetry can tell "the snapshot is gone" apart from
-    /// "the snapshot is there but the restore is slow" — the two produce the same
-    /// one-frame skeleton on screen and need opposite fixes.
-    public var hasPersistedSnapshot: Bool { contentStore.load() != nil }
+    /// Diagnostic-only. This must not call `contentStore.load()` from a view
+    /// body: a save invalidates the store's memo, so that read would decode the
+    /// whole snapshot on the main thread after every successful load.
+    public var hasPersistedSnapshot: Bool { persistedSnapshotExists }
+    @ObservationIgnored private var persistedSnapshotExists = false
     /// Whether a live aggregation has completed at least once in this session.
     ///
     /// Consumers that would otherwise destroy durable state on an *empty* result
@@ -499,6 +511,11 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     /// artwork it would otherwise paint instantly, so every launch started with a
     /// skeleton until the network caught up.
     public var hasCompletedLiveLoad: Bool { hasCompletedHomeLoad }
+    /// True once the first Home load attempt has actually settled (success,
+    /// failure, or the keep-cached outage path). Unlike `hasCompletedLiveLoad`,
+    /// this is safe to use as a launch-work gate: a failed server should not
+    /// leave secondary launch work waiting forever.
+    public private(set) var hasSettledLiveLoad = false
     @ObservationIgnored private var loadGeneration: UInt64 = 0
     @ObservationIgnored private var publishedLoadRows: Set<HomeRowKind> = []
     @ObservationIgnored private var receivedLiveRows: Set<HomeRowKind> = []
@@ -686,6 +703,8 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         accountsAreResolved: Bool = true,
         contentPublisher: @escaping HomeContentPublishing = { _, _ in }
     ) {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("HomeVM.init START")
         self.accounts = accounts
         self.profileNamespace = profileNamespace
         watchlistBrowse = WatchlistBrowseModel(
@@ -713,9 +732,11 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         // mixed/local heroes likewise wait for complete curation. Only a non-empty
         // snapshot is used; anything else leaves
         // `state == .idle` so a genuine first launch shows the normal loading state.
-        if var cached = IOTimingDiagnostics.measure(.homeModelLoad, {
+        let loadedSnapshot = IOTimingDiagnostics.measure(.homeModelLoad, {
             contentStore.load()
-        }) {
+        })
+        persistedSnapshotExists = loadedSnapshot != nil
+        if var cached = loadedSnapshot {
             cached.libraries = Self.rehydratedLibraries(
                 cached.libraries,
                 accounts: accounts
@@ -814,7 +835,12 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         ) { [weak self] note in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.upcoming.refreshRevision += 1
+                // A watch-state change can change which series are "watching"
+                // in Upcoming, but it does not need to synchronously restart a
+                // full multi-library scan while Home is on screen. Mark the feed
+                // stale; the Upcoming tab and the next foreground pass use the
+                // existing refreshIfStale() path.
+                self.upcoming.markStale()
                 if let mutation = MediaItemMutation.from(note) {
                     self.applyWatchedState(mutation)
                 } else {
@@ -832,6 +858,19 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 self?.scheduleCollectionRefresh(after: change)
             }
         }
+        PlozzLog.boot(
+            "HomeVM.init END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+        )
+    }
+
+    /// The request window for the Continue Watching feed. The personal build
+    /// bounds a pathological resume history; the canonical app keeps the policy
+    /// value so upstream/tvOS behavior is unchanged.
+    nonisolated static func continueWatchingRequestLimit(
+        for policy: ContinueWatchingPolicy,
+        isCustomBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> Int {
+        isCustomBuild ? min(policy.rowLimit, 50) : policy.rowLimit
     }
 
     deinit {
@@ -1074,7 +1113,11 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         }
         PlozzLog.boot("HomeVM.load START vm=\(UInt(bitPattern: ObjectIdentifier(self).hashValue)) accounts=\(accounts.count) state=\(state.diagnosticName) silent=\(!showLoadingState)")
         loadingVisibility = currentVisibility()
+        let preparationStart = DispatchTime.now().uptimeNanoseconds
         await prepareVisibility()
+        PlozzLog.boot(
+            "HomeVM.prepareVisibility ms=\(Double(DispatchTime.now().uptimeNanoseconds - preparationStart) / 1_000_000)"
+        )
         guard canLoadContent, generation == loadGeneration else { return }
         guard !Task.isCancelled else {
             // A replacement view task may already have coalesced into this load.
@@ -1111,6 +1154,12 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         let accounts = self.accounts
         let identitySources = self.identitySources
         let policy = self.policy
+        // A resume feed can legitimately contain thousands of entries. The
+        // horizontal row cannot present them, and fetching all of them delays
+        // every other Home row behind one server response. Keep the canonical
+        // (upstream) behavior for non-custom builds; the personal iPad build
+        // requests a bounded window while leaving the live row itself intact.
+        let continueWatchingRequestLimit = Self.continueWatchingRequestLimit(for: policy)
         let receiveResume: @Sendable (String, [MediaItem]) async -> Void = { [weak self] accountID, items in
             guard !Task.isCancelled else { return }
             await self?.receiveDetailResume(
@@ -1148,7 +1197,9 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             let aggregationTask = Task.detached(priority: .userInitiated) {
                 await HomeRecommendationScope.$current.withValue(recommendationContext) {
                     await aggregator.content(
-                        from: accounts, policy: policy, visibility: visibility,
+                        from: accounts, policy: policy,
+                        continueWatchingLimit: continueWatchingRequestLimit,
+                        visibility: visibility,
                         identitySources: identitySources, onContinueWatching: receiveResume,
                         onProgress: receiveProgress
                     )
@@ -1210,7 +1261,9 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             let unmergedTask = Task.detached(priority: .userInitiated) {
                 await HomeRecommendationScope.$current.withValue(recommendationContext) {
                     await aggregator.unmergedContent(
-                        from: accounts, policy: policy, visibility: visibility,
+                        from: accounts, policy: policy,
+                        continueWatchingLimit: continueWatchingRequestLimit,
+                        visibility: visibility,
                         identitySources: identitySources, onContinueWatching: receiveResume,
                         onProgress: receiveProgress
                     )
@@ -1327,11 +1380,13 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             publication?.finish(.succeeded)
             if diagnosticOutcome == .succeeded { diagnosticOutcome = .failed }
             hasReceivedLiveContent = hadLiveContent
+            hasSettledLiveLoad = true
             isShowingCachedSnapshot = false
             return
         }
         hasReceivedLiveContent = loadFailures[.continueWatching] == nil || !content.continueWatching.isEmpty
         hasCompletedHomeLoad = true
+        hasSettledLiveLoad = true
         receivedLiveRows = Self.retainedReadyRows(
             Set(HomeRowKind.allCases), content: content, failures: loadFailures, visibility: visibility
         )
@@ -2546,6 +2601,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             await HomeSnapshotPersistence.shared.clear(generation: generation, store: store)
             if self?.heroPersistenceGeneration == generation {
                 self?.cachedHeroIsInvalidated = false
+                self?.persistedSnapshotExists = false
             }
         }
         heroPersistenceTask = task
@@ -2625,6 +2681,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 .isDurableWatchlistPresentationReady() == false
         let unconfirmedIDs = unconfirmedContinueWatchingIDs
         let contentStore = contentStore
+        persistedSnapshotExists = true
         durableWatchlistSaveTask = Task {
             await HomeSnapshotPersistence.shared.save(
                 content,

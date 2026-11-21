@@ -1,5 +1,6 @@
 import CoreModels
 import CoreNetworking
+import Dispatch
 import FeatureHomeCore
 import Foundation
 import MetadataKit
@@ -56,6 +57,13 @@ public enum UpcomingFeedLoader {
             await ExternalTitleMetadataResolver.shared.availability(for: $0, regionCode: $1)
         }
     ) async throws -> UpcomingFeedSnapshot {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("Upcoming.load START accounts=\(accounts.count) watchlist=\(watchlist.count)")
+        defer {
+            PlozzLog.boot(
+                "Upcoming.load END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+            )
+        }
         try await checkScope(isCurrent)
         let savedTitles = watchlist.filter { $0.kind == .movie || $0.kind == .series }
         let limiter = ConcurrencyLimiter(limit: 4)
@@ -237,8 +245,13 @@ public enum UpcomingFeedLoader {
         // episode count yet. History above still retains caught-up series.
         try await checkScope(isCurrent)
         do {
+            // Upcoming only needs enough recent in-progress titles to build a
+            // three-month release calendar. Asking for the complete resume feed
+            // duplicated Home's multi-thousand-row request and delayed this feed
+            // by seconds on a large library.
+            let continueWatchingLimit = PlozzCustomization.isCustomBuild ? 50 : Int.max
             let continuing = try await account.provider.continueWatching(
-                limit: .max, includeSeriesRecency: false
+                limit: continueWatchingLimit, includeSeriesRecency: false
             )
             for var movie in continuing where movie.kind == .movie {
                 movie.sourceAccountID = account.account.id

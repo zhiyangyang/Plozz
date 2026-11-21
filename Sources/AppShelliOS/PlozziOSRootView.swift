@@ -1,6 +1,7 @@
 #if os(iOS)
 import AppRuntime
 import CoreModels
+import CoreNetworking
 import CoreUI
 import CrashReporting
 import FeatureHomeCore
@@ -71,7 +72,12 @@ public struct PlozziOSRootView: View {
     private var releaseNotes: ReleaseNotesModel { .shared }
 
     public init() {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("RootView.init START")
         _appModel = State(initialValue: PlozziOSProcessComposition.appModel)
+        PlozzLog.boot(
+            "RootView.init END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+        )
     }
 
     init(appModel: PlozziOSAppModel, homeViewModelBox: LazyViewState<HomeViewModel>? = nil) {
@@ -1082,6 +1088,13 @@ struct PlozziOSTabShell: View {
     }
 
     private func refreshUpcoming() async {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("Upcoming.refresh START")
+        defer {
+            PlozzLog.boot(
+                "Upcoming.refresh END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+            )
+        }
         let scope = upcomingScopeKey
         let accounts = appModel.upcomingAccounts
         let saved = appModel.resolvedUniversalWatchlistItems(candidates: [])
@@ -1617,7 +1630,17 @@ struct PlozziOSTabShell: View {
             .frame(width: 0, height: 0)
         }
         .environment(sharedHomeViewModel)
-        .task(id: "\(upcomingScopeKey)|\(sharedHomeViewModel.upcoming.refreshRevision)|\(appModel.isLiveTVProfileAuthorized)") {
+        .task(
+            id: "\(upcomingScopeKey)|\(sharedHomeViewModel.upcoming.refreshRevision)"
+                + "|\(appModel.isLiveTVProfileAuthorized)"
+                + "|\(sharedHomeViewModel.hasSettledLiveLoad)|\(selectedDestination)"
+        ) {
+            // Home owns the first launch burst. Upcoming performs a full series
+            // scan plus a complete Continue Watching read, so starting it in the
+            // same window delayed Home's own content. Wait for Home to settle;
+            // opening the Upcoming tab explicitly still refreshes immediately.
+            guard sharedHomeViewModel.hasSettledLiveLoad
+                    || selectedDestination == .upcoming else { return }
             await refreshUpcoming()
         }
         .onChange(of: scenePhase) { _, phase in

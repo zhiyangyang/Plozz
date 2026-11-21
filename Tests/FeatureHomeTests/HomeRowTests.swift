@@ -177,6 +177,49 @@ final class HomeRowTests: XCTestCase {
         XCTAssertEqual(retained.items.map(\.id), ["one"])
     }
 
+    func testCustomBuildCapsContinueWatchingRequest() {
+        XCTAssertEqual(
+            HomeViewModel.continueWatchingRequestLimit(
+                for: .default, isCustomBuild: true
+            ),
+            50
+        )
+        XCTAssertEqual(
+            HomeViewModel.continueWatchingRequestLimit(
+                for: .default, isCustomBuild: false
+            ),
+            Int.max
+        )
+        XCTAssertEqual(
+            HomeViewModel.continueWatchingRequestLimit(
+                for: ContinueWatchingPolicy(rowLimit: 40), isCustomBuild: true
+            ),
+            40
+        )
+    }
+
+    func testSnapshotBoundsContinueWatchingWithoutTruncatingTheLiveContent() {
+        let items = (0..<125).map { item("cw-\($0)") }
+        let source = content(continueWatching: items)
+        let bounded = source.bounded(
+            perRow: 30, watchlistLimit: 10, continueWatchingLimit: 50
+        )
+        XCTAssertEqual(bounded.continueWatching.map(\.id), items.prefix(50).map(\.id))
+        XCTAssertEqual(source.continueWatching.count, 125)
+    }
+
+    func testHomeContentStorePersistsBoundedContinueWatching() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("home-store-bounds-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = HomeContentStore(namespace: "bounds", directory: directory)
+        let items = (0..<125).map { item("cw-\($0)") }
+        store.save(content(continueWatching: items))
+        let loaded = try XCTUnwrap(store.load())
+        XCTAssertEqual(loaded.continueWatching.count, 50)
+        XCTAssertEqual(loaded.continueWatching.map(\.id), items.prefix(50).map(\.id))
+    }
+
     func testPendingRowsKeepTheirSlotsWithoutExposingCachedCards() {
         let cached = content(continueWatching: [item("old-resume")], latest: [item("fresh-latest")])
         let pending = HomeRow.rows(

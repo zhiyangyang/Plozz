@@ -135,6 +135,16 @@ public final class UpcomingFeedModel {
         refreshRevision += 1
     }
 
+    /// Marks the feed as stale without forcing an immediate reload.
+    ///
+    /// A `.mediaItemDidMutate` notification can arrive while Home is visible;
+    /// restarting the full Upcoming scan there competes with the page that raised
+    /// it. The Upcoming tab and the next foreground pass already call
+    /// `refreshIfStale()`, so they pick this up without a timer or a second task.
+    public func markStale() {
+        refreshedAt = nil
+    }
+
     private func needsRefresh(now: Date = Date()) -> Bool {
         guard let refreshedAt else { return true }
         let freshness: TimeInterval = failedSourceCount == 0 ? 6 * 60 * 60 : 60

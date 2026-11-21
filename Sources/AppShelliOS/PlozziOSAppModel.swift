@@ -735,6 +735,13 @@ final class PlozziOSAppModel {
         appLanguage: AppLanguageSettingsModel? = nil,
         runtimeFeatureFlags: RuntimeFeatureFlags = .buildDefault
     ) {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        func boot(_ label: String) {
+            PlozzLog.boot(
+                "AppModel.init \(label) ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+            )
+        }
+        boot("START")
         let offlineAvailable = runtimeFeatureFlags.isEnabled(.offlineMode) && OfflineMode.shared.isAvailable
         let offline = offlineAvailable && UserDefaults.standard.bool(forKey: OfflineMode.preferenceKey)
         self.offlineMode = PlozziOSOfflineModeModel(isEnabled: offline, monitorsConnectivity: offlineAvailable)
@@ -757,6 +764,7 @@ final class PlozziOSAppModel {
                 )
             }
         }
+        boot("accountStore")
         let mediaShareRuntime = DefaultMediaShareRuntime.make(
             accountStore: accountStore,
             artworkCacheLifecycle: PlozziOSMediaShareArtworkCacheLifecycle(),
@@ -781,12 +789,14 @@ final class PlozziOSAppModel {
             into: registry,
             durableLocalStateStore: durableLocalStateStore
         )
+        boot("registry")
         let profiles = ProfilesModel(
             store: profileStore ?? ProfileStore(
                 secureStore: KeychainStore(service: "com.plozz.app.household")
             ),
             defaultActiveAccountIDs: accountStore.activeAccountIDs()
         )
+        boot("profiles")
         // Forced when the profile we'd restore is locked, so its content never
         // renders behind the PIN prompt — the unlock then runs through the
         // ordinary `selectProfile(_:)` gate with the picker behind it.
@@ -798,6 +808,7 @@ final class PlozziOSAppModel {
             registry: registry,
             profilesModel: profiles
         )
+        boot("accountsProviders")
         if offline { accountsProviders.localProviders = [:] }
         let shareScanStatus = ShareScanStatusModel()
         let seerService = suppliedSeerService ?? SeerServiceFactory.make(
@@ -862,6 +873,7 @@ final class PlozziOSAppModel {
             isSeerrConfigured: { seerService.isConfigured }
         )
         self.settings = initialSettings
+        boot("settings")
         self.seriesTrackStore = SeriesTrackPreferenceStore(
             namespace: profiles.activeNamespace
         )
@@ -877,6 +889,7 @@ final class PlozziOSAppModel {
             authenticatedHTTPResolver: authenticatedHTTPResolver,
             statusPresenter: transientStatusPresenter
         )
+        boot("downloads")
         self.pendingLibrarySelection = nil
         self.pendingFirstRunStep =
             appAdmission.context(
@@ -1023,6 +1036,7 @@ final class PlozziOSAppModel {
         accountError = launchErrors.isEmpty ? nil : launchErrors.joined(separator: "\n")
         accountsProviders.reloadAccounts()
         refreshOfflineProviders()
+        boot("accountsLoaded")
         if plexHomeUsers.restoreAutomaticSignInAtLaunch() {
             self.requiresLaunchProfileSelection = false
         }
@@ -1079,6 +1093,7 @@ final class PlozziOSAppModel {
         startCloudSyncIfEnabled()
         observeApplicationScenes()
         mediaShareWorkScope.start()
+        boot("END")
     }
 
     func setOfflineMode(_ enabled: Bool) async {

@@ -222,6 +222,7 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
     private let legacyWatchlistSeedFileURL: URL?
     private let legacyWatchlistSourceFileURL: URL?
     private let maxItemsPerRow: Int
+    private let maxContinueWatchingItems: Int
     private let maxWatchlistItems: Int
     private let maxAge: TimeInterval
     private let heroMaxAge: TimeInterval
@@ -300,11 +301,13 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
         namespace: String? = nil,
         directory: URL? = HomeContentStore.defaultDirectory(),
         maxItemsPerRow: Int = 30,
+        maxContinueWatchingItems: Int = 50,
         maxWatchlistItems: Int = 10_000,
         maxAge: TimeInterval = 60 * 60 * 24 * 14,
         heroMaxAge: TimeInterval = 60 * 60 * 24
     ) {
         self.maxItemsPerRow = maxItemsPerRow
+        self.maxContinueWatchingItems = maxContinueWatchingItems
         self.maxWatchlistItems = maxWatchlistItems
         self.maxAge = maxAge
         self.heroMaxAge = heroMaxAge
@@ -440,6 +443,12 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
         }
         var content = stored.content
         content.libraries.removeAll(where: \.isRetiredCollectionShortcut)
+        // Snapshots written before Continue Watching was bounded can contain
+        // thousands of resume entries. Trim on read as well as on write so the
+        // first launch after this fix does not rehydrate them all.
+        content.continueWatching = Array(
+            content.continueWatching.prefix(maxContinueWatchingItems)
+        )
         return content.isEmpty ? nil : content
     }
 
@@ -472,7 +481,8 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
             content: content
                 .bounded(
                     perRow: maxItemsPerRow,
-                    watchlistLimit: maxWatchlistItems
+                    watchlistLimit: maxWatchlistItems,
+                    continueWatchingLimit: maxContinueWatchingItems
                 )
                 .sanitizedForPersistence(),
             savedAt: Date()

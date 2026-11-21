@@ -1,8 +1,10 @@
 import AppShelliOS
 import AppRuntime
 import CoreModels
+import CoreNetworking
 import CoreUI
 import FeatureSettings
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -41,6 +43,8 @@ struct PlozziOSApp: App {
     @UIApplicationDelegateAdaptor(PlozziOSAppDelegate.self) private var appDelegate
 
     init() {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("App.init START")
         PlozzCustomization.applyLaunchDefaultsIfNeeded()
         _ = AppInstallation.current
         _launchPrepared = State(initialValue: SyncSetupLaunchPreparation.prepare())
@@ -54,6 +58,9 @@ struct PlozziOSApp: App {
         // wake-up probe, which is how a device run can attribute the post-back
         // navigation lock to a real stall instead of a screenshot guess.
         MainActor.assumeIsolated { MainThreadStallProbe.startIfRequested() }
+        PlozzLog.boot(
+            "App.init END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+        )
     }
 
     var body: some Scene {

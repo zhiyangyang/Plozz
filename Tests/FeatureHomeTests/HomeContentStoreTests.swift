@@ -180,19 +180,22 @@ final class HomeContentStoreTests: XCTestCase {
         ]
     }
 
-    func testSaveBoundsDiscoveryPreviewsButPreservesContinueWatchingAndWatchlist() {
+    func testSaveBoundsDiscoveryPreviewsAndContinueWatchingButPreservesWatchlist() {
         let store = HomeContentStore(namespace: nil, directory: tempDir, maxItemsPerRow: 10)
         store.save(content(cw: 150, latest: 40, watchlist: 25))
         let loaded = store.load()
-        XCTAssertEqual(loaded?.continueWatching.count, 150, "Continue Watching must survive relaunch intact")
-        XCTAssertEqual(loaded?.latest.count, 10, "Latest is capped")
+        XCTAssertEqual(
+            loaded?.continueWatching.count, 50,
+            "Continue Watching uses its own bounded launch window"
+        )
+        XCTAssertEqual(loaded?.latest.count, 10, "Latest is capped by the preview-row limit")
         XCTAssertEqual(
             loaded?.watchlist.count,
             25,
             "Watchlist backs full browsing and must not use the preview-row cap"
         )
         XCTAssertEqual(loaded?.continueWatching.first?.id, "i0")
-        XCTAssertEqual(loaded?.continueWatching.last?.id, "i149")
+        XCTAssertEqual(loaded?.continueWatching.last?.id, "i49")
     }
 
     func testEmptySnapshotIsNotUsed() {

@@ -273,6 +273,8 @@ struct PlozziOSHomeView: View {
         onAddServer: @escaping () -> Void,
         onShowSettings: @escaping () -> Void
     ) {
+        let bootStart = DispatchTime.now().uptimeNanoseconds
+        PlozzLog.boot("HomeView.init START")
         self.appModel = appModel
         self.onAddServer = onAddServer
         self.onShowSettings = onShowSettings
@@ -340,6 +342,9 @@ struct PlozziOSHomeView: View {
                 initialValue: appModel.settings.homeVisibility.visibility.disabledKeys
             )
         }
+        PlozzLog.boot(
+            "HomeView.init END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
+        )
     }
 
     var body: some View {
