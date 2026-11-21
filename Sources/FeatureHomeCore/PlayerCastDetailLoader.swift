@@ -55,9 +55,11 @@ public func makeCastDetailLoader(
             person: person,
             provider: ownProvider,
             otherProviders: otherProviders,
-            biographyProviders: [WikipediaPersonBiographyProvider()],
+            biographyProviders: PlozzCustomization.isCustomBuild
+                ? [] : [WikipediaPersonBiographyProvider()],
             // Shared with the person page — see `PlayerCastCredits`.
-            creditsProviders: PlayerCastCredits.providers,
+            creditsProviders: PlozzCustomization.isCustomBuild
+                ? [] : PlayerCastCredits.providers,
             artworkResolver: PlayerCastCredits.artworkResolver,
             // Strike what is playing. By id AND by normalized title, since a
             // second server holding the same film answers with its own id.

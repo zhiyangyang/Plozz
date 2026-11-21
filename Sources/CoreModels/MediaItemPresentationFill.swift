@@ -50,6 +50,8 @@ public extension MediaItem {
         }
         if studios.isEmpty { studios = donor.studios }
         if tags.isEmpty { tags = donor.tags }
+        if studioIDs.isEmpty { studioIDs = donor.studioIDs }
+        if tagIDs.isEmpty { tagIDs = donor.tagIDs }
         if taglines.isEmpty { taglines = donor.taglines }
         if runtime == nil { runtime = donor.runtime }
         if posterURL == nil, let donated = donor.posterURL {

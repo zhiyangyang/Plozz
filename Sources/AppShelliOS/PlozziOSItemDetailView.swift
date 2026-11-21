@@ -152,6 +152,7 @@ struct PlozziOSItemDetailView: View {
                     viewModel: model,
                     seerService: seerService,
                     playlistOrigin: playlistOrigin,
+                    originLibraryID: item.libraryID,
                     initialSeasonID: contextItem.kind == .season
                         ? contextItem.id
                         : contextItem.kind == .episode ? nil : contextItem.seasonID,
@@ -170,6 +171,25 @@ struct PlozziOSItemDetailView: View {
         let accounts = appModel.accountsProviders.homeAccounts
         let identitySources = appModel.identityIndex.identitySourcesProvider
         let language = locale.identifier
+        // The custom build is offline-first; no Wikipedia/Wikidata detail
+        // enrichment and no online trailer lookup.
+        let localizedResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)?
+        if PlozzCustomization.isCustomBuild {
+            localizedResolver = nil
+        } else {
+            localizedResolver = { item, language in
+                await DetailMetadataResolver.household.resolve(item, language: language)
+            }
+        }
+        let onlineTrailers: OnlineTrailerResolving
+        if PlozzCustomization.isCustomBuild {
+            onlineTrailers = { _ in [] }
+        } else {
+            onlineTrailers = { item in
+                guard !OfflineMode.shared.isEnabled else { return [] }
+                return await DetailMetadataResolver.household.trailers(for: item)
+            }
+        }
         return DetailOpenEnvironment(
             resolveProvider: { accountID in
                 guard let accountID else { return provider }
@@ -182,15 +202,11 @@ struct PlozziOSItemDetailView: View {
             identitySources: identitySources,
             crossServerSourceResolver: crossServerSourceResolver(in: accounts, identitySources: identitySources),
             continueWatchingSnapshot: { homeViewModel?.continueWatchingForDetail ?? [] },
-            ratingsProvider: RatingsServiceFactory.make(),
+            ratingsProvider: PlozzCustomization.isCustomBuild
+                ? DisabledRatingsProvider() : RatingsServiceFactory.make(),
             metadataLanguage: language,
-            localizedDetailMetadataResolver: {
-                await DetailMetadataResolver.household.resolve($0, language: $1)
-            },
-            onlineTrailerResolver: {
-                guard !OfflineMode.shared.isEnabled else { return [] }
-                return await DetailMetadataResolver.household.trailers(for: $0)
-            },
+            localizedDetailMetadataResolver: localizedResolver,
+            onlineTrailerResolver: onlineTrailers,
             trailerSettings: appModel.settings.heroBackground,
             discoveryStatusRefresh: { await seerService?.requestAvailability(for: $0) },
             loadSeasonEpisodeRoster: { [seer = appModel.seerService] item, number in
@@ -198,6 +214,9 @@ struct PlozziOSItemDetailView: View {
                 return await seer.seasonEpisodeRoster(for: item, seasonNumber: number)
             },
             makeRelatedTitlesLoader: { mode in
+                // The personal build replaces this metadata-driven row with the
+                // server's native similar list; don't start external lookups.
+                guard !PlozzCustomization.showsEmbySimilar else { return nil }
                 guard !appModel.isOfflineMode, let search = relatedTitleLibrarySearch(in: accounts) else { return nil }
                 return RelatedTitlesLoader(
                     resolver: .production(traktClientID: TraktConfig.resolved().clientID),
@@ -253,6 +272,12 @@ final class PlozziOSDetailScheduleReplay {
     }
 }
 
+private struct PlozziOSCatalogPresentation: Identifiable, Hashable {
+    let term: MovieCatalogTerm
+    let libraryID: String?
+    var id: String { "\(term.id)#\(libraryID ?? "all")" }
+}
+
 private struct PlozziOSCanonicalItemDetailView: View {
     @Environment(\.plozzMetrics) private var metrics
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
@@ -297,6 +322,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     @State private var seriesPlayTarget: MediaItem?
     @State private var hasResolvedSeriesPlayTarget = false
     @State private var presentsSeriesDownloads = false
+    @State private var catalogPresentation: PlozziOSCatalogPresentation?
     @State private var heroPullDistance: CGFloat = 0
     /// True for the duration of a native edge back-swipe. A small vertical
     /// component of that pan used to reach the scroll view and stretch the hero
@@ -311,6 +337,10 @@ private struct PlozziOSCanonicalItemDetailView: View {
     private let initialSeasonID: String?
     private let initialEpisode: MediaItem?
     private let playlistOrigin: VideoPlaylistPlaybackOrigin?
+    /// The seed page's library id. A refreshed detail item can lose this even
+    /// though the page was opened from a specific library; studio/tag browsing
+    /// still needs it.
+    private let originLibraryID: String?
     private let originProvider: any MediaProvider
     /// Whether the episode is this page's own subject rather than a season/series
     /// page's fronted child — see `showsEpisodeSubjectHero`.
@@ -324,6 +354,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
         viewModel: ItemDetailViewModel,
         seerService: SeerService? = nil,
         playlistOrigin: VideoPlaylistPlaybackOrigin? = nil,
+        originLibraryID: String? = nil,
         initialSeasonID: String? = nil,
         initialEpisode: MediaItem? = nil,
         presentsEpisodeAsSubject: Bool = false,
@@ -333,6 +364,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
         self.initialSeasonID = initialSeasonID
         self.initialEpisode = initialEpisode
         self.playlistOrigin = playlistOrigin
+        self.originLibraryID = originLibraryID
         self.originProvider = provider
         self.presentsEpisodeAsSubject = presentsEpisodeAsSubject
         self.openingArtwork = openingArtwork
@@ -398,6 +430,9 @@ private struct PlozziOSCanonicalItemDetailView: View {
 
             }
         }
+        .environment(\.plozziOSDetailTagNavigator, { @MainActor tag in
+            openCatalog(.tag(tag))
+        })
         .artworkGradientBackground(scope: ObjectIdentifier(viewModel), isVisible: isPageVisible)
         .task(id: appModel.settings.heroBackground.settings.trailerSources) {
             await viewModel.refreshTrailerPolicy()
@@ -493,6 +528,14 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     .modifier(requestPresentation(inDownloadSheet: true))
                 }
             }
+        }
+        .navigationDestination(item: $catalogPresentation) { presentation in
+            PlozziOSMovieCatalogView(
+                appModel: appModel,
+                provider: originProvider,
+                libraryID: presentation.libraryID,
+                term: presentation.term
+            )
         }
         .onChange(of: presentsSeriesDownloads) { _, isPresented in
             if isPresented { seasonRequestRetryToken &+= 1 }
@@ -724,14 +767,47 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     }
                 ))
 
-                if !detail.item.detailCredits.isEmpty {
-                    AnyView(PlozziOSCastSection(
-                        people: detail.item.people,
-                        sourceAccountID: detail.item.sourceAccountID
-                    ))
+                if PlozzCustomization.isCustomBuild {
+                    AnyView(
+                        VStack(alignment: .leading, spacing: 16) {
+                            if !detail.item.detailCredits.isEmpty {
+                                PlozziOSCastSection(
+                                    people: detail.item.people,
+                                    sourceAccountID: detail.item.sourceAccountID
+                                )
+                            }
+                            if detail.item.kind == .movie,
+                               PlozzCustomization.showsEmbySimilar {
+                                PlozziOSMoreLikeThisSection(
+                                    item: detail.item,
+                                    provider: originProvider,
+                                    accountID: detail.item.sourceAccountID,
+                                    inset: pageInset,
+                                    onSelect: { item, source in artworkItemNavigator?(item, source) }
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    if !detail.item.detailCredits.isEmpty {
+                        AnyView(PlozziOSCastSection(
+                            people: detail.item.people,
+                            sourceAccountID: detail.item.sourceAccountID
+                        ))
+                    }
+                    if detail.item.kind == .movie, PlozzCustomization.showsEmbySimilar {
+                        AnyView(PlozziOSMoreLikeThisSection(
+                            item: detail.item,
+                            provider: originProvider,
+                            accountID: detail.item.sourceAccountID,
+                            inset: pageInset,
+                            onSelect: { item, source in artworkItemNavigator?(item, source) }
+                        ))
+                    }
                 }
 
-                if let loader = viewModel.relatedTitlesLoader, !loader.entries.isEmpty {
+                if !PlozzCustomization.showsEmbySimilar,
+                   let loader = viewModel.relatedTitlesLoader, !loader.entries.isEmpty {
                     AnyView(PlozziOSRelatedSection(
                         entries: loader.entries,
                         inset: pageInset,
@@ -756,6 +832,22 @@ private struct PlozziOSCanonicalItemDetailView: View {
                         ? HeroContentPolicy.detailDescription(focused: headerPresentation, root: rootPresentation)
                         : nil
                 ))
+
+                if PlozzCustomization.isCustomBuild,
+                   detail.item.kind == .movie,
+                   PlozzCustomization.showsDetailTerms,
+                   !detail.item.studios.isEmpty {
+                    AnyView(
+                        PlozziOSStudioSection(
+                            title: detail.item.studios.count == 1
+                                ? Text("Studio") : Text("Studios"),
+                            terms: studioTerms(for: detail.item),
+                            inset: pageInset,
+                            onSelect: { openCatalog($0) }
+                        )
+                        .padding(.bottom, 24)
+                    )
+                }
             }
             // No trailing padding here. The information band is the last thing in
             // this stack and paints its own tint, so a gap added out here is page
@@ -914,6 +1006,40 @@ private struct PlozziOSCanonicalItemDetailView: View {
                 Task { await request(item, seasons: seasons, context: context) }
             }
         )
+    }
+
+    /// Pushes the studio/tag catalog immediately, like a person page.
+    ///
+    /// The page no longer waits for library discovery: Emby can query a term
+    /// recursively across the account, and any library id the item already
+    /// carries is just a useful scope hint.
+    private func openCatalog(_ term: MovieCatalogTerm) {
+        guard let detail = viewModel.state.value else { return }
+        catalogPresentation = PlozziOSCatalogPresentation(
+            term: term,
+            libraryID: catalogLibraryCandidates(for: detail.item).first
+        )
+    }
+
+    /// Studio terms keep the server id when Emby supplied one, so the catalog
+    /// query can use the indexed `StudioIds` filter.
+    private func studioTerms(for item: MediaItem) -> [MovieCatalogTerm] {
+        let ids = item.studioIDs.count == item.studios.count ? item.studioIDs : []
+        return item.studios.enumerated().map { index, name in
+            .studio(name, id: index < ids.count ? ids[index] : nil)
+        }
+    }
+
+    /// Library ids already carried by the item, with no network request.
+    private func catalogLibraryCandidates(for item: MediaItem) -> [String] {
+        [
+            item.libraryID,
+            item.sources.first(where: {
+                $0.libraryID != nil && $0.accountID == item.sourceAccountID
+            })?.libraryID,
+            item.sources.first(where: { $0.libraryID != nil })?.libraryID,
+            originLibraryID,
+        ].compactMap { $0 }
     }
 
     private struct DetailPlaybackOptions {
@@ -4316,7 +4442,10 @@ struct PlozziOSCastSection: View {
     }
 
     private var verticalPadding: CGFloat {
-        horizontalSizeClass == .compact ? compactBottomPadding : regularBottomPadding
+        // The custom page groups studio, cast and similar rows tightly; the
+        // normal rail spacing would separate them by most of a screen.
+        if PlozzCustomization.isCustomBuild { return 8 }
+        return horizontalSizeClass == .compact ? compactBottomPadding : regularBottomPadding
     }
 
 }

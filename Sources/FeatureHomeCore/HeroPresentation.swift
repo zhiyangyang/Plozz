@@ -30,6 +30,7 @@ public struct HeroPresentation: Sendable, Equatable {
     public let tagline: String?
     public let certification: String?
     public let genres: [String]
+    public let tags: [String]
     public let ratingBadge: MediaBadge?
     public let technicalBadges: [MediaBadge]
     public let ratings: [ExternalRating]
@@ -83,6 +84,7 @@ public struct HeroPresentation: Sendable, Equatable {
         }
         certification = Self.nonempty(item.officialRating)
         genres = Array(item.genres.prefix(4))
+        tags = Array(item.tags.prefix(4))
         ratingBadge = item.ratingBadge
         technicalBadges = item.technicalBadges
         ratings = item.ratings

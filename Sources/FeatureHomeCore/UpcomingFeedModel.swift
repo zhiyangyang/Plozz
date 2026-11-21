@@ -26,18 +26,32 @@ public struct UpcomingFeedSnapshot: Sendable {
 @MainActor
 @Observable
 public final class UpcomingFeedModel {
-    public private(set) var releases: [UpcomingRelease] = []
+    public private(set) var releases: [UpcomingRelease] = [] {
+        didSet {
+            visibleReleasesCache = nil
+            homeReleasesCache = nil
+        }
+    }
     public private(set) var isLoading = false
     public private(set) var failedSourceCount = 0
     public private(set) var scopeKey: String?
-    public var filters = UpcomingFilters()
-    public private(set) var hiddenTitles = Set<String>()
+    public var filters = UpcomingFilters() {
+        didSet { visibleReleasesCache = nil }
+    }
+    public private(set) var hiddenTitles = Set<String>() {
+        didSet {
+            visibleReleasesCache = nil
+            homeReleasesCache = nil
+        }
+    }
     public private(set) var lastHiddenTitle: String?
     public var refreshRevision = 0 {
         didSet {
             refreshedAt = nil
         }
     }
+    @ObservationIgnored private var visibleReleasesCache: [UpcomingRelease]?
+    @ObservationIgnored private var homeReleasesCache: [UpcomingRelease]?
     @ObservationIgnored private var hiddenKey: String?
     @ObservationIgnored private var refreshedAt: Date?
     @ObservationIgnored private nonisolated(unsafe) var task: Task<Void, Never>?
@@ -69,11 +83,27 @@ public final class UpcomingFeedModel {
     }
 
     public var visibleReleases: [UpcomingRelease] {
-        releases.filter { !hiddenTitles.contains($0.titleKey) && filters.includes($0) }
+        // Keep all three inputs observed even on a cache hit. The cache is
+        // @ObservationIgnored, so skipping the reads would stop SwiftUI from
+        // invalidating a view that already rendered the filtered list.
+        _ = releases
+        _ = filters
+        _ = hiddenTitles
+        if let visibleReleasesCache { return visibleReleasesCache }
+        let filtered = releases.filter {
+            !hiddenTitles.contains($0.titleKey) && filters.includes($0)
+        }
+        visibleReleasesCache = filtered
+        return filtered
     }
 
     public var homeReleases: [UpcomingRelease] {
-        UpcomingReleaseBuilder.home(releases, hiddenTitles: hiddenTitles)
+        _ = releases
+        _ = hiddenTitles
+        if let homeReleasesCache { return homeReleasesCache }
+        let preview = UpcomingReleaseBuilder.home(releases, hiddenTitles: hiddenTitles)
+        homeReleasesCache = preview
+        return preview
     }
 
     public func hide(_ release: UpcomingRelease) {

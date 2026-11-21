@@ -192,16 +192,21 @@ struct PlozziOSReducedTransparencyScrollFade: ViewModifier {
     @State private var scrolledFraction: CGFloat = 0
     var enabled = true
 
+    private var showsFade: Bool {
+        guard #available(iOS 26.0, *), enabled, !isRunningOnMac else { return false }
+        return systemReduceTransparency || reduceTransparency
+    }
+
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                min(max((geometry.contentOffset.y + geometry.contentInsets.top) / 64, 0), 1)
-            } action: { _, fraction in
-                scrolledFraction = fraction
-            }
-            .overlay(alignment: .top) {
-                if #available(iOS 26.0, *), enabled, !isRunningOnMac,
-                   systemReduceTransparency || reduceTransparency {
+        if showsFade {
+            content
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    min(max((geometry.contentOffset.y + geometry.contentInsets.top) / 64, 0), 1)
+                } action: { _, fraction in
+                    scrolledFraction = fraction
+                }
+                .overlay(alignment: .top) {
                     // Protect status text without restoring the opaque native edge
                     // over the hero. The artwork remains untouched at scroll origin.
                     LinearGradient(
@@ -219,13 +224,15 @@ struct PlozziOSReducedTransparencyScrollFade: ViewModifier {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
-            }
-            .background {
-                PlozziOSWindowSafeAreaTopReader { safeAreaTop = $0 }
-                    .frame(width: 0, height: 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
+                .background {
+                    PlozziOSWindowSafeAreaTopReader { safeAreaTop = $0 }
+                        .frame(width: 0, height: 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+        } else {
+            content
+        }
     }
 }
 

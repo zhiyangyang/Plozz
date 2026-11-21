@@ -124,22 +124,26 @@ public struct PlozzFadeInOnAppear: ViewModifier {
 #if os(iOS)
 private struct PlozzPageAppearanceReader: UIViewControllerRepresentable {
     let startsDuringTransition: Bool
+    let reportsDisappearanceAfterTransition: Bool
     let onChange: (Bool) -> Void
 
     func makeUIViewController(context: Context) -> Controller {
         let controller = Controller()
         controller.startsDuringTransition = startsDuringTransition
+        controller.reportsDisappearanceAfterTransition = reportsDisappearanceAfterTransition
         controller.onChange = onChange
         return controller
     }
 
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.startsDuringTransition = startsDuringTransition
+        controller.reportsDisappearanceAfterTransition = reportsDisappearanceAfterTransition
         controller.onChange = onChange
     }
 
     final class Controller: UIViewController {
         var startsDuringTransition = false
+        var reportsDisappearanceAfterTransition = false
         var onChange: ((Bool) -> Void)?
 
         override func loadView() {
@@ -160,7 +164,16 @@ private struct PlozzPageAppearanceReader: UIViewControllerRepresentable {
 
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
-            onChange?(false)
+            if !reportsDisappearanceAfterTransition {
+                onChange?(false)
+            }
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            if reportsDisappearanceAfterTransition {
+                onChange?(false)
+            }
         }
     }
 }
@@ -171,13 +184,18 @@ public extension View {
     /// Reports native entry completion (or entry start when requested), and leaving the page.
     func plozzOnPageAppearanceChange(
         startsDuringTransition: Bool = false,
+        reportsDisappearanceAfterTransition: Bool = false,
         perform: @escaping (Bool) -> Void
     ) -> some View {
         background {
-            PlozzPageAppearanceReader(startsDuringTransition: startsDuringTransition, onChange: perform)
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            PlozzPageAppearanceReader(
+                startsDuringTransition: startsDuringTransition,
+                reportsDisappearanceAfterTransition: reportsDisappearanceAfterTransition,
+                onChange: perform
+            )
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
     }
     #endif

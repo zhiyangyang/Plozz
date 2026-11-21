@@ -32,7 +32,7 @@ public struct AmbientGradientBackground: View {
 
     public var body: some View {
         let colors = Self.meshColors(tint: tint, palette: palette, tintSaturation: tintSaturation)
-        Self.mesh(colors: colors)
+        surface(colors: colors)
             #if os(tvOS)
             .background {
                 if let ambient {
@@ -56,6 +56,22 @@ public struct AmbientGradientBackground: View {
                 )
                 #endif
             }
+    }
+
+    @ViewBuilder
+    private func surface(colors: [Color]) -> some View {
+        #if os(iOS)
+        if tint?.isEmpty != false {
+            // Stock page backgrounds are identical across tabs and destinations.
+            // Reuse one rasterized mesh instead of paying for the live shader on
+            // every layer while pages transition over each other.
+            CachedAmbientMesh(colors: colors)
+        } else {
+            Self.mesh(colors: colors)
+        }
+        #else
+        Self.mesh(colors: colors)
+        #endif
     }
 
     static func mesh(colors: [Color]) -> MeshGradient {

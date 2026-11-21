@@ -246,7 +246,6 @@ struct PlozziOSHomeView: View {
     @State private var heroSeasonRefreshingKeys: Set<String> = []
     @State private var watchlistIntentRevision = 0
     @State private var discoveryIdentityRevision = 0
-    @State private var homeHasAppeared = false
     @State private var homePageIsVisible = false
     @State private var contentEntrance = PlozziOSHomeContentEntrance.initial
     @State private var rowBrowser: HomeRowBrowseModel?
@@ -288,7 +287,8 @@ struct PlozziOSHomeView: View {
                     identitySources: identitySources
                 )
             },
-            ratingsProvider: RatingsServiceFactory.make(),
+            ratingsProvider: PlozzCustomization.isCustomBuild
+                ? DisabledRatingsProvider() : RatingsServiceFactory.make(),
             requestIdentityResolver: { [seer = appModel.seerService] item in
                 guard await seer.isConfigured else { return nil }
                 return await ExternalTitleMetadataResolver.shared.tmdbID(for: item)
@@ -403,11 +403,11 @@ struct PlozziOSHomeView: View {
         )
         .plozziOSTracksHeroContainerHeight()
         .artworkGradientBackground(
-            scope: ObjectIdentifier(viewModel), isVisible: homeIsFrontmost && homeHasAppeared,
+            scope: ObjectIdentifier(viewModel),
+            isVisible: homeIsFrontmost && homePageIsVisible,
             tintSaturation: AmbientGradientBackground.fullscreenHeroTintSaturation
         )
-        .onAppear { homeHasAppeared = true }
-        .plozzOnPageAppearanceChange { visible in
+        .plozzOnPageAppearanceChange(reportsDisappearanceAfterTransition: true) { visible in
             if homePageIsVisible && !visible { contentEntrance = .revealed }
             homePageIsVisible = visible
         }
@@ -415,7 +415,6 @@ struct PlozziOSHomeView: View {
             if isEmpty, contentEntrance == .initial { contentEntrance = .waiting }
         }
         .environment(\.plozzCardCaptionView, .home)
-        .onDisappear { homeHasAppeared = false }
         .navigationDestination(isPresented: $showingUpcoming) { [appModel, viewModel] in
             UpcomingView(model: viewModel.upcoming, interval: UpcomingFeedLoader.window())
                 .plozziOSItemNavigation(appModel: appModel)
@@ -799,12 +798,10 @@ struct PlozziOSHomeView: View {
                 + "eligibilityAllows=\(heroEligibility.filtering(heroItems).count)"
             )
         }
-        let rows = HomeRow.rows(
+        let rows = viewModel.homeRows(
             for: content,
             libraryOrder: appModel.settings.navigation.libraryOrderingKeys,
-            isLibraryVisible: visibility.isVisibleOnHome,
-            isLibraryTileVisible: visibility.isVisibleOnHome,
-            isGlobalRowEnabled: visibility.isGlobalRowEnabled,
+            visibility: visibility.visibility,
             includesEmptyWatchlist:
                 viewModel.watchlistLoadingPlaceholderCount > 0,
             loadingRows: loadingRows,
@@ -975,10 +972,15 @@ struct PlozziOSHomeView: View {
                 entrance: $contentEntrance, visibleContent: homePageIsVisible ? hasMedia : nil
             ))
             .scrollClipDisabled()
-            .onScrollPhaseChange { _, phase in homeIsScrolling = phase != .idle }
+            .onScrollPhaseChange { _, phase in
+                homeIsScrolling = phase != .idle
+                // Record the interaction once per phase, not on every offset tick.
+                if phase != .idle { viewModel.noteHomeNavigationInteraction() }
+            }
             .homeResponsivenessDiagnostics(
                 isEnabled: AppReleaseChannel.current.isBeta && appModel.crashReporting.isEnabled
-                    && !appModel.isOfflineMode && homeIsFrontmost && homeHasAppeared && playbackRequest == nil,
+                    && !appModel.isOfflineMode && homeIsFrontmost && homePageIsVisible
+                    && playbackRequest == nil,
                 scope: ObjectIdentifier(viewModel),
                 isScrolling: homeIsScrolling, isLoading: viewModel.isRefreshing
             )
@@ -990,10 +992,12 @@ struct PlozziOSHomeView: View {
             }
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.contentOffset.y + geometry.contentInsets.top
-            } action: { oldOffset, newOffset in
-                heroPullModel.update(max(0, -newOffset))
-                if oldOffset != newOffset {
-                    viewModel.noteHomeNavigationInteraction()
+            } action: { _, newOffset in
+                // The pull effect only exists while overscrolling at the top.
+                if newOffset < 0 {
+                    heroPullModel.update(-newOffset)
+                } else if heroPullModel.distance != 0 {
+                    heroPullModel.update(0)
                 }
             }
             .task(id: heroLoadKey) {

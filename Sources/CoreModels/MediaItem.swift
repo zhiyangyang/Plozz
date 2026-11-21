@@ -281,6 +281,12 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// fetch.
     public var tags: [String]
 
+    /// Provider-local ids parallel to `studios`/`tags`, when the server exposes
+    /// them (Emby returns `NameLongIdPair`). These make studio/tag catalog
+    /// queries use the server's indexed ids instead of name matching.
+    public var studioIDs: [String]
+    public var tagIDs: [String]
+
     /// Short marketing taglines. Only populated on the detail fetch.
     public var taglines: [String]
 
@@ -573,6 +579,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         people: [MediaPerson] = [],
         studios: [String] = [],
         tags: [String] = [],
+        studioIDs: [String] = [],
+        tagIDs: [String] = [],
         taglines: [String] = [],
         seriesID: String? = nil,
         seasonID: String? = nil,
@@ -653,6 +661,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         self.people = people
         self.studios = studios
         self.tags = tags
+        self.studioIDs = studioIDs
+        self.tagIDs = tagIDs
         self.taglines = taglines
         self.seriesID = seriesID
         self.seasonID = seasonID
@@ -722,7 +732,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         case originalLanguage, seriesStatus, catalogSeasonCount, catalogEpisodeCount
         case isTrailer
         case isExtra
-        case productionYear, releaseDate, officialRating, genres, people, studios, tags, taglines
+        case productionYear, releaseDate, officialRating, genres, people, studios, tags
+        case studioIDs, tagIDs, taglines
         case librarySortValues
         case familyGuidance
         case seriesID, seasonID, runtime, resumePosition, playedPercentage, unwatchedEpisodeCount, isPlayed, hasBeenPlayed
@@ -783,6 +794,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         people = try container.decodeIfPresent([MediaPerson].self, forKey: .people) ?? []
         studios = try container.decodeIfPresent([String].self, forKey: .studios) ?? []
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        studioIDs = try container.decodeIfPresent([String].self, forKey: .studioIDs) ?? []
+        tagIDs = try container.decodeIfPresent([String].self, forKey: .tagIDs) ?? []
         taglines = try container.decodeIfPresent([String].self, forKey: .taglines) ?? []
         seriesID = try container.decodeIfPresent(String.self, forKey: .seriesID)
         seasonID = try container.decodeIfPresent(String.self, forKey: .seasonID)

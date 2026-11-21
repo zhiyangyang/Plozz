@@ -320,14 +320,78 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         }
     }
 
+    /// Stable-state Home row assembly. Tab switches repaint the page without
+    /// changing any content, so recomputing the same filtering and library
+    /// ordering on every body pass is wasted main-thread work.
+    public func homeRows(
+        for content: Content,
+        libraryOrder: [String],
+        visibility: HomeLibraryVisibility,
+        includesEmptyWatchlist: Bool,
+        loadingRows: Set<HomeRowKind>,
+        failures: [HomeRowKind: AppError],
+        skeletonLayout: [HomeRowLayout]
+    ) -> [HomeRow] {
+        let isStable = loadingRows.isEmpty && failures.isEmpty && !includesEmptyWatchlist
+        guard isStable else {
+            return HomeRow.rows(
+                for: content, libraryOrder: libraryOrder,
+                isLibraryVisible: visibility.isVisibleOnHome,
+                isLibraryTileVisible: visibility.isVisibleOnHome,
+                isGlobalRowEnabled: visibility.isGlobalRowEnabled,
+                includesEmptyWatchlist: includesEmptyWatchlist,
+                loadingRows: loadingRows, failures: failures, skeletonLayout: skeletonLayout
+            )
+        }
+        let key = HomeRowsKey(
+            revision: stateRevision, libraryOrder: libraryOrder, visibility: visibility
+        )
+        if let cache = homeRowsCache, cache.key == key { return cache.rows }
+        let rows = HomeRow.rows(
+            for: content, libraryOrder: libraryOrder,
+            isLibraryVisible: visibility.isVisibleOnHome,
+            isLibraryTileVisible: visibility.isVisibleOnHome,
+            isGlobalRowEnabled: visibility.isGlobalRowEnabled,
+            includesEmptyWatchlist: includesEmptyWatchlist,
+            loadingRows: loadingRows, failures: failures, skeletonLayout: skeletonLayout
+        )
+        homeRowsCache = HomeRowsCache(key: key, rows: rows)
+        return rows
+    }
+
     public func presentationRows(
         rows: [HomeRow], content: Content, visibility: HomeLibraryVisibility,
         liveTV: HomeLiveTVSnapshot = .empty, presentation: LibraryPresentationSettings = .default,
         showsEmptySectionMessages: Bool = true
     ) -> [HomePresentationRow] {
-        HomePresentationRow.resolve(
+        let upcomingHomeReleases = upcoming.homeReleases
+        let isStable = loadingRows.isEmpty && rowFailures.isEmpty
+        if isStable {
+            let key = PresentationRowsKey(
+                revision: stateRevision,
+                rowKinds: rows.map(\.kind),
+                upcomingHomeReleaseIDs: upcomingHomeReleases.map(\.id),
+                visibility: visibility,
+                liveTV: liveTV,
+                presentation: presentation,
+                showsEmptySectionMessages: showsEmptySectionMessages,
+                includesEmptyWatchlist: watchlistLoadingPlaceholderCount > 0
+            )
+            if let cache = presentationRowsCache, cache.key == key {
+                return cache.rows
+            }
+            let resolved = HomePresentationRow.resolve(
+                rows: rows, content: content, visibility: visibility, liveTV: liveTV,
+                upcoming: upcomingHomeReleases, presentation: presentation,
+                showsEmptySectionMessages: showsEmptySectionMessages,
+                serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
+            )
+            presentationRowsCache = PresentationRowsCache(key: key, rows: resolved)
+            return resolved
+        }
+        return HomePresentationRow.resolve(
             rows: rows, content: content, visibility: visibility, liveTV: liveTV,
-            upcoming: upcoming.homeReleases, presentation: presentation,
+            upcoming: upcomingHomeReleases, presentation: presentation,
             showsEmptySectionMessages: showsEmptySectionMessages,
             serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
         )
@@ -339,6 +403,35 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         didSet { stateRevision &+= 1 }
     }
     @ObservationIgnored private var stateRevision: UInt64 = 0
+    @ObservationIgnored private var presentationRowsCache: PresentationRowsCache?
+    @ObservationIgnored private var homeRowsCache: HomeRowsCache?
+
+    private struct PresentationRowsKey: Equatable {
+        let revision: UInt64
+        let rowKinds: [HomeRowKind]
+        let upcomingHomeReleaseIDs: [String]
+        let visibility: HomeLibraryVisibility
+        let liveTV: HomeLiveTVSnapshot
+        let presentation: LibraryPresentationSettings
+        let showsEmptySectionMessages: Bool
+        let includesEmptyWatchlist: Bool
+    }
+
+    private struct PresentationRowsCache {
+        let key: PresentationRowsKey
+        let rows: [HomePresentationRow]
+    }
+
+    private struct HomeRowsKey: Equatable {
+        let revision: UInt64
+        let libraryOrder: [String]
+        let visibility: HomeLibraryVisibility
+    }
+
+    private struct HomeRowsCache {
+        let key: HomeRowsKey
+        let rows: [HomeRow]
+    }
     @ObservationIgnored private var reenrichGeneration: UInt64 = 0
 
     /// `true` while `state` holds a snapshot hydrated from `contentStore` on launch

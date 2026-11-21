@@ -640,6 +640,32 @@ public struct JellyfinClient: Sendable {
         return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL).Items
     }
 
+    /// `/Items/{id}/Similar` — the server's own "More Like This" row. Emby and
+    /// Jellyfin both compute this from their metadata and library; no external
+    /// metadata key or client-side scoring is involved.
+    func similarItems(
+        userID: String,
+        itemID: String,
+        limit: Int
+    ) async throws -> [BaseItemDto] {
+        let endpoint = Endpoint(
+            path: "/Items/\(itemID)/Similar",
+            queryItems: [
+                URLQueryItem(name: "UserId", value: userID),
+                URLQueryItem(name: "Limit", value: String(max(0, limit))),
+                URLQueryItem(
+                    name: "Fields",
+                    value: "Overview,OriginalTitle,ProviderIds,Genres,Studios,Tags,"
+                        + "ProductionYear,PremiereDate,CommunityRating,CriticRating,"
+                        + "OfficialRating,PrimaryImageAspectRatio"
+                ),
+                URLQueryItem(name: "ImageTypeLimit", value: "1")
+            ],
+            headers: authHeaders
+        )
+        return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL).Items
+    }
+
     /// `/Persons/{name}` — Jellyfin's by-name person record, whose `Overview` is
     /// the biography. Lets a second Jellyfin supply a bio for a person first seen
     /// on a server that keeps none.
@@ -906,18 +932,18 @@ public struct JellyfinClient: Sendable {
     /// (folders/collections) it falls back to direct, non-recursive children.
     func items(
         userID: String,
-        parentID: String,
+        parentID: String?,
         includeItemTypes: [String],
         recursive: Bool,
         startIndex: Int,
         limit: Int,
         sort: CoreModels.SortDescriptor,
-        fields: String = "PrimaryImageAspectRatio,ProviderIds,Genres",
+        fields: String = "PrimaryImageAspectRatio,ProviderIds,Genres,Studios,Tags",
         filters: LibraryFilters = .all,
-        useServerCollections: Bool = false
+        useServerCollections: Bool = false,
+        term: MovieCatalogTerm? = nil
     ) async throws -> ItemsResponse {
         var queryItems = [
-            URLQueryItem(name: "ParentId", value: parentID),
             URLQueryItem(name: "StartIndex", value: String(startIndex)),
             URLQueryItem(name: "Limit", value: String(limit)),
             URLQueryItem(name: "SortBy", value: try sort.field == .lastPlayed && includeItemTypes == ["Series"]
@@ -930,6 +956,9 @@ public struct JellyfinClient: Sendable {
             URLQueryItem(name: "ImageTypeLimit", value: "1"),
             URLQueryItem(name: "EnableTotalRecordCount", value: "true")
         ]
+        if let parentID, !parentID.isEmpty {
+            queryItems.append(URLQueryItem(name: "ParentId", value: parentID))
+        }
         if recursive {
             queryItems.append(URLQueryItem(name: "Recursive", value: "true"))
         }
@@ -937,6 +966,20 @@ public struct JellyfinClient: Sendable {
             queryItems.append(URLQueryItem(name: "IncludeItemTypes", value: includeItemTypes.joined(separator: ",")))
         }
         queryItems += try Self.libraryFilterQuery(filters)
+        if let term {
+            switch term.kind {
+            case .studio:
+                // Emby indexes studios by id; the name form is a fallback for
+                // servers that don't return one.
+                if let id = term.serverID, !id.isEmpty {
+                    queryItems.append(URLQueryItem(name: "StudioIds", value: id))
+                } else {
+                    queryItems.append(URLQueryItem(name: "Studios", value: term.name))
+                }
+            case .tag:
+                queryItems.append(URLQueryItem(name: "Tags", value: term.name))
+            }
+        }
         if !useServerCollections {
             queryItems.append(collectionGroupingDisabled)
         }

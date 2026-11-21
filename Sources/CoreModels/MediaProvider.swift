@@ -130,6 +130,19 @@ public protocol MediaProvider: Sendable {
     /// the sort means restarting paging from `startIndex` 0.
     func items(in containerID: String, kind: MediaItemKind, page: PageRequest) async throws -> MediaPage
 
+    /// Native server-side filtering for a studio/tag catalog.
+    ///
+    /// Emby exposes `Studios` and `Tags` name filters on its item query, so a
+    /// large library can answer one term without paging every movie. Providers
+    /// without an equivalent return `nil`, and the caller falls back to a local
+    /// scan. The returned page must already be filtered and paged.
+    func items(
+        in containerID: String?,
+        kind: MediaItemKind,
+        matching term: MovieCatalogTerm,
+        page: PageRequest
+    ) async throws -> MediaPage?
+
     /// The server's collection list for this library context, ordered/paged as
     /// collections. Servers may return their user-visible global list instead
     /// of library-specific groups. Do not reconstruct membership client-side.
@@ -363,6 +376,13 @@ public protocol MediaProvider: Sendable {
     /// ever used for the viewer's *other* servers; the one the person came from
     /// is always asked by its own exact id.
     func items(withPersonNamed name: String, limit: Int) async throws -> [MediaItem]
+
+    /// Native "More Like This" from the server's own metadata and library.
+    ///
+    /// The server owns the similarity model, so this needs no external metadata
+    /// key and no client-side genre/tag scoring. Providers without a native
+    /// endpoint inherit an empty result; callers hide the row when it is empty.
+    func similarItems(to itemID: String, limit: Int) async throws -> [MediaItem]
 
     /// A person looked up by name, chiefly so a second server can supply a
     /// biography the first one lacks — without involving any third party.
@@ -648,8 +668,21 @@ public extension MediaProvider {
     /// nothing to another server's person page.
     func items(withPersonNamed name: String, limit: Int) async throws -> [MediaItem] { [] }
 
-    /// Default: no person records to search by name.
+    /// Default: no native person records to search by name.
     func person(named name: String) async throws -> MediaPerson? { nil }
+
+    /// Default: this source has no native "More Like This" endpoint. The detail
+    /// row stays hidden rather than inventing a client-side similarity model.
+    func similarItems(to itemID: String, limit: Int) async throws -> [MediaItem] { [] }
+
+    /// Default: no native studio/tag filter. The catalog falls back to scanning
+    /// library pages and matching locally.
+    func items(
+        in containerID: String?,
+        kind: MediaItemKind,
+        matching term: MovieCatalogTerm,
+        page: PageRequest
+    ) async throws -> MediaPage? { nil }
 
     /// Default: ignore the exclusions and run the unscoped search. Providers that
     /// can attribute results to a library (Plex `librarySectionID`) or scope the

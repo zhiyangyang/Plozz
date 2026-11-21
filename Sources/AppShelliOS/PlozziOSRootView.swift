@@ -81,9 +81,24 @@ public struct PlozziOSRootView: View {
 
     public var body: some View {
         AppLanguageScope(model: appModel.appLanguage) {
-            rootContent
+            withDebugFPSHUD(rootContent)
         }
     }
+
+    #if DEBUG
+    private func withDebugFPSHUD<Content: View>(_ content: Content) -> some View {
+        content.overlay(alignment: .bottomTrailing) {
+            if PlozziOSDebugFPSHUD.isEnabled {
+                PlozziOSDebugFPSHUD()
+                    .padding(16)
+            }
+        }
+    }
+    #else
+    private func withDebugFPSHUD<Content: View>(_ content: Content) -> some View {
+        content
+    }
+    #endif
 
     private var rootContent: some View {
         Group {
@@ -1352,7 +1367,11 @@ struct PlozziOSTabShell: View {
             )
             .environment(
                 \.plozziOSHomeIsFrontmost,
-                effectiveSelectedDestination == .home && !isShowingMorePage && !showingSettings
+                // Tab selection must not invalidate the whole Home body during the
+                // native transition. Home's own page-appearance state pauses the
+                // hero/trailer; this environment only covers chrome that floats
+                // above the page (Settings and the More sheet).
+                !isShowingMorePage && !showingSettings
             )
             .environment(\.openWatchlist, {
                 retainsExplicitWatchlistEntry = true
@@ -1362,7 +1381,6 @@ struct PlozziOSTabShell: View {
             .plozziOSItemNavigation(appModel: appModel, registersScreenshotRouting: true)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbarBackground(.hidden, for: .tabBar)
-            .background { AppBackground(palette: palette) }
             .background {
                 PlozziOSHomeSidebarOverlapProbe(
                     enabled: effectiveSelectedDestination == .home && !isShowingMorePage,
@@ -1380,7 +1398,6 @@ struct PlozziOSTabShell: View {
             )
             .plozziOSItemNavigation(appModel: appModel)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .background { AppBackground(palette: palette) }
         case .upcoming:
             UpcomingView(model: sharedHomeViewModel.upcoming, interval: UpcomingFeedLoader.window()) {
                 PlozziOSSettingsToolbarItem(action: showSettings)
@@ -1440,7 +1457,6 @@ struct PlozziOSTabShell: View {
                 downloadNotificationID: downloadNavigationID
             )
             .toolbarBackground(.hidden, for: .navigationBar)
-            .background { AppBackground(palette: palette) }
         case .search:
             PlozziOSDestinationView(
                 destination: .search,
@@ -1452,7 +1468,6 @@ struct PlozziOSTabShell: View {
             )
             .plozziOSItemNavigation(appModel: appModel)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .background { AppBackground(palette: palette) }
         case .allLibraries:
             PlozziOSAllLibrariesDestinationView(appModel: appModel)
                 .id(homeContentIdentity + "|" + allLibrariesSourceSignature(appModel.visibleNavigationLibraries))

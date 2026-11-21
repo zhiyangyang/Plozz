@@ -76,6 +76,7 @@ public actor ArtworkRouter {
         if let classified = ContentClassifier.originalAudioLanguage(for: item) {
             return classified
         }
+        guard !PlozzCustomization.isCustomBuild else { return nil }
         let query = MetadataQuery(item).seriesScoped
         let key = Self.originalLanguageCacheKey(for: item, query: query)
         if let cached = originalLanguages[key] { return cached }
@@ -503,15 +504,18 @@ public actor ArtworkRouter {
     }
 
     private func provider(for source: MetadataSource) -> (any ArtworkProvider)? {
+        // The personal build is offline-first: server art is already on the
+        // item, and every external artwork lookup is disabled.
+        guard !PlozzCustomization.isCustomBuild else { return nil }
         switch source {
-        case .anilist: anilist
-        case .kitsu: kitsu
-        case .tvmaze: tvmaze
-        case .wikidata: wikidata
-        case .wikipedia: wikipedia
-        case .tmdb: tmdb
-        case .tvdb: tvdb
-        default: nil
+        case .anilist: return anilist
+        case .kitsu: return kitsu
+        case .tvmaze: return tvmaze
+        case .wikidata: return wikidata
+        case .wikipedia: return wikipedia
+        case .tmdb: return tmdb
+        case .tvdb: return tvdb
+        default: return nil
         }
     }
 
@@ -519,6 +523,7 @@ public actor ArtworkRouter {
 
     /// A large artist image for a music hero/background. Keyless (Deezer).
     public func artistImageURL(artist: String) async -> URL? {
+        guard !PlozzCustomization.isCustomBuild else { return nil }
         guard configuredMusicSources.contains(.deezer) else { return nil }
         let key = "music|artist|\(artist.lowercased())|provider:deezer"
         if let hit = await cache.cached(key) { return hit }
@@ -529,6 +534,7 @@ public actor ArtworkRouter {
 
     /// A large album cover, trying Deezer then MusicBrainz/Cover Art Archive.
     public func albumCoverURL(artist: String?, album: String) async -> URL? {
+        guard !PlozzCustomization.isCustomBuild else { return nil }
         for source in configuredMusicSources {
             let key = "music|album|\((artist ?? "").lowercased())|\(album.lowercased())|provider:\(source.rawValue)"
             if let hit = await cache.cached(key) {

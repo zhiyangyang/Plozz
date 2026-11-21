@@ -191,6 +191,10 @@ struct BaseItemDto: Decodable {
     /// Free-form tags the server/metadata provider attached (e.g. `Isekai`,
     /// `Shounen`). Present only when `Tags` is requested in `Fields`.
     let Tags: [String]?
+    /// Emby's user-facing tags. Emby frequently leaves `Tags` empty and returns
+    /// the same information as `TagItems` (`NameLongIdPair`) instead. Requesting
+    /// `Tags` in `Fields` is what makes Emby populate this.
+    let TagItems: [NamedReferenceDto]?
     /// Short marketing taglines. Present only when `Taglines` is requested in
     /// `Fields`.
     let Taglines: [String]?
@@ -247,12 +251,28 @@ struct NameGuidPairDto: Decodable {
     let Id: String?
 }
 
-/// A named reference whose identifier is intentionally ignored. Jellyfin emits
-/// studio ids as GUID strings, while Emby defines `Studios` as `NameLongIdPair`
-/// with integer ids. Plozz only displays the studio name, so decoding just that
-/// shared field preserves both schemas without weakening artist-id typing.
+/// A named reference used by studios and tags. Jellyfin emits GUID strings while
+/// Emby uses `NameLongIdPair` with integer ids; both forms are normalized to a
+/// string so the catalog can query `StudioIds`/`TagIds` directly.
 struct NamedReferenceDto: Decodable {
     let Name: String?
+    let Id: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case Name, Id
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        Name = try container.decodeIfPresent(String.self, forKey: .Name)
+        if let string = try? container.decodeIfPresent(String.self, forKey: .Id) {
+            Id = string
+        } else if let integer = try? container.decodeIfPresent(Int.self, forKey: .Id) {
+            Id = String(integer)
+        } else {
+            Id = nil
+        }
+    }
 }
 
 /// One cast/crew member from `BaseItemDto.People`. `Type` is the role kind

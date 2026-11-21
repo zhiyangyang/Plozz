@@ -39,8 +39,19 @@ Switches in `PlozzCustomization`:
 
 The detail page also uses `PlozzCustomization` to omit the About, Ratings,
 Details, Crew and Playback blocks from the information band. The hero (including
-its Play/Resume action and rating badges), the Cast & Crew rail, Extras, Related,
+its Play/Resume action and rating badges), the Cast & Crew rail, Extras,
 seasons/episodes and Release & Availability stay visible.
+
+For movies, the custom build replaces the old metadata-driven Related row with
+the server's native "More Like This" list (`/Items/{id}/Similar`, implemented for
+Jellyfin/Emby). Tags replace the hero's genre line and remain tappable; studio
+chips sit at the bottom of the detail page. Both browse the current library only; Emby uses
+server-side `StudioIds`/`Studios`/`Tags` filters so a large library does not need a
+full scan, while other providers fall back to local filtering. The catalog loads
+60 items first and appends more when the grid reaches its end. The custom build
+also hides the hero's Starring/Director credits, external ratings, and online
+metadata/artwork/trailer enrichment. Plex and Silo currently inherit the empty
+default for the native similar endpoint.
 
 ## Custom seams
 
@@ -52,6 +63,15 @@ Keep changes confined to these files when possible:
 - `Sources/CoreModels/SettingsSearch.swift` — hide disabled settings pages
 - `Sources/CoreModels/NavigationRailPlan.swift` — remove Discover from iPad catalogue
 - `Sources/CoreUI/DetailInformationSections.swift` — omit the requested detail blocks
+- `Sources/CoreModels/MovieCatalogTerm.swift` — studio/tag term and matching
+- `Sources/FeatureHomeCore/MovieCatalogViewModel.swift` — current-library studio/tag paging
+- `Sources/FeatureHomeCore/SimilarMoviesViewModel.swift` — server-native similar movies
+- `Sources/AppShelliOS/PlozziOSStudioSection.swift` — studio chips
+- `Sources/AppShelliOS/PlozziOSDetailTagNavigator.swift` — hero tag taps
+- `Sources/AppShelliOS/PlozziOSMovieCatalogView.swift` — studio/tag movie grid
+- `Sources/AppShelliOS/PlozziOSMoreLikeThisSection.swift` — native similar rail
+- `Sources/ProviderJellyfin/JellyfinClient.swift` / `JellyfinProvider.swift` — `/Items/{id}/Similar`
+- `Sources/ProviderJellyfin/JellyfinLibraryQuery.swift` — request `Studios`/`Tags` in the inventory
 - `App/PlozziOS/PlozziOSApp.swift` — apply cloud-off defaults before model creation
 - `Sources/AppShelliOS/PlozziOSAppModel.swift` — skip Seerr/Tracker lifecycle work
 - `Sources/AppShelliOS/PlozziOSAppModel+CloudSync.swift` — return no cloud service

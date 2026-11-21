@@ -31,6 +31,7 @@ public actor OverviewRouter {
 
     /// Resolves overview text together with its provider attribution.
     public func sourcedOverview(for query: MetadataQuery) async -> SourcedValue<String>? {
+        guard !PlozzCustomization.isCustomBuild else { return nil }
         let key = cacheKey(for: query)
         if let hit = cache[key] { return hit }
         let text = await resolve(query)

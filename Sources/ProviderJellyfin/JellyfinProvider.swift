@@ -610,6 +610,17 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
         ).map(map(item:))
     }
 
+    /// The server's own "More Like This" list for one title. Emby and Jellyfin
+    /// compute this from their metadata and the viewer's library.
+    public func similarItems(to itemID: String, limit: Int) async throws -> [MediaItem] {
+        guard !itemID.isEmpty, limit > 0 else { return [] }
+        return try await client.similarItems(
+            userID: session.userID,
+            itemID: itemID,
+            limit: limit
+        ).map(map(item:))
+    }
+
     /// Library-scoped Continue Watching. Jellyfin's Resume/NextUp feeds don't
     /// report each item's owning library (an episode's `ParentId` is its season),
     /// so the only reliable way to attribute — and therefore Home-filter — items
@@ -1047,6 +1058,39 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
             PlozzLog.networking.error("Library browse failed: container=\(containerID) error=\(String(describing: error))")
             throw error
         }
+    }
+
+    /// Emby's item query can filter by studio/tag names, so a large library does
+    /// not have to be scanned page by page. Jellyfin's equivalent name filter is
+    /// not confirmed, so it keeps the caller's local-scan fallback.
+    public func items(
+        in containerID: String?,
+        kind: MediaItemKind,
+        matching term: MovieCatalogTerm,
+        page: PageRequest
+    ) async throws -> MediaPage? {
+        guard self.kind == .emby else { return nil }
+        let query = Self.query(forContainerKind: kind)
+        let response = try await client.items(
+            userID: session.userID,
+            parentID: containerID,
+            includeItemTypes: query.includeItemTypes,
+            recursive: query.recursive,
+            startIndex: page.startIndex,
+            limit: page.limit,
+            sort: page.sort,
+            fields: "PrimaryImageAspectRatio,ProviderIds,Genres,Studios,Tags",
+            filters: page.filters,
+            term: term
+        )
+        guard let total = response.TotalRecordCount, total >= 0 else {
+            throw AppError.invalidResponse
+        }
+        return MediaPage(
+            items: response.Items.map(map(item:)),
+            startIndex: page.startIndex,
+            totalCount: total
+        )
     }
 
     public func collectionMembers(of collectionID: String, page: PageRequest) async throws -> MediaPage {
@@ -2470,7 +2514,9 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
             genres: dto.Genres ?? [],
             people: Self.people(from: dto, client: client),
             studios: dto.Studios?.compactMap(\.Name).filter { !$0.isEmpty } ?? [],
-            tags: dto.Tags ?? [],
+            tags: Self.tags(from: dto),
+            studioIDs: dto.Studios?.compactMap(\.Id).filter { !$0.isEmpty } ?? [],
+            tagIDs: dto.TagItems?.compactMap(\.Id).filter { !$0.isEmpty } ?? [],
             taglines: dto.Taglines ?? [],
             seriesID: dto.SeriesId ?? (kind == .season ? dto.ParentId : nil),
             seasonID: dto.SeasonId,
@@ -2685,6 +2731,23 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
     /// billing order. A headshot URL is built only when the person advertises a
     /// `PrimaryImageTag`, so we never point an avatar at a guaranteed 404.
     /// Entries without a usable id/name are dropped.
+    /// Emby returns user tags in `TagItems` (`NameLongIdPair`) while leaving
+    /// `Tags` empty; Jellyfin and older Emby builds use `Tags`. Merge both and
+    /// dedupe case-insensitively so the detail page never shows the same tag twice.
+    private static func tags(from dto: BaseItemDto) -> [String] {
+        var seen = Set<String>()
+        return ((dto.Tags ?? []) + (dto.TagItems?.compactMap(\.Name) ?? []))
+            .compactMap { value in
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return nil }
+                let key = trimmed.folding(
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    locale: .current
+                )
+                return seen.insert(key).inserted ? trimmed : nil
+            }
+    }
+
     private static func people(from dto: BaseItemDto, client: JellyfinClient) -> [MediaPerson] {
         guard let people = dto.People else { return [] }
         return people.compactMap { person in

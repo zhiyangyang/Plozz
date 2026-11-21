@@ -219,11 +219,13 @@ private struct PlozziOSPersonPage: View {
                         .map(\.provider),
                     // Keyless, so it works for every user out of the box, and
                     // only reached when no server stored a biography.
-                    biographyProviders: appModel.isOfflineMode ? [] : [WikipediaPersonBiographyProvider()],
+                    biographyProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
+                        ? [] : [WikipediaPersonBiographyProvider()],
                     // The same ladder the in-player Cast card uses — without
                     // it this page can only answer with what the viewer
                     // already owns, which is not what "known for" means.
-                    creditsProviders: appModel.isOfflineMode ? [] : PlayerCastCredits.providers,
+                    creditsProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
+                        ? [] : PlayerCastCredits.providers,
                     artworkResolver: PlayerCastCredits.artworkResolver,
                     // So a credit the viewer owns isn't marked absent — see the
                     // tvOS person page and `PersonDetailViewModel`.

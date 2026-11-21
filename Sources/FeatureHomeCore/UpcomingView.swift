@@ -88,7 +88,8 @@
                             #else
                             UpcomingAgenda(
                                 model: model, selectedDay: selectedDay,
-                                minimumLastDayHeight: agendaHeight, contentWidth: agendaContentWidth
+                                minimumLastDayHeight: agendaHeight, contentWidth: agendaContentWidth,
+                                releases: visibleReleases
                             )
                             #if os(iOS)
                             .environment(\.plozzMetrics, agendaMetrics)
@@ -493,19 +494,28 @@
         let selectedDay: Date
         let minimumLastDayHeight: CGFloat
         let contentWidth: CGFloat
+        var releases: [UpcomingRelease]?
         var focusRequest: UUID?
         var onFocusRequestHandled: ((UUID) -> Void)?
         @Environment(\.plozzMetrics) private var metrics
         @Environment(\.plozzCardStyle) private var cardStyle
+        @State private var snapshotCache: AgendaSnapshot?
+
+        private struct AgendaSnapshot {
+            var days: [Date]
+            var groups: [Date: [UpcomingRelease]]
+        }
+
+        private var resolvedReleases: [UpcomingRelease] {
+            releases ?? model.visibleReleases
+        }
 
         var body: some View {
             let calendar = Calendar.current
-            let groups = Dictionary(grouping: upcomingAgendaReleases(model.visibleReleases)) { calendar.startOfDay(for: $0.date) }
-            #if os(iOS)
-                let days = Set(groups.keys).union([selectedDay, calendar.startOfDay(for: Date())]).sorted()
-            #else
-                let days = Set(groups.keys).union([selectedDay]).sorted()
-            #endif
+            let snapshot = snapshotCache
+                ?? Self.snapshot(releases: resolvedReleases, selectedDay: selectedDay)
+            let groups = snapshot.groups
+            let days = snapshot.days
             #if os(tvOS)
                 let visibleDays = days.filter { $0 >= calendar.startOfDay(for: Date()) }
                 let spacing = metrics.cardSpacing
@@ -530,12 +540,46 @@
                 refreshError
             }
             .frame(width: contentWidth > 0 ? contentWidth : nil, alignment: .leading)
+            .onChange(of: resolvedReleases, initial: true) { _, releases in
+                snapshotCache = Self.snapshot(releases: releases, selectedDay: selectedDay)
+            }
+            .onChange(of: selectedDay) { _, day in
+                snapshotCache = Self.snapshot(releases: resolvedReleases, selectedDay: day)
+            }
             #else
             VStack(alignment: .leading, spacing: 20) {
                 dateGroups(visibleDays, groups: groups, columns: columns, metrics: gridMetrics, width: width)
                 refreshError
             }
+            .onChange(of: resolvedReleases, initial: true) { _, releases in
+                snapshotCache = Self.snapshot(releases: releases, selectedDay: selectedDay)
+            }
+            .onChange(of: selectedDay) { _, day in
+                snapshotCache = Self.snapshot(releases: resolvedReleases, selectedDay: day)
+            }
             #endif
+        }
+
+        private static func snapshot(
+            releases: [UpcomingRelease], selectedDay: Date
+        ) -> AgendaSnapshot {
+            let calendar = Calendar.current
+            #if os(tvOS)
+            let agendaReleases = releases.filter {
+                $0.date >= calendar.startOfDay(for: Date())
+            }
+            #else
+            let agendaReleases = releases
+            #endif
+            let groups = Dictionary(grouping: agendaReleases) {
+                calendar.startOfDay(for: $0.date)
+            }
+            #if os(iOS)
+            let days = Set(groups.keys).union([selectedDay, calendar.startOfDay(for: Date())]).sorted()
+            #else
+            let days = Set(groups.keys).union([selectedDay]).sorted()
+            #endif
+            return AgendaSnapshot(days: days, groups: groups)
         }
 
         @ViewBuilder
@@ -569,7 +613,7 @@
             _ days: [Date], groups: [Date: [UpcomingRelease]],
             columns: [GridItem], metrics: PlozzMetrics, width: CGFloat
         ) -> some View {
-            let focusTargetID = model.visibleReleases.first { $0.date >= selectedDay }?.id
+            let focusTargetID = resolvedReleases.first { $0.date >= selectedDay }?.id
             return ForEach(days, id: \.self) { day in
                 Group {
                     #if os(tvOS)

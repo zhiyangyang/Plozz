@@ -552417,6 +552417,23 @@
         }
       }
     },
+    "More Like This" : {
+      "comment" : "Heading for a row of movies the server considers similar to the title on screen.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More Like This"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他类似"
+          }
+        }
+      }
+    },
     "More" : {
       "localizations" : {
         "ar" : {

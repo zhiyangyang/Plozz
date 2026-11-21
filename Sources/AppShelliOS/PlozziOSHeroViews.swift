@@ -2648,7 +2648,8 @@ struct PlozziOSDetailHeroForeground: View {
             alignment: style == .compactPortrait ? .center : .leading
         )
         .overlay(alignment: .bottomTrailing) {
-            if style == .landscape {
+            if style == .landscape,
+               PlozzCustomization.showsDetailCredits || fallbackPresentation.isAnime {
                 PlozziOSDetailCredits(
                     focused: presentation,
                     root: fallbackPresentation
@@ -3138,6 +3139,7 @@ struct PlozziOSHeroMetadata: View {
     }
 
     @Environment(\.themePalette) private var palette
+    @Environment(\.plozziOSDetailTagNavigator) private var tagNavigator
     @Environment(\.plozziOSHeroLogoSize) private var logoSize
     @Environment(\.metadataTextScale) private var textScale
     @ScaledMetric(relativeTo: .largeTitle) private var titleFontSize: CGFloat = 34
@@ -3283,12 +3285,30 @@ struct PlozziOSHeroMetadata: View {
             }
 
             if content != .identity {
-                if effectiveRatingBadge != nil || !contextParts.isEmpty {
+                if effectiveRatingBadge != nil || !contextParts.isEmpty || !effectiveDetailTags.isEmpty {
                     HStack(spacing: 10 * textScale) {
                         if let badge = effectiveRatingBadge {
                             MediaBadgeChip(badge: badge)
                         }
-                        if !contextParts.isEmpty {
+                        if !effectiveDetailTags.isEmpty {
+                            HStack(spacing: 5 * textScale) {
+                                ForEach(Array(effectiveDetailTags.enumerated()), id: \.offset) { index, tag in
+                                    if index > 0 {
+                                        Text(verbatim: "·")
+                                            .foregroundStyle(palette.secondaryText)
+                                    }
+                                    Button {
+                                        tagNavigator?(tag)
+                                    } label: {
+                                        Text(tag)
+                                            .font(metadataFont.weight(.medium))
+                                            .lineLimit(1)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(tagNavigator == nil)
+                                }
+                            }
+                        } else if !contextParts.isEmpty {
                             Text(contextParts.joined(separator: "  ·  "))
                                 .font(metadataFont.weight(.medium))
                                 .lineLimit(usesCompactDetailLayout ? 2 : 1)
@@ -3448,6 +3468,18 @@ struct PlozziOSHeroMetadata: View {
         }
     }
 
+    /// Tags replace the genre line on the custom movie/series detail hero. If
+    /// the server has none, the caller falls back to `contextParts` (genres).
+    private var effectiveDetailTags: [String] {
+        guard PlozzCustomization.showsTagsInDetailHero, mode == .detail else { return [] }
+        return Array(
+            rootPresentation.tags
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .prefix(usesCompactDetailLayout ? 2 : 4)
+        )
+    }
+
     private var effectiveRatings: [ExternalRating] {
         detailPageSettings.headerRatings(
             from: mode == .home ? rootPresentation.ratings
@@ -3492,12 +3524,14 @@ private struct PlozziOSDetailCredits: View {
         VStack(alignment: .leading, spacing: 7) {
             if root.isAnime, !root.studios.isEmpty {
                 credit("Studio", values: root.studios)
-            } else if [.movie, .series].contains(root.kind),
+            } else if PlozzCustomization.showsDetailCredits,
+                      [.movie, .series].contains(root.kind),
                       !root.starringNames.isEmpty {
                 credit("Starring", values: root.starringNames)
             }
 
-            if !root.isAnime,
+            if PlozzCustomization.showsDetailCredits,
+               !root.isAnime,
                root.kind == .movie,
                !root.directorNames.isEmpty {
                 credit("Director", values: root.directorNames)

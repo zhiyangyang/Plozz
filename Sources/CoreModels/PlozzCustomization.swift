@@ -23,6 +23,14 @@ public enum PlozzCustomization {
     public static var supportsTrackers: Bool { !isCustomBuild }
     public static var supportsDiscover: Bool { !isCustomBuild }
 
+    /// The personal movie detail page uses the server's native similar list and
+    /// exposes tappable studio/tag chips. The old metadata-driven Related row is
+    /// replaced by the native row.
+    public static var showsEmbySimilar: Bool { isCustomBuild }
+    public static var showsDetailTerms: Bool { isCustomBuild }
+    public static var showsTagsInDetailHero: Bool { isCustomBuild }
+    public static var showsDetailCredits: Bool { !isCustomBuild }
+
     /// The personal detail page keeps the hero, cast rail, extras and related
     /// titles, but drops the About, Ratings, Details, Crew and Playback blocks
     /// from the information band below the page.
