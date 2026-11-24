@@ -220,7 +220,7 @@ final class HomeRowTests: XCTestCase {
         XCTAssertEqual(loaded.continueWatching.map(\.id), items.prefix(50).map(\.id))
     }
 
-    func testPendingRowsKeepTheirSlotsWithoutExposingCachedCards() {
+    func testPendingRowsWithCachedCardsKeepTheirCardsAndReserveNoSkeleton() {
         let cached = content(continueWatching: [item("old-resume")], latest: [item("fresh-latest")])
         let pending = HomeRow.rows(
             for: cached, isLibraryVisible: { _ in true },
@@ -228,8 +228,9 @@ final class HomeRowTests: XCTestCase {
             skeletonLayout: [HomeRowLayout(kind: .continueWatching, count: 3)]
         )
         XCTAssertEqual(pending.map(\.kind), [.continueWatching, .recentlyAdded])
-        XCTAssertEqual(pending[0].loadingPlaceholderCount, 3)
-        XCTAssertTrue(pending[0].items.isEmpty)
+        XCTAssertEqual(pending[0].loadingPlaceholderCount, 0)
+        XCTAssertEqual(pending[0].items.map(\.id), ["old-resume"],
+                       "Cached cards stay painted while the live row revalidates.")
         XCTAssertEqual(pending[1].items.map(\.id), ["fresh-latest"])
         XCTAssertFalse(pending[0].isEmptyOnHome)
 
@@ -239,6 +240,17 @@ final class HomeRowTests: XCTestCase {
         )
         XCTAssertEqual(pending.map(\.id), ready.map(\.id))
         XCTAssertEqual(ready[0].loadingPlaceholderCount, 0)
+    }
+
+    func testPendingRowWithoutCachedCardsStillGetsItsSkeleton() {
+        let pending = HomeRow.rows(
+            for: content(latest: [item("fresh-latest")]),
+            isLibraryVisible: { _ in true },
+            loadingRows: [.continueWatching],
+            skeletonLayout: [HomeRowLayout(kind: .continueWatching, count: 3)]
+        )
+        XCTAssertEqual(pending[0].items.count, 0)
+        XCTAssertEqual(pending[0].loadingPlaceholderCount, 3)
     }
 
     func testHeroOnlyConsumesCompletedFreshRowInputs() {

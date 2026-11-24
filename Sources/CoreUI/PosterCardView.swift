@@ -42,6 +42,10 @@ public struct PosterCardView: View {
     /// (so `playsOnSelect` is false) but must still SHOW resume progress — which
     /// is exactly why that treatment was missing on iOS while tvOS had it.
     private let showsResumeChipOverride: Bool
+    /// Suppresses the chip's contents without changing the card/rail geometry.
+    /// The cached Continue Watching launch paints its artwork while the live
+    /// feed revalidates, but must not present last session's progress as current.
+    private let showsResumeChipContent: Bool
     private let downloadState: MediaDownloadBadgeState?
     /// Draws the red favorite marker in the top-trailing badge slot. The caller
     /// owns the membership source; library grids supply the universal watchlist
@@ -131,6 +135,7 @@ public struct PosterCardView: View {
         statusCue: Text? = nil,
         playsOnSelect: Bool = false,
         showsResumeChip: Bool = false,
+        showsResumeChipContent: Bool = true,
         downloadState: MediaDownloadBadgeState? = nil,
         showsFavoriteBadge: Bool = false,
         rating: ExternalRating? = nil,
@@ -154,6 +159,7 @@ public struct PosterCardView: View {
         self.statusCueText = statusCue
         self.playsOnSelect = playsOnSelect
         self.showsResumeChipOverride = showsResumeChip
+        self.showsResumeChipContent = showsResumeChipContent
         self.downloadState = downloadState
         self.showsFavoriteBadge = showsFavoriteBadge
         self.rating = rating
@@ -214,8 +220,10 @@ public struct PosterCardView: View {
 
     private var cardAccessibilityValue: String? {
         var parts: [String] = []
-        let subtitle = usesProgressOnly ? cardSubtitle(showsRuntime: true)
-            : (showsSeriesArtwork ? nil : subtitleText)
+        let hidesUnconfirmedProgress = showsResumeChip && !showsResumeChipContent
+        let subtitle = hidesUnconfirmedProgress ? nil
+            : (usesProgressOnly ? cardSubtitle(showsRuntime: true)
+                : (showsSeriesArtwork ? nil : subtitleText))
         if let subtitle { parts.append(subtitle) }
         if var count = MediaPlaybackIndicatorState(item).episodeCountAccessibilityLabel(
             enabled: showsUnwatchedEpisodeCount, hidesStatus: hidesPlaybackStatus
@@ -942,7 +950,7 @@ public struct PosterCardView: View {
     /// The shared resume affordance — identical to the episode card's overlay.
     @ViewBuilder
     private var resumeChip: some View {
-        if showsResumeChip {
+        if showsResumeChip, showsResumeChipContent {
             resumeChipOverlay
         }
     }

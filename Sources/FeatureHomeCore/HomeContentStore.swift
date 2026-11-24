@@ -21,6 +21,23 @@ import CoreNetworking
 /// encoding and re-signed from the active provider at render time. A decode failure
 /// or stale file is treated as a cache miss (Home just does a normal load), so a
 /// `MediaItem` coding change can never crash a launch.
+/// A bounded, non-authoritative paint hint for one Emby/Jellyfin native Home
+/// section. Definitions are re-derived from the current layout and accounts;
+/// only the cards and their browse continuation survive here.
+public struct HomeRowPreviewSnapshot: Codable, Equatable, Sendable {
+    public let id: String
+    public var items: [MediaItem]
+    public var hasMore: Bool
+    public var browseID: String?
+
+    public init(id: String, items: [MediaItem], hasMore: Bool = false, browseID: String? = nil) {
+        self.id = id
+        self.items = items
+        self.hasMore = hasMore
+        self.browseID = browseID
+    }
+}
+
 public protocol HomeContentStoring: AnyObject, Sendable {
     /// Stable identity for ordering asynchronous writes. On-disk stores use their
     /// profile-scoped file path so replacement view models share one write stream.
@@ -57,6 +74,9 @@ public protocol HomeContentStoring: AnyObject, Sendable {
     /// has to say so explicitly, or the next launch repaints titles the viewer no
     /// longer has.
     func clearHero()
+    /// Bounded native Home-row previews used for first-frame paint only.
+    func loadRowPreviews() -> [HomeRowPreviewSnapshot]
+    func saveRowPreviews(_ previews: [HomeRowPreviewSnapshot])
     /// Discards the snapshot entirely.
     ///
     /// `save` deliberately refuses to overwrite good content with an empty
@@ -84,6 +104,8 @@ public extension HomeContentStoring {
     func loadHeroExposureHistory() -> HeroExposureHistory { HeroExposureHistory() }
     func saveHeroExposureHistory(_ history: HeroExposureHistory) {}
     func prewarmHeroCaches() {}
+    func loadRowPreviews() -> [HomeRowPreviewSnapshot] { [] }
+    func saveRowPreviews(_ previews: [HomeRowPreviewSnapshot]) {}
 }
 
 /// Prepares the synchronous first-paint cache without doing filesystem work on MainActor.
@@ -219,6 +241,7 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
     private let fileURL: URL?
     private let heroFileURL: URL?
     private let heroExposureFileURL: URL?
+    private let rowPreviewFileURL: URL?
     private let legacyWatchlistSeedFileURL: URL?
     private let legacyWatchlistSourceFileURL: URL?
     private let maxItemsPerRow: Int
@@ -254,6 +277,18 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
         var items: [MediaItem]
         var savedAt: Date
     }
+
+    private struct StoredRowPreviews: Codable {
+        var rows: [HomeRowPreviewSnapshot]
+        var savedAt: Date
+    }
+
+    /// Bounded launch paint hints, not a source of truth. They are intentionally
+    /// separate from the main Home snapshot so `Content` and its existing schema
+    /// stay unchanged.
+    private static let rowPreviewLimit = 32
+    private static let rowPreviewItemLimit = 20
+    private static let rowPreviewMaxAge: TimeInterval = 60 * 60 * 24 * 7
 
     /// **Bump when `MediaItem` / `AggregatedLibrary` coding changes** so devices
     /// with an older snapshot shape start fresh instead of decode-missing forever.
@@ -315,6 +350,7 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
             self.fileURL = nil
             self.heroFileURL = nil
             self.heroExposureFileURL = nil
+            self.rowPreviewFileURL = nil
             self.legacyWatchlistSeedFileURL = nil
             self.legacyWatchlistSourceFileURL = nil
             return
@@ -332,6 +368,9 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
             .appendingPathExtension("json")
         self.heroExposureFileURL = dir
             .appendingPathComponent(safe + "-hero-exposure")
+            .appendingPathExtension("json")
+        self.rowPreviewFileURL = dir
+            .appendingPathComponent(safe + "-rows-v1")
             .appendingPathExtension("json")
         self.legacyWatchlistSeedFileURL = dir
             .appendingPathComponent(
@@ -356,6 +395,34 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
 
     public func load() -> HomeViewModel.Content? {
         load(readSnapshot: readSnapshot(at:))
+    }
+
+    public func loadRowPreviews() -> [HomeRowPreviewSnapshot] {
+        guard let rowPreviewFileURL,
+              let data = try? Data(contentsOf: rowPreviewFileURL),
+              let stored = try? JSONDecoder().decode(StoredRowPreviews.self, from: data),
+              Date().timeIntervalSince(stored.savedAt) < Self.rowPreviewMaxAge
+        else { return [] }
+        return stored.rows.prefix(Self.rowPreviewLimit).map { row in
+            var row = row
+            row.items = Array(row.items.prefix(Self.rowPreviewItemLimit))
+            return row
+        }
+    }
+
+    public func saveRowPreviews(_ previews: [HomeRowPreviewSnapshot]) {
+        guard let rowPreviewFileURL else { return }
+        let bounded = previews
+            .filter { !$0.items.isEmpty }
+            .prefix(Self.rowPreviewLimit)
+            .map { row -> HomeRowPreviewSnapshot in
+                var row = row
+                row.items = Array(row.items.prefix(Self.rowPreviewItemLimit))
+                return row
+            }
+        let stored = StoredRowPreviews(rows: Array(bounded), savedAt: Date())
+        guard let data = try? JSONEncoder().encode(stored) else { return }
+        try? data.write(to: rowPreviewFileURL, options: .atomic)
     }
 
     func load(readSnapshot: (URL) -> HomeViewModel.Content?) -> HomeViewModel.Content? {
@@ -464,6 +531,7 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
         Self.lock.unlock()
         try? FileManager.default.removeItem(at: fileURL)
         if let heroFileURL { try? FileManager.default.removeItem(at: heroFileURL) }
+        if let rowPreviewFileURL { try? FileManager.default.removeItem(at: rowPreviewFileURL) }
     }
 
     public func clearRows() {
@@ -473,6 +541,7 @@ public final class HomeContentStore: HomeContentStoring, @unchecked Sendable {
         Self.memo[fileURL.path] = .some(nil)
         Self.lock.unlock()
         try? FileManager.default.removeItem(at: fileURL)
+        if let rowPreviewFileURL { try? FileManager.default.removeItem(at: rowPreviewFileURL) }
     }
 
     public func save(_ content: HomeViewModel.Content) {
@@ -802,6 +871,7 @@ public final class InMemoryHomeContentStore: HomeContentStoring, @unchecked Send
     private var hero: (key: HeroConfigurationKey, items: [MediaItem])?
     private var heroCandidatePool: (key: HeroConfigurationKey, pool: HeroFreshnessCandidatePool)?
     private var heroExposureHistory = HeroExposureHistory()
+    private var rowPreviews: [HomeRowPreviewSnapshot] = []
 
     public init(_ initial: HomeViewModel.Content? = nil) {
         self.content = initial
@@ -822,11 +892,23 @@ public final class InMemoryHomeContentStore: HomeContentStoring, @unchecked Send
         content = nil
         hero = nil
         heroCandidatePool = nil
+        rowPreviews = []
     }
 
     public func clearRows() {
         lock.lock(); defer { lock.unlock() }
         content = nil
+        rowPreviews = []
+    }
+
+    public func loadRowPreviews() -> [HomeRowPreviewSnapshot] {
+        lock.lock(); defer { lock.unlock() }
+        return rowPreviews
+    }
+
+    public func saveRowPreviews(_ previews: [HomeRowPreviewSnapshot]) {
+        lock.lock(); defer { lock.unlock() }
+        rowPreviews = Array(previews.filter { !$0.items.isEmpty }.prefix(32))
     }
 
     public func loadHero(for key: HeroConfigurationKey) -> [MediaItem]? {

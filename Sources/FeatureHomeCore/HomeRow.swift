@@ -182,10 +182,16 @@ public extension HomeRow {
             _ kind: HomeRowKind, items: [MediaItem] = [], libraries: [AggregatedLibrary] = []
         ) -> HomeRow {
             let isLoading = loadingRows.contains(kind) && (kind != .libraries || libraries.isEmpty)
+            // A refresh must not replace cards the page already has with a
+            // skeleton. This is what keeps the launch snapshot's Continue
+            // Watching row visible while the live feed revalidates; the live
+            // pass swaps the cards without changing the row's geometry.
+            let showsPlaceholder = isLoading && items.isEmpty
             let previousCount = skeletonLayout.first { $0.kind == kind }?.count ?? 0
             return HomeRow(
-                kind: kind, items: isLoading ? [] : items, libraries: libraries,
-                loadingPlaceholderCount: isLoading ? min(12, previousCount > 0 ? previousCount : 8) : 0,
+                kind: kind, items: showsPlaceholder ? [] : items, libraries: libraries,
+                loadingPlaceholderCount: showsPlaceholder
+                    ? min(12, previousCount > 0 ? previousCount : 8) : 0,
                 failure: failures[kind]
             )
         }

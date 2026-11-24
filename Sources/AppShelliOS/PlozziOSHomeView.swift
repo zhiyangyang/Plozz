@@ -3372,6 +3372,12 @@ struct PlozziOSHomeRowView: View {
                         continueWatchingAction: appModel.settings.homeVisibility.continueWatchingAction
                     ) ? .play : .openDetail,
                     showsResumeChip: row.kind == .continueWatching,
+                    // Cached launch cards may show the artwork immediately, but
+                    // last session's progress is not presented as current until
+                    // the live Continue Watching feed has succeeded.
+                    showsResumeChipContent: row.kind != .continueWatching
+                        || (viewModel.hasCompletedLiveLoad
+                            && viewModel.rowFailures[.continueWatching] == nil),
                     prefetchesArtwork: row.kind == .continueWatching,
                     pendingRemovalIDs: pendingWatchlistRemovalIDs,
                     loadingPlaceholderCount: row.kind == .watchlist
@@ -3509,6 +3515,9 @@ struct PlozziOSHomeMediaRail: View {
     /// promise that the row is Continue Watching.
     var interaction: PlozziOSRailInteraction = .openDetail
     var showsResumeChip: Bool = false
+    /// Whether the resume chip's contents are confirmed by the live feed. The
+    /// card keeps its geometry when false but hides the progress treatment.
+    var showsResumeChipContent: Bool = true
     /// Continue Watching opts in because its backdrop + logo composition costs
     /// more than an ordinary card. Keeping this scoped avoids warming every Home
     /// rail at launch when per-library rows are enabled.
@@ -3573,6 +3582,7 @@ struct PlozziOSHomeMediaRail: View {
                             isLandscape: style == .landscape,
                             interaction: interaction,
                             showsResumeChip: showsResumeChip,
+                            showsResumeChipContent: showsResumeChipContent,
                             showsSeriesArtwork: showsSeriesArtwork,
                             isPendingRemoval: pendingRemovalIDs.contains(
                                 item.stablePresentationID
@@ -3830,6 +3840,7 @@ struct PlozziOSHomeMediaCard: View {
     let isLandscape: Bool
     var interaction: PlozziOSRailInteraction = .openDetail
     var showsResumeChip: Bool = false
+    var showsResumeChipContent: Bool = true
     var showsSeriesArtwork: Bool = false
     var isPendingRemoval: Bool = false
     let provider: (any MediaProvider)?
@@ -3906,6 +3917,7 @@ struct PlozziOSHomeMediaCard: View {
             // "landscape means playable" rule, so presentation and behaviour stay
             // independently controlled.
             showsResumeChip: item.kind != .collection && (showsResumeChip || isLandscape || interaction == .play),
+            showsResumeChipContent: showsResumeChipContent,
             downloadState: liveDownloadRecord?.badgeState,
             // No visible "…" while browsing: the actions people actually reach for
             // live on the detail page, which is far more discoverable than a tiny

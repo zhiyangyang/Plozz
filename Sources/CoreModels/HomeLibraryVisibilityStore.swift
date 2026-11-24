@@ -73,6 +73,11 @@ public final class HomeLibraryVisibilityModel {
     @ObservationIgnored private var serverRequestScope: [String] = []
     @ObservationIgnored private var serverRequestID = UUID()
     @ObservationIgnored private var serverRequest: Task<[String: Result<ServerHomeLayout?, AppError>], Never>?
+    /// A cache-only refresh runs after Home has been given its cached layout. It
+    /// must never publish into `visibility` while a Home load is in flight.
+    @ObservationIgnored private var serverDefaultsRefreshTask: Task<Void, Never>?
+    @ObservationIgnored private var serverDefaultsRefreshID = UUID()
+    @ObservationIgnored private var serverDefaultsRefreshScope: [String] = []
 
     public init(store: HomeLibraryVisibilityStoring = HomeLibraryVisibilityStore()) {
         self.store = store
@@ -80,19 +85,58 @@ public final class HomeLibraryVisibilityModel {
         self.cachedServerDefaults = store.loadServerDefaults()
     }
 
+    /// Applies the persisted server layout synchronously when it belongs to the
+    /// current accounts. Home calls this before constructing its view model so the
+    /// first frame can plan server rows without a layout round trip.
+    public func applyCachedServerDefaults(accounts: [ResolvedAccount]) {
+        guard visibility.rowCustomization?.defaults == .matchServer,
+              let cached = cachedServerDefaults,
+              cached.scope == Self.serverDefaultsScope(accounts: accounts)
+        else { return }
+        visibility.rowCustomization?.resolvedDefaults = cached.defaults
+    }
+
     /// Called only by a real Home refresh or the open arranger, never a timer.
-    public func prepareServerDefaults(accounts: [ResolvedAccount], now: Date = Date()) async {
+    ///
+    /// A matching persisted layout is applied immediately. Its refresh runs in the
+    /// background and updates only the cache for the next load, so a cold launch
+    /// never waits for an Emby/Jellyfin Home-layout round trip before requesting
+    /// content. `forceRefresh` is for the row arranger, which needs current rows.
+    public func prepareServerDefaults(
+        accounts: [ResolvedAccount], now: Date = Date(), forceRefresh: Bool = false
+    ) async {
         guard visibility.rowCustomization?.defaults == .matchServer else { return }
         let sources = accounts.sorted { $0.account.id < $1.account.id }
-        let scope = ["server-home-v2"] + sources.flatMap {
-            [$0.account.id, $0.account.server.provider.rawValue,
-             $0.account.server.identityKey, $0.provider.session.userID,
-             $0.plexHomeUserID.map { "home:\($0)" } ?? "owner"]
-        }
+        let scope = Self.serverDefaultsScope(accounts: sources)
         // Effective revisions fence live work, but are not persisted: Plex Home
         // overrides get new revisions after a relaunch for the same viewer.
-        let requestScope = scope + sources.map { $0.credentialRevision.rawValue.uuidString }
-        if scope == cachedServerDefaults?.scope,
+        let requestScope = Self.serverDefaultsRequestScope(accounts: sources, scope: scope)
+        if !forceRefresh,
+           let cached = cachedServerDefaults,
+           cached.scope == scope {
+            // A pending request for another viewer/credential revision must not
+            // publish over the cached layout this caller is now using.
+            if serverRequestScope != requestScope {
+                serverRequest?.cancel()
+                serverRequest = nil
+                serverRequestID = UUID()
+            }
+            if serverDefaultsRefreshScope != requestScope {
+                serverDefaultsRefreshTask?.cancel()
+                serverDefaultsRefreshTask = nil
+                serverDefaultsRefreshID = UUID()
+                serverDefaultsRefreshScope = []
+            }
+            if serverRequest == nil { serverMatchFailures = [:] }
+            visibility.rowCustomization?.resolvedDefaults = cached.defaults
+            // Do not refresh here. The layout request is itself a pair of Emby
+            // round trips; racing it with the first Home aggregation starved the
+            // content rows on a real LAN server. Home asks for this refresh after
+            // its live load settles.
+            return
+        }
+        if !forceRefresh,
+           scope == cachedServerDefaults?.scope,
            requestScope == lastServerCheckScope,
            let lastServerCheck, now.timeIntervalSince(lastServerCheck) < 120 {
             serverRequest?.cancel()
@@ -102,6 +146,10 @@ public final class HomeLibraryVisibilityModel {
             visibility.rowCustomization?.resolvedDefaults = cachedServerDefaults?.defaults
             return
         }
+        serverDefaultsRefreshTask?.cancel()
+        serverDefaultsRefreshTask = nil
+        serverDefaultsRefreshID = UUID()
+        serverDefaultsRefreshScope = []
         var seen = Set<[String]>()
         let representatives = sources.filter {
             seen.insert([
@@ -135,6 +183,119 @@ public final class HomeLibraryVisibilityModel {
               visibility.rowCustomization?.defaults == .matchServer else { return }
         serverRequest = nil
         let previous = cachedServerDefaults?.scope == scope ? cachedServerDefaults?.defaults : nil
+        guard let resolved = Self.resolvedServerDefaults(
+            results, representatives: representatives, previous: previous
+        ) else { return }
+        if representatives.count == 1, !resolved.failures.isEmpty {
+            serverMatchFailures = resolved.failures
+            return
+        }
+        acceptServerDefaults(
+            resolved.defaults, scope: scope, requestScope: requestScope, now: now
+        )
+        serverMatchFailures = resolved.failures
+        if !resolved.failures.isEmpty { lastServerCheck = nil }
+    }
+
+    /// Refresh the persisted layout without changing live visibility. Home calls
+    /// this only after its first live load has settled, so the layout's Emby round
+    /// trips cannot compete with the content rows the viewer is waiting for.
+    public func refreshServerDefaultsCacheOnly(accounts: [ResolvedAccount]) async {
+        guard visibility.rowCustomization?.defaults == .matchServer,
+              let cached = cachedServerDefaults
+        else { return }
+        let sources = accounts.sorted { $0.account.id < $1.account.id }
+        let scope = Self.serverDefaultsScope(accounts: sources)
+        guard cached.scope == scope else { return }
+        let requestScope = Self.serverDefaultsRequestScope(accounts: sources, scope: scope)
+        if let existing = serverDefaultsRefreshTask {
+            if serverDefaultsRefreshScope == requestScope {
+                await existing.value
+                return
+            }
+            existing.cancel()
+            serverDefaultsRefreshTask = nil
+            serverDefaultsRefreshID = UUID()
+            serverDefaultsRefreshScope = []
+        }
+        guard let task = scheduleServerDefaultsRefreshIfNeeded(
+            accounts: sources, scope: scope, requestScope: requestScope,
+            previous: cached.defaults, now: Date()
+        ) else { return }
+        await task.value
+    }
+
+    @discardableResult
+    private func scheduleServerDefaultsRefreshIfNeeded(
+        accounts: [ResolvedAccount], scope: [String], requestScope: [String],
+        previous: HomeResolvedRowDefaults, now: Date
+    ) -> Task<Void, Never>? {
+        guard accounts.isEmpty == false,
+              serverRequest == nil,
+              serverDefaultsRefreshTask == nil
+        else { return serverDefaultsRefreshTask }
+        if requestScope == lastServerCheckScope,
+           let lastServerCheck, now.timeIntervalSince(lastServerCheck) < 120 {
+            return nil
+        }
+        var seen = Set<[String]>()
+        let representatives = accounts.filter {
+            seen.insert([
+                $0.account.server.provider.rawValue, $0.account.server.identityKey,
+                $0.provider.session.userID, $0.plexHomeUserID.map { "home:\($0)" } ?? "owner"
+            ]).inserted
+        }
+        guard !representatives.isEmpty else { return nil }
+        let refreshID = UUID()
+        serverDefaultsRefreshID = refreshID
+        serverDefaultsRefreshScope = requestScope
+        let task = Task { [weak self] in
+            let results = await Self.loadServerLayouts(representatives)
+            guard let self, !Task.isCancelled,
+                  self.serverDefaultsRefreshID == refreshID
+            else { return }
+            self.serverDefaultsRefreshTask = nil
+            self.serverDefaultsRefreshScope = []
+            guard self.visibility.rowCustomization?.defaults == .matchServer,
+                  let resolved = Self.resolvedServerDefaults(
+                    results, representatives: representatives, previous: previous
+                  ),
+                  resolved.failures.isEmpty
+            else { return }
+            let snapshot = CachedHomeRowDefaults(scope: scope, defaults: resolved.defaults)
+            if self.cachedServerDefaults != snapshot {
+                self.store.saveServerDefaults(snapshot)
+            }
+            self.cachedServerDefaults = snapshot
+            self.lastServerCheck = Date()
+            self.lastServerCheckScope = requestScope
+        }
+        serverDefaultsRefreshTask = task
+        return task
+    }
+
+    private nonisolated static func serverDefaultsScope(
+        accounts: [ResolvedAccount]
+    ) -> [String] {
+        ["server-home-v2"] + accounts.sorted { $0.account.id < $1.account.id }.flatMap {
+            [$0.account.id, $0.account.server.provider.rawValue,
+             $0.account.server.identityKey, $0.provider.session.userID,
+             $0.plexHomeUserID.map { "home:\($0)" } ?? "owner"]
+        }
+    }
+
+    private nonisolated static func serverDefaultsRequestScope(
+        accounts: [ResolvedAccount], scope: [String]
+    ) -> [String] {
+        scope + accounts.sorted { $0.account.id < $1.account.id }
+            .map { $0.credentialRevision.rawValue.uuidString }
+    }
+
+    private nonisolated static func resolvedServerDefaults(
+        _ results: [String: Result<ServerHomeLayout?, AppError>],
+        representatives: [ResolvedAccount],
+        previous: HomeResolvedRowDefaults?
+    ) -> (defaults: HomeResolvedRowDefaults, failures: [String: AppError])? {
         var resolved = HomeResolvedRowDefaults(mode: representatives.count > 1 ? .combined : .server)
         var failures: [String: AppError] = [:]
         for source in representatives {
@@ -152,7 +313,7 @@ public final class HomeLibraryVisibilityModel {
             case .success(nil):
                 resolved.fallbackAccountIDs.insert(source.account.id)
             case let .failure(error):
-                guard error != .cancelled else { return }
+                guard error != .cancelled else { return nil }
                 failures[source.account.id] = error
                 let retained = previous?.serverRows.filter { $0.accountID == source.account.id } ?? []
                 resolved.serverRows += retained
@@ -162,10 +323,6 @@ public final class HomeLibraryVisibilityModel {
                 resolved.omitsMusic = resolved.omitsMusic || previous?.omitsMusic == true
                 resolved.omitsReading = resolved.omitsReading || previous?.omitsReading == true
             }
-        }
-        if representatives.count == 1, !failures.isEmpty {
-            serverMatchFailures = failures
-            return
         }
         if resolved.mode == .combined {
             let shared = HomeRowChoice.shared.map(\.id)
@@ -179,9 +336,7 @@ public final class HomeLibraryVisibilityModel {
         }
         var ordered = Set<HomeRowID>()
         resolved.order = resolved.order.filter { ordered.insert($0).inserted }
-        acceptServerDefaults(resolved, scope: scope, requestScope: requestScope, now: now)
-        serverMatchFailures = failures
-        if !failures.isEmpty { lastServerCheck = nil }
+        return (resolved, failures)
     }
 
     private nonisolated static func loadServerLayouts(
@@ -219,6 +374,10 @@ public final class HomeLibraryVisibilityModel {
     ) {
         serverRequest?.cancel()
         serverRequest = nil
+        serverDefaultsRefreshTask?.cancel()
+        serverDefaultsRefreshTask = nil
+        serverDefaultsRefreshID = UUID()
+        serverDefaultsRefreshScope = []
         serverMatchFailures = [:]
         lastServerCheck = now
         lastServerCheckScope = requestScope
@@ -294,6 +453,10 @@ public final class HomeLibraryVisibilityModel {
     public func useRowDefaults(_ defaults: HomeRowCustomization.Defaults) {
         serverRequest?.cancel()
         serverRequest = nil
+        serverDefaultsRefreshTask?.cancel()
+        serverDefaultsRefreshTask = nil
+        serverDefaultsRefreshID = UUID()
+        serverDefaultsRefreshScope = []
         serverRequestID = UUID()
         visibility.rowCustomization = HomeRowCustomization(defaults: defaults)
         rowDefaultsRevision = UUID()

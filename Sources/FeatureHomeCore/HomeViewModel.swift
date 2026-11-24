@@ -49,6 +49,18 @@ actor HomeSnapshotPersistence {
             }
         }
         store.save(durable)
+        store.saveRowPreviews(
+            content.serverRows
+                .filter { !$0.items.isEmpty }
+                .map {
+                    HomeRowPreviewSnapshot(
+                        id: $0.definition.id.presentationID,
+                        items: $0.items,
+                        hasMore: $0.hasMore,
+                        browseID: $0.browseID
+                    )
+                }
+        )
     }
 
     func clear(
@@ -771,6 +783,30 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                     return group
                 }
             }
+            // Seed Emby/Jellyfin's native Home sections with their last bounded
+            // preview. The definitions are re-derived from the current layout and
+            // active accounts; a row that is gone is simply not matched. Cards are
+            // rehydrated before display and the live section replaces them.
+            let rowPreviews = contentStore.loadRowPreviews()
+            if !rowPreviews.isEmpty {
+                let definitions = HomeServerRow.plannedDefinitions(
+                    accounts: accounts, visibility: currentVisibility()
+                )
+                let byID = Dictionary(
+                    uniqueKeysWithValues: definitions.map { ($0.id.presentationID, $0) }
+                )
+                cached.serverRows = rowPreviews.compactMap { preview in
+                    guard let definition = byID[preview.id], !preview.items.isEmpty else {
+                        return nil
+                    }
+                    let items = mediaItemActionHandler?
+                        .rehydratePersistedArtwork(preview.items) ?? preview.items
+                    return HomeServerRow(
+                        definition: definition, items: items, isLoading: true,
+                        hasMore: preview.hasMore, browseID: preview.browseID
+                    )
+                }
+            }
             let cachedWatchlist = cached.watchlist
             cached.watchlist = Self.resolvedWatchlist(
                 candidates: cached.watchlist + cached.latest,
@@ -1140,7 +1176,13 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         defer {
             if let sectionDiagnosticGeneration { sectionDiagnostics?.cancel(sectionDiagnosticGeneration) }
         }
-        let publishesProgress = showLoadingState || !hasCompletedHomeLoad
+        // A cached launch already has the whole page on screen. Publishing every
+        // completed row back to the main actor while the first Home frame is still
+        // being built made the aggregator wait ~1.8 s between a fast HTTP response
+        // and its rowReady publication. Silence the intermediate passes and publish
+        // the completed aggregate once.
+        let publishesProgress =
+            (showLoadingState || !hasCompletedHomeLoad) && !isShowingCachedSnapshot
         if publishesProgress, !accounts.isEmpty {
             rowFailures = [:]
             continueWatchingDiagnostic = nil
@@ -1173,6 +1215,10 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 publishesProgress: publishesProgress
             )
         }
+        // Do not even hop to the main actor for intermediate cached-launch rows.
+        // The completed aggregate below publishes them once.
+        let publishProgress: @Sendable (HomeAggregator.Progress) async -> Void =
+            publishesProgress ? receiveProgress : { _ in }
         // What the viewer is looking at right now. A just-played card lives here and
         // nowhere else until the servers catch up, so it has to be offered to the
         // reconciler — which decides, on evidence, whether it has earned its place.
@@ -1201,7 +1247,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                         continueWatchingLimit: continueWatchingRequestLimit,
                         visibility: visibility,
                         identitySources: identitySources, onContinueWatching: receiveResume,
-                        onProgress: receiveProgress
+                        onProgress: publishProgress
                     )
                 }
             }
@@ -1265,7 +1311,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                         continueWatchingLimit: continueWatchingRequestLimit,
                         visibility: visibility,
                         identitySources: identitySources, onContinueWatching: receiveResume,
-                        onProgress: receiveProgress
+                        onProgress: publishProgress
                     )
                 }
             }

@@ -98,7 +98,7 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         await first.setLayout(.init(sections: [
             .init(id: "picks", kind: .recommendations)
         ], source: .server))
-        await model.prepareServerDefaults(accounts: [a, b], now: now)
+        await model.prepareServerDefaults(accounts: [a, b], now: now, forceRefresh: true)
         let initial = model.visibility.rowCustomization?.resolvedDefaults
         XCTAssertEqual(initial?.fallbackAccountIDs, ["b"])
         XCTAssertFalse(model.visibility.rowCustomization!.isVisible(
@@ -108,18 +108,18 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
             .library("b:movies", kind: .recentlyAdded), providerDefault: true
         ))
         await first.setError(.serverUnreachable)
-        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(121))
+        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(121), forceRefresh: true)
         XCTAssertEqual(model.visibility.rowCustomization?.resolvedDefaults, initial)
         XCTAssertEqual(model.serverMatchFailures, ["a": .serverUnreachable])
         await first.setLayout(.init(sections: [], source: .server))
-        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(242))
+        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(242), forceRefresh: true)
         let emptyNative = model.visibility.rowCustomization?.resolvedDefaults
         XCTAssertEqual(emptyNative?.fallbackAccountIDs, ["b"])
         await first.setError(.serverUnreachable)
-        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(363))
+        await model.prepareServerDefaults(accounts: [a, b], now: now.addingTimeInterval(363), forceRefresh: true)
         XCTAssertEqual(model.visibility.rowCustomization?.resolvedDefaults, emptyNative,
                        "An offline server's deliberately empty layout is not a missing layout.")
-        await model.prepareServerDefaults(accounts: [b], now: now.addingTimeInterval(364))
+        await model.prepareServerDefaults(accounts: [b], now: now.addingTimeInterval(364), forceRefresh: true)
         XCTAssertEqual(model.visibility.rowCustomization?.resolvedDefaults?.mode, .providerFallback)
         XCTAssertTrue(model.visibility.rowCustomization?.availableServerRows.isEmpty == true)
         XCTAssertTrue(model.serverMatchFailures.isEmpty)
@@ -133,19 +133,19 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         let (c, _) = source("c", serverID: "unsupported")
         await first.setError(.serverUnreachable)
         await second.setError(.unauthorized)
-        await model.prepareServerDefaults(accounts: [a, b, c])
+        await model.prepareServerDefaults(accounts: [a, b, c], forceRefresh: true)
         XCTAssertEqual(model.serverMatchFailures, ["a": .serverUnreachable, "b": .unauthorized])
 
         await first.setLayout(.init(sections: [], source: .server))
-        await model.prepareServerDefaults(accounts: [a, b, c])
+        await model.prepareServerDefaults(accounts: [a, b, c], forceRefresh: true)
         XCTAssertEqual(model.serverMatchFailures, ["b": .unauthorized])
 
         await second.setLayout(.init(sections: [], source: .server))
-        await model.prepareServerDefaults(accounts: [a, b, c])
+        await model.prepareServerDefaults(accounts: [a, b, c], forceRefresh: true)
         XCTAssertTrue(model.serverMatchFailures.isEmpty)
 
         await first.setError(.serverUnreachable)
-        await model.prepareServerDefaults(accounts: [a])
+        await model.prepareServerDefaults(accounts: [a], forceRefresh: true)
         XCTAssertEqual(model.serverMatchFailures, ["a": .serverUnreachable])
         model.useRowDefaults(.combined)
         XCTAssertTrue(model.serverMatchFailures.isEmpty)
@@ -240,7 +240,7 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         XCTAssertEqual(calls.layouts, 1)
     }
 
-    func testEffectiveCredentialRotationInvalidatesFreshLayout() async {
+    func testForcedRefreshRevalidatesLayoutAfterCredentialRotation() async {
         let (model, suite) = model()
         defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
         let (a, backend) = source("a", provider: .plex)
@@ -249,7 +249,7 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         await backend.setLayout(.init(sections: [.init(id: "current", kind: .recommendations)], source: .server))
         await model.prepareServerDefaults(accounts: [
             ResolvedAccount(account: a.account, provider: backend, credentialRevision: CredentialRevision())
-        ])
+        ], forceRefresh: true)
         XCTAssertEqual(model.visibility.rowCustomization?.availableServerRows.map(\.section.id), ["current"])
         let calls = await backend.calls
         XCTAssertEqual(calls.layouts, 2)
@@ -266,15 +266,40 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         let relaunched = HomeLibraryVisibilityModel(store: HomeLibraryVisibilityStore(
             defaults: UserDefaults(suiteName: suite)!, namespace: "profile"
         ))
-        await backend.setError(.serverUnreachable)
-        await relaunched.prepareServerDefaults(accounts: [
-            ResolvedAccount(
-                account: a.account, provider: backend, plexHomeUserID: "child",
-                credentialRevision: CredentialRevision()
-            )
-        ])
+        let relaunchedAccount = ResolvedAccount(
+            account: a.account, provider: backend, plexHomeUserID: "child",
+            credentialRevision: CredentialRevision()
+        )
+        await relaunched.prepareServerDefaults(accounts: [relaunchedAccount])
         XCTAssertEqual(relaunched.visibility.rowCustomization?.availableServerRows.map(\.section.id), ["known"])
-        XCTAssertEqual(relaunched.serverMatchFailures, ["a": .serverUnreachable])
+        XCTAssertTrue(relaunched.serverMatchFailures.isEmpty)
+        let callsBeforeRefresh = await backend.calls
+        XCTAssertEqual(callsBeforeRefresh.layouts, 1, "The relaunch must paint from the persisted layout.")
+
+        // The post-settle refresh is allowed to discover an outage, but it must
+        // not replace the usable cached rows.
+        await backend.setError(.serverUnreachable)
+        await relaunched.refreshServerDefaultsCacheOnly(accounts: [relaunchedAccount])
+        XCTAssertEqual(relaunched.visibility.rowCustomization?.availableServerRows.map(\.section.id), ["known"])
+        XCTAssertTrue(relaunched.serverMatchFailures.isEmpty)
+    }
+
+    func testPostSettleRefreshUpdatesCacheForNextLoadWithoutChangingLiveRows() async {
+        let (model, suite) = model()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        let (a, backend) = source("a", provider: .plex)
+        await backend.setLayout(.init(sections: [.init(id: "old", kind: .recommendations)], source: .server))
+        await model.prepareServerDefaults(accounts: [a])
+        await backend.setLayout(.init(sections: [.init(id: "new", kind: .recommendations)], source: .server))
+
+        await model.refreshServerDefaultsCacheOnly(accounts: [a])
+        XCTAssertEqual(model.visibility.rowCustomization?.availableServerRows.map(\.section.id), ["old"],
+                       "The refresh belongs to the next load, not the rows already on screen.")
+
+        await model.prepareServerDefaults(accounts: [a])
+        XCTAssertEqual(model.visibility.rowCustomization?.availableServerRows.map(\.section.id), ["new"])
+        let calls = await backend.calls
+        XCTAssertEqual(calls.layouts, 2)
     }
 
     func testReturningToFreshViewerCacheFencesAnotherViewersPendingRequest() async {

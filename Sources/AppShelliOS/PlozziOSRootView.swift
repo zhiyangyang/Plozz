@@ -1612,10 +1612,17 @@ struct PlozziOSTabShell: View {
         return library.library.navigationSymbolName
     }
 
+    @MainActor
     private static func makeHomeViewModel(
         appModel: PlozziOSAppModel
     ) -> HomeViewModel {
         let scope = appModel.navigationLibrariesScopeKey
+        // Seed the persisted server layout before Home is built. The first frame
+        // can then plan Emby's native rows while the background refresh checks for
+        // a newer layout; the refresh never blocks this launch.
+        appModel.settings.homeVisibility.applyCachedServerDefaults(
+            accounts: appModel.accountsProviders.homeAccounts
+        )
         return HomeViewModel(
             accounts: appModel.accountsProviders.homeAccounts,
             profileNamespace: appModel.profiles.activeNamespace,
@@ -1702,6 +1709,22 @@ struct PlozziOSTabShell: View {
         }
         .environment(sharedHomeViewModel)
         .task(
+            id: "home-launch|\(homeContentIdentity)|\(appModel.allowsHomeContentLoading)",
+            priority: .userInitiated
+        ) {
+            // Start Home while the tab shell is still constructing its first
+            // frame. Waiting for PlozziOSHomeView's own `.task` left the network
+            // idle for roughly a second after the snapshot was already available.
+            // The Home view calls the same idempotent method on appearance.
+            guard effectiveSelectedDestination == .home,
+                  !appModel.pendingStandaloneLiveTVEntry,
+                  appModel.allowsHomeContentLoading else { return }
+            await sharedHomeViewModel.loadIfNeeded(
+                for: appModel.settings.homeVisibility.visibility,
+                trigger: "launch"
+            )
+        }
+        .task(
             id: "\(upcomingScopeKey)|\(sharedHomeViewModel.upcoming.refreshRevision)"
                 + "|\(appModel.isLiveTVProfileAuthorized)"
                 + "|\(sharedHomeViewModel.hasSettledLiveLoad)|\(selectedDestination)"
@@ -1712,6 +1735,12 @@ struct PlozziOSTabShell: View {
             // opening the Upcoming tab explicitly still refreshes immediately.
             guard sharedHomeViewModel.hasSettledLiveLoad
                     || selectedDestination == .upcoming else { return }
+            // Layout discovery is two Emby round trips. Home now starts from its
+            // persisted layout immediately; refresh that cache only after the
+            // content rows the viewer is waiting for have settled.
+            await appModel.settings.homeVisibility.refreshServerDefaultsCacheOnly(
+                accounts: appModel.accountsProviders.homeAccounts
+            )
             await refreshUpcoming()
         }
         .onChange(of: scenePhase) { _, phase in

@@ -148,6 +148,8 @@ struct PlozziOSPosterCard: View {
     /// Draws the resume chip (play glyph + progress + time remaining) over the
     /// artwork, with an optional download badge — the same treatment tvOS uses.
     var showsResumeChip: Bool = false
+    /// Keeps the card's resume geometry while hiding unconfirmed cached progress.
+    var showsResumeChipContent: Bool = true
     var downloadState: MediaDownloadBadgeState?
     /// Whether this card should wear the red favorite marker. The caller owns
     /// the membership source; library grids supply the universal watchlist
@@ -174,6 +176,7 @@ struct PlozziOSPosterCard: View {
             reservesSubtitleSpace: reservesSubtitleSpace,
             statusCue: statusCue.map { Text($0) },
             showsResumeChip: showsResumeChip,
+            showsResumeChipContent: showsResumeChipContent,
             downloadState: downloadState,
             showsFavoriteBadge: isFavorite,
             rating: rating,

@@ -151,7 +151,9 @@ public final class HomeSectionCatalogModel {
             if self.generation == generation { isLoading = false }
         }
 
-        await visibility.prepareServerDefaults(accounts: accounts)
+        // The arranger is an explicit request for current server rows; it may not
+        // spend this screen's load on the launch fast path's cached layout.
+        await visibility.prepareServerDefaults(accounts: accounts, forceRefresh: true)
         guard !Task.isCancelled, self.generation == generation else { return }
         serverRows = (visibility.visibility.rowCustomization?.availableServerRows ?? [])
             .filter { accountIDs.contains($0.accountID) } + serverRows

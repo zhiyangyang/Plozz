@@ -1093,6 +1093,18 @@ final class PlozziOSAppModel {
         prepareMediaAliasLedger()
         startCloudSyncIfEnabled()
         observeApplicationScenes()
+        // The tvOS root prewarms this before exposing Home; the iOS shell learned
+        // to paint the snapshot but kept its first read on the main thread. Decode
+        // the same per-profile snapshot off-main so HomeViewModel.init is a memo
+        // lookup when the tab shell is first built.
+        if !isOfflineMode {
+            let namespace = profiles.activeNamespace
+            Task.detached(priority: .utility) {
+                await HomeContentPrewarmer.shared.prepare {
+                    HomeContentStore(namespace: namespace)
+                }
+            }
+        }
         mediaShareWorkScope.start()
         boot("END")
     }
