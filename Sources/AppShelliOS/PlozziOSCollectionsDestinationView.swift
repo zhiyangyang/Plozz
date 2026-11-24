@@ -60,8 +60,8 @@ struct PlozziOSCollectionsDestinationView: View {
                 )
             }
         }
-        .navigationTitle(Text("Collections"))
-        .navigationBarTitleDisplayMode(PlozzCustomization.isCustomBuild ? .large : .inline)
+        .navigationTitle(PlozzCustomization.isCustomBuild ? Text(verbatim: "") : Text("Collections"))
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             PlozziOSSettingsToolbarItem(action: onShowSettings)
         }

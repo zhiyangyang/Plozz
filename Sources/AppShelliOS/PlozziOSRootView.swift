@@ -1312,12 +1312,24 @@ struct PlozziOSTabShell: View {
         if retainsExplicitWatchlistEntry, !configured.contains(.watchlist) {
             configured.append(.watchlist)
         }
-        return AppAdmissionNavigation.destinations(
+        let destinations = AppAdmissionNavigation.destinations(
             configured,
             liveTV: .liveTV,
             includesExplicitEntry: (appModel.allowsStandalonePlayback && appModel.pendingStandaloneLiveTVEntry)
                 || retainsExplicitLiveTVEntry
         )
+        // SwiftUI's adaptive tab controller asserts if two UITab objects end up
+        // sharing one hosting controller. Duplicate destination values are the
+        // easiest way to create that state while tabs are being dragged or the
+        // arrangement is changing, so never hand it duplicate IDs.
+        return Self.uniqueDestinations(destinations)
+    }
+
+    static func uniqueDestinations(
+        _ destinations: [PlozziOSDestination]
+    ) -> [PlozziOSDestination] {
+        var seen = Set<PlozziOSDestination>()
+        return destinations.filter { seen.insert($0).inserted }
     }
 
     private var effectiveSelectedDestination: PlozziOSDestination {
@@ -1404,6 +1416,11 @@ struct PlozziOSTabShell: View {
                 .id(destination == .downloads ? downloadNavigationID : nil)
             }
         }
+        // Each tab needs its own hosting identity. Without this, SwiftUI can
+        // recycle one UIViewController for two dynamic tabs while the adaptive
+        // tab bar is reordered, which UIKit rejects with "UIViewController
+        // cannot be shared between multiple UITab".
+        .id(destination)
     }
 
     @ViewBuilder
@@ -2856,14 +2873,18 @@ struct PlozziOSWatchlistLandingView: View {
                 direction: .ascending
             )
         }
-        .navigationTitle(onlyMovies ? Text("Favorites") : navigationTitles(
-            NavigationLibraryLayout.watchlistKey,
-            default: Text("Watchlist")
-        ))
+        .navigationTitle(
+            PlozzCustomization.isCustomBuild
+                ? Text(verbatim: "")
+                : (onlyMovies ? Text("Favorites") : navigationTitles(
+                    NavigationLibraryLayout.watchlistKey,
+                    default: Text("Watchlist")
+                ))
+        )
         .environment(\.plozzCardCaptionView, .watchlist)
         .navigationBarTitleDisplayMode(
             PlozzCustomization.isCustomBuild
-                ? .large
+                ? .inline
                 : (onlyMovies || isOverflowDestination ? .inline : .large)
         )
         .toolbar {

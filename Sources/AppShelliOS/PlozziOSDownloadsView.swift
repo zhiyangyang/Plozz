@@ -124,7 +124,11 @@ struct PlozziOSDownloadsView: View {
     }
 
     private var pageHeading: some View {
-        PlozziOSPageHeader(navigationTitles(NavigationLibraryLayout.downloadsKey, default: Text("Downloads"))) {
+        PlozziOSPageHeader(
+            PlozzCustomization.isCustomBuild
+                ? Text(verbatim: "")
+                : navigationTitles(NavigationLibraryLayout.downloadsKey, default: Text("Downloads"))
+        ) {
             downloadSettingsButton
             PlozziOSSettingsAvatarButton(action: onShowSettings)
                 .accessibilityIdentifier("downloads-settings-avatar")

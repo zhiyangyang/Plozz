@@ -49,8 +49,8 @@ struct PlozziOSAllLibrariesDestinationView: View {
                 )
             }
         }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(PlozzCustomization.isCustomBuild ? .large : .inline)
+        .navigationTitle(PlozzCustomization.isCustomBuild ? Text(verbatim: "") : Text(title))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 #endif

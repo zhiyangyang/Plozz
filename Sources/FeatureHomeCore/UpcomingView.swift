@@ -185,8 +185,12 @@
                 .padding(.leading, navigationInset)
                 .padding(.top, topNavigationInsets.top)
                 #else
-                .navigationTitle(Text("Upcoming"))
-                .navigationBarTitleDisplayMode(PlozzCustomization.isCustomBuild ? .large : .inline)
+                .navigationTitle(
+                    PlozzCustomization.isCustomBuild
+                        ? Text(verbatim: "")
+                        : Text("Upcoming")
+                )
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         calendarButton

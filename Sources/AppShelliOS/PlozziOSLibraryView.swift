@@ -244,17 +244,15 @@ struct PlozziOSLibraryGridView: View {
 
     /// Whether the pushed page shows a navigation title at all.
     ///
-    /// The personal build hides a single library's name, which only repeats the
-    /// navigation entry that opened it. The combined All Libraries page, the
-    /// Collections catalog, and collection/playlist member pages keep their
-    /// titles because those names describe the page rather than a server
-    /// library.
+    /// The personal build hides the page title everywhere. The navigation tab
+    /// or the page that opened the grid already identifies it, and keeping a
+    /// second large title above a sparse wall only pushes the posters down.
     static func showsNavigationTitle(
         customBuild: Bool,
         isCombinedLibrary: Bool,
         browseScope: LibraryBrowseScope
     ) -> Bool {
-        !customBuild || isCombinedLibrary || browseScope != .library
+        !customBuild
     }
 
     private var showsNavigationTitle: Bool {

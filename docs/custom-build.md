@@ -64,8 +64,8 @@ upstream merges.
 but they are ordinary destinations in Settings → App navigation: they can be
 hidden, shown or reordered like Upcoming, Downloads and Search. Favorites stays
 visible when empty until it is explicitly hidden. A single library page does not
-repeat the library name in its navigation title; the combined All Libraries and
-Collections pages keep their titles.
+repeat a page title in the navigation bar; the tab or the opening page already
+identifies the wall.
 
 - **Collections** is a top-level grid of every enabled media library's
   collections. It has no library picker; tapping a collection opens its members
@@ -74,10 +74,10 @@ Collections pages keep their titles.
   movies only. The filter menu is hidden and the entry stays visible by default
   when empty; hiding it in Settings is still respected.
 
-The Favorites page, the combined All Libraries grid, and the Collections pages
-use the system large title; a single library's grid hides the redundant library
-name and keeps an inline bar with Back, sort and Settings. Favorites offers Name
-and Release Date only, defaults to Name, and applies a sort change immediately.
+Search, Favorites, Collections, All Libraries, Upcoming, Downloads and individual
+library walls hide the top-left page title and keep only their controls and an
+inline bar with Back, sort and Settings. Favorites offers Name and Release Date
+only, defaults to Name, and applies a sort change immediately.
 Emby/Jellyfin Favorites do not expose a favorite-added timestamp, so Date Added
 would only repeat provider order and is not offered.
 

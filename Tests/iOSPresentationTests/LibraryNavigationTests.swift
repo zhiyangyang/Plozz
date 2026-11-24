@@ -710,20 +710,29 @@ final class LibraryNavigationTests: XCTestCase {
         XCTAssertEqual(failure.key, "Couldn't save your rating or favorite. Try again.")
     }
 
-    func testCustomLibraryGridHidesOnlyAnIndividualLibraryName() {
+    func testAdaptiveTabsNeverContainDuplicateDestinations() {
+        XCTAssertEqual(
+            PlozziOSTabShell.uniqueDestinations([
+                .home, .collections, .search, .collections, .home, .watchlist,
+            ]),
+            [.home, .collections, .search, .watchlist]
+        )
+    }
+
+    func testCustomLibraryGridHidesEveryPageTitle() {
         XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
             customBuild: true, isCombinedLibrary: false, browseScope: .library
         ))
-        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+        XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
             customBuild: true, isCombinedLibrary: false, browseScope: .playlistMembers
         ))
-        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+        XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
             customBuild: true, isCombinedLibrary: false, browseScope: .collectionMembers
         ))
-        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+        XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
             customBuild: true, isCombinedLibrary: true, browseScope: .library
         ))
-        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+        XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
             customBuild: true, isCombinedLibrary: false, browseScope: .collectionsCatalog
         ))
         XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(

@@ -13,6 +13,7 @@ struct PlozziOSSearchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.plozziOSUsesVerticalToolbar) private var usesVerticalToolbar
     @Environment(\.plozziOSIsOverflowDestination) private var isOverflowDestination
+    @Environment(\.hasVisibleSettingsNavigationEntry) private var hasVisibleSettingsNavigationEntry
     @FocusState private var isSearchFocused: Bool
     @State private var viewModel: SearchViewModel
     private let appModel: PlozziOSAppModel
@@ -47,11 +48,16 @@ struct PlozziOSSearchView: View {
         )
     }
 
+    private var hidesNavigationBar: Bool {
+        horizontalSizeClass == .compact && !keepsNavigationBar && !usesVerticalToolbar
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             PlozziOSSearchHeader(
                 query: $viewModel.query,
                 isFocused: $isSearchFocused,
+                showsInlineSettingsAvatar: PlozzCustomization.isCustomBuild && hidesNavigationBar,
                 onShowSettings: onShowSettings
             )
             .zIndex(1)
@@ -63,17 +69,24 @@ struct PlozziOSSearchView: View {
         // Compact tabs do not need a second bar above the explicit Search header.
         // Regular-width iPad keeps the bar so the system sidebar toggle remains
         // reachable when the adaptable tab sidebar is collapsed.
-        .toolbar(
-            horizontalSizeClass == .compact && !keepsNavigationBar && !usesVerticalToolbar ? .hidden : .visible,
-            for: .navigationBar
-        )
+        .toolbar(hidesNavigationBar ? .hidden : .visible, for: .navigationBar)
         .toolbar {
-            if usesVerticalToolbar || isOverflowDestination {
+            if PlozzCustomization.isCustomBuild {
+                if usesVerticalToolbar
+                    || (!hidesNavigationBar && !hasVisibleSettingsNavigationEntry && !isOverflowDestination) {
+                    PlozziOSSettingsToolbarItem(action: onShowSettings)
+                }
+            } else if usesVerticalToolbar || isOverflowDestination {
                 PlozziOSSettingsToolbarItem(action: onShowSettings)
             }
         }
-        .navigationTitle(isOverflowDestination
-            ? navigationTitles(NavigationLibraryLayout.searchKey, default: Text("Search")) : Text(verbatim: ""))
+        .navigationTitle(
+            PlozzCustomization.isCustomBuild
+                ? Text(verbatim: "")
+                : (isOverflowDestination
+                    ? navigationTitles(NavigationLibraryLayout.searchKey, default: Text("Search"))
+                    : Text(verbatim: ""))
+        )
         .toolbarTitleDisplayMode(.inline)
         .environment(\.plozzCardCaptionView, .search)
         .task(id: viewModel.query) {
@@ -254,12 +267,20 @@ private struct PlozziOSSearchHeader: View {
     @Environment(\.plozzMetrics) private var metrics
     @Binding var query: String
     @FocusState.Binding var isFocused: Bool
+    let showsInlineSettingsAvatar: Bool
     let onShowSettings: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            PlozziOSPageHeader(navigationTitles(NavigationLibraryLayout.searchKey, default: Text("Search"))) {
-                if !hasVisibleSettingsNavigationEntry && !usesVerticalToolbar && !isOverflowDestination {
+            PlozziOSPageHeader(
+                PlozzCustomization.isCustomBuild
+                    ? Text(verbatim: "")
+                    : navigationTitles(NavigationLibraryLayout.searchKey, default: Text("Search"))
+            ) {
+                if !PlozzCustomization.isCustomBuild,
+                   !hasVisibleSettingsNavigationEntry,
+                   !usesVerticalToolbar,
+                   !isOverflowDestination {
                     PlozziOSSettingsAvatarButton(action: onShowSettings)
                         .accessibilityIdentifier("search-settings-avatar")
                 }
@@ -275,6 +296,13 @@ private struct PlozziOSSearchHeader: View {
                 if isActive {
                     cancelButton
                         .transition(.opacity)
+                }
+                if showsInlineSettingsAvatar,
+                   !hasVisibleSettingsNavigationEntry,
+                   !usesVerticalToolbar,
+                   !isOverflowDestination {
+                    PlozziOSSettingsAvatarButton(action: onShowSettings)
+                        .accessibilityIdentifier("search-settings-avatar")
                 }
             }
             .padding(.horizontal, horizontalInset)
@@ -303,7 +331,9 @@ private struct PlozziOSSearchHeader: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var hidesTitle: Bool { isActive || isOverflowDestination }
+    private var hidesTitle: Bool {
+        PlozzCustomization.isCustomBuild || isActive || isOverflowDestination
+    }
 
     private var isActive: Bool {
         isFocused || !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
