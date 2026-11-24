@@ -5135,7 +5135,6 @@
     "−500 ms": "6f25e6f058fe61354dd7447e47576dcb851da4e6558ac384bf6326fb3dbc9ab4"
   },
   "infoPlist": {
-    "tvOS.NSLocalNetworkUsageDescription": "d7cc57602caae8efebea97b42c9855d358cf275bbd1d5b04ae88bc3b1a9321a1",
     "iOS.NSLocalNetworkUsageDescription": "b37c057ccf064a9e3e4a9682661fc39db7a428d89bdf382dc4bc46bda250d55c",
     "iOS.NSCameraUsageDescription": "b2f3aa4c3dda087ce3e843a39af8bf16bf8d3c72a53071562ed38ddf12216691",
     "iOS.NSMotionUsageDescription": "c65873f67211cc9bd21c55fef3a5536d5be616f8822446ee18f4e172e2dc04d8"

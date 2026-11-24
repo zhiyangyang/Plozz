@@ -19,10 +19,10 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "com.thatcube.Plozz.first-run."
 CONTAINER = "iCloud.com.thatcube.Plozz.FirstRun"
-PLISTS = ["App/Resources/Info.plist", "App/PlozziOS/Info.plist"]
+PLISTS = ["App/PlozziOS/Info.plist"]
 OVERRIDES = [
     "PLOZZ_ID_SUFFIX", "PLOZZ_NAME_SUFFIX", "PLOZZ_PAIRING_SERVICE_TYPE", "PLOZZ_URL_SCHEME",
-    "PLOZZ_TV_APP_ENTITLEMENTS", "PLOZZ_TV_TOPSHELF_ENTITLEMENTS", "PLOZZ_IOS_APP_ENTITLEMENTS",
+    "PLOZZ_IOS_APP_ENTITLEMENTS",
 ]
 
 
@@ -37,7 +37,7 @@ def case_identity(value):
     }
 
 
-def entitlements(identity, platform):
+def entitlements(identity):
     result = {
         "com.apple.developer.icloud-container-identifiers": [CONTAINER],
         "com.apple.developer.icloud-services": ["CloudKit"],
@@ -46,12 +46,10 @@ def entitlements(identity, platform):
         "aps-environment": "development",
         "com.apple.developer.aps-environment": "development",
     }
-    if platform == "tvos":
-        result["com.apple.developer.user-management"] = ["runs-as-current-user-with-user-independent-keychain"]
     return result
 
 
-def verify_identity(info, signed, identity, platform):
+def verify_identity(info, signed, identity):
     bundle = identity["bundle"]
     if info.get("CFBundleIdentifier") != bundle:
         raise ValueError("Refusing an app outside the selected first-run case.")
@@ -73,10 +71,6 @@ def verify_identity(info, signed, identity, platform):
         raise ValueError("A first-run app must not share app groups or universal links with normal Plozz.")
     if not signed.get("get-task-allow"):
         raise ValueError("First-run cases require a development-signed Debug app.")
-    if platform == "tvos" and signed.get("com.apple.developer.user-management") != [
-        "runs-as-current-user-with-user-independent-keychain"
-    ]:
-        raise ValueError("First-run tvOS must retain the real household Keychain capability.")
     if identity["pairingService"] not in info.get("NSBonjourServices", []) \
             or "_plozz-pair._tcp" in info.get("NSBonjourServices", []):
         raise ValueError("Setup discovery is not isolated.")
@@ -163,7 +157,7 @@ def main():
     case = parser.add_mutually_exclusive_group(required=True)
     case.add_argument("--new", action="store_true", help="Create a fresh case; never erase an old one.")
     case.add_argument("--case", help="Reuse a case for a second device or subsequent launch.")
-    parser.add_argument("--platform", choices=["tvos", "ios"], required=True)
+    parser.add_argument("--platform", choices=["ios"], default="ios")
     parser.add_argument("--provisioning", choices=["api", "xcode"], default="xcode",
                         help="Use the configured API key or the account already signed into Xcode.")
     parser.add_argument("--device", help="Install on this explicit CoreDevice ID after signed-isolation checks.")
@@ -199,11 +193,9 @@ def main():
         "PLOZZ_PAIRING_SERVICE_TYPE": identity["pairingService"],
         "PLOZZ_URL_SCHEME": identity["urlScheme"],
     })
-    for platform, key in [("tvos", "PLOZZ_TV_APP_ENTITLEMENTS"), ("ios", "PLOZZ_IOS_APP_ENTITLEMENTS")]:
-        path = evidence / (platform + ".entitlements")
-        path.write_bytes(plistlib.dumps(entitlements(identity, platform)))
-        environment[key] = str(path)
-    environment["PLOZZ_TV_TOPSHELF_ENTITLEMENTS"] = "TopShelf/TopShelf.branded.entitlements"
+    entitlements_path = evidence / "ios.entitlements"
+    entitlements_path.write_bytes(plistlib.dumps(entitlements(identity)))
+    environment["PLOZZ_IOS_APP_ENTITLEMENTS"] = str(entitlements_path)
     originals = {name: (ROOT / name).read_bytes() for name in PLISTS}
     for name, data in originals.items():
         (evidence / (name.replace("/", "-") + ".original")).write_bytes(data)
@@ -211,9 +203,9 @@ def main():
     try:
         command(["tools/generate-project.sh"], environment, output=evidence / "generate.log")
         generated = {name: (ROOT / name).read_bytes() for name in PLISTS}
-        scheme = "Plozz" if args.platform == "tvos" else "PlozziOS"
-        destination = "generic/platform=" + ("tvOS" if args.platform == "tvos" else "iOS")
-        workspace = ROOT / ".build/package-workspaces" / ("deploy-tv" if args.platform == "tvos" else "deploy-ios")
+        scheme = "PlozziOS"
+        destination = "generic/platform=iOS"
+        workspace = ROOT / ".build/package-workspaces" / "deploy-ios"
         package_args = command([
             "bash", "-c", 'source tools/lib/swift-package-storage.sh; '
             'configure_plozz_package_resolution "$1"; printf "%s\\0" "${PACKAGE_RESOLUTION_ARGS[@]}"',
@@ -230,21 +222,9 @@ def main():
         command(["codesign", "--verify", "--deep", "--strict", str(app)], environment)
         info = plistlib.loads((app / "Info.plist").read_bytes())
         signed = plistlib.loads(command(["codesign", "-d", "--entitlements", ":-", str(app)], environment))
-        verify_identity(info, signed, identity, args.platform)
-        expected_platform = "AppleTVOS" if args.platform == "tvos" else "iPhoneOS"
-        if info.get("CFBundleSupportedPlatforms") != [expected_platform]:
+        verify_identity(info, signed, identity)
+        if info.get("CFBundleSupportedPlatforms") != ["iPhoneOS"]:
             raise ValueError("Built app does not match the requested device platform.")
-        extension = app / "PlugIns/PlozzTopShelf.appex"
-        if extension.exists():
-            ext_info = plistlib.loads((extension / "Info.plist").read_bytes())
-            ext_signed = plistlib.loads(command(["codesign", "-d", "--entitlements", ":-", str(extension)], environment))
-            if ext_info.get("CFBundleIdentifier") != identity["bundle"] + ".TopShelf" \
-                    or ext_signed.get("com.apple.security.application-groups") \
-                    or ext_signed.get("com.apple.developer.icloud-container-identifiers"):
-                raise ValueError("Top Shelf extension is not isolated.")
-            for key in ["CFBundleVersion", "CFBundleShortVersionString"]:
-                if ext_info.get(key) != info.get(key):
-                    raise ValueError("App and Top Shelf versions differ.")
         verify_integrations(info)
         preserved = evidence / "Plozz.app"
         command(["ditto", str(app), str(preserved)], environment, timeout=120)

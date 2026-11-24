@@ -73,8 +73,7 @@ else:
                 "FIXTURE_APP": str(app),
                 "ASC_KEY_PATH": str(root / "nonexistent-key.p8"),
                 "PLOZZ_SIM_ID": "fixture-simulator",
-                "PLOZZ_TV_ID": "fixture-tv",
-                "PLOZZ_IPHONE_CORE_ID": "fixture-phone",
+                        "PLOZZ_IPHONE_CORE_ID": "fixture-phone",
                 "PLOZZ_IPAD_CORE_ID": "fixture-tablet",
             }
             result = subprocess.run(
@@ -85,7 +84,7 @@ else:
             return [json.loads(line) for line in log.read_text().splitlines()]
 
     def test_device_build_settings_and_compiles_are_optimized_by_default(self):
-        for wrapper in ["deploy-tv.sh", "deploy-ios.sh"]:
+        for wrapper in ["deploy-ios.sh"]:
             with self.subTest(wrapper=wrapper):
                 commands = self.run_wrapper(wrapper, ["--build-only"])
                 self.assertTrue(any("build" in args for args in commands))
@@ -96,16 +95,11 @@ else:
                     self.assertEqual(args[args.index("-configuration") + 1], "Debug")
 
     def test_debugger_opt_out_reaches_settings_and_compiler(self):
-        for wrapper in ["deploy-tv.sh", "deploy-ios.sh"]:
+        for wrapper in ["deploy-ios.sh"]:
             with self.subTest(wrapper=wrapper):
                 for args in self.run_wrapper(wrapper, ["--build-only", "--unoptimized"]):
                     self.assertIn("SWIFT_OPTIMIZATION_LEVEL=-Onone", args)
                     self.assertNotIn("SWIFT_OPTIMIZATION_LEVEL=-O", args)
-
-    def test_simulator_compile_keeps_unoptimized_debugging(self):
-        for args in self.run_wrapper("deploy-tv.sh", ["--sim-build"]):
-            self.assertIn("SWIFT_OPTIMIZATION_LEVEL=-Onone", args)
-            self.assertIn("platform=tvOS Simulator,id=fixture-simulator", args)
 
 
 if __name__ == "__main__":

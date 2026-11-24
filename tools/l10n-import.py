@@ -27,10 +27,6 @@ REPO = Path(__file__).resolve().parent.parent
 DEFAULT_CATALOG = REPO / "App/Resources/Localizable.xcstrings"
 GUARD_CONFIG = REPO / "tools/l10n-guard.json"
 INFO_CATALOGS = {
-    "tvOS.NSLocalNetworkUsageDescription": (
-        REPO / "App/Resources/InfoPlist.xcstrings",
-        "NSLocalNetworkUsageDescription",
-    ),
     "iOS.NSLocalNetworkUsageDescription": (
         REPO / "App/PlozziOS/InfoPlist.xcstrings",
         "NSLocalNetworkUsageDescription",

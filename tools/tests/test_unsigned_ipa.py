@@ -24,10 +24,10 @@ class UnsignedIPATests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
 
-    def info(self, platform="ios", extension=False):
+    def info(self, platform="ios"):
         return {
-            "CFBundleIdentifier": "com.thatcube.Plozz.selfbuild" + (".TopShelf" if extension else ""),
-            "CFBundleExecutable": "TopShelf" if extension else "Plozz",
+            "CFBundleIdentifier": "com.thatcube.Plozz.selfbuild",
+            "CFBundleExecutable": "Plozz",
             "CFBundleSupportedPlatforms": [ipa.PLATFORMS[platform][2]],
             "CFBundleShortVersionString": "1.0", "CFBundleVersion": "123",
             "NSLocalNetworkUsageDescription": "Plozz uses your local network to reach media servers.",
@@ -110,27 +110,22 @@ class UnsignedIPATests(unittest.TestCase):
                     ipa.verify_info(dict(self.info(), **{key: value}), "ios")
         with self.assertRaises(ValueError):
             ipa.verify_info(dict(self.info(), CFBundleIdentifier="com.thatcube.Plozz"), "ios")
-        with self.assertRaises(ValueError):
-            ipa.verify_info(self.info("tvos"), "ios")
-        with self.assertRaises(ValueError):
-            ipa.verify_info(self.info("tvos", True), "tvos", extension=True, app_version=("1", "2"))
         self.assertEqual(ipa.verify_info(self.info(), "ios"), ("1.0", "123"))
 
     def test_playback_info_requirements_are_enforced(self):
-        for platform in ("ios", "tvos"):
-            with self.subTest(platform=platform):
-                self.assertEqual(
-                    ipa.verify_playback_info(self.info(platform), platform),
-                    list(ipa.PLAYBACK_INFO_KEYS),
-                )
-            for key, value in [
-                ("NSLocalNetworkUsageDescription", ""),
-                ("NSBonjourServices", ["_smb._tcp"]),
-                ("NSAppTransportSecurity", {"NSAllowsLocalNetworking": True}),
-                ("UIBackgroundModes", ["remote-notification"]),
-            ]:
-                with self.subTest(platform=platform, key=key), self.assertRaises(ValueError):
-                    ipa.verify_playback_info(dict(self.info(platform), **{key: value}), platform)
+        platform = "ios"
+        self.assertEqual(
+            ipa.verify_playback_info(self.info(platform), platform),
+            list(ipa.PLAYBACK_INFO_KEYS),
+        )
+        for key, value in [
+            ("NSLocalNetworkUsageDescription", ""),
+            ("NSBonjourServices", ["_smb._tcp"]),
+            ("NSAppTransportSecurity", {"NSAllowsLocalNetworking": True}),
+            ("UIBackgroundModes", ["remote-notification"]),
+        ]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                ipa.verify_playback_info(dict(self.info(platform), **{key: value}), platform)
 
     def make_app(self, platform="ios"):
         app = self.root / "Plozz.app"
@@ -140,11 +135,6 @@ class UnsignedIPATests(unittest.TestCase):
         framework = app / "Frameworks/AetherEngine.framework"
         framework.mkdir(parents=True)
         (framework / "AetherEngine").write_bytes(b"\xcf\xfa\xed\xfe" + b"fixture")
-        if platform == "tvos":
-            extension = app / "PlugIns/TopShelf.appex"
-            extension.mkdir(parents=True)
-            (extension / "Info.plist").write_bytes(plistlib.dumps(self.info(platform, True)))
-            (extension / "TopShelf").write_bytes(b"\xcf\xfa\xed\xfe" + b"fixture")
         return app
 
     def fake_run(self, *, platform="IOS", archs="arm64", link=None, signature=False):
@@ -177,14 +167,6 @@ class UnsignedIPATests(unittest.TestCase):
         (app / "embedded.mobileprovision").write_bytes(b"private")
         with self.assertRaises(ValueError):
             ipa.verify_and_unsign(app, "ios", self.fake_run())
-
-    def test_tvos_requires_matching_extension(self):
-        app = self.make_app("tvos")
-        receipt = ipa.verify_and_unsign(app, "tvos", self.fake_run(platform="TVOS"))
-        self.assertEqual(len(receipt["binaries"]), 3)
-        (app / "PlugIns/TopShelf.appex/TopShelf").unlink()
-        with self.assertRaises(ValueError):
-            ipa.verify_and_unsign(app, "tvos", self.fake_run(platform="TVOS"))
 
     def test_embedded_swift_runtime_is_resolved_as_a_dylib(self):
         app = self.make_app()

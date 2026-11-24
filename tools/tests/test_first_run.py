@@ -24,7 +24,7 @@ class FirstRunTests(unittest.TestCase):
             "NSBonjourServices": [identity["pairingService"]],
             "CFBundleURLTypes": [{"CFBundleURLSchemes": [identity["urlScheme"]]}],
         }
-        signed = MODULE.entitlements(identity, "tvos")
+        signed = MODULE.entitlements(identity)
         signed.update({
             "application-identifier": app_id,
             "com.apple.developer.team-identifier": "TEAM",
@@ -40,13 +40,13 @@ class FirstRunTests(unittest.TestCase):
                 MODULE.case_identity(case)
         self.assertEqual(MODULE.case_identity(CASE)["bundle"], MODULE.PREFIX + CASE)
 
-    def test_signed_lab_identity_retains_real_cloud_and_tv_household_capabilities(self):
+    def test_signed_lab_identity_retains_real_cloud_and_household_capabilities(self):
         identity, info, signed = self.fixture()
-        MODULE.verify_identity(info, signed, identity, "tvos")
+        MODULE.verify_identity(info, signed, identity)
         self.assertNotIn("com.apple.security.application-groups", signed)
         self.assertNotIn("com.apple.developer.associated-domains", signed)
         self.assertLessEqual(len(identity["pairingService"].split(".")[0].lstrip("_")), 15)
-        self.assertNotIn("com.apple.developer.user-management", MODULE.entitlements(identity, "ios"))
+        self.assertNotIn("com.apple.developer.user-management", MODULE.entitlements(identity))
 
     def test_wrong_or_shared_signing_capabilities_fail_closed(self):
         identity, info, signed = self.fixture()
@@ -59,16 +59,15 @@ class FirstRunTests(unittest.TestCase):
             "keychain-access-groups": ["TEAM.com.thatcube.Plozz"],
             "com.apple.security.application-groups": ["group.com.thatcube.Plozz"],
             "com.apple.developer.associated-domains": ["applinks:plozz.app"],
-            "com.apple.developer.user-management": [],
             "get-task-allow": False,
         }
         for key, value in invalid.items():
             with self.subTest(key=key), self.assertRaises(ValueError):
-                MODULE.verify_identity(info, {**signed, key: value}, identity, "tvos")
+                MODULE.verify_identity(info, {**signed, key: value}, identity)
         with self.assertRaises(ValueError):
             MODULE.verify_identity(info, {**signed, "com.apple.developer.icloud-container-identifiers": [
                 MODULE.CONTAINER, "iCloud.com.thatcube.Plozz",
-            ]}, identity, "tvos")
+            ]}, identity)
 
     def test_normal_app_and_pairing_routes_cannot_be_installed_as_a_test(self):
         identity, info, signed = self.fixture()
@@ -79,7 +78,7 @@ class FirstRunTests(unittest.TestCase):
         ]
         for variant in variants:
             with self.subTest(variant=variant), self.assertRaises(ValueError):
-                MODULE.verify_identity(variant, signed, identity, "tvos")
+                MODULE.verify_identity(variant, signed, identity)
 
     def test_provisioning_config_is_parsed_as_data_not_executed(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(MODULE, "ROOT", Path(directory)):

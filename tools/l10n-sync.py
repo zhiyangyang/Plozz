@@ -28,7 +28,7 @@ Two things about it are non-obvious and cost real time to discover:
   2. It is pure build cost for shipping builds, which need nothing but the
      checked-in catalog.
 
-So it lives here and ONLY here. Do not thread it through deploy-tv.sh,
+So it lives here and ONLY here. Do not thread it through deploy-ios.sh,
 run-tests.sh, fastlane or CI builds.
 
 STALE MARKING AND PLATFORM COVERAGE
@@ -71,7 +71,7 @@ APP_LANGUAGE_SOURCE = REPO / "Sources/CoreModels/AppLanguage.swift"
 PROJECT = REPO / "Plozz.xcodeproj"
 
 # A dedicated DerivedData root. Kept separate from the normal build so a routine
-# `deploy-tv.sh` can never leave half-populated extraction output behind, and so
+# a device build can never leave half-populated extraction output behind, and so
 # wiping it costs a localization rebuild rather than everyone's incremental state.
 DERIVED = Path(os.environ.get(
     "PLOZZ_L10N_DERIVED",

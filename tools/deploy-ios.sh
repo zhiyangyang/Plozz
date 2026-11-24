@@ -131,7 +131,7 @@ if [[ "$BRANDED" == "1" ]]; then
   echo "▸ Branded build: installing separate app com.thatcube.Plozz.$SLUG (\"Plozz $SLUG\")"
   restore_canonical() {
     echo "▸ Restoring canonical project + Info.plists (keeping the tree clean)…"
-    git checkout -- App/Resources/Info.plist App/PlozziOS/Info.plist 2>/dev/null || true
+    git checkout -- App/PlozziOS/Info.plist 2>/dev/null || true
     ( unset PLOZZ_ID_SUFFIX PLOZZ_NAME_SUFFIX PLOZZ_IOS_APP_ENTITLEMENTS; tools/generate-project.sh >/dev/null 2>&1 ) || true
   }
   RESTORE_CANONICAL=1
@@ -197,7 +197,7 @@ fi
 # `devicectl device info details` talks to the hardware, so an asleep or absent
 # iPhone/iPad leaves it waiting — with two devices that stalled the script for
 # minutes before the first compile, looking for all the world like a hung build.
-# A compile needs no device at all (this is exactly what deploy-tv.sh already
+# A compile needs no device at all (this is exactly what the old TV wrapper already
 # does: build the generic slice, name the device only to install), so
 # `--build-only` never asks, and when we do ask we give up quickly and fall back
 # to the generic destination rather than blocking.

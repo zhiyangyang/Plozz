@@ -3,11 +3,6 @@ name: Unsigned IPA
 on:
   workflow_dispatch:
     inputs:
-      platform:
-        description: Device platform
-        type: choice
-        options: [both, ios, tvos]
-        default: both
       runner:
         description: Available macOS runner label with Xcode 27 or later
         type: string
@@ -21,13 +16,9 @@ permissions:
 
 jobs:
   build:
-    name: Unsigned ${{ matrix.platform }}
+    name: Unsigned iOS IPA
     runs-on: ${{ inputs.runner || 'xcode-27' }}
     timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: ${{ (inputs.platform || 'both') == 'both' && fromJSON('["ios","tvos"]') || fromJSON(format('["{0}"]', inputs.platform || 'both')) }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,12 +32,12 @@ jobs:
       - name: Build unsigned device app
         id: build
         env:
-          PLATFORM: ${{ matrix.platform }}
+          PLATFORM: ios
         run: tools/build-unsigned-ipa.sh "$PLATFORM"
       - name: Upload unsigned IPA and provenance
         uses: actions/upload-artifact@v7
         with:
-          name: Plozz-${{ matrix.platform }}-unsigned
+          name: Plozz-ios-unsigned
           path: |
             ${{ steps.build.outputs.ipa_path }}
             ${{ steps.build.outputs.receipt_path }}
@@ -56,8 +47,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: Plozz-${{ matrix.platform }}-unsigned-diagnostics
-          path: .build/unsigned-ipa/${{ matrix.platform }}/run-*/*.log
+          name: Plozz-ios-unsigned-diagnostics
+          path: .build/unsigned-ipa/ios/run-*/*.log
           if-no-files-found: ignore
           retention-days: 7
 

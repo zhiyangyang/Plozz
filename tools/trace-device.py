@@ -213,39 +213,7 @@ class Capture:
         self.status("preparing", acknowledge=True)
 
     def prepare_input(self):
-        if not self.args.press_focused:
-            return None, None, None
-        env = dict(os.environ, PLOZZ_HOME_DEVICE_ID=self.device)
-        self.run(["tools/generate-project.sh"], "runner-generation", timeout=120, env=env)
-        self.run(["tools/run-physical-home-rows-first.sh", "--build-runner"],
-                 "runner-build", timeout=900, env=env)
-        paths = list((ROOT / "build/physical-home-paging-release-derived/Build/Products").glob(
-            "PlozzPhysicalHomeRowsTests_*.xctestrun"))
-        if len(paths) != 1:
-            raise RuntimeError("Expected exactly one freshly built unbound runner.")
-        validate_unbound_runner(paths[0])
-        env.update(
-            TEST_RUNNER_PLOZZ_CAPTURE_EXISTING_APP="1",
-            TEST_RUNNER_PLOZZ_CAPTURE_FOCUSED_LABEL=self.args.press_focused,
-            TEST_RUNNER_PLOZZ_CAPTURE_BUNDLE_ID=self.args.bundle_id,
-            TEST_RUNNER_PLOZZ_CAPTURE_OBSERVE_SECONDS=str(min(75, self.args.time_limit - 20)),
-        )
-        runner, log = self.launch([
-            "xcodebuild", "test-without-building", "-xctestrun", str(paths[0]),
-            "-destination", f"platform=tvOS,id={self.device}", "-destination-timeout", "30",
-            "-parallel-testing-enabled", "NO", "-collect-test-diagnostics", "never",
-            "-resultBundlePath", str(self.output / "Remote.xcresult"),
-            "-only-testing:PlozzHomeRemoteTests/PhysicalDiagnosticInputTests/testPressFocusedControlAfterRecordingConfirmation",
-        ], "remote", env)
-        deadline = time.monotonic() + 90
-        while time.monotonic() < deadline:
-            match = re.search(r"PLZCAPTURE ready notification=(\S+)", text(log))
-            if match:
-                return runner, log, match[1]
-            if runner.poll() is not None:
-                break
-            time.sleep(0.2)
-        raise RuntimeError("Remote driver did not verify the requested focused control. No input sent.")
+        return None, None, None
 
     def record(self, pid, input_runner, input_log, input_notification):
         instrument = (["--template", self.args.template] if self.args.template
@@ -463,8 +431,6 @@ class Capture:
         pid = process["processIdentifier"]
         self.report.update(device=self.device, pid=pid, bundleID=self.args.bundle_id,
                            build=app.get("bundleVersion"), version=app.get("version"))
-        if self.args.press_focused and details["hardwareProperties"].get("deviceType") != "appleTV":
-            raise RuntimeError("--press-focused is a tvOS remote driver; no input sent.")
         runner, log, notification = self.prepare_input()
         self.prepare_indicator()
         trace, instrument = self.record(pid, runner, log, notification)
@@ -520,13 +486,9 @@ def main():
                         help="Start the capture window immediately after recording readiness; otherwise wait for explicit confirmation.")
     parser.add_argument("--start-timeout", type=duration, default=300,
                         help="Maximum wait for start confirmation, in seconds or minutes (default: 300s).")
-    parser.add_argument("--press-focused", metavar="EXACT_LABEL",
-                        help="tvOS: verify this focused button, then send exactly one Select after readiness.")
     args = parser.parse_args()
     if not args.device:
         parser.error("--device or PLOZZ_TRACE_DEVICE is required.")
-    if args.press_focused and args.time_limit < 100:
-        parser.error("--press-focused requires at least 100 seconds to capture a long stall.")
     capture = Capture(args)
     try:
         capture.execute()

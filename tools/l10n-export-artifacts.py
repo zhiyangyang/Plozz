@@ -14,10 +14,6 @@ from typing import Any
 REPO = Path(__file__).resolve().parent.parent
 CATALOG = REPO / "App/Resources/Localizable.xcstrings"
 INFO_CATALOG_PATHS = {
-    "tvOS.NSLocalNetworkUsageDescription": (
-        REPO / "App/Resources/InfoPlist.xcstrings",
-        "NSLocalNetworkUsageDescription",
-    ),
     "iOS.NSLocalNetworkUsageDescription": (
         REPO / "App/PlozziOS/InfoPlist.xcstrings",
         "NSLocalNetworkUsageDescription",

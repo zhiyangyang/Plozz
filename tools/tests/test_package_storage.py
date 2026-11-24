@@ -72,7 +72,6 @@ class PackageStorageTests(unittest.TestCase):
     def test_shell_writers_use_locked_private_package_storage(self) -> None:
         writers = {
             "tools/run-tests.sh": ".build/test-derived-data",
-            "tools/deploy-tv.sh": ".build/package-workspaces/deploy-tv",
             "tools/deploy-ios.sh": ".build/package-workspaces/deploy-ios",
             "tools/capture-shots.sh": ".build/package-workspaces/capture-shots-",
         }

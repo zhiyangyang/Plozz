@@ -15,10 +15,6 @@ REPO = Path(__file__).resolve().parent.parent
 CATALOG = REPO / "App/Resources/Localizable.xcstrings"
 DEFAULT_SNAPSHOT = REPO / "tools/l10n-source-snapshot.json"
 INFO_CATALOGS = {
-    "tvOS.NSLocalNetworkUsageDescription": (
-        REPO / "App/Resources/InfoPlist.xcstrings",
-        "NSLocalNetworkUsageDescription",
-    ),
     "iOS.NSLocalNetworkUsageDescription": (
         REPO / "App/PlozziOS/InfoPlist.xcstrings",
         "NSLocalNetworkUsageDescription",

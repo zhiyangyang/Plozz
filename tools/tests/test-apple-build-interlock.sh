@@ -593,7 +593,6 @@ assert_source_contains "fastlane/Fastfile" 'AppleBuildLease.with_shared("plozz/f
 assert_source_contains "fastlane/Fastfile" 'AppleBuildLease.with_shared("plozz/fastlane/beta")'
 assert_source_contains "fastlane/Fastfile" 'AppleBuildLease.with_shared("plozz/fastlane/release")'
 assert_source_contains "tools/generate-project.sh" 'acquire_apple_build_shared_lease "plozz/generate-project"'
-assert_source_contains "tools/deploy-tv.sh" 'acquire_apple_build_shared_lease "plozz/deploy-tv"'
 assert_source_contains "tools/deploy-ios.sh" 'acquire_apple_build_shared_lease "plozz/deploy-ios"'
 assert_source_contains "tools/run-tests.sh" 'acquire_apple_build_shared_lease "plozz/run-tests"'
 assert_source_contains "tools/test-fast.sh" 'acquire_apple_build_shared_lease "plozz/test-fast"'

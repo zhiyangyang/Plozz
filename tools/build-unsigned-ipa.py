@@ -21,7 +21,6 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMS = {
     "ios": ("PlozziOS", "iOS", "iPhoneOS", "IOS"),
-    "tvos": ("Plozz", "tvOS", "AppleTVOS", "TVOS"),
 }
 EMPTY_INFO_KEYS = (
     "OMDBAPIKey", "TMDBBearerToken", "TMDBProxyBaseURL", "TVDBAPIKey",
@@ -105,8 +104,6 @@ def build_environment(parent, source, build_number):
         "PLOZZ_NAME_SUFFIX": " Self-build",
         "PLOZZ_PAIRING_SERVICE_TYPE": "_plozz-self._tcp",
         "PLOZZ_URL_SCHEME": "plozz-selfbuild",
-        "PLOZZ_TV_APP_ENTITLEMENTS": "App/Resources/Plozz.branded.entitlements",
-        "PLOZZ_TV_TOPSHELF_ENTITLEMENTS": "TopShelf/TopShelf.branded.entitlements",
         "PLOZZ_IOS_APP_ENTITLEMENTS": "App/PlozziOS/PlozziOS.branded.entitlements",
     })
     return env
@@ -123,9 +120,8 @@ def prepare_public_config(source):
             raise ValueError("Committed integration defaults must be empty")
 
 
-def verify_info(info, platform, *, extension=False, app_version=None):
-    suffix = ".TopShelf" if extension else ""
-    if info.get("CFBundleIdentifier") != "com.thatcube.Plozz.selfbuild" + suffix:
+def verify_info(info, platform, *, app_version=None):
+    if info.get("CFBundleIdentifier") != "com.thatcube.Plozz.selfbuild":
         raise ValueError("Unexpected self-build bundle identity")
     if info.get("CFBundleSupportedPlatforms") != [PLATFORMS[platform][2]]:
         raise ValueError("IPA must contain the selected device platform")
@@ -177,21 +173,13 @@ def verify_and_unsign(app, platform, run):
     info = plistlib.loads((app / "Info.plist").read_bytes())
     version = verify_info(info, platform)
     playback_keys = verify_playback_info(info, platform)
-    extensions = list((app / "PlugIns").glob("*.appex"))
-    if len(extensions) != (1 if platform == "tvos" else 0):
+    if list((app / "PlugIns").glob("*.appex")):
         raise ValueError("Unexpected app extension set")
-    for extension in extensions:
-        verify_info(plistlib.loads((extension / "Info.plist").read_bytes()), platform,
-                    extension=True, app_version=version)
     if list(app.rglob("embedded.mobileprovision")):
         raise ValueError("Unsigned output must not contain provisioning profiles")
     binaries = macho_files(app)
     if app / info.get("CFBundleExecutable", "") not in binaries:
         raise ValueError("Missing app executable")
-    for extension in extensions:
-        ext_info = plistlib.loads((extension / "Info.plist").read_bytes())
-        if extension / ext_info.get("CFBundleExecutable", "") not in binaries:
-            raise ValueError("Missing extension executable")
     framework_names = {p.parent.name for p in binaries if p.parent.suffix == ".framework"}
     if "AetherEngine.framework" not in framework_names:
         raise ValueError("Missing embedded playback engine")

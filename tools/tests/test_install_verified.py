@@ -212,7 +212,7 @@ class InstallerTests(unittest.TestCase):
                     installer.positive_setting(name, 1, maximum)
 
     def test_wrappers_share_recovery_without_fixed_150_second_deadline(self):
-        for name in ("deploy-ios.sh", "deploy-tv.sh"):
+        for name in ("deploy-ios.sh",):
             source = (ROOT / "tools" / name).read_text()
             self.assertIn('install-verified.sh"', source)
             self.assertNotIn("PLOZZ_DEPLOY_INSTALL_DEADLINE:-150", source)
