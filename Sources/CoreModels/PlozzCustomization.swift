@@ -23,6 +23,60 @@ public enum PlozzCustomization {
     public static var supportsTrackers: Bool { !isCustomBuild }
     public static var supportsDiscover: Bool { !isCustomBuild }
 
+    /// The personal build opens a library directly on its Browse grid. Library
+    /// mode tabs and the Recommended/Playlists/Collections pages stay upstream
+    /// code, but are not exposed here.
+    public static func showsLibraryRecommendations(customBuild: Bool = isCustomBuild) -> Bool {
+        !customBuild
+    }
+
+    public static func showsLibraryPlaylists(customBuild: Bool = isCustomBuild) -> Bool {
+        !customBuild
+    }
+
+    public static func showsLibraryCollections(customBuild: Bool = isCustomBuild) -> Bool {
+        !customBuild
+    }
+
+    public static func showsLibraryModeTabs(customBuild: Bool = isCustomBuild) -> Bool {
+        !customBuild
+    }
+
+    public static func libraryStartsOnBrowse(customBuild: Bool = isCustomBuild) -> Bool {
+        customBuild
+    }
+
+    /// Collections move to a top-level destination in the personal build.
+    public static func showsTopLevelCollections(customBuild: Bool = isCustomBuild) -> Bool {
+        customBuild
+    }
+
+    /// The personal build defaults to exposing its Favorites entry, even when
+    /// empty. The viewer can still hide it in Settings like any destination.
+    public static func showsFavoritesTab(customBuild: Bool = isCustomBuild) -> Bool {
+        customBuild
+    }
+
+    /// Favorites in the personal build are the server's favorite movies only.
+    public static func favoritesOnlyMovies(customBuild: Bool = isCustomBuild) -> Bool {
+        customBuild
+    }
+
+    /// Settings entries that only describe a page removed in the personal build.
+    public static func isSettingsSearchEntryVisible(
+        _ id: String,
+        customBuild: Bool = isCustomBuild
+    ) -> Bool {
+        guard customBuild else { return true }
+        switch id {
+        case "library-tab-layout", "recommended-logo-size", "recommended-text-size",
+             "recommended-row-layout", "recommended-row-covers":
+            return false
+        default:
+            return true
+        }
+    }
+
     /// The personal movie detail page uses the server's native similar list and
     /// exposes tappable studio/tag chips. The old metadata-driven Related row is
     /// replaced by the native row.

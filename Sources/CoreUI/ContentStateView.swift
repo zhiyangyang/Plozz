@@ -8,6 +8,7 @@ import CoreModels
 /// Centralising this satisfies the "clear loading/error/empty states" UX
 /// requirement without each screen reinventing it.
 public struct ContentStateView<Value: Sendable, Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let state: LoadState<Value>
     private let onRetry: () -> Void
     private let content: (Value) -> Content
@@ -62,36 +63,60 @@ public struct ContentStateView<Value: Sendable, Content: View>: View {
     }
 
     public var body: some View {
-        switch state {
-        case .idle, .loading:
-            Group {
-                if let loadingContent {
-                    loadingContent()
-                } else {
-                    LoadingMessagesView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            switch state {
+            case .idle, .loading:
+                Group {
+                    if let loadingContent {
+                        loadingContent()
+                    } else {
+                        LoadingMessagesView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
+                .navigationEntryFocus(.pending)
+                .transition(.opacity)
+
+            case let .loaded(value):
+                content(value)
+                    .transition(.opacity)
+
+            case .empty:
+                messageView(
+                    icon: "tray",
+                    title: emptyMessage,
+                    showRetry: true
+                )
+                .transition(.opacity)
+
+            case let .failed(error):
+                messageView(
+                    icon: error == .serverUnreachable ? "wifi.slash" : "exclamationmark.triangle",
+                    title: errorMessage ?? error.userMessage,
+                    showRetry: true,
+                    servers: errorServers,
+                    report: errorReport
+                )
+                .transition(.opacity)
             }
-            .navigationEntryFocus(.pending)
+        }
+        .animation(
+            reduceMotion || !PlozzCustomization.isCustomBuild
+                ? nil : PageMotion.contentReveal,
+            value: phase
+        )
+    }
 
-        case let .loaded(value):
-            content(value)
+    private enum Phase: Equatable {
+        case loading, loaded, empty, failed
+    }
 
-        case .empty:
-            messageView(
-                icon: "tray",
-                title: emptyMessage,
-                showRetry: true
-            )
-
-        case let .failed(error):
-            messageView(
-                icon: error == .serverUnreachable ? "wifi.slash" : "exclamationmark.triangle",
-                title: errorMessage ?? error.userMessage,
-                showRetry: true,
-                servers: errorServers,
-                report: errorReport
-            )
+    private var phase: Phase {
+        switch state {
+        case .idle, .loading: .loading
+        case .loaded: .loaded
+        case .empty: .empty
+        case .failed: .failed
         }
     }
 
@@ -104,6 +129,7 @@ public struct ContentStateView<Value: Sendable, Content: View>: View {
             Image(systemName: icon)
                 .font(.system(size: 72))
                 .plozzForeground(.secondary)
+                .accessibilityHidden(true)
             ForEach(servers, id: \.self) { server in
                 ServerIdentityChip(server: server)
             }

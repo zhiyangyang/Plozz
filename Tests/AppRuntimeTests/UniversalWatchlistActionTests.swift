@@ -510,4 +510,29 @@ final class UniversalWatchlistActionTests: XCTestCase {
         XCTAssertNil(cache.ids(for: revision))
         XCTAssertEqual(cache.generation, generation &+ 1)
     }
+
+    func testFavoritesPresentationUsesFavoritesCopy() {
+        let added = MediaItemActionCoordinator.universalWatchlistFeedback(
+            adding: true, favoritesPresentation: true
+        )
+        XCTAssertEqual(added.icon, "heart.fill")
+        XCTAssertEqual(added.text.key, "Add to Favorites")
+
+        let removed = MediaItemActionCoordinator.universalWatchlistFeedback(
+            adding: false, favoritesPresentation: true
+        )
+        XCTAssertEqual(removed.icon, "heart.slash")
+        XCTAssertEqual(removed.text.key, "Remove from Favorites")
+
+        let failure = MediaItemActionCoordinator.universalWatchlistFailureFeedback(
+            favoritesPresentation: true
+        )
+        XCTAssertEqual(failure.key, "Couldn't save your rating or favorite. Try again.")
+
+        let watchlist = MediaItemActionCoordinator.universalWatchlistFeedback(
+            adding: true, favoritesPresentation: false
+        )
+        XCTAssertEqual(watchlist.icon, "bookmark.fill")
+        XCTAssertEqual(watchlist.text.key, "watchlist.feedback.added")
+    }
 }

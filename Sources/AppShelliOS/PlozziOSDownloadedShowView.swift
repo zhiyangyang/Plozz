@@ -82,10 +82,10 @@ struct PlozziOSDownloadedShowView: View {
                             presentsEpisodeAsSubject: nav.item.kind == .episode
                         )
                     } else {
-                        ContentUnavailableView(
-                            "Details Unavailable",
-                            systemImage: "wifi.slash",
-                            description: Text("Reconnect to view full details.")
+                        PlozzStateView(
+                            icon: "wifi.slash",
+                            title: Text("Details Unavailable"),
+                            message: Text("Reconnect to view full details.")
                         )
                     }
                 }
@@ -108,9 +108,9 @@ struct PlozziOSDownloadedShowView: View {
                     }
                 }
             } else {
-                ContentUnavailableView(
-                    "No Downloads",
-                    systemImage: "arrow.down.circle"
+                PlozzStateView(
+                    icon: "arrow.down.circle",
+                    title: Text("No Downloads")
                 )
             }
         }
@@ -173,7 +173,7 @@ struct PlozziOSDownloadedShowView: View {
             if let provider = appModel.provider(for: request.item) {
                 PlozziOSPlayerView(request: request, provider: provider, orientation: orientation)
             } else {
-                ContentUnavailableView("Server unavailable", systemImage: "server.rack")
+                PlozzStateView(icon: "server.rack", title: "Server unavailable")
             }
         }
         .onDisappear { pendingResumeRequest = nil }

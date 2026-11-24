@@ -27,7 +27,7 @@ struct PlozziOSPlayerVersionSheet: View {
                 onSelect(id)
             }
         }
-        .presentationDetents([.medium, .large])
+        .plozzSheetSize(.detents([.medium, .large]))
     }
 }
 #endif

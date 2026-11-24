@@ -28,18 +28,18 @@ struct PlozziOSDownloadsView: View {
         Group {
             if let error = model.initializationError {
                 unavailableContent {
-                    ContentUnavailableView(
-                        "Downloads Unavailable",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(error)
+                    PlozzStateView(
+                        icon: "exclamationmark.triangle",
+                        title: Text("Downloads Unavailable"),
+                        message: Text(error)
                     )
                 }
             } else if library.isEmpty {
                 unavailableContent {
-                    ContentUnavailableView(
-                        "No Downloads",
-                        systemImage: "arrow.down.circle",
-                        description: Text(
+                    PlozzStateView(
+                        icon: "arrow.down.circle",
+                        title: Text("No Downloads"),
+                        message: Text(
                             "Download a movie or episode from its detail page to watch offline."
                         )
                     )
@@ -77,10 +77,10 @@ struct PlozziOSDownloadsView: View {
                     seerService: appModel.seerService
                 )
             } else {
-                ContentUnavailableView(
-                    "Server unavailable",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("This title's server is no longer connected.")
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Server unavailable"),
+                    message: Text("This title's server is no longer connected.")
                 )
             }
         }
@@ -172,10 +172,10 @@ struct PlozziOSDownloadsView: View {
                         presentsEpisodeAsSubject: item.kind == .episode
                     )
                 } else {
-                    ContentUnavailableView(
-                        "Server unavailable",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text("This title's server is no longer connected.")
+                    PlozzStateView(
+                        icon: "exclamationmark.triangle",
+                        title: Text("Server unavailable"),
+                        message: Text("This title's server is no longer connected.")
                     )
                 }
             } else {
@@ -187,10 +187,10 @@ struct PlozziOSDownloadsView: View {
     }
 
     private var unavailableNotificationPage: some View {
-        ContentUnavailableView(
-            "Downloads Unavailable",
-            systemImage: "arrow.down.circle",
-            description: Text("This download has been removed or replaced.")
+        PlozzStateView(
+            icon: "arrow.down.circle",
+            title: Text("Downloads Unavailable"),
+            message: Text("This download has been removed or replaced.")
         )
     }
 

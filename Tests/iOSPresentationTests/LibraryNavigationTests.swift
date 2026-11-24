@@ -7,6 +7,7 @@ import SwiftUI
 import UIKit
 import Vision
 import XCTest
+@testable import AppRuntime
 @testable import AppShelliOS
 @testable import FeatureSettings
 
@@ -562,6 +563,159 @@ final class LibraryNavigationTests: XCTestCase {
         XCTAssertEqual(PlozziOSDestination(rawValue: first.rawValue), first)
         XCTAssertEqual(first.diagnosticCategory, "library")
         XCTAssertEqual(second.diagnosticCategory, "library")
+    }
+
+    func testCustomIOSDefaultsKeepCollectionsAndFavoritesEnabled() {
+        XCTAssertEqual(
+            NavigationDestinationDefaults.defaultVisibleKeys(customBuild: false),
+            NavigationDestinationDefaults.iOSDefaultVisibleKeys
+        )
+        let defaults = NavigationDestinationDefaults.defaultVisibleKeys(customBuild: true)
+        let available = NavigationDestinationDefaults.iOS(
+            visibleLibraries: [], customBuild: true
+        )
+        let automatic = NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(
+            available: available, customBuild: true
+        )
+        XCTAssertEqual(Array(available.prefix(defaults.count)), defaults)
+        XCTAssertFalse(automatic.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertFalse(automatic.contains(NavigationLibraryLayout.watchlistKey))
+
+        var layout = NavigationLibraryLayout.default
+        layout.apply(
+            .init(
+                enabled: defaults.filter {
+                    $0 != NavigationLibraryLayout.collectionsKey
+                        && $0 != NavigationLibraryLayout.watchlistKey
+                },
+                disabled: [NavigationLibraryLayout.collectionsKey, NavigationLibraryLayout.watchlistKey]
+            ),
+            available: available,
+            requiredEnabled: [],
+            automaticallyHiddenKeys: automatic
+        )
+        let sections = layout.resolvingAutomaticVisibility(hidden: automatic)
+            .sections(available: available, requiredEnabled: [])
+        XCTAssertFalse(sections.enabled.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertFalse(sections.enabled.contains(NavigationLibraryLayout.watchlistKey))
+        XCTAssertTrue(sections.disabled.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertTrue(sections.disabled.contains(NavigationLibraryLayout.watchlistKey))
+    }
+
+    func testCustomNavigationRowsOfferCollectionsAndNameFavorites() {
+        let rows = NavigationLibrariesDetailView.rowsByKey(visible: [], customBuild: true)
+        XCTAssertEqual(rows[NavigationLibraryLayout.collectionsKey]?.title, Text("Collections"))
+        XCTAssertEqual(rows[NavigationLibraryLayout.collectionsKey]?.symbolName, "rectangle.stack")
+        XCTAssertEqual(rows[NavigationLibraryLayout.watchlistKey]?.title, Text("Favorites"))
+        XCTAssertEqual(rows[NavigationLibraryLayout.watchlistKey]?.symbolName, "heart.fill")
+
+        let canonical = NavigationLibrariesDetailView.rowsByKey(visible: [], customBuild: false)
+        XCTAssertEqual(canonical[NavigationLibraryLayout.watchlistKey]?.title, Text("Watchlist"))
+        XCTAssertEqual(canonical[NavigationLibraryLayout.watchlistKey]?.symbolName, "bookmark.fill")
+    }
+
+    func testCustomNavigationKeepsUnarrangedCollectionsAndFavoritesBesideHome() {
+        let ordered = PlozziOSTabShell.insertingDefaultCustomDestinations(
+            [.home, .upcoming, .search, .collections, .watchlist],
+            order: [NavigationLibraryLayout.homeKey, NavigationLibraryLayout.searchKey],
+            includesFavorites: true
+        )
+        XCTAssertEqual(ordered, [.home, .collections, .watchlist, .upcoming, .search])
+
+        // Once a key is persisted in the order, the viewer's arrangement wins.
+        let saved = PlozziOSTabShell.insertingDefaultCustomDestinations(
+            [.home, .collections, .watchlist, .upcoming],
+            order: [
+                NavigationLibraryLayout.homeKey,
+                NavigationLibraryLayout.watchlistKey,
+                NavigationLibraryLayout.collectionsKey,
+            ]
+        )
+        XCTAssertEqual(saved, [.home, .collections, .watchlist, .upcoming])
+    }
+
+    func testCustomLibraryFavoriteBadgeOnlyMarksFavoritedMovies() {
+        let movie = MediaItem(id: "movie", title: "Movie", kind: .movie)
+        let series = MediaItem(id: "series", title: "Series", kind: .series)
+        XCTAssertTrue(PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: true, item: movie, isWatchlisted: { _ in true }
+        ))
+        XCTAssertFalse(PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: true, item: movie, isWatchlisted: { _ in false }
+        ))
+        XCTAssertFalse(PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: true, item: series, isWatchlisted: { _ in true }
+        ))
+        XCTAssertFalse(PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: false, item: movie, isWatchlisted: { _ in true }
+        ))
+        XCTAssertFalse(PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: true, item: nil, isWatchlisted: { _ in true }
+        ))
+    }
+
+    func testCustomLibraryRatingUsesOnlyTheCommunityScore() {
+        let community = ExternalRating(source: .community, value: 8.7, scale: .outOfTen)
+        let imdb = ExternalRating(source: .imdb, value: 9.0, scale: .outOfTen)
+        let movie = MediaItem(
+            id: "movie", title: "Movie", kind: .movie,
+            ratings: [imdb, community]
+        )
+        XCTAssertEqual(PlozziOSLibraryGridView.displayedRating(
+            customBuild: true, item: movie
+        ), community)
+
+        XCTAssertNil(PlozziOSLibraryGridView.displayedRating(
+            customBuild: false, item: movie
+        ))
+        XCTAssertNil(PlozziOSLibraryGridView.displayedRating(
+            customBuild: true,
+            item: MediaItem(id: "series", title: "Series", kind: .series, ratings: [community])
+        ))
+        XCTAssertNil(PlozziOSLibraryGridView.displayedRating(
+            customBuild: true,
+            item: MediaItem(id: "unrated", title: "Unrated", kind: .movie, ratings: [imdb])
+        ))
+    }
+
+    func testCustomFavoriteFeedbackUsesFavoritesCopy() {
+        let added = MediaItemActionCoordinator.universalWatchlistFeedback(
+            adding: true, favoritesPresentation: true
+        )
+        XCTAssertEqual(added.icon, "heart.fill")
+        XCTAssertEqual(added.text.key, "Add to Favorites")
+
+        let removed = MediaItemActionCoordinator.universalWatchlistFeedback(
+            adding: false, favoritesPresentation: true
+        )
+        XCTAssertEqual(removed.icon, "heart.slash")
+        XCTAssertEqual(removed.text.key, "Remove from Favorites")
+
+        let failure = MediaItemActionCoordinator.universalWatchlistFailureFeedback(
+            favoritesPresentation: true
+        )
+        XCTAssertEqual(failure.key, "Couldn't save your rating or favorite. Try again.")
+    }
+
+    func testCustomLibraryGridHidesOnlyAnIndividualLibraryName() {
+        XCTAssertFalse(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: true, isCombinedLibrary: false, browseScope: .library
+        ))
+        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: true, isCombinedLibrary: false, browseScope: .playlistMembers
+        ))
+        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: true, isCombinedLibrary: false, browseScope: .collectionMembers
+        ))
+        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: true, isCombinedLibrary: true, browseScope: .library
+        ))
+        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: true, isCombinedLibrary: false, browseScope: .collectionsCatalog
+        ))
+        XCTAssertTrue(PlozziOSLibraryGridView.showsNavigationTitle(
+            customBuild: false, isCombinedLibrary: false, browseScope: .library
+        ))
     }
 
     private func makeApp(

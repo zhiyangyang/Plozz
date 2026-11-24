@@ -39,7 +39,7 @@ public struct SettingsPageHeader<Trailing: View>: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: 6) {
             title
-                .font(.largeTitle.bold())
+                .font(PlozzTypography.font(.pageTitle))
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
                 subtitle

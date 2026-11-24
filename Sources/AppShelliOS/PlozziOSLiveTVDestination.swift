@@ -341,9 +341,11 @@ private struct PlozziOSLiveTVSourcesContent: View {
                     service: library.service, history: library.history, prepareLibraries: library.prepareForEditing,
                     automaticChannels: library.automaticChannelsPresentation)
             } else {
-                ContentUnavailableView(
-                    "Profile access changed", systemImage: "lock",
-                    description: Text("Reopen Sources to continue."))
+                PlozzStateView(
+                    icon: "lock",
+                    title: Text("Profile access changed"),
+                    message: Text("Reopen Sources to continue.")
+                )
             }
         }
         .navigationDestination(isPresented: $scansChannels) {

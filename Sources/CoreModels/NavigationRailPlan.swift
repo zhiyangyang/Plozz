@@ -129,8 +129,41 @@ public enum NavigationDestinationDefaults {
         NavigationLibraryLayout.searchKey,
     ]
 
+    /// Default visible destinations for the iOS shell.
+    ///
+    /// The personal build keeps Collections and Favorites beside Home, matching
+    /// the entries it used to force into the tab bar. The canonical app keeps
+    /// its original four defaults.
+    public static func defaultVisibleKeys(
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> [String] {
+        guard customBuild else { return iOSDefaultVisibleKeys }
+        return [
+            NavigationLibraryLayout.homeKey,
+            NavigationLibraryLayout.collectionsKey,
+            NavigationLibraryLayout.watchlistKey,
+            NavigationLibraryLayout.upcomingKey,
+            NavigationLibraryLayout.downloadsKey,
+            NavigationLibraryLayout.searchKey,
+        ]
+    }
+
     /// The editor's catalogue, not the default enabled tabs.
-    public static var iOS: [String] {
+    public static func iOSKeys(
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> [String] {
+        if customBuild {
+            return [
+                NavigationLibraryLayout.homeKey,
+                NavigationLibraryLayout.collectionsKey,
+                NavigationLibraryLayout.watchlistKey,
+                NavigationLibraryLayout.upcomingKey,
+                NavigationLibraryLayout.downloadsKey,
+                NavigationLibraryLayout.searchKey,
+                NavigationLibraryLayout.liveTVKey,
+                NavigationLibraryLayout.settingsKey,
+            ]
+        }
         var keys = iOSDefaultVisibleKeys + [
             NavigationLibraryLayout.discoverKey,
             NavigationLibraryLayout.watchlistKey,
@@ -143,8 +176,14 @@ public enum NavigationDestinationDefaults {
         return keys
     }
 
-    public static func iOS(visibleLibraries: [AggregatedLibrary], hasMusic: Bool = false) -> [String] {
-        var keys = iOS
+    public static var iOS: [String] { iOSKeys() }
+
+    public static func iOS(
+        visibleLibraries: [AggregatedLibrary],
+        hasMusic: Bool = false,
+        customBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> [String] {
+        var keys = iOSKeys(customBuild: customBuild)
         if hasMusic { keys.insert(NavigationLibraryLayout.musicKey, at: 1) }
         let libraries = NavigationRailPlan.browsableLibraries(visibleLibraries)
         keys.insert(
@@ -162,9 +201,12 @@ public enum NavigationDestinationDefaults {
     /// New libraries stay in the editor until explicitly shown. This is a
     /// presentation default, not a persisted hide or a content restriction.
     public static func iOSAutomaticallyHiddenKeys(
-        available: [String], hasUpcomingContent: Bool = true
+        available: [String], hasUpcomingContent: Bool = true,
+        customBuild: Bool = PlozzCustomization.isCustomBuild
     ) -> Set<String> {
-        var hidden = Set(available).subtracting(iOSDefaultVisibleKeys + [NavigationLibraryLayout.musicKey])
+        var hidden = Set(available).subtracting(
+            defaultVisibleKeys(customBuild: customBuild) + [NavigationLibraryLayout.musicKey]
+        )
         if !hasUpcomingContent { hidden.insert(NavigationLibraryLayout.upcomingKey) }
         return hidden
     }

@@ -44,16 +44,18 @@ public struct LibraryPresentationSettingsView: View {
 
     private var content: some View {
         HomeEditorPage(title: Text("Libraries"), showsHeader: true) {
-            HomeEditorLink {
-                LibraryNavigationSettingsView(model: model)
-            } label: {
-                HomeEditorRowLabel(
-                    title: Text("Library Navigation"),
-                    subtitle: Text("Tab order and visibility apply to all libraries."),
-                    titleSymbol: "arrow.up.arrow.down"
-                )
+            if PlozzCustomization.showsLibraryModeTabs() {
+                HomeEditorLink {
+                    LibraryNavigationSettingsView(model: model)
+                } label: {
+                    HomeEditorRowLabel(
+                        title: Text("Library Navigation"),
+                        subtitle: Text("Tab order and visibility apply to all libraries."),
+                        titleSymbol: "arrow.up.arrow.down"
+                    )
+                }
+                .accessibilityIdentifier("library-navigation-settings")
             }
-            .accessibilityIdentifier("library-navigation-settings")
             #if os(tvOS)
             SettingsFormGroup(title: Text("Page appearance"), hasGroupedContent: true) {
                 SettingsConnectedControlGroups {
@@ -136,7 +138,14 @@ struct LibraryNavigationSettingsView: View {
 
     var body: some View {
         HomeEditorPage(title: Text("Library Navigation"), showsHeader: true) {
-            let available = LibraryContentMode.allCases.map(\.rawValue)
+            let available = LibraryContentMode.allCases.filter { mode in
+                switch mode {
+                case .recommended: PlozzCustomization.showsLibraryRecommendations()
+                case .titles: true
+                case .collections: PlozzCustomization.showsLibraryCollections()
+                case .playlists: PlozzCustomization.showsLibraryPlaylists()
+                }
+            }.map(\.rawValue)
             let sections = model.settings.navigation.sections(available: available)
             LiftableReorderList(
                 sections: sections, disabledSectionTitle: "Hidden", disabledPlaceholder: "No hidden tabs",
@@ -170,7 +179,8 @@ struct LibraryDisplaySettingsView: View {
     @State private var isLifting = false
 
     var showsRecommendedRows: Bool {
-        [.movie, .series, .video].contains(library.library.kind)
+        PlozzCustomization.showsLibraryRecommendations()
+            && [.movie, .series, .video].contains(library.library.kind)
     }
 
     var showsCollectionCovers: Bool {

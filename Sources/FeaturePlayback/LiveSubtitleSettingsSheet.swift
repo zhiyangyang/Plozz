@@ -1,5 +1,6 @@
 #if os(iOS)
 import CoreModels
+import CoreUI
 import SwiftUI
 
 @MainActor
@@ -48,7 +49,7 @@ struct LiveSubtitleSettingsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .plozzSheetSize(.detents([.medium, .large]))
         .accessibilityIdentifier("live-subtitle-advanced-sheet")
         .onChange(of: offset) { _, value in
             guard tracks.subtitles.supportsPrimaryTimingOffset else { return }
@@ -102,7 +103,7 @@ struct LiveAudioSyncSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .plozzSheetSize(.detents([.medium]))
         .onDisappear { adjustment.cancel() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             adjustment.cancel()

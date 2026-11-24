@@ -43,6 +43,13 @@ public struct PosterCardView: View {
     /// is exactly why that treatment was missing on iOS while tvOS had it.
     private let showsResumeChipOverride: Bool
     private let downloadState: MediaDownloadBadgeState?
+    /// Draws the red favorite marker in the top-trailing badge slot. The caller
+    /// owns the membership source; library grids supply the universal watchlist
+    /// answer so the card and its detail page cannot disagree.
+    private let showsFavoriteBadge: Bool
+    /// The compact Emby community score in the bottom-trailing corner. The
+    /// caller selects it; no star or source branding is drawn.
+    private let rating: ExternalRating?
     /// Draws the visible "…" actions menu on the artwork. Touch surfaces opt in;
     /// tvOS leaves it off because press-and-hold is already discoverable there.
     private let showsActionsMenu: Bool
@@ -125,6 +132,8 @@ public struct PosterCardView: View {
         playsOnSelect: Bool = false,
         showsResumeChip: Bool = false,
         downloadState: MediaDownloadBadgeState? = nil,
+        showsFavoriteBadge: Bool = false,
+        rating: ExternalRating? = nil,
         showsActionsMenu: Bool = false,
         isPendingRemoval: Bool = false,
         captionHorizontalInset: CGFloat? = nil,
@@ -146,6 +155,8 @@ public struct PosterCardView: View {
         self.playsOnSelect = playsOnSelect
         self.showsResumeChipOverride = showsResumeChip
         self.downloadState = downloadState
+        self.showsFavoriteBadge = showsFavoriteBadge
+        self.rating = rating
         self.showsActionsMenu = showsActionsMenu
         self.isPendingRemoval = isPendingRemoval
         self.captionHorizontalInset = captionHorizontalInset
@@ -164,6 +175,8 @@ public struct PosterCardView: View {
     private var hidesPlaybackStatus: Bool {
         hideThumbnail || presentationArtworkPolicy.area == .continueWatching
     }
+
+
 
     /// A poster-shaped episode card is masked by *narrowing its sources*, not by
     /// blurring what it drew.
@@ -200,14 +213,25 @@ public struct PosterCardView: View {
     }
 
     private var cardAccessibilityValue: String? {
+        var parts: [String] = []
         let subtitle = usesProgressOnly ? cardSubtitle(showsRuntime: true)
             : (showsSeriesArtwork ? nil : subtitleText)
-        guard var count = MediaPlaybackIndicatorState(item).episodeCountAccessibilityLabel(
+        if let subtitle { parts.append(subtitle) }
+        if var count = MediaPlaybackIndicatorState(item).episodeCountAccessibilityLabel(
             enabled: showsUnwatchedEpisodeCount, hidesStatus: hidesPlaybackStatus
-        ) else { return subtitle }
-        count.locale = locale
-        let label = String(localized: count) // l10n:content — native card accessibility boundary; uses the current environment locale
-        return [subtitle, label].compactMap { $0 }.joined(separator: ", ")
+        ) {
+            count.locale = locale
+            parts.append(String(localized: count)) // l10n:content — native card accessibility boundary
+        }
+        if showsFavoriteBadge {
+            var favorites = LocalizedStringResource("Favorites")
+            favorites.locale = locale
+            parts.append(String(localized: favorites))
+        }
+        if let rating {
+            parts.append("\(rating.displayName) \(rating.displayValue)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     /// Title/subtitle colour, flipped to dark ink over a focused card's opaque
@@ -471,6 +495,8 @@ public struct PosterCardView: View {
                         badgeInset: badgeInset, progressHeight: metrics.progressBarHeight,
                         progressHorizontalInset: progressInset, progressBottomInset: progressInset,
                         downloadState: showsResumeChip ? nil : downloadState,
+                        showsFavoriteBadge: showsFavoriteBadge,
+                        rating: rating,
                         artworkCornerRadius: cornerRadius
                     )
                 }
@@ -660,6 +686,8 @@ public struct PosterCardView: View {
                     progressHorizontalInset: borderlessProgressInset,
                     progressBottomInset: borderlessProgressInset,
                     downloadState: showsResumeChip ? nil : downloadState,
+                    showsFavoriteBadge: showsFavoriteBadge,
+                    rating: rating,
                     artworkCornerRadius: borderlessCornerRadius
                 )
             }

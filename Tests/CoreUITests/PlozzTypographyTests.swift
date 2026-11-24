@@ -42,6 +42,13 @@ final class PlozzTypographyTests: XCTestCase {
         #endif
     }
 
+    func testSemanticTextRolesResolveToNativeTextStyles() {
+        XCTAssertEqual(PlozzTypography.font(.pageTitle), Font.largeTitle.weight(.bold))
+        XCTAssertEqual(PlozzTypography.font(.sectionTitle), Font.title3.weight(.semibold))
+        XCTAssertEqual(PlozzTypography.font(.rowDescription), Font.footnote)
+        XCTAssertEqual(PlozzTypography.font(.badge), Font.caption2.weight(.semibold))
+    }
+
     func testHeightIncludesEveryInterlineGapAndScrimCoversTheLargerBlock() {
         let style = PlozzTypography.heroDescription.scaled(by: 1.5)
         XCTAssertEqual(style.height(lineHeight: 43, lines: 4), 185.5)

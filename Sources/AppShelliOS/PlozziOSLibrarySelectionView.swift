@@ -110,15 +110,15 @@ struct PlozziOSLibrarySelectionView: View {
         }
         if libraries.isEmpty && guides.isEmpty {
             Section {
-                ContentUnavailableView(
-                    loadFailed ? "Couldn’t Load Libraries" : "No Video Libraries",
-                    systemImage: loadFailed
-                        ? "exclamationmark.triangle"
-                        : "rectangle.stack"
-                )
-                if loadFailed {
-                    Button("Try Again", systemImage: "arrow.clockwise") {
-                        Task { await loadLibraries() }
+                PlozzStateView(
+                    icon: loadFailed ? "exclamationmark.triangle" : "rectangle.stack",
+                    title: Text(loadFailed ? "Couldn’t Load Libraries" : "No Video Libraries")
+                ) {
+                    if loadFailed {
+                        Button("Try Again", systemImage: "arrow.clockwise") {
+                            Task { await loadLibraries() }
+                        }
+                        .plozzActionButton()
                     }
                 }
             }

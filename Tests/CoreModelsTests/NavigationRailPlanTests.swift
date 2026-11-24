@@ -572,4 +572,51 @@ final class NavigationRailPlanTests: XCTestCase {
         }
         XCTAssertNil(NavigationRailDestination(storageValue: "nonsense"))
     }
+
+    func testCustomIOSKeepsCollectionsAndFavoritesAdjustable() {
+        let defaults = NavigationDestinationDefaults.defaultVisibleKeys(customBuild: true)
+        XCTAssertEqual(defaults, [
+            NavigationLibraryLayout.homeKey,
+            NavigationLibraryLayout.collectionsKey,
+            NavigationLibraryLayout.watchlistKey,
+            NavigationLibraryLayout.upcomingKey,
+            NavigationLibraryLayout.downloadsKey,
+            NavigationLibraryLayout.searchKey,
+        ])
+
+        let available = NavigationDestinationDefaults.iOS(
+            visibleLibraries: [], customBuild: true
+        )
+        let automatic = NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(
+            available: available, customBuild: true
+        )
+        XCTAssertFalse(automatic.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertFalse(automatic.contains(NavigationLibraryLayout.watchlistKey))
+
+        var layout = NavigationLibraryLayout.default
+        let initial = layout.resolvingAutomaticVisibility(hidden: automatic)
+            .sections(available: available, requiredEnabled: [])
+        XCTAssertEqual(initial.enabled, defaults)
+
+        // Both entries hide exactly like every other destination once edited.
+        let hidden = Set([
+            NavigationLibraryLayout.collectionsKey,
+            NavigationLibraryLayout.watchlistKey,
+        ])
+        layout.apply(
+            .init(
+                enabled: defaults.filter { !hidden.contains($0) },
+                disabled: available.filter { hidden.contains($0) }
+            ),
+            available: available,
+            requiredEnabled: [],
+            automaticallyHiddenKeys: automatic
+        )
+        let edited = layout.resolvingAutomaticVisibility(hidden: automatic)
+            .sections(available: available, requiredEnabled: [])
+        XCTAssertFalse(edited.enabled.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertFalse(edited.enabled.contains(NavigationLibraryLayout.watchlistKey))
+        XCTAssertTrue(edited.disabled.contains(NavigationLibraryLayout.collectionsKey))
+        XCTAssertTrue(edited.disabled.contains(NavigationLibraryLayout.watchlistKey))
+    }
 }

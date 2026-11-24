@@ -8,9 +8,11 @@ public enum LibraryBrowseScope: String, Hashable, Sendable {
     case library
     case collectionMembers
     case playlistMembers
+    /// The top-level, cross-library Collections destination.
+    case collectionsCatalog
 
     public func cardCaptionView(for mode: LibraryContentMode) -> CardCaptionView {
-        self == .library ? mode.cardCaptionView : .browse
+        self == .library || self == .collectionsCatalog ? mode.cardCaptionView : .browse
     }
 }
 
@@ -98,7 +100,10 @@ public final class LibraryBrowseViewModel {
         )
     }
 
-    public var showsCollectionCoverLayout: Bool { browseScope == .library && browseKind == .collection }
+    public var showsCollectionCoverLayout: Bool {
+        browseScope == .collectionsCatalog
+            || (browseScope == .library && browseKind == .collection)
+    }
 
     public var collectionCoverLayout: CollectionCoverLayout {
         get { presentation.settings.collectionCoverLayout(at: collectionCoverAddress()) }
@@ -141,28 +146,61 @@ public final class LibraryBrowseViewModel {
     public var collectionScanIncomplete: Bool { queryPresentation.collectionScanIncomplete }
 
     public var supportsRecommendations: Bool {
-        browseScope == .library && provider.kind != .mediaShare
+        PlozzCustomization.showsLibraryRecommendations()
+            && browseScope == .library && provider.kind != .mediaShare
             && (containerKind == .movie || containerKind == .series || containerKind == .video)
     }
 
     public var supportsCollections: Bool {
-        browseScope == .library && (containerKind == .movie || containerKind == .series)
-            && (provider as? any CapabilityReporting)?.capabilities.contains(.libraryCollections) == true
+        let supportsProvider = (provider as? any CapabilityReporting)?
+            .capabilities.contains(.libraryCollections) == true
+        if browseScope == .collectionsCatalog { return supportsProvider }
+        return PlozzCustomization.showsLibraryCollections()
+            && browseScope == .library
+            && (containerKind == .movie || containerKind == .series)
+            && supportsProvider
     }
 
     public var supportsPlaylists: Bool {
-        browseScope == .library && (containerKind == .movie || containerKind == .series)
+        PlozzCustomization.showsLibraryPlaylists()
+            && browseScope == .library
+            && (containerKind == .movie || containerKind == .series)
             && (provider as? any CapabilityReporting)?.capabilities.contains(.videoPlaylists) == true
     }
 
     public var supportedContentModes: [LibraryContentMode] {
-        (supportsRecommendations ? [.recommended] : []) + [.titles]
+        if browseScope == .collectionsCatalog { return [.collections] }
+        return Self.supportedContentModes(
+            supportsRecommendations: supportsRecommendations,
+            supportsCollections: supportsCollections,
+            supportsPlaylists: supportsPlaylists,
+            isCustomBuild: PlozzCustomization.isCustomBuild
+        )
+    }
+
+    public var availableContentModes: [LibraryContentMode] {
+        if browseScope == .collectionsCatalog { return [.collections] }
+        return presentation.settings.visibleModes(supported: supportedContentModes)
+    }
+
+    nonisolated static func supportedContentModes(
+        supportsRecommendations: Bool,
+        supportsCollections: Bool,
+        supportsPlaylists: Bool,
+        isCustomBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> [LibraryContentMode] {
+        if isCustomBuild { return [.titles] }
+        return (supportsRecommendations ? [.recommended] : []) + [.titles]
             + (supportsCollections ? [.collections] : [])
             + (supportsPlaylists ? [.playlists] : [])
     }
 
-    public var availableContentModes: [LibraryContentMode] {
-        presentation.settings.visibleModes(supported: supportedContentModes)
+    nonisolated static func defaultContentMode(
+        available: [LibraryContentMode],
+        isCustomBuild: Bool = PlozzCustomization.isCustomBuild
+    ) -> LibraryContentMode {
+        if isCustomBuild, available.contains(.titles) { return .titles }
+        return available.first ?? .titles
     }
 
     /// Invalidates cells only when replacing the browsing destination/order.
@@ -172,6 +210,9 @@ public final class LibraryBrowseViewModel {
     public var emptyMessage: LocalizedStringResource {
         if browseScope == .collectionMembers { return "This collection is empty." }
         if browseScope == .playlistMembers { return "This playlist is empty." }
+        if browseScope == .collectionsCatalog {
+            return "No collections in this library."
+        }
         switch contentMode {
         case .recommended: return "No recommendations in this library."
         case .titles: return filters.isEmpty ? "This library is empty." : "No titles match these filters."
@@ -344,8 +385,13 @@ public final class LibraryBrowseViewModel {
             let field = availableSortFields.first ?? .name
             self.sort = CoreModels.SortDescriptor(field: field, direction: field.defaultDirection)
         }
-        let defaultMode = availableContentModes.first ?? .titles
-        self.contentMode = initialContentMode.flatMap {
+        let defaultMode = browseScope == .collectionsCatalog
+            ? .collections
+            : Self.defaultContentMode(available: availableContentModes)
+        let requestedInitialMode = browseScope == .collectionsCatalog
+            ? LibraryContentMode.collections
+            : initialContentMode
+        self.contentMode = requestedInitialMode.flatMap {
             availableContentModes.contains($0) ? $0 : nil
         } ?? defaultMode
         if contentMode == .titles { restorePreferences() }
@@ -1326,6 +1372,7 @@ public final class LibraryBrowseViewModel {
         switch browseScope {
         case .collectionMembers: section = .collectionMembers
         case .playlistMembers: section = .playlistMembers
+        case .collectionsCatalog: section = .collections
         case .library:
             switch mode {
             case .collections: section = .collections

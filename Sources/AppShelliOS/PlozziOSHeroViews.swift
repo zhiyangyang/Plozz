@@ -2434,11 +2434,15 @@ struct PlozziOSHomeHeroForeground: View {
 
 struct PlozziOSDetailHeroForeground: View {
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
+    @Environment(\.themePalette) private var palette
     @State private var isVersionPickerPresented = false
     @State var sourceMenu = PlaybackSourceMenuState()
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.discPlaybackDefault) private var discPlaybackDefault
     @Environment(PlozziOSAppModel.self) private var appModel
+    /// Bumped when a watchlist intent or the durable list changes so the heart
+    /// action re-reads membership.
+    @State private var favoriteStateRevision = 0
 
     let item: MediaItem
     let rootItem: MediaItem
@@ -2480,6 +2484,10 @@ struct PlozziOSDetailHeroForeground: View {
     }
 
     private var actions: [ActionEntry] {
+        // Rebuild the action list after an optimistic intent or a durable sync so
+        // the heart button flips between Add and Remove without waiting for an
+        // unrelated view update.
+        _ = favoriteStateRevision
         var seen = Set<MediaItemAction>()
         var entries: [ActionEntry] = []
         // Watched-state actions follow Play; Watchlist remains about the show.
@@ -2506,6 +2514,30 @@ struct PlozziOSDetailHeroForeground: View {
         let subject = item.watchlistSubject
         guard subject.id != item.id, subject.id == rootItem.id else { return subject }
         return rootItem
+    }
+
+    /// The personal build presents a movie's server favorite as a heart; the
+    /// canonical app keeps the Watchlist bookmark.
+    private var usesFavoritePresentation: Bool {
+        PlozzCustomization.isCustomBuild && rootItem.kind == .movie
+    }
+
+    private func favoriteAwareTitle(for action: MediaItemAction) -> LocalizedStringResource {
+        guard usesFavoritePresentation else { return action.title }
+        switch action {
+        case .addToWatchlist: return LocalizedStringResource("Add to Favorites")
+        case .removeFromWatchlist: return LocalizedStringResource("Remove from Favorites")
+        default: return action.title
+        }
+    }
+
+    private func favoriteAwareSymbol(for action: MediaItemAction) -> String {
+        guard usesFavoritePresentation else { return action.systemImage }
+        switch action {
+        case .addToWatchlist: return "heart"
+        case .removeFromWatchlist: return "heart.fill"
+        default: return action.systemImage
+        }
     }
 
     /// this page can't otherwise reach, and only when something can route it.
@@ -2675,6 +2707,16 @@ struct PlozziOSDetailHeroForeground: View {
                 loadVersions: loadVersions,
                 onSelect: onSelectVersion
             )
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .watchlistIntentDidChange)
+        ) { _ in
+            favoriteStateRevision &+= 1
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .universalWatchlistDidChange)
+        ) { _ in
+            favoriteStateRevision &+= 1
         }
     }
 
@@ -2914,7 +2956,7 @@ struct PlozziOSDetailHeroForeground: View {
                 circular: true
             )
         )
-        .accessibilityLabel(entry.action.title)
+        .accessibilityLabel(favoriteAwareTitle(for: entry.action))
     }
 
     private func sourceVersionMenuButton(
@@ -2947,7 +2989,7 @@ struct PlozziOSDetailHeroForeground: View {
         var result = inlineActionEntries(from: actions).map { entry in
             PlaybackSourceMenuAction(
                 id: "media.\(entry.action.rawValue)",
-                title: entry.action.title,
+                title: favoriteAwareTitle(for: entry.action),
                 systemImage: primaryActionSymbol(for: entry)
             )
         }
@@ -2994,10 +3036,8 @@ struct PlozziOSDetailHeroForeground: View {
             return "eye"
         case .markUnwatched:
             return "checkmark.circle.fill"
-        case .addToWatchlist:
-            return "bookmark"
-        case .removeFromWatchlist:
-            return "bookmark.fill"
+        case .addToWatchlist, .removeFromWatchlist:
+            return favoriteAwareSymbol(for: entry.action)
         default:
             return entry.action.systemImage
         }
@@ -3007,12 +3047,12 @@ struct PlozziOSDetailHeroForeground: View {
     private var detailContextMenu: some View {
         ForEach(contextActions) { entry in
             Button(
-                entry.action.title,
-                systemImage: entry.action.systemImage
+                favoriteAwareTitle(for: entry.action),
+                systemImage: favoriteAwareSymbol(for: entry.action)
             ) {
                 perform(entry)
             }
-            .accessibilityLabel(entry.action.title)
+            .accessibilityLabel(favoriteAwareTitle(for: entry.action))
             .accessibilityValue(
                 // Verbatim: "no accessibility value" is the absence of copy, not
                 // a string to translate. `Text("")` made the empty string a

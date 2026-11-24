@@ -12,6 +12,15 @@ public enum OnboardingPageMotion {
         reduceMotion: Bool
     ) -> AnyTransition {
         guard !reduceMotion else { return .opacity }
+        #if os(iOS)
+        // Touch onboarding moves one short step rather than sliding a whole
+        // television page. Keep the direction legible without scale.
+        let entering: CGFloat = direction == .forward ? 14 : -14
+        return .asymmetric(
+            insertion: .offset(x: entering).combined(with: .opacity),
+            removal: .offset(x: -entering).combined(with: .opacity)
+        )
+        #else
         let enteringEdge: Edge = direction == .forward ? .trailing : .leading
         let leavingEdge: Edge = direction == .forward ? .leading : .trailing
         return .asymmetric(
@@ -20,12 +29,17 @@ public enum OnboardingPageMotion {
             removal: .move(edge: leavingEdge)
                 .combined(with: .scale(scale: 0.98))
         )
+        #endif
     }
 
     public static func animation(reduceMotion: Bool) -> Animation {
+        #if os(iOS)
+        reduceMotion ? .easeInOut(duration: 0.16) : .easeInOut(duration: 0.30)
+        #else
         reduceMotion
             ? .easeInOut(duration: 0.14)
             : .smooth(duration: 0.55, extraBounce: 0)
+        #endif
     }
 }
 

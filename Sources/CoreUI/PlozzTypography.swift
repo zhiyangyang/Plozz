@@ -19,6 +19,45 @@ public enum PlozzTypography {
         }
     }
 
+    /// Semantic text roles for ordinary pages. These intentionally return
+    /// Dynamic Type text styles rather than point sizes; Hero and player
+    /// surfaces keep their own display metrics.
+    public enum TextRole: Sendable {
+        case pageTitle
+        case pageSubtitle
+        case sectionTitle
+        case sectionSubtitle
+        case rowTitle
+        case rowValue
+        case rowDescription
+        case body
+        case callout
+        case footnote
+        case caption
+        case badge
+
+        public var font: Font {
+            switch self {
+            case .pageTitle: .largeTitle.weight(.bold)
+            case .pageSubtitle: .subheadline
+            case .sectionTitle: .title3.weight(.semibold)
+            case .sectionSubtitle: .subheadline
+            case .rowTitle: .body
+            case .rowValue: .body
+            case .rowDescription: .footnote
+            case .body: .body
+            case .callout: .callout
+            case .footnote: .footnote
+            case .caption: .caption
+            case .badge: .caption2.weight(.semibold)
+            }
+        }
+    }
+
+    /// Resolve a semantic role at the call site. Prefer this over a raw
+    /// `.font(.system(size:))` on ordinary pages.
+    public static func font(_ role: TextRole) -> Font { role.font }
+
     public static let heroDescription = Style(pointSize: 24, lineSpacing: 3)
     public static let heroMetadata = Style(pointSize: 23, lineSpacing: 0)
     public static let heroFallbackTitle = Style(pointSize: 64, lineSpacing: 0)

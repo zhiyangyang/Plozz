@@ -232,7 +232,7 @@ public struct PlozziOSRootView: View {
         appDownloadContent
         .plozzSheet(item: $providerSetupRouter.reauthenticationAccount) { account in
             PlozziOSAccountReauthenticationView(appModel: appModel, account: account)
-                .presentationSizing(.page)
+                .plozzSheetSize(.page)
         }
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in
             providerSetupRouter.reauthenticationAccount = nil
@@ -493,7 +493,7 @@ public struct PlozziOSRootView: View {
                 initialIPTVPlaylist: iptvSetup?.playlist, initialIPTVAccount: iptvSetup?.account,
                 initialIPTVMode: iptvSetup?.mode ?? .playlist
             )
-                .presentationSizing(.page)
+                .plozzSheetSize(.page)
         }
         .plozzSheet(
             item: plexUserSelectionBinding
@@ -540,7 +540,7 @@ public struct PlozziOSRootView: View {
             onDismiss: { releaseNotes.dismissStartupNotes() }
         ) {
             ReleaseNotesStartupView(model: releaseNotes)
-                .presentationSizing(.page)
+                .plozzSheetSize(.page)
         }
         .installNightShiftOverlay(appModel.settings.nightShift)
         .externalPlayerSupport(
@@ -911,6 +911,7 @@ private struct PendingPairing: Identifiable {
 
 enum PlozziOSDestination: Identifiable, Hashable {
     case home
+    case collections
     case watchlist
     case upcoming
     case discover
@@ -927,6 +928,7 @@ enum PlozziOSDestination: Identifiable, Hashable {
     var rawValue: String {
         switch self {
         case .home: "home"
+        case .collections: "collections"
         case .watchlist: "watchlist"
         case .upcoming: "upcoming"
         case .discover: "discover"
@@ -943,6 +945,7 @@ enum PlozziOSDestination: Identifiable, Hashable {
     init?(rawValue: String) {
         switch rawValue {
         case "home": self = .home
+        case "collections": self = .collections
         case "watchlist": self = .watchlist
         case "upcoming": self = .upcoming
         case "discover": self = .discover
@@ -967,7 +970,9 @@ enum PlozziOSDestination: Identifiable, Hashable {
     var title: LocalizedStringResource {
         switch self {
         case .home: "Home"
-        case .watchlist: "Watchlist"
+        case .collections: "Collections"
+        case .watchlist:
+            PlozzCustomization.isCustomBuild ? "Favorites" : "Watchlist"
         case .upcoming: "Upcoming"
         case .discover: "Discover"
         case .liveTV: "Live TV"
@@ -988,7 +993,8 @@ enum PlozziOSDestination: Identifiable, Hashable {
     var systemImage: String {
         switch self {
         case .home: "house"
-        case .watchlist: "bookmark"
+        case .collections: "rectangle.stack"
+        case .watchlist: PlozzCustomization.isCustomBuild ? "heart" : "bookmark"
         case .upcoming: "calendar"
         case .discover: "sparkles"
         case .liveTV: "antenna.radiowaves.left.and.right"
@@ -1197,7 +1203,7 @@ struct PlozziOSTabShell: View {
         let navigation = appModel.settings.navigation
         let libraries = appModel.visibleNavigationLibraries
         let libraryKeys = Set(libraries.map(\.key))
-        return navigation.resolvedLayout(
+        let configured = navigation.resolvedLayout(
             additionallyHiddenKeys: automaticallyHiddenNavigationKeys(appModel: appModel)
         )
             .sections(
@@ -1212,6 +1218,7 @@ struct PlozziOSTabShell: View {
             .compactMap { key -> PlozziOSDestination? in
                 switch key {
                 case NavigationLibraryLayout.homeKey: return .home
+                case NavigationLibraryLayout.collectionsKey: return .collections
                 case NavigationLibraryLayout.watchlistKey: return .watchlist
                 case NavigationLibraryLayout.upcomingKey: return .upcoming
                 case NavigationLibraryLayout.discoverKey: return .discover
@@ -1224,6 +1231,41 @@ struct PlozziOSTabShell: View {
                 default: return libraryKeys.contains(key) ? .library(key) : nil
                 }
             }
+        guard PlozzCustomization.showsTopLevelCollections() else { return configured }
+        return insertingDefaultCustomDestinations(
+            configured,
+            order: navigation.libraryLayout.order
+        )
+    }
+
+    /// Places Collections and Favorites beside Home before the viewer has ever
+    /// arranged them.
+    ///
+    /// These entries used to be force-inserted on every render, which made their
+    /// Settings rows impossible to hide or move. This only supplies their initial
+    /// position: once either key is written into the persisted order (by an edit
+    /// or a hide), it is left exactly where the viewer put it.
+    static func insertingDefaultCustomDestinations(
+        _ configured: [PlozziOSDestination],
+        order: [String],
+        includesFavorites: Bool = PlozzCustomization.showsFavoritesTab()
+    ) -> [PlozziOSDestination] {
+        var result = configured
+        if !order.contains(NavigationLibraryLayout.collectionsKey),
+           let index = result.firstIndex(of: .collections) {
+            result.remove(at: index)
+            let insertion = result.firstIndex(of: .home).map { $0 + 1 } ?? 0
+            result.insert(.collections, at: insertion)
+        }
+        if includesFavorites,
+           !order.contains(NavigationLibraryLayout.watchlistKey),
+           let index = result.firstIndex(of: .watchlist) {
+            result.remove(at: index)
+            let afterCollections = result.firstIndex(of: .collections).map { $0 + 1 }
+            let afterHome = result.firstIndex(of: .home).map { $0 + 1 } ?? 0
+            result.insert(.watchlist, at: afterCollections ?? afterHome)
+        }
+        return result
     }
 
     private static func navigationAvailability(appModel: PlozziOSAppModel) -> NavigationContentAvailability {
@@ -1309,7 +1351,11 @@ struct PlozziOSTabShell: View {
 
     private func selectDestination(_ destination: PlozziOSDestination) {
         isShowingMorePage = false
-        selectedDestination = resolvedDestination(destination)
+        let resolved = resolvedDestination(destination)
+        guard resolved != selectedDestination else { return }
+        // The system owns tab switching. Keeping this synchronous preserves the
+        // native instant switch and avoids a timed blank frame between tabs.
+        selectedDestination = resolved
     }
 
     private func consumeStandaloneEntryIfNeeded() {
@@ -1335,26 +1381,28 @@ struct PlozziOSTabShell: View {
     @ViewBuilder
     private func tabContent(for destination: PlozziOSDestination) -> some View {
         let isOverflow = tabDestinations.firstIndex(of: destination).map(overflowNavigation.destinationIndices.contains) ?? false
-        if destination == .music {
-            destinationContent(for: destination, keepsNavigationBar: isOverflow)
-                .plozzOpaqueNavigationChrome()
-                .environment(\.plozziOSIsOverflowDestination, isOverflow)
-                .environment(\.plozziOSOverflowNavigation, overflowNavigation)
-        } else {
-            NavigationStack {
+        Group {
+            if destination == .music {
                 destinationContent(for: destination, keepsNavigationBar: isOverflow)
-                    // Keep the stack itself directly hosted by Tab so iPad can merge its toolbar.
                     .plozzOpaqueNavigationChrome()
-                    .toolbar {
-                        if isOverflow, destination != .downloads {
-                            PlozziOSOverflowBackToolbarItem(action: overflowNavigation.returnToMore)
-                        }
-                    }
                     .environment(\.plozziOSIsOverflowDestination, isOverflow)
                     .environment(\.plozziOSOverflowNavigation, overflowNavigation)
-                    .plozzOpaqueNavigationChrome()
+            } else {
+                NavigationStack {
+                    destinationContent(for: destination, keepsNavigationBar: isOverflow)
+                        // Keep the stack itself directly hosted by Tab so iPad can merge its toolbar.
+                        .plozzOpaqueNavigationChrome()
+                        .toolbar {
+                            if isOverflow, destination != .downloads {
+                                PlozziOSOverflowBackToolbarItem(action: overflowNavigation.returnToMore)
+                            }
+                        }
+                        .environment(\.plozziOSIsOverflowDestination, isOverflow)
+                        .environment(\.plozziOSOverflowNavigation, overflowNavigation)
+                        .plozzOpaqueNavigationChrome()
+                }
+                .id(destination == .downloads ? downloadNavigationID : nil)
             }
-            .id(destination == .downloads ? downloadNavigationID : nil)
         }
     }
 
@@ -1401,6 +1449,12 @@ struct PlozziOSTabShell: View {
                 )
                 .frame(width: 0, height: 0)
             }
+        case .collections:
+            PlozziOSCollectionsDestinationView(onShowSettings: showSettings)
+            .id(homeContentIdentity + "|" + allLibrariesSourceSignature(appModel.visibleNavigationLibraries))
+            .plozziOSItemNavigation(appModel: appModel)
+            .plozziOSLibraryDestination(appModel: appModel)
+            .background { AppBackground(palette: palette) }
         case .watchlist:
             PlozziOSDestinationView(
                 destination: .watchlist,
@@ -1895,7 +1949,7 @@ struct PlozziOSTabShell: View {
                     accounts: appModel.accountsProviders.homeAccounts
                 )
             })
-            .presentationSizing(.page)
+            .plozzSheetSize(.page)
             // Elevation edge for the all-black theme: without it the sheet's
             // dark surface blends straight into the dark page behind it, so the
             // drawer doesn't read as a layer above the content. Reuse the exact
@@ -2638,9 +2692,11 @@ private struct PlozziOSDestinationView: View {
             PlozziOSWatchlistLandingView(
                 appModel: appModel,
                 viewModel: sharedHomeViewModel,
-                onShowSettings: onShowSettings
+                onShowSettings: onShowSettings,
+                onlyMovies: PlozzCustomization.favoritesOnlyMovies()
             )
-        case .discover, .upcoming, .liveTV, .library, .allLibraries, .music:
+            .id(activeAccountsIdentity)
+        case .discover, .upcoming, .liveTV, .collections, .library, .allLibraries, .music:
             EmptyView()
         case .search:
             PlozziOSSearchView(
@@ -2676,36 +2732,69 @@ private struct PlozziOSDestinationView: View {
 struct PlozziOSWatchlistLandingView: View {
     private var navigationTitles = NavigationTitles()
     @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.mediaItemArtworkNavigator) private var navigateToItem
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.plozziOSIsOverflowDestination) private var isOverflowDestination
     let appModel: PlozziOSAppModel
     let viewModel: HomeViewModel
     let onShowSettings: () -> Void
+    /// The personal build's Favorites entry is movies-only. The upstream
+    /// Watchlist keeps all saved titles.
+    let onlyMovies: Bool
     @State private var watchlistIntentRevision = 0
+
+    init(
+        appModel: PlozziOSAppModel,
+        viewModel: HomeViewModel,
+        onShowSettings: @escaping () -> Void,
+        onlyMovies: Bool = false
+    ) {
+        self.appModel = appModel
+        self.viewModel = viewModel
+        self.onShowSettings = onShowSettings
+        self.onlyMovies = onlyMovies
+    }
 
     var body: some View {
         @Bindable var browse = viewModel.watchlistBrowse
+        // Read the model here, not only inside the toolbar: the grid's content
+        // closure is handed to `ContentStateView`, so a sort change made in the
+        // toolbar has to invalidate this body for the new order to be rendered.
+        let preferences = effectivePreferences(browse.preferences)
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 16) {
                 ContentStateView(
                     state: viewModel.state,
-                    emptyMessage: "Your Watchlist is empty.",
+                    emptyMessage: onlyMovies ? "No titles match these filters." : "Your Watchlist is empty.",
                     onRetry: { Task { await viewModel.load() } },
                     loadingContent: {
-                        watchlistContent(
-                            [],
-                            loadingPlaceholderCount: horizontalSizeClass == .regular ? 12 : 6
-                        )
+                        if PlozzCustomization.isCustomBuild {
+                            PlozzPosterGridSkeleton(
+                                columns: gridColumns,
+                                spacing: gridSpacing,
+                                horizontalPadding: gridHorizontalPadding ?? 16,
+                                rows: 2
+                            )
+                        } else {
+                            watchlistContent(
+                                [],
+                                preferences: preferences,
+                                loadingPlaceholderCount: horizontalSizeClass == .regular ? 12 : 6
+                            )
+                        }
                     }
                 ) { content in
                     watchlistContent(
                         content.watchlist,
+                        preferences: preferences,
                         loadingPlaceholderCount: viewModel.watchlistLoadingPlaceholderCount
                     )
                 }
             }
-            .padding(.vertical)
+            .padding(.top, contentTopPadding)
+            .padding(.bottom, contentBottomPadding)
         }
         .onScrollGeometryChange(for: CGFloat.self) {
             $0.contentOffset.y
@@ -2733,14 +2822,14 @@ struct PlozziOSWatchlistLandingView: View {
                 for: .universalWatchlistDidChange
             )
         ) { _ in
-            viewModel.scheduleDurableWatchlistRefresh()
+            refreshFavoritesWatchlistIfNeeded()
         }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: .universalWatchlistCacheDidLoad
             )
         ) { _ in
-            viewModel.scheduleDurableWatchlistRefresh()
+            refreshFavoritesWatchlistIfNeeded()
         }
         .onReceive(
             NotificationCenter.default.publisher(
@@ -2756,15 +2845,43 @@ struct PlozziOSWatchlistLandingView: View {
         ) { _ in
             watchlistIntentRevision &+= 1
         }
-        .navigationTitle(navigationTitles(NavigationLibraryLayout.watchlistKey, default: Text("Watchlist")))
+        .onAppear {
+            // Emby/Jellyfin Favorites do not expose when a title was favorited,
+            // so Date Added would preserve server order and make the control
+            // look broken. Start the movie-only page on Name instead.
+            guard onlyMovies,
+                  viewModel.watchlistBrowse.preferences.sort.field == .dateAdded
+            else { return }
+            viewModel.watchlistBrowse.preferences.sort = .init(
+                field: .name,
+                direction: .ascending
+            )
+        }
+        .navigationTitle(onlyMovies ? Text("Favorites") : navigationTitles(
+            NavigationLibraryLayout.watchlistKey,
+            default: Text("Watchlist")
+        ))
         .environment(\.plozzCardCaptionView, .watchlist)
-        .toolbarTitleDisplayMode(isOverflowDestination ? .inline : .large)
+        .navigationBarTitleDisplayMode(
+            PlozzCustomization.isCustomBuild
+                ? .large
+                : (onlyMovies || isOverflowDestination ? .inline : .large)
+        )
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                WatchlistSortMenu(sort: $browse.preferences.sort)
-                    .labelStyle(.iconOnly)
-                WatchlistFilterMenu(filter: $browse.preferences.filter)
-                    .labelStyle(.iconOnly)
+                if onlyMovies {
+                    // Keep the active field visible: the grid now really follows
+                    // it, and Emby Favorites cannot offer a meaningful Date Added.
+                    WatchlistSortMenu(
+                        sort: $browse.preferences.sort,
+                        fields: [.name, .releaseDate]
+                    )
+                } else {
+                    WatchlistSortMenu(sort: $browse.preferences.sort)
+                        .labelStyle(.iconOnly)
+                    WatchlistFilterMenu(filter: $browse.preferences.filter)
+                        .labelStyle(.iconOnly)
+                }
             }
             PlozziOSSettingsToolbarItem(action: onShowSettings)
         }
@@ -2773,19 +2890,25 @@ struct PlozziOSWatchlistLandingView: View {
     @ViewBuilder
     private func watchlistContent(
         _ items: [MediaItem],
+        preferences: WatchlistBrowsePreferences,
         loadingPlaceholderCount: Int
     ) -> some View {
-        let filteredItems = viewModel.watchlistBrowse.preferences.items(from: items)
+        let filteredItems = filteredWatchlistItems(items, preferences: preferences)
         if filteredItems.isEmpty, loadingPlaceholderCount == 0 {
-            WatchlistEmptyStateView(isFiltered: !items.isEmpty) {
-                viewModel.watchlistBrowse.preferences.filter = .all
+            if onlyMovies {
+                PlozzStateView(
+                    icon: "heart",
+                    title: Text("No titles match these filters.")
+                )
+            } else {
+                WatchlistEmptyStateView(isFiltered: !items.isEmpty) {
+                    viewModel.watchlistBrowse.preferences.filter = .all
+                }
             }
         } else {
             LazyVGrid(
-                columns: appModel.settings.density.density.iOSPosterGridColumns(
-                    horizontalSizeClass: horizontalSizeClass, isRunningOnMac: metrics.usesDesktopSizing
-                ),
-                spacing: 18
+                columns: gridColumns,
+                spacing: gridSpacing
             ) {
                 ForEach(MediaRowView.presentationElements(
                     items: filteredItems,
@@ -2799,6 +2922,7 @@ struct PlozziOSWatchlistLandingView: View {
                             PlozziOSPosterCard(
                                 item: item,
                                 spoilerSettings: appModel.settings.spoilers.settings,
+                                reservesSubtitleSpace: onlyMovies,
                                 isPendingRemoval: isPendingRemoval(item)
                             )
                         }
@@ -2806,14 +2930,84 @@ struct PlozziOSWatchlistLandingView: View {
                     case .loadingPlaceholder:
                         PlozziOSPosterCard(
                             item: nil,
-                            spoilerSettings: appModel.settings.spoilers.settings
+                            spoilerSettings: appModel.settings.spoilers.settings,
+                            reservesSubtitleSpace: onlyMovies
                         )
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, gridHorizontalPadding)
             .accessibilityIdentifier("watchlist-grid")
         }
+    }
+
+    private var gridColumns: [GridItem] {
+        PlozziOSPosterGridStyle.columns(
+            density: appModel.settings.density.density,
+            horizontalSizeClass: horizontalSizeClass,
+            dynamicTypeSize: dynamicTypeSize,
+            isRunningOnMac: metrics.usesDesktopSizing,
+            spacing: gridSpacing
+        )
+    }
+
+    private var gridSpacing: CGFloat {
+        PlozziOSPosterGridStyle.spacing(metrics: metrics, cardStyle: cardStyle)
+    }
+
+    private var gridHorizontalPadding: CGFloat? {
+        guard PlozzCustomization.isCustomBuild else { return nil }
+        return PlozziOSPosterGridStyle.gridPadding(
+            horizontalSizeClass: horizontalSizeClass,
+            usesDesktopSizing: metrics.usesDesktopSizing,
+            metrics: metrics,
+            cardStyle: cardStyle
+        )
+    }
+
+    private var contentTopPadding: CGFloat {
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSMediaRailLayout.posterGridTopPadding
+            : 16
+    }
+
+    private var contentBottomPadding: CGFloat {
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSMediaRailLayout.posterGridBottomPadding
+            : 16
+    }
+
+    /// The first Home load can publish before the durable watchlist has
+    /// imported the server's Favorites. Once the runtime reports ready, an
+    /// empty movie-only page re-runs the load so it cannot stay on the empty
+    /// state until the next launch.
+    private func refreshFavoritesWatchlistIfNeeded() {
+        viewModel.scheduleDurableWatchlistRefresh()
+        guard onlyMovies,
+              case let .loaded(content) = viewModel.state,
+              content.watchlist.isEmpty
+        else { return }
+        Task { await viewModel.load(showLoadingState: false) }
+    }
+
+    private func effectivePreferences(
+        _ preferences: WatchlistBrowsePreferences
+    ) -> WatchlistBrowsePreferences {
+        guard onlyMovies, preferences.sort.field == .dateAdded else {
+            return preferences
+        }
+        var resolved = preferences
+        resolved.sort = .init(field: .name, direction: .ascending)
+        return resolved
+    }
+
+    private func filteredWatchlistItems(
+        _ items: [MediaItem],
+        preferences: WatchlistBrowsePreferences
+    ) -> [MediaItem] {
+        var resolved = preferences
+        if onlyMovies { resolved.filter = .movies }
+        return resolved.items(from: items)
     }
 
     private func isPendingRemoval(_ item: MediaItem) -> Bool {

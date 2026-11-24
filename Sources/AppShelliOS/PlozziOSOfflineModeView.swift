@@ -155,10 +155,10 @@ struct PlozziOSOfflineStatusNotice: View {
 
 struct PlozziOSOfflineUnavailableView: View {
     var body: some View {
-        ContentUnavailableView(
-            "Unavailable Offline",
-            systemImage: "wifi.slash",
-            description: Text("Turn off Offline Mode to connect.")
+        PlozzStateView(
+            icon: "wifi.slash",
+            title: Text("Unavailable Offline"),
+            message: Text("Turn off Offline Mode to connect.")
         )
     }
 }

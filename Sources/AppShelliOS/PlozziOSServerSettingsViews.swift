@@ -170,10 +170,10 @@ private struct PlozziOSServerSettingsDetailView: View {
                     }
                 }
             } else {
-                ContentUnavailableView(
-                    "Server Removed",
-                    systemImage: "externaldrive.badge.xmark",
-                    description: Text("This server is no longer available.")
+                PlozzStateView(
+                    icon: "externaldrive.badge.xmark",
+                    title: Text("Server Removed"),
+                    message: Text("This server is no longer available.")
                 )
             }
         }

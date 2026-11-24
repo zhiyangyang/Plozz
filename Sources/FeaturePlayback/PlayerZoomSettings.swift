@@ -1,4 +1,5 @@
 #if os(iOS)
+import CoreUI
 import SwiftUI
 import UIKit
 
@@ -74,7 +75,7 @@ public struct PlayerZoomSettingsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .plozzSheetSize(.detents([.medium]))
     }
 }
 #endif

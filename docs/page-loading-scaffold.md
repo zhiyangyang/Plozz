@@ -70,6 +70,11 @@ await Fanout.run(
 
 ## 3. Reserve geometry, then reveal
 
+For empty or failed pages, use `CoreUI/PlozzStateView` (iOS) so the title,
+description and recovery actions keep one hierarchy; it builds on the system
+`ContentUnavailableView`. Detail pages use `PlozziOSDetailLoadingSkeleton` to
+reserve the hero and opening episode rail while the first request is in hand.
+
 Use `CoreUI/PlozzReservedPlaceholder` (single view) or `PlozzPlaceholderRail`
 (count-driven row):
 

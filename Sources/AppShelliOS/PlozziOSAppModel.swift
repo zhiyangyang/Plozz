@@ -595,6 +595,7 @@ final class PlozziOSAppModel {
             },
             watchlistMembership: { [unowned self] item in
                 self.universalWatchlistMembership(item)
+                    || self.universalWatchlistMembershipByProviderBinding(item)
             },
             watchlistMembershipRevision: { [unowned self] in
                 self.universalWatchlistMembershipRevision
@@ -736,7 +737,7 @@ final class PlozziOSAppModel {
         runtimeFeatureFlags: RuntimeFeatureFlags = .buildDefault
     ) {
         let bootStart = DispatchTime.now().uptimeNanoseconds
-        func boot(_ label: String) {
+        func boot(_ label: String) {  // l10n:content — developer boot telemetry
             PlozzLog.boot(
                 "AppModel.init \(label) ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
             )
@@ -2106,8 +2107,17 @@ final class PlozziOSAppModel {
     }
 
     private func updateTrackersForActiveProfile() async {
-        guard PlozzCustomization.supportsTrackers, !isOfflineMode else { return }
+        guard !isOfflineMode else { return }
         let namespace = profiles.activeNamespace
+        // The personal build compiles no tracker integrations. There is
+        // nothing to re-point, so mark the empty tracker set as scoped;
+        // otherwise `trackersAreScopedToActiveProfile` stays false and the
+        // unified watchlist defers its read forever. That read is what turns
+        // Emby/Jellyfin Favorites into the Favorites page.
+        guard PlozzCustomization.supportsTrackers else {
+            trackerScopedNamespace = .some(namespace)
+            return
+        }
         trackerProfileGeneration &+= 1
         let generation = trackerProfileGeneration
         trackerScopedNamespace = nil

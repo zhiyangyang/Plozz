@@ -16,6 +16,39 @@ final class LibraryBrowseViewModelTests: XCTestCase {
         }
     }
 
+    func testCustomBuildKeepsOnlyBrowseWhileCanonicalKeepsUpstreamModes() {
+        XCTAssertEqual(
+            LibraryBrowseViewModel.supportedContentModes(
+                supportsRecommendations: true, supportsCollections: true,
+                supportsPlaylists: true, isCustomBuild: true
+            ),
+            [.titles]
+        )
+        XCTAssertEqual(
+            LibraryBrowseViewModel.supportedContentModes(
+                supportsRecommendations: true, supportsCollections: true,
+                supportsPlaylists: true, isCustomBuild: false
+            ),
+            [.recommended, .titles, .collections, .playlists]
+        )
+    }
+
+    func testCustomLibraryDefaultsToBrowseAndCanonicalKeepsFirstMode() {
+        let available: [LibraryContentMode] = [.collections, .titles]
+        XCTAssertEqual(
+            LibraryBrowseViewModel.defaultContentMode(
+                available: available, isCustomBuild: true
+            ),
+            .titles
+        )
+        XCTAssertEqual(
+            LibraryBrowseViewModel.defaultContentMode(
+                available: available, isCustomBuild: false
+            ),
+            .collections
+        )
+    }
+
     private func makeVM(itemCount: Int, pageSize: Int = 10) -> (LibraryBrowseViewModel, FakeMediaProvider) {
         let provider = FakeMediaProvider(allItems: makeItems(itemCount))
         let vm = LibraryBrowseViewModel(

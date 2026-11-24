@@ -9,6 +9,8 @@ struct PlozziOSSearchView: View {
     @Environment(\.plozzMetrics) private var metrics
     @Environment(\.plozzCardStyle) private var cardStyle
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.plozziOSUsesVerticalToolbar) private var usesVerticalToolbar
     @Environment(\.plozziOSIsOverflowDestination) private var isOverflowDestination
     @FocusState private var isSearchFocused: Bool
@@ -92,31 +94,110 @@ struct PlozziOSSearchView: View {
         }
     }
 
+    private var resultsPageInset: CGFloat {
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSPosterGridStyle.pageInset(
+                horizontalSizeClass: horizontalSizeClass,
+                usesDesktopSizing: metrics.usesDesktopSizing
+            )
+            : PlozziOSPageHeaderLayout.horizontalInset
+    }
+
+    private var resultsGridPadding: CGFloat {
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSPosterGridStyle.gridPadding(
+                horizontalSizeClass: horizontalSizeClass,
+                usesDesktopSizing: metrics.usesDesktopSizing,
+                metrics: metrics,
+                cardStyle: cardStyle
+            )
+            : PlozziOSMediaRailLayout.artworkAlignedInset(
+                PlozziOSPageHeaderLayout.horizontalInset, metrics: metrics, cardStyle: cardStyle
+            )
+    }
+
+    private var resultsGridSpacing: CGFloat {
+        PlozziOSPosterGridStyle.spacing(metrics: metrics, cardStyle: cardStyle)
+    }
+
+    private var resultsGridColumns: [GridItem] {
+        PlozziOSPosterGridStyle.columns(
+            density: appModel.settings.density.density,
+            horizontalSizeClass: horizontalSizeClass,
+            dynamicTypeSize: dynamicTypeSize,
+            isRunningOnMac: metrics.usesDesktopSizing,
+            spacing: resultsGridSpacing
+        )
+    }
+
     @ViewBuilder
     private var content: some View {
-        switch viewModel.state {
-        case .idle:
-            ContentUnavailableView(
-                "Search your libraries",
-                systemImage: "magnifyingglass",
-                description: Text("Find movies, TV shows, and episodes across your servers.")
-            )
-        case .loading:
-            ProgressView("Searching…")
-        case .empty:
-            ContentUnavailableView.search(text: viewModel.query)
-        case let .failed(error):
-            ContentUnavailableView {
-                Label("Search unavailable", systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(error.userMessage)
-            } actions: {
-                Button("Try Again") {
-                    Task { await viewModel.search() }
+        Group {
+            switch viewModel.state {
+            case .idle:
+                PlozzStateView(
+                    icon: "magnifyingglass",
+                    title: "Search your libraries",
+                    message: "Find movies, TV shows, and episodes across your servers."
+                )
+                .transition(.opacity)
+            case .loading:
+                Group {
+                    if PlozzCustomization.isCustomBuild {
+                        ScrollView {
+                            PlozzPosterGridSkeleton(
+                                columns: resultsGridColumns,
+                                spacing: resultsGridSpacing,
+                                horizontalPadding: resultsGridPadding
+                            )
+                            .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
+                            .padding(.bottom, PlozziOSMediaRailLayout.posterGridBottomPadding)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        .scrollClipDisabled()
+                    } else {
+                        ProgressView("Searching…")
+                    }
                 }
+                .transition(.opacity)
+            case .empty:
+                ContentUnavailableView.search(text: viewModel.query)
+                    .transition(.opacity)
+            case let .failed(error):
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Search unavailable"),
+                    message: Text(error.userMessage)
+                ) {
+                    Button("Try Again") {
+                        Task { await viewModel.search() }
+                    }
+                    .plozzActionButton()
+                }
+                .transition(.opacity)
+            case let .loaded(sections):
+                results(sections)
+                    .transition(.opacity)
             }
-        case let .loaded(sections):
-            results(sections)
+        }
+        .animation(
+            reduceMotion || !PlozzCustomization.isCustomBuild
+                ? nil : PageMotion.contentReveal,
+            value: searchPhase
+        )
+    }
+
+    private enum SearchPhase: Equatable {
+        case idle, loading, empty, failed, loaded
+    }
+
+    private var searchPhase: SearchPhase {
+        switch viewModel.state {
+        case .idle: .idle
+        case .loading: .loading
+        case .empty: .empty
+        case .failed: .failed
+        case .loaded: .loaded
         }
     }
 
@@ -125,14 +206,12 @@ struct PlozziOSSearchView: View {
             LazyVStack(alignment: .leading, spacing: PlozziOSMediaRailLayout.sectionGap(metrics: metrics)) {
                 ForEach(sections) { section in
                     PlozziOSMediaSection(
-                        title: Text(section.title), horizontalInset: PlozziOSPageHeaderLayout.horizontalInset,
+                        title: Text(section.title), horizontalInset: resultsPageInset,
                         onHeadingTap: { isSearchFocused = false }
                     ) {
                         LazyVGrid(
-                            columns: appModel.settings.density.density.iOSPosterGridColumns(
-                                horizontalSizeClass: horizontalSizeClass, isRunningOnMac: metrics.usesDesktopSizing
-                            ),
-                            spacing: 18
+                            columns: resultsGridColumns,
+                            spacing: resultsGridSpacing
                         ) {
                             ForEach(section.items) { item in
                                 PlozziOSSearchResultCard(
@@ -141,13 +220,16 @@ struct PlozziOSSearchView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, PlozziOSMediaRailLayout.artworkAlignedInset(
-                            PlozziOSPageHeaderLayout.horizontalInset, metrics: metrics, cardStyle: cardStyle
-                        ))
+                        .padding(.horizontal, resultsGridPadding)
                     }
                 }
             }
-            .padding(.vertical)
+            .padding(.top, PlozzCustomization.isCustomBuild
+                ? PlozziOSMediaRailLayout.posterGridTopPadding
+                : 16)
+            .padding(.bottom, PlozzCustomization.isCustomBuild
+                ? PlozziOSMediaRailLayout.posterGridBottomPadding
+                : 16)
         }
         .scrollDismissesKeyboard(.interactively)
         .scrollClipDisabled()
@@ -164,12 +246,12 @@ struct PlozziOSSearchView: View {
 /// Keep a local Settings entry only when native navigation does not expose it.
 private struct PlozziOSSearchHeader: View {
     private var navigationTitles = NavigationTitles()
-    @Environment(\.themePalette) private var palette
-    @Environment(\.plozzReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.hasVisibleSettingsNavigationEntry) private var hasVisibleSettingsNavigationEntry
     @Environment(\.plozziOSUsesVerticalToolbar) private var usesVerticalToolbar
     @Environment(\.plozziOSIsOverflowDestination) private var isOverflowDestination
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.plozzMetrics) private var metrics
     @Binding var query: String
     @FocusState.Binding var isFocused: Bool
     let onShowSettings: () -> Void
@@ -195,45 +277,29 @@ private struct PlozziOSSearchHeader: View {
                         .transition(.opacity)
                 }
             }
-            .padding(.horizontal, PlozziOSPageHeaderLayout.horizontalInset)
+            .padding(.horizontal, horizontalInset)
         }
         .padding(.bottom, 10)
         .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isActive)
     }
 
-    private var searchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .plozzForeground(.secondary)
-            TextField(
-                "Movies, shows, and episodes",
-                text: $query,
-                prompt: Text("Movies, shows, and episodes").foregroundColor(palette.secondaryText)
-            )
-            .focused($isFocused)
-            .textFieldStyle(.plain)
-            .foregroundStyle(palette.primaryText)
-            .autocorrectionDisabled()
-            .submitLabel(.search)
-            .accessibilityLabel("Search your libraries")
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .plozzForeground(.secondary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear search")
-            }
+    private var horizontalInset: CGFloat {
+        guard PlozzCustomization.isCustomBuild else {
+            return PlozziOSPageHeaderLayout.horizontalInset
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .background { fieldBackground }
-        .contentShape(Capsule())
-        .onTapGesture { isFocused = true }
+        return PlozziOSPosterGridStyle.pageInset(
+            horizontalSizeClass: horizontalSizeClass,
+            usesDesktopSizing: metrics.usesDesktopSizing
+        )
+    }
+
+    private var searchField: some View {
+        PlozzSearchField(
+            text: $query,
+            prompt: "Movies, shows, and episodes",
+            focus: $isFocused,
+            accessibilityLabel: "Search your libraries"
+        )
         .frame(maxWidth: .infinity)
     }
 
@@ -251,26 +317,11 @@ private struct PlozziOSSearchHeader: View {
         .plozziOSPageAction()
     }
 
-    @ViewBuilder
-    private var fieldBackground: some View {
-        let flat = Color.clear.settingsGroupSurface(in: Capsule())
-        if #available(iOS 26.0, *), !reduceTransparency {
-            // Keep both surfaces mounted; replacing the field on focus loses
-            // its first responder and can interrupt typing.
-            ZStack {
-                flat.opacity(isActive ? 0 : 1)
-                Color.clear
-                    .glassEffect(.regular, in: Capsule())
-                    .opacity(isActive ? 1 : 0)
-            }
-        } else {
-            flat
-        }
-    }
 }
 
 private struct PlozziOSSearchResultCard: View {
     @Environment(PlozziOSAppModel.self) private var appModel
+    @ScaledMetric(relativeTo: .caption2) private var cueHeight: CGFloat = 16
     let item: MediaItem
     let provider: (any MediaProvider)?
 
@@ -295,11 +346,27 @@ private struct PlozziOSSearchResultCard: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let cue = SearchSection.availabilityCue(for: item)
+        return VStack(alignment: .leading, spacing: 6) {
             PlozziOSPosterCard(
-                item: item, captionHorizontalInset: 0
+                item: item,
+                reservesSubtitleSpace: PlozzCustomization.isCustomBuild,
+                captionHorizontalInset: 0
             )
-            if let cue = SearchSection.availabilityCue(for: item) {
+            if PlozzCustomization.isCustomBuild {
+                Group {
+                    if let cue {
+                        Label(cue, systemImage: "rectangle.stack.badge.plus")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tint)
+                            .lineLimit(1)
+                    } else {
+                        Color.clear
+                            .accessibilityHidden(true)
+                    }
+                }
+                .frame(minHeight: cueHeight, alignment: .leading)
+            } else if let cue {
                 Label(cue, systemImage: "rectangle.stack.badge.plus")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tint)

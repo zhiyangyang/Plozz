@@ -90,6 +90,7 @@ private struct NowPlayingCardContent: View {
     @Environment(\.nowPlayingCardFocused) private var isFocused
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Idle: liquid glass with normal theme content colors.
     // Focused: solid contrast-flip fill, so content inverts to stay legible.
@@ -142,7 +143,7 @@ private struct NowPlayingCardContent: View {
                 if isPlaying {
                     // Flip the equalizer bars to the inverted foreground on focus
                     // so they stay legible on the solid contrast fill.
-                    NowPlayingEqualizer(isAnimating: true, tint: isFocused ? focusForeground : nil)
+                    NowPlayingEqualizer(isAnimating: !reduceMotion, tint: isFocused ? focusForeground : nil)
                         .frame(width: 22)
                 } else {
                     Image(systemName: "pause.fill")

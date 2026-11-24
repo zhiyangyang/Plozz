@@ -202,6 +202,29 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         XCTAssertTrue(host.universalWatchlistMembership(item))
     }
 
+    func testProviderBindingFallbackFindsAFavoriteWithoutCatalogueIDs() async throws {
+        let host = try await UniversalWatchlistHostDouble(providerKind: .jellyfin)
+        let full = MediaItem(
+            id: "jellyfin-item-2386",
+            title: "The Godfather",
+            kind: .movie,
+            sourceAccountID: UniversalWatchlistHostDouble.accountID
+        )
+        XCTAssertTrue(await host.performUniversalWatchlist(adding: true, item: full))
+
+        // A library list can carry the provider's own id without any IMDb/TMDb
+        // evidence. Identity resolution alone then cannot find the alias; the
+        // provider binding is the durable handle that makes the poster badge
+        // agree with the Favorites page.
+        let listCard = MediaItem(
+            id: full.id,
+            title: full.title,
+            kind: .movie,
+            sourceAccountID: full.sourceAccountID
+        )
+        XCTAssertTrue(host.universalWatchlistMembershipByProviderBinding(listCard))
+    }
+
     func testAddingLibrarySeriesPreservesItsDetailRouteBeforeNativeRefreshOrIndexWarmup() async throws {
         let host = try await UniversalWatchlistHostDouble()
         var searched = MediaItem(

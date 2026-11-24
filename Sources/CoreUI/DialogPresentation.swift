@@ -119,6 +119,38 @@ public enum PlozzSheetStyle {
     case floatingCard
 }
 
+/// The small set of presentation geometries app-owned sheets may use.
+///
+/// Use a native sheet or cover first; this only keeps the size choice consistent
+/// when a flow needs one. Full-screen covers ignore sizing.
+public enum PlozzSheetSize: Sendable {
+    case form
+    case page
+    case full
+    case detents(Set<PresentationDetent>)
+}
+
+public extension View {
+    @ViewBuilder
+    func plozzSheetSize(_ size: PlozzSheetSize) -> some View {
+        #if os(iOS)
+        switch size {
+        case .form:
+            presentationSizing(.form)
+        case .page:
+            presentationSizing(.page)
+        case .full:
+            self
+        case let .detents(detents):
+            presentationDetents(detents)
+                .presentationDragIndicator(.visible)
+        }
+        #else
+        self
+        #endif
+    }
+}
+
 public extension View {
     /// The existing sheet surface when several flows share one native presenter.
     func plozzDialogSurface(style: PlozzSheetStyle = .standard) -> some View {
@@ -156,6 +188,34 @@ public extension View {
         sheet(item: item, onDismiss: onDismiss) { item in
             PlozzDialogContent(content: content(item), style: style)
         }
+        #endif
+    }
+
+    /// A themed sheet on iOS and the caller's ordinary native sheet on tvOS.
+    ///
+    /// Used by feature screens that exist on both platforms but should not
+    /// inherit the tvOS full-screen dialog treatment.
+    @ViewBuilder
+    func plozzThemedSheet<SheetContent: View>(
+        isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> SheetContent
+    ) -> some View {
+        #if os(iOS)
+        plozzSheet(isPresented: isPresented, onDismiss: onDismiss, content: content)
+        #else
+        sheet(isPresented: isPresented, onDismiss: onDismiss, content: content)
+        #endif
+    }
+
+    @ViewBuilder
+    func plozzThemedSheet<Item: Identifiable, SheetContent: View>(
+        item: Binding<Item?>, onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> SheetContent
+    ) -> some View {
+        #if os(iOS)
+        plozzSheet(item: item, onDismiss: onDismiss, content: content)
+        #else
+        sheet(item: item, onDismiss: onDismiss, content: content)
         #endif
     }
 

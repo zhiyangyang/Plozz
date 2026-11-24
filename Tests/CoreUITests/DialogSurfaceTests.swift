@@ -1,5 +1,6 @@
 #if canImport(SwiftUI) && canImport(UIKit)
 import CoreGraphics
+import CoreModels
 @testable import CoreUI
 import SwiftUI
 import XCTest
@@ -206,6 +207,58 @@ final class DialogSurfaceTests: XCTestCase {
         let fill = pixel(pixels, x: 100, y: 44)
         XCTAssertGreaterThan(Int(border[0]), Int(fill[0]) + 10)
         XCTAssertLessThan(border[0], 35, "The dialog outline should remain subtle.")
+    }
+
+    func testFavoriteBadgeDrawsRedInTheTopTrailingCorner() throws {
+        let item = MediaItem(id: "favorite", title: "Favorite", kind: .movie)
+        let pixels = try render(
+            MediaCardPlaybackIndicators(
+                item: item,
+                hidesStatus: true,
+                showsProgressBar: false,
+                badgeInset: 8,
+                showsFavoriteBadge: true
+            )
+            .frame(width: 200, height: 160)
+            .background(Color.black)
+            .environment(\.plozzMetrics, .standard)
+        )
+        var redPixels = 0
+        for y in 0..<60 {
+            for x in 140..<200 {
+                let sample = pixel(pixels, x: x, y: y)
+                if sample[0] > 180, sample[1] < 110, sample[2] < 110 {
+                    redPixels += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(redPixels, 20, "The favorite marker should be a filled red badge at the top-right.")
+    }
+
+    func testCommunityRatingDrawsAsANumberInTheBottomTrailingCorner() throws {
+        let item = MediaItem(id: "rating", title: "Rating", kind: .movie)
+        let pixels = try render(
+            MediaCardPlaybackIndicators(
+                item: item,
+                hidesStatus: true,
+                showsProgressBar: false,
+                badgeInset: 8,
+                rating: ExternalRating(source: .community, value: 8.7, scale: .outOfTen)
+            )
+            .frame(width: 200, height: 160)
+            .background(Color.black)
+            .environment(\.plozzMetrics, .standard)
+        )
+        var brightPixels = 0
+        for y in 100..<160 {
+            for x in 140..<200 {
+                let sample = pixel(pixels, x: x, y: y)
+                if sample[0] > 180, sample[1] > 180, sample[2] > 180 {
+                    brightPixels += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(brightPixels, 20, "The community score should render as light text at the bottom-right.")
     }
 
     private func render(_ content: some View) throws -> [UInt8] {

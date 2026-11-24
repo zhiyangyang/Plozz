@@ -39,6 +39,12 @@ public struct MediaCardPlaybackIndicators: View {
     /// only inside the resume chip) because "is this downloaded?" is wanted on
     /// EVERY card, including plain browsing posters that carry no chip.
     private let downloadState: MediaDownloadBadgeState?
+    /// Shows the custom build's red favorite marker in the top-trailing badge
+    /// slot, beside any watch-state badge. Only movie cards opt in.
+    private let showsFavoriteBadge: Bool
+    /// The personal build's Emby community score, drawn as a compact number in
+    /// the bottom-trailing corner. No branded or star icon is shown.
+    private let rating: ExternalRating?
     private var rendersStatus = true
     private var rendersBottom = true
     private var rendersScrim = true
@@ -64,6 +70,8 @@ public struct MediaCardPlaybackIndicators: View {
         progressHorizontalInset: CGFloat = 0,
         progressBottomInset: CGFloat = 0,
         downloadState: MediaDownloadBadgeState? = nil,
+        showsFavoriteBadge: Bool = false,
+        rating: ExternalRating? = nil,
         artworkCornerRadius: CGFloat? = nil
     ) {
         self.init(
@@ -71,7 +79,8 @@ public struct MediaCardPlaybackIndicators: View {
             hidesStatus: hidesStatus, showsProgressBar: showsProgressBar,
             badgeInset: badgeInset, progressHeight: progressHeight,
             progressHorizontalInset: progressHorizontalInset, progressBottomInset: progressBottomInset,
-            downloadState: downloadState, artworkCornerRadius: artworkCornerRadius
+            downloadState: downloadState, showsFavoriteBadge: showsFavoriteBadge,
+            rating: rating, artworkCornerRadius: artworkCornerRadius
         )
     }
 
@@ -84,6 +93,8 @@ public struct MediaCardPlaybackIndicators: View {
         progressHorizontalInset: CGFloat,
         progressBottomInset: CGFloat,
         downloadState: MediaDownloadBadgeState? = nil,
+        showsFavoriteBadge: Bool = false,
+        rating: ExternalRating? = nil,
         artworkCornerRadius: CGFloat?
     ) {
         self.playback = playback
@@ -94,6 +105,8 @@ public struct MediaCardPlaybackIndicators: View {
         self.progressHorizontalInset = progressHorizontalInset
         self.progressBottomInset = progressBottomInset
         self.downloadState = downloadState
+        self.showsFavoriteBadge = showsFavoriteBadge
+        self.rating = rating
         self.artworkCornerRadius = artworkCornerRadius
     }
 
@@ -114,7 +127,10 @@ public struct MediaCardPlaybackIndicators: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                if rendersStatus { statusIndicator }
+                HStack(alignment: .top, spacing: 6) {
+                    if rendersStatus { statusIndicator }
+                    if showsFavoriteBadge { favoriteBadge }
+                }
             }
             .overlay(alignment: .bottom) {
                 if nativeIndicatorLayer != .foreground && rendersBottom && progressBarEnabled {
@@ -123,6 +139,9 @@ public struct MediaCardPlaybackIndicators: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 if nativeIndicatorLayer != .foreground && rendersBottom { downloadBadge }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if let rating { ratingBadge(rating) }
             }
             .allowsHitTesting(false)
     }
@@ -253,6 +272,47 @@ public struct MediaCardPlaybackIndicators: View {
 
     private var floatingBadgeInset: CGFloat {
         max(badgeInset, MediaWatchIndicatorStyle.floatingInset(for: metrics.watchedBadgeSize))
+    }
+
+    private var favoriteBadge: some View {
+        Image(systemName: "heart.fill")
+            .font(.system(size: metrics.watchedBadgeSize, weight: .bold))
+            .foregroundStyle(Self.favoriteRed)
+            .shadow(color: .black.opacity(0.45), radius: 5, y: 1)
+            .padding(floatingBadgeInset)
+            .accessibilityHidden(true)
+    }
+
+    private static let favoriteRed = Color(red: 0.94, green: 0.20, blue: 0.24)
+
+    private func ratingBadge(_ rating: ExternalRating) -> some View {
+        Text(rating.displayValue)
+            .font(.system(size: 12, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.58), in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.3), radius: 4, y: 1)
+            .padding(.trailing, progressHorizontalInset)
+            .padding(.bottom, ratingBottomInset)
+            .accessibilityHidden(true)
+    }
+
+    /// Keeps the score above the progress bar and the download badge instead of
+    /// sharing the corner with either.
+    private var ratingBottomInset: CGFloat {
+        var inset = progressHorizontalInset
+        if rendersBottom, downloadState != nil {
+            inset = max(inset, downloadBadgeBottomInset + downloadBadgeSize + 6)
+        }
+        if rendersBottom, progressBarEnabled, showsProgressBar {
+            inset = max(inset, progressBottomInset + progressHeight + 6)
+        }
+        return inset
     }
 
     /// Offline indicator, pinned to ONE fixed spot in the bottom-trailing corner.

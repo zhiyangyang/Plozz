@@ -304,33 +304,21 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertEqual(menu.value as? String, "Plozz")
     }
 
-    func testPhoneSettingsTitleScrollsIntoNavigationBar() throws {
+    func testPhoneSettingsUsesNativeLargeTitle() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
         launchNavigation(directPresentation: true)
         app.buttons["fixture-open-settings"].tap()
         let list = app.scrollViews.containing(.button, identifier: "settings-category-playback").firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 5))
-        let title = list.staticTexts["settings-expanded-title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5))
-        let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            title.frame.height > 30 && title.frame.minY >= list.frame.minY + 16
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expanded], timeout: 5), .completed, app.debugDescription)
-        let expandedHeight = title.frame.height
-        XCTAssertGreaterThan(expandedHeight, 30)
-        XCTAssertGreaterThanOrEqual(title.frame.minY, list.frame.minY + 16)
+        let navigationTitle = app.navigationBars["Settings"].staticTexts["Settings"].firstMatch
+        XCTAssertTrue(navigationTitle.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["settings-expanded-title"].exists)
         capture("settings-title-expanded")
         list.swipeUp()
-        let inlineTitle = app.navigationBars["Settings"].staticTexts["Settings"].firstMatch
-        let collapsed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            inlineTitle.exists && inlineTitle.frame.height < expandedHeight && inlineTitle.frame.height < 30
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [collapsed], timeout: 5), .completed, app.debugDescription)
+        XCTAssertTrue(navigationTitle.exists)
         capture("settings-title-collapsed")
         list.swipeDown()
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            title.isHittable && title.frame.minY >= list.frame.minY + 16
-        }, object: nil)], timeout: 5), .completed, app.debugDescription)
+        XCTAssertTrue(navigationTitle.exists)
     }
 
     func testTabletSettingsSearchStaysVisibleWhenScrolling() throws {
@@ -340,12 +328,12 @@ final class SettingsInteractionTests: XCTestCase {
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         XCTAssertTrue(field.isHittable)
-        XCTAssertFalse(app.navigationBars.staticTexts["Settings"].exists)
+        XCTAssertTrue(app.navigationBars["Settings"].exists)
         XCTAssertFalse(app.staticTexts["settings-expanded-title"].exists)
         capture("settings-sidebar-search")
         app.scrollViews.containing(.button, identifier: "settings-category-playback").firstMatch.swipeUp()
         XCTAssertTrue(field.isHittable)
-        XCTAssertFalse(app.navigationBars.staticTexts["Settings"].exists)
+        XCTAssertTrue(app.navigationBars["Settings"].exists)
     }
 
     func testSettingsSearchFindsSynonymsAndReturnsToResults() throws {

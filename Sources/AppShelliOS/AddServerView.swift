@@ -439,11 +439,11 @@ struct QuickConnectServerSignInView: View {
                 .font(.title2)
                 .foregroundStyle(.green)
         case let .error(message):
-            ContentUnavailableView {
-                Label("Quick Connect unavailable", systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(message)
-            } actions: {
+            PlozzStateView(
+                icon: "exclamationmark.triangle",
+                title: Text("Quick Connect unavailable"),
+                message: Text(message)
+            ) {
                 Button {
                     viewModel.retry()
                 } label: {
@@ -635,11 +635,11 @@ struct PlexServerSignInView: View {
                 .disabled(selectedServerIDs.isEmpty)
                 .accessibilityIdentifier("plex-servers-continue")
             case let .error(message):
-                ContentUnavailableView {
-                    Label("Unable to link Plex", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(message)
-                } actions: {
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Unable to link Plex"),
+                    message: Text(message)
+                ) {
                     Button {
                         didSeedSelection = false
                         viewModel.retry()

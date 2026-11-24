@@ -35,6 +35,34 @@ final class PlozzCustomizationTests: XCTestCase {
         }
     }
 
+    func testCustomLibraryNavigationKeepsOnlyBrowseAndExposesTopLevelEntries() {
+        XCTAssertFalse(PlozzCustomization.showsLibraryRecommendations(customBuild: true))
+        XCTAssertFalse(PlozzCustomization.showsLibraryPlaylists(customBuild: true))
+        XCTAssertFalse(PlozzCustomization.showsLibraryCollections(customBuild: true))
+        XCTAssertFalse(PlozzCustomization.showsLibraryModeTabs(customBuild: true))
+        XCTAssertTrue(PlozzCustomization.libraryStartsOnBrowse(customBuild: true))
+        XCTAssertTrue(PlozzCustomization.showsTopLevelCollections(customBuild: true))
+        XCTAssertTrue(PlozzCustomization.showsFavoritesTab(customBuild: true))
+        XCTAssertTrue(PlozzCustomization.favoritesOnlyMovies(customBuild: true))
+        XCTAssertFalse(PlozzCustomization.isSettingsSearchEntryVisible(
+            "recommended-row-layout", customBuild: true
+        ))
+        XCTAssertTrue(PlozzCustomization.isSettingsSearchEntryVisible(
+            "library-covers", customBuild: true
+        ))
+    }
+
+    func testCanonicalLibraryNavigationRetainsUpstreamModes() {
+        XCTAssertTrue(PlozzCustomization.showsLibraryRecommendations(customBuild: false))
+        XCTAssertTrue(PlozzCustomization.showsLibraryPlaylists(customBuild: false))
+        XCTAssertTrue(PlozzCustomization.showsLibraryCollections(customBuild: false))
+        XCTAssertTrue(PlozzCustomization.showsLibraryModeTabs(customBuild: false))
+        XCTAssertFalse(PlozzCustomization.libraryStartsOnBrowse(customBuild: false))
+        XCTAssertFalse(PlozzCustomization.showsTopLevelCollections(customBuild: false))
+        XCTAssertFalse(PlozzCustomization.showsFavoritesTab(customBuild: false))
+        XCTAssertFalse(PlozzCustomization.favoritesOnlyMovies(customBuild: false))
+    }
+
     func testDisableCloudFeaturesClearsEveryGate() throws {
         let suite = "PlozzCustomization.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

@@ -165,10 +165,10 @@ struct PlozziOSItemPage: View {
                 presentsEpisodeAsSubject: target.kind == .episode
             )
         } else {
-            ContentUnavailableView(
-                "Server unavailable",
-                systemImage: "exclamationmark.triangle",
-                description: Text("This title's server is no longer connected.")
+            PlozzStateView(
+                icon: "exclamationmark.triangle",
+                title: Text("Server unavailable"),
+                message: Text("This title's server is no longer connected.")
             )
         }
     }

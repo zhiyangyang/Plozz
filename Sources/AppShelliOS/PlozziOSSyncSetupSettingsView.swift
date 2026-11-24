@@ -103,7 +103,7 @@ struct PlozziOSSyncSetupSettingsView: View {
                 initialProvider: server.provider,
                 initialAddress: server.candidateBaseURLs.first?.absoluteString ?? ""
             )
-            .presentationSizing(.page)
+            .plozzSheetSize(.page)
         }
         .plozzFullScreenCover(isPresented: $showScanner, onDismiss: {
             if scannedSourceInvite != nil { showReceive = true }

@@ -1,5 +1,6 @@
 #if os(iOS)
 import CoreModels
+import CoreUI
 import FeatureHomeCore
 import SwiftUI
 
@@ -41,19 +42,15 @@ struct PlozziOSAllLibrariesDestinationView: View {
                     isCombinedLibrary: true
                 )
             } else {
-                ContentUnavailableView {
-                    Label {
-                        Text(AllLibrariesBrowse.emptyTitle)
-                    } icon: {
-                        Image(systemName: "square.stack.3d.up.slash")
-                    }
-                } description: {
-                    Text(AllLibrariesBrowse.emptyMessage)
-                }
+                PlozzStateView(
+                    icon: "square.stack.3d.up.slash",
+                    title: AllLibrariesBrowse.emptyTitle,
+                    message: AllLibrariesBrowse.emptyMessage
+                )
             }
         }
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(PlozzCustomization.isCustomBuild ? .large : .inline)
     }
 }
 #endif

@@ -53,6 +53,58 @@ also hides the hero's Starring/Director credits, external ratings, and online
 metadata/artwork/trailer enrichment. Plex and Silo currently inherit the empty
 default for the native similar endpoint.
 
+## Library navigation
+
+The custom iPad build opens every library directly on its Browse grid. The
+in-library Recommended, Playlists and Collections tabs are hidden; the upstream
+mode implementations remain compiled for the canonical app and for future
+upstream merges.
+
+**Collections** and **Favorites** default to the slots immediately after Home,
+but they are ordinary destinations in Settings → App navigation: they can be
+hidden, shown or reordered like Upcoming, Downloads and Search. Favorites stays
+visible when empty until it is explicitly hidden. A single library page does not
+repeat the library name in its navigation title; the combined All Libraries and
+Collections pages keep their titles.
+
+- **Collections** is a top-level grid of every enabled media library's
+  collections. It has no library picker; tapping a collection opens its members
+  through the existing collection route.
+- **Favorites** reuses the existing server Favorites/watchlist path but lists
+  movies only. The filter menu is hidden and the entry stays visible by default
+  when empty; hiding it in Settings is still respected.
+
+The Favorites page, the combined All Libraries grid, and the Collections pages
+use the system large title; a single library's grid hides the redundant library
+name and keeps an inline bar with Back, sort and Settings. Favorites offers Name
+and Release Date only, defaults to Name, and applies a sort change immediately.
+Emby/Jellyfin Favorites do not expose a favorite-added timestamp, so Date Added
+would only repeat provider order and is not offered.
+
+Every full-page poster wall (Collection catalog/members, Favorites, libraries,
+Search, Home/Related See All, and the studio/tag catalog) shares one rhythm:
+the Appearance card-size setting controls the column count (Compact = 8,
+Standard = 6, and so on), with a visible artwork edge aligned to the 36pt page
+inset. The card gutter uses the same `stackSpacing` calculation as the Home
+horizontal rails, so a grid card sits the same distance from its neighbour as
+a Home rail card. Cards reserve subtitle space so rows with and without a
+subtitle keep the same height.
+
+Because the personal build compiles no tracker integrations, the tracker set is
+treated as scoped even though there is nothing to re-point. Without that, the
+unified watchlist defers its first read forever and Emby/Jellyfin Favorites never
+reach the Favorites page. Tracker destinations are excluded explicitly, so a
+credential left by another build cannot contribute a tracker list.
+
+Movie detail pages present the same server favorite as a heart: the hero action
+toggles it. Favorited movies wear a bare red heart in the top-right corner of
+their library poster card; the detail page no longer overlays a second heart on
+the logo. Movie poster cards also show Emby's own CommunityRating as a compact
+number in the bottom-right corner, with no star or third-party rating source.
+
+These behaviors are keyed to `PlozzCustomization.isCustomBuild`; the canonical
+app, package tests and previews keep the upstream library modes and tab order.
+
 ## Custom seams
 
 Keep changes confined to these files when possible:
@@ -62,6 +114,15 @@ Keep changes confined to these files when possible:
 - `Sources/CoreModels/SyncSetup.swift` — `disableCloudFeatures()`
 - `Sources/CoreModels/SettingsSearch.swift` — hide disabled settings pages
 - `Sources/CoreModels/NavigationRailPlan.swift` — remove Discover from iPad catalogue
+- `Sources/FeatureHomeCore/LibraryBrowseViewModel.swift` — Browse-only custom library modes
+- `Sources/FeatureHomeCore/AllLibrariesProvider.swift` — aggregate all collection-capable libraries
+- `Sources/AppShelliOS/PlozziOSCollectionsDestinationView.swift` — top-level Collections grid
+- `Sources/AppShelliOS/PlozziOSRootView.swift` — fixed top navigation and movie-only Favorites
+- `Sources/AppShelliOS/PlozziOSAppModel.swift` / `PlozziOSAppModel+UniversalWatchlist.swift` — tracker scoping and server-favorites-only watchlist reads
+- `Sources/AppShelliOS/PlozziOSHeroViews.swift` — movie favorite heart action
+- `Sources/AppShelliOS/PlozziOSLibraryView.swift` / `PlozziOSPosterCard.swift` — red poster favorite badge
+- `Sources/FeatureSettings/LibraryPresentationSettingsView.swift` — hide removed library-tab settings
+- `Sources/FeatureSettings/ArtworkSettingsControls.swift` / `CardAppearanceControls.swift` / `CardCaptionCustomizationContent.swift` — hide artwork/caption categories for removed library pages
 - `Sources/CoreUI/DetailInformationSections.swift` — omit the requested detail blocks
 - `Sources/CoreModels/MovieCatalogTerm.swift` — studio/tag term and matching
 - `Sources/FeatureHomeCore/MovieCatalogViewModel.swift` — current-library studio/tag paging

@@ -938,7 +938,7 @@ public struct JellyfinClient: Sendable {
         startIndex: Int,
         limit: Int,
         sort: CoreModels.SortDescriptor,
-        fields: String = "PrimaryImageAspectRatio,ProviderIds,Genres,Studios,Tags",
+        fields: String = "PrimaryImageAspectRatio,ProviderIds,Genres,Studios,Tags,CommunityRating",
         filters: LibraryFilters = .all,
         useServerCollections: Bool = false,
         term: MovieCatalogTerm? = nil

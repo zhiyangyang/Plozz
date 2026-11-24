@@ -58,8 +58,7 @@ struct PlozziOSSeasonRequestSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .plozzSheetSize(.detents([.large]))
     }
 }
 

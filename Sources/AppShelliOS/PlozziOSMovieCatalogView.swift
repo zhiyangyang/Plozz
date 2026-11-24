@@ -11,7 +11,10 @@ import SwiftUI
 struct PlozziOSMovieCatalogView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.themePalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model: MovieCatalogViewModel
     @State private var navigatedItem: MediaItem?
 
@@ -40,19 +43,31 @@ struct PlozziOSMovieCatalogView: View {
                         loading
                     case .failed(let error):
                         failure(error)
+                            .transition(.opacity)
                     case .loaded:
-                        ContentUnavailableView(
-                            "No titles to show",
-                            systemImage: "film"
+                        PlozzStateView(
+                            icon: "film",
+                            title: Text("No titles to show")
                         )
+                        .transition(.opacity)
                     }
                 } else {
-                    grid
-                    footer
+                    Group {
+                        grid
+                        footer
+                    }
+                    .transition(.opacity)
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, PlozzCustomization.isCustomBuild
+                ? PlozziOSMediaRailLayout.posterGridTopPadding
+                : 8)
             .padding(.bottom, 24)
+            .animation(
+                reduceMotion || !PlozzCustomization.isCustomBuild
+                    ? nil : PageMotion.contentReveal,
+                value: model.items.isEmpty
+            )
         }
         .background(AppBackground(palette: palette))
         .navigationTitle("")
@@ -71,25 +86,45 @@ struct PlozziOSMovieCatalogView: View {
     }
 
     private var loading: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ProgressView("Loading…")
-            if model.totalCount > 0 {
-                Text("\(model.scannedCount) / \(model.totalCount)")
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(palette.secondaryText)
+        Group {
+            if PlozzCustomization.isCustomBuild {
+                VStack(alignment: .leading, spacing: 10) {
+                    PlozzPosterGridSkeleton(
+                        columns: gridColumns,
+                        spacing: gridSpacing,
+                        horizontalPadding: gridHorizontalPadding
+                    )
+                    if model.totalCount > 0 {
+                        Text("\(model.scannedCount) / \(model.totalCount)")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(palette.secondaryText)
+                            .padding(.horizontal, pageInset)
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ProgressView("Loading…")
+                    if model.totalCount > 0 {
+                        Text("\(model.scannedCount) / \(model.totalCount)")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(palette.secondaryText)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 220)
+                .padding(.horizontal, pageInset)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 220)
-        .padding(.horizontal, pageInset)
+        .transition(.opacity)
     }
 
     private func failure(_ error: AppError) -> some View {
-        ContentUnavailableView {
-            Label("Unable to load details", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text(error.userMessage)
-        } actions: {
+        PlozzStateView(
+            icon: "exclamationmark.triangle",
+            title: Text("Unable to load details"),
+            message: Text(error.userMessage)
+        ) {
             Button("Retry") { Task { await model.loadFirstPage() } }
+                .plozzActionButton()
         }
         .frame(maxWidth: .infinity, minHeight: 260)
     }
@@ -97,21 +132,18 @@ struct PlozziOSMovieCatalogView: View {
     private var grid: some View {
         VStack(alignment: .leading, spacing: 14) {
             LazyVGrid(
-                columns: [GridItem(
-                    .adaptive(
-                        minimum: metrics.posterWidth,
-                        maximum: metrics.posterWidth * 1.18
-                    ),
-                    spacing: metrics.gridSpacing
-                )],
+                columns: gridColumns,
                 alignment: .leading,
-                spacing: 18
+                spacing: gridSpacing
             ) {
                 ForEach(model.items, id: \.stablePresentationID) { item in
                     Button {
                         navigatedItem = item
                     } label: {
-                        PlozziOSPosterCard(item: item)
+                        PlozziOSPosterCard(
+                            item: item,
+                            reservesSubtitleSpace: PlozzCustomization.isCustomBuild
+                        )
                     }
                     .buttonStyle(.plain)
                     .onAppear {
@@ -119,8 +151,41 @@ struct PlozziOSMovieCatalogView: View {
                     }
                 }
             }
-            .padding(.horizontal, pageInset)
+            .padding(.horizontal, gridHorizontalPadding)
         }
+    }
+
+    private var gridColumns: [GridItem] {
+        if PlozzCustomization.isCustomBuild {
+            return PlozziOSPosterGridStyle.columns(
+                density: appModel.settings.density.density,
+                horizontalSizeClass: horizontalSizeClass,
+                dynamicTypeSize: dynamicTypeSize,
+                isRunningOnMac: metrics.usesDesktopSizing,
+                spacing: gridSpacing
+            )
+        }
+        return [GridItem(
+            .adaptive(
+                minimum: metrics.posterWidth,
+                maximum: metrics.posterWidth * 1.18
+            ),
+            spacing: metrics.gridSpacing
+        )]
+    }
+
+    private var gridSpacing: CGFloat {
+        PlozziOSPosterGridStyle.spacing(metrics: metrics, cardStyle: cardStyle)
+    }
+
+    private var gridHorizontalPadding: CGFloat {
+        guard PlozzCustomization.isCustomBuild else { return pageInset }
+        return PlozziOSPosterGridStyle.gridPadding(
+            horizontalSizeClass: horizontalSizeClass,
+            usesDesktopSizing: metrics.usesDesktopSizing,
+            metrics: metrics,
+            cardStyle: cardStyle
+        )
     }
 
     @ViewBuilder

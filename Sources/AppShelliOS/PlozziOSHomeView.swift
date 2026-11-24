@@ -156,6 +156,8 @@ struct PlozziOSHomeView: View {
     @Environment(\.plozziOSHomeIsFrontmost) private var homeIsFrontmost
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
+    @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
     @Environment(\.locale) private var locale
     @Environment(HeroTrailerController.self) private var trailerController
     private let viewModel: HomeViewModel
@@ -371,17 +373,15 @@ struct PlozziOSHomeView: View {
                     hasAccounts: true, onAddSource: onAddServer, isOfflineMode: appModel.isOfflineMode
                 )
             case let .failed(error):
-                ContentUnavailableView {
-                    Label(
-                        "Unable to load Home",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                } description: {
-                    Text(error.userMessage)
-                } actions: {
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Unable to load Home"),
+                    message: Text(error.userMessage)
+                ) {
                     Button("Try Again") {
                         Task { await viewModel.load() }
                     }
+                    .plozzActionButton()
                 }
             }
         }
@@ -438,16 +438,26 @@ struct PlozziOSHomeView: View {
             .id(ObjectIdentifier(appModel.settings.homeVisibility))
         }
         // Capturing the whole Home view here loops navigation updates on iOS 18.
-        .navigationDestination(item: $rowBrowser) { [appModel, horizontalSizeClass, dynamicTypeSize, isRunningOnMac] browser in
+        .navigationDestination(item: $rowBrowser) {
+            [appModel, horizontalSizeClass, dynamicTypeSize, isRunningOnMac, metrics, cardStyle] browser in
+            let spacing = PlozziOSPosterGridStyle.spacing(metrics: metrics, cardStyle: cardStyle)
             HomeRowBrowseView(
                 model: browser,
                 columns: browser.style == .landscape
-                    ? appModel.settings.density.density.iOSLandscapeGridColumns(
-                        horizontalSizeClass: horizontalSizeClass, isRunningOnMac: isRunningOnMac
+                    ? PlozziOSPosterGridStyle.landscapeColumns(
+                        density: appModel.settings.density.density,
+                        horizontalSizeClass: horizontalSizeClass,
+                        isRunningOnMac: isRunningOnMac,
+                        spacing: spacing
                     )
-                    : appModel.settings.density.density.iOSPosterGridColumns(
-                        horizontalSizeClass: horizontalSizeClass, isRunningOnMac: isRunningOnMac
-                    )
+                    : PlozziOSPosterGridStyle.columns(
+                        density: appModel.settings.density.density,
+                        horizontalSizeClass: horizontalSizeClass,
+                        dynamicTypeSize: dynamicTypeSize,
+                        isRunningOnMac: isRunningOnMac,
+                        spacing: spacing
+                    ),
+                skeletonStyle: browser.style == .landscape ? .landscape : .poster
             ) { item in
                 PlozziOSHomeMediaCard(
                     item: item, isLandscape: browser.style == .landscape,
@@ -657,9 +667,9 @@ struct PlozziOSHomeView: View {
             if let provider = appModel.provider(for: request.item) {
                 PlozziOSPlayerView(request: request, provider: provider, orientation: orientation)
             } else {
-                ContentUnavailableView(
-                    "Server unavailable",
-                    systemImage: "server.rack"
+                PlozzStateView(
+                    icon: "server.rack",
+                    title: Text("Server unavailable")
                 )
                 .onAppear { trailerController.suspendForPlayback(owner: request.id) }
                 .onDisappear { trailerController.resumeAfterPlayback(owner: request.id) }
@@ -1795,6 +1805,7 @@ struct PlozziOSHomeHeroCarousel: View {
     @Environment(\.plozziOSHeroContainerHeight) private var heroContainerHeight
     @Environment(\.plozziOSIsRunningOnMac) private var isRunningOnMac
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(HeroTrailerController.self) private var trailerController
     @State private var selectedItemID: String?
     /// Identity of the title currently on screen, used to stay on it when a
@@ -2142,11 +2153,11 @@ struct PlozziOSHomeHeroCarousel: View {
         .task(
             id: PlozziOSHeroTimerID(
                 itemIDs: items.map(\.id),
-                autoAdvance: autoAdvance && isActive,
+                autoAdvance: autoAdvance && isActive && !reduceMotion,
                 seconds: autoAdvanceSeconds
             )
         ) {
-            guard autoAdvance, isActive, items.count > 1 else { return }
+            guard autoAdvance, isActive, !reduceMotion, items.count > 1 else { return }
             var countdownItemID = selectedItemID
             while !Task.isCancelled {
                 do {
@@ -2193,6 +2204,10 @@ struct PlozziOSHomeHeroCarousel: View {
         }
         .onChange(of: autoAdvance) { _, enabled in
             if !enabled { pointerActivity.reset() }
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            pointerActivity.reset()
+            installTrailerEndHandler()
         }
         // Both slides a committed swipe involves are on screen at once, so both
         // are off-limits to a curation folding new media in.
@@ -2509,7 +2524,7 @@ struct PlozziOSHomeHeroCarousel: View {
     private var endHandlerOwnerID: String { "ios-home-carousel" }
 
     private func installTrailerEndHandler() {
-        guard autoAdvance, isActive, items.count > 1 else {
+        guard autoAdvance, isActive, !reduceMotion, items.count > 1 else {
             trailerController.clearEndHandler(ownerID: endHandlerOwnerID)
             return
         }
@@ -2543,7 +2558,7 @@ struct PlozziOSHomeHeroCarousel: View {
         let directionMatches = target.flatMap(isForwardTarget).map { $0 == forward } ?? false
         guard abs(translation.width) > abs(translation.height) * 1.2,
               shouldCommit, let target, directionMatches else {
-            withAnimation(.easeOut(duration: 0.2)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
                 dragOffset = 0
             }
             dragTargetID = nil
@@ -2596,7 +2611,7 @@ struct PlozziOSHomeHeroCarousel: View {
         // which raced the animation and produced a snap when it fired a hair
         // early/late). At completion the incoming image is exactly at rest, so the
         // hard swap to the idle backdrop is seamless — one fluid motion.
-        withAnimation(animation) {
+        withAnimation(reduceMotion ? nil : animation) {
             dragOffset = forward ? -distance : distance
         } completion: {
             var transaction = Transaction()
@@ -2617,7 +2632,7 @@ struct PlozziOSHomeHeroCarousel: View {
                 // moment at the very end of the transition.
                 + "nowResident=\(backdropIsResident(target))"
             )
-            withAnimation(.easeInOut(duration: 0.24)) {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
                 foregroundVisible = true
             }
         }
@@ -3157,7 +3172,7 @@ struct PlozziOSHomeRowSettingsDestination: View {
             .environment(appModel.settings.libraryPresentation)
             .environment(\.homeRowEditAction, nil)
         } else {
-            ContentUnavailableView("Setting unavailable", systemImage: "magnifyingglass")
+            PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
         }
     }
 }
@@ -3930,10 +3945,10 @@ private struct PlozziOSHomeCardDetail: View {
                 appModel: appModel, provider: provider, item: target, seerService: appModel.seerService
             )
         } else {
-            ContentUnavailableView(
-                "Server unavailable",
-                systemImage: "exclamationmark.triangle",
-                description: Text("This title's server is no longer connected.")
+            PlozzStateView(
+                icon: "exclamationmark.triangle",
+                title: Text("Server unavailable"),
+                message: Text("This title's server is no longer connected.")
             )
         }
     }

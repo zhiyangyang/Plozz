@@ -19,6 +19,7 @@ import CoreUI
 /// taps drive everything.
 @available(tvOS, unavailable, message: "tvOS drives this from PlayerControls, which owns the focus choreography")
 public struct PlayerTouchCardStrip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let model: PlayerControlsModel
     private let player: PlayerViewModel?
     private let onRestart: () -> Void
@@ -52,6 +53,9 @@ public struct PlayerTouchCardStrip: View {
     /// The curve the card opens and closes on, and therefore the curve the tab
     /// row travels on.
     private static let cardCurve: Animation = .easeInOut(duration: 0.24)
+    private var resolvedCardCurve: Animation {
+        reduceMotion ? .easeInOut(duration: 0.16) : Self.cardCurve
+    }
 
     private var metrics: PlayerCardMetrics {
         .resolved(forWidth: availableSize.width, height: availableSize.height)
@@ -147,12 +151,12 @@ public struct PlayerTouchCardStrip: View {
             // Dismissed from outside — a tap on the video. Same curve as opening,
             // and the same reason for the global transaction.
             if !open, openPanel != nil {
-                withAnimation(Self.cardCurve) { openPanel = nil }
+                withAnimation(resolvedCardCurve) { openPanel = nil }
             }
         }
         .onChange(of: visibleTabs) { _, tabs in
             if let panel = openPanel, !tabs.contains(panel) {
-                withAnimation(Self.cardCurve) { openPanel = nil }
+                withAnimation(resolvedCardCurve) { openPanel = nil }
             }
         }
     }
@@ -180,7 +184,7 @@ public struct PlayerTouchCardStrip: View {
         Button {
             // Tapping the open tab closes it, so the same control both opens and
             // dismisses — there is no Menu button to fall back on here.
-            withAnimation(Self.cardCurve) {
+            withAnimation(resolvedCardCurve) {
                 openPanel = (openPanel == category) ? nil : category
             }
         } label: {
@@ -206,7 +210,7 @@ public struct PlayerTouchCardStrip: View {
                 if let player {
                     PlayerChapterPanel(model: model, spoilerSettings: player.spoilerSettings, focus: $focus) {
                         player.seekToChapter($0)
-                        withAnimation(Self.cardCurve) { openPanel = nil }
+                        withAnimation(resolvedCardCurve) { openPanel = nil }
                     }
                 }
             case .cast:

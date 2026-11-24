@@ -23,13 +23,18 @@ public struct WatchlistBrowseControls: View {
 
 public struct WatchlistSortMenu: View {
     @Binding private var sort: CoreModels.SortDescriptor
+    private let fields: [SortField]
 
-    public init(sort: Binding<CoreModels.SortDescriptor>) {
+    public init(
+        sort: Binding<CoreModels.SortDescriptor>,
+        fields: [SortField] = WatchlistBrowsePreferences.sortFields
+    ) {
         _sort = sort
+        self.fields = fields
     }
 
     public var body: some View {
-        BrowseSortMenu(sort: sort, fields: WatchlistBrowsePreferences.sortFields) {
+        BrowseSortMenu(sort: sort, fields: fields) {
             sort = $0
         }
         .accessibilityIdentifier("watchlist-sort-menu")

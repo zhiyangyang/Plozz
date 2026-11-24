@@ -92,7 +92,7 @@ public struct ProfileSeerrSetupView: View {
             .scrollClipDisabled()
         }
         .background { AppBackground(palette: palette) }
-        .sheet(item: $reviewing) { connection in
+        .plozzThemedSheet(item: $reviewing) { connection in
             SeerConnectionDetail(seer: seer, connectionID: connection.id)
         }
         .onChange(of: seer.activeProfileID) { reviewing = nil; changingAccount = false }

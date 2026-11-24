@@ -475,7 +475,14 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
             // second press within the display window (which resets the timer) made
             // one visible. Acknowledging the press before the storm is also simply
             // what the viewer expects: the confirmation belongs to the tap.
-            let feedback = Self.universalWatchlistFeedback(adding: adding)
+            let favoritesPresentation = Self.presentsAsFavorites(item)
+            let feedback = Self.universalWatchlistFeedback(
+                adding: adding,
+                favoritesPresentation: favoritesPresentation
+            )
+            let failureFeedback = Self.universalWatchlistFailureFeedback(
+                favoritesPresentation: favoritesPresentation
+            )
             presentFeedback(feedback.icon, feedback.text)
 
             // Record the intent BEFORE any await, and tell the world at once, so
@@ -515,11 +522,7 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
                         self.watchlistIntents[key] = nil
                         presentFeedback(
                             "exclamationmark.triangle.fill",
-                            LocalizedStringResource(
-                                "watchlist.feedback.failed",
-                                defaultValue: "Couldn't update Watchlist",
-                                comment: "Transient message shown when saving a title to, or removing it from, the Watchlist did not succeed."
-                            )
+                            failureFeedback
                         )
                         self.watchlistFailureFeedback.removeValue(forKey: key)?()
                         return
@@ -607,9 +610,21 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
         }
     }
 
-    private static func universalWatchlistFeedback(
-        adding: Bool
+    /// The personal build presents a movie's server favorite as a heart; the
+    /// canonical app keeps the Watchlist bookmark.
+    static func presentsAsFavorites(_ item: MediaItem) -> Bool {
+        PlozzCustomization.isCustomBuild && item.kind == .movie
+    }
+
+    static func universalWatchlistFeedback(
+        adding: Bool,
+        favoritesPresentation: Bool
     ) -> (icon: String, text: LocalizedStringResource) {
+        if favoritesPresentation {
+            return adding
+                ? ("heart.fill", LocalizedStringResource("Add to Favorites"))
+                : ("heart.slash", LocalizedStringResource("Remove from Favorites"))
+        }
         if adding {
             return (
                 "bookmark.fill",
@@ -628,6 +643,19 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
                 comment: "Transient confirmation after a title is removed locally from the user's Watchlist."
             )
         )
+    }
+
+    static func universalWatchlistFailureFeedback(
+        favoritesPresentation: Bool
+    ) -> LocalizedStringResource {
+        guard favoritesPresentation else {
+            return LocalizedStringResource(
+                "watchlist.feedback.failed",
+                defaultValue: "Couldn't update Watchlist",
+                comment: "Transient message shown when saving a title to, or removing it from, the Watchlist did not succeed."
+            )
+        }
+        return LocalizedStringResource("Couldn't save your rating or favorite. Try again.")
     }
 
     /// Every distinct copy of this title paired with the item retargeted to that

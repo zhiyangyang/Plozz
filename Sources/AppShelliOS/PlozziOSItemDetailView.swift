@@ -409,23 +409,30 @@ private struct PlozziOSCanonicalItemDetailView: View {
         Group {
             switch viewModel.state {
             case .idle, .loading:
-                ProgressView("Loading details…")
+                PlozziOSDetailLoadingSkeleton(
+                    style: horizontalSizeClass == .compact ? .compactPortrait : .landscape,
+                    dynamicTypeSize: dynamicTypeSize,
+                    pageInset: PlozziOSPageLayout.horizontalInset(
+                        for: horizontalSizeClass, usesDesktopSizing: metrics.usesDesktopSizing
+                    )
+                )
             case .empty:
-                ContentUnavailableView(
-                    "Details unavailable",
-                    systemImage: "film.stack"
+                PlozzStateView(
+                    icon: "film.stack",
+                    title: "Details unavailable"
                 )
             case let .loaded(detail):
                 detailContent(detail)
             case let .failed(error):
-                ContentUnavailableView {
-                    Label("Unable to load details", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error.userMessage)
-                } actions: {
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Unable to load details"),
+                    message: Text(error.userMessage)
+                ) {
                     Button("Try Again") {
                         Task { await viewModel.reload() }
                     }
+                    .plozzActionButton()
                 }
 
             }
@@ -523,8 +530,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
                         onDownloadSeason: downloadSeason,
                         onDownloadEpisode: downloadEpisode
                     )
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .plozzSheetSize(.detents([.large]))
                     .modifier(requestPresentation(inDownloadSheet: true))
                 }
             }
@@ -600,10 +606,10 @@ private struct PlozziOSCanonicalItemDetailView: View {
             if let playbackProvider = appModel.provider(for: request.item) {
                 PlozziOSPlayerView(request: request, provider: playbackProvider, orientation: orientation)
             } else {
-                ContentUnavailableView(
-                    "Server unavailable",
-                    systemImage: "server.rack",
-                    description: Text("Reconnect the selected server and try again.")
+                PlozzStateView(
+                    icon: "server.rack",
+                    title: Text("Server unavailable"),
+                    message: Text("Reconnect the selected server and try again.")
                 )
                 .onAppear { trailerController.suspendForPlayback(owner: request.id) }
                 .onDisappear { trailerController.resumeAfterPlayback(owner: request.id) }
@@ -2306,10 +2312,10 @@ private struct PlozziOSSeriesDownloadPicker: View {
                 }
 
                 if !presentation.isVisible {
-                    ContentUnavailableView(
-                        "No Downloads Available",
-                        systemImage: "arrow.down.circle",
-                        description: Text("Connect Seerr to request missing seasons, or add episodes to your library.")
+                    PlozzStateView(
+                        icon: "arrow.down.circle",
+                        title: Text("No Downloads Available"),
+                        message: Text("Connect Seerr to request missing seasons, or add episodes to your library.")
                     )
                 }
 
@@ -2900,19 +2906,21 @@ private struct PlozziOSSeasonDownloadPicker: View {
     var body: some View {
         Group {
             if !selectionIsAvailable {
-                ContentUnavailableView(
-                    "Season Changed", systemImage: "arrow.clockwise",
-                    description: Text("Go back and select a current season version.")
+                PlozzStateView(
+                    icon: "arrow.clockwise",
+                    title: Text("Season Changed"),
+                    message: Text("Go back and select a current season version.")
                 )
             } else if libraryLoadFailed {
-                ContentUnavailableView {
-                    Label("Couldn’t Load Episodes", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text("Check the server and try again.")
-                } actions: {
+                PlozzStateView(
+                    icon: "exclamationmark.triangle",
+                    title: Text("Couldn’t Load Episodes"),
+                    message: Text("Check the server and try again.")
+                ) {
                     Button("Try Again") {
                         Task { await loadLibrary(forceRefresh: true) }
                     }
+                    .plozzActionButton()
                 }
             } else if !hasLoadedLibrary {
                 ProgressView("Loading Episodes")
@@ -3896,9 +3904,9 @@ struct PlozziOSInlineEpisodeRail: View {
 
     @ViewBuilder private var railContent: some View {
         if let episodes, episodes.isEmpty {
-            ContentUnavailableView(
-                "No episodes",
-                systemImage: "play.rectangle"
+            PlozzStateView(
+                icon: "play.rectangle",
+                title: Text("No episodes")
             )
             .frame(minHeight: 180)
         } else if let episodes {
@@ -4450,6 +4458,96 @@ struct PlozziOSCastSection: View {
 
 }
 
+
+/// The detail page's first-paint skeleton. It reserves the real hero height and
+/// the opening episode rail's geometry, so the live page replaces shapes in
+/// place rather than pushing the page down when its first request returns.
+private struct PlozziOSDetailLoadingSkeleton: View {
+    @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
+    @Environment(\.themePalette) private var palette
+
+    let style: HeroArtworkStyle
+    let dynamicTypeSize: DynamicTypeSize
+    let pageInset: CGFloat
+
+    var body: some View {
+        let heroHeight = PlozziOSHeroMetrics.height(
+            style: style,
+            surfaceRole: .detail,
+            dynamicTypeSize: dynamicTypeSize
+        )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                hero(height: heroHeight)
+
+                HStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(palette.fill)
+                        .frame(width: 180, height: 24)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, pageInset)
+                .padding(.top, 28)
+
+                ScrollView(.horizontal) {
+                    HStack(
+                        alignment: .top,
+                        spacing: PlozziOSMediaRailLayout.stackSpacing(
+                            metrics: metrics, cardStyle: cardStyle
+                        )
+                    ) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            SkeletonCardView(style: .landscape)
+                                .frame(width: metrics.landscapeCardSlotWidth)
+                        }
+                    }
+                }
+                .contentMargins(.horizontal, pageInset, for: .scrollContent)
+                .scrollDisabled(true)
+                .scrollIndicators(.hidden)
+                .padding(.top, 12)
+                .padding(.bottom, 32)
+            }
+        }
+        .scrollIndicators(.hidden)
+        .background(palette.backgroundBase.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .top)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Loading details"))
+    }
+
+    private func hero(height: CGFloat) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            Rectangle()
+                .fill(palette.fillSubtle)
+            VStack(alignment: .leading, spacing: 14) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(palette.fill)
+                    .frame(width: 230, height: 48)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(palette.fill)
+                    .frame(width: 170, height: 18)
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(palette.fill)
+                        .frame(width: 160, height: 50)
+                    RoundedRectangle(cornerRadius: 25, style: .continuous)
+                        .fill(palette.fill)
+                        .frame(width: 50, height: 50)
+                    RoundedRectangle(cornerRadius: 25, style: .continuous)
+                        .fill(palette.fill)
+                        .frame(width: 50, height: 50)
+                }
+            }
+            .padding(.horizontal, pageInset)
+            .padding(.bottom, 36)
+        }
+        .frame(height: height)
+        .clipped()
+        .shimmering()
+    }
+}
 
 /// Detail pages paint their own hero scrim. The native scroll-edge backdrop
 /// appeared a beat after the page and read as a dim popping in over the status

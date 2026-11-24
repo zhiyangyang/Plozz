@@ -57,7 +57,7 @@ struct PlozziOSSettingsView: View {
                         onSwitchTo: onSwitchTo
                     )
                     .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Close", systemImage: "xmark", action: onClose)
                                 .labelStyle(.iconOnly)
                         }
@@ -78,11 +78,11 @@ struct PlozziOSSettingsView: View {
                 },
                 onChanged: { appModel.accountsProviders.reloadAccounts(updatingServerAddressesFor: account.id) }
             )
-            .presentationSizing(.page)
+            .plozzSheetSize(.page)
         }
         .plozzSheet(item: $providerSetupRouter.reauthenticationAccount) { account in
             PlozziOSAccountReauthenticationView(appModel: appModel, account: account)
-                .presentationSizing(.page)
+                .plozzSheetSize(.page)
         }
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in
             providerSetupRouter.addressAccount = nil
@@ -127,7 +127,7 @@ struct PlozziOSSettingsView: View {
                 initialIPTVPlaylist: iptvSetup?.playlist, initialIPTVAccount: iptvSetup?.account,
                 initialIPTVMode: iptvSetup?.mode ?? .playlist
             )
-                .presentationSizing(.page)
+                .plozzSheetSize(.page)
         }
         .plozzSheet(item: plexUserSelectionBinding) { selection in
             PlozziOSPlexUserSelectionView(
@@ -245,6 +245,7 @@ struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>
     let showsParentalControls: Bool
     let isKidsProfile: Bool
     let appLanguage: AppLanguageSettingsModel
+    var isSelected: (ProfileSettingsCategory) -> Bool = { _ in false }
     @ViewBuilder let header: () -> Header
     @ViewBuilder let row: (ProfileSettingsCategory) -> Row
     @ViewBuilder let management: () -> Management
@@ -261,12 +262,17 @@ struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>
                 if category == .language {
                     PlozziOSSettingsLanguagePicker(appLanguage: appLanguage)
                         .settingsActionRow()
+                        .plozziOSSidebarSelection(isSelected(category))
                         .settingsSearchAnchor("language")
                 } else if category == .libraries {
-                    if !showsParentalControls { row(category) }
+                    if !showsParentalControls {
+                        row(category)
+                            .plozziOSSidebarSelection(isSelected(category))
+                    }
                     management()
                 } else {
                     row(category)
+                        .plozziOSSidebarSelection(isSelected(category))
                 }
             }
         }
@@ -440,8 +446,35 @@ var deviceName: String {
 /// Heading for settings shared by every profile, independent of iCloud Sync.
 private var deviceSettingsTitle: LocalizedStringResource { SettingsCopy.everyone }
 
+/// The iPad sidebar's current destination. The sidebar is intentionally built
+/// from grouped settings rows rather than a plain `List`, so selection is drawn
+/// as a restrained rounded wash inside the row.
+private struct PlozziOSSidebarSelection: ViewModifier {
+    @Environment(\.themePalette) private var palette
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: PlozzTheme.Metrics.Radius.control, style: .continuous)
+                        .fill(palette.selection.opacity(palette.isLight ? 0.10 : 0.16))
+                        .padding(.horizontal, 4)
+                }
+            }
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+private extension View {
+    func plozziOSSidebarSelection(_ isSelected: Bool) -> some View {
+        modifier(PlozziOSSidebarSelection(isSelected: isSelected))
+    }
+}
+
 private struct PlozziOSSettingsSplitView: View {
     @Environment(\.themePalette) private var palette
+    private var navigationTitles = NavigationTitles()
     let appModel: PlozziOSAppModel
     let onAddServer: () -> Void
     var onAddUser: (MediaServer) -> Void = { _ in }
@@ -455,7 +488,7 @@ private struct PlozziOSSettingsSplitView: View {
     /// relaunch. So the row hands the id up and the shell applies it in the
     /// sheet's `onDismiss`.
     var onSwitchTo: (String) -> Void = { _ in }
-    @State private var selection: PlozziOSSettingsDestination?
+    @State private var selection: PlozziOSSettingsDestination? = .profile(.playback)
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     /// Whether this profile shows a separate parent-controlled group. Only a
@@ -501,7 +534,8 @@ private struct PlozziOSSettingsSplitView: View {
                     PlozziOSProfileSettingsSection(
                         showsParentalControls: showsParentalControlsSection,
                         isKidsProfile: appModel.profiles.activeProfile.isKids,
-                        appLanguage: appModel.appLanguage
+                        appLanguage: appModel.appLanguage,
+                        isSelected: { selection == .profile($0) }
                     ) {
                         PlozziOSProfileIdentityHeader(
                             profile: appModel.profiles.activeProfile,
@@ -581,6 +615,7 @@ private struct PlozziOSSettingsSplitView: View {
                                     .contentShape(Rectangle())
                             }
                             .settingsActionRow()
+                            .plozziOSSidebarSelection(selection == .profiles)
                             // Household-level, so it sits here rather than on a
                             // profile — one PIN for everyone, not a property of
                             // any one person. Matches tvOS.
@@ -642,12 +677,15 @@ private struct PlozziOSSettingsSplitView: View {
                     }
                 }
             }
-            .navigationTitle(Text(verbatim: ""))
+            .navigationTitle(navigationTitles(
+                NavigationLibraryLayout.settingsKey,
+                default: Text("Settings")
+            ))
             .modifier(PlozziOSSettingsSearch(
                 appModel: appModel, isShowingDestination: selection?.isSearchResult == true
             ) { selection = .search($0.id) })
-            .toolbar(removing: .sidebarToggle)
-            .settingsPageSurface(titleDisplayMode: .inline, horizontalInset: 16)
+            .settingsPageSurface(titleDisplayMode: .large, horizontalInset: 16)
+            .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
         } detail: {
             NavigationStack {
                 ZStack {
@@ -660,9 +698,8 @@ private struct PlozziOSSettingsSplitView: View {
                     SettingsCategoryNavigationReset(identity: detailIdentity)
                 }
             }
-            .toolbar(removing: .sidebarToggle)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Close", systemImage: "xmark", action: onClose)
                         .labelStyle(.iconOnly)
                 }
@@ -674,7 +711,7 @@ private struct PlozziOSSettingsSplitView: View {
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in
             isParentalUnlocked = false
             parentalUnlockTarget = nil
-            selection = nil
+            selection = .profile(.playback)
         }
         // A PIN replaced on another device must invalidate an unlock proved
         // against the old one.
@@ -682,10 +719,9 @@ private struct PlozziOSSettingsSplitView: View {
             isParentalUnlocked = false
             if showsParentalControlsSection {
                 parentalUnlockTarget = nil
-                selection = nil
+                selection = .profile(.playback)
             }
         }
-        .toolbar(removing: .sidebarToggle)
         .toolbarBackground(.hidden, for: .navigationBar)
         .alert("Sign out of all accounts?", isPresented: $confirmSignOutAll) {
             Button("Cancel", role: .cancel) {}
@@ -696,11 +732,6 @@ private struct PlozziOSSettingsSplitView: View {
             }
         } message: {
             Text("This removes every server and network share from this device.")
-        }
-        .onChange(of: columnVisibility) { _, visibility in
-            if visibility != .all {
-                columnVisibility = .all
-            }
         }
     }
 
@@ -739,6 +770,7 @@ private struct PlozziOSSettingsSplitView: View {
             }
         }
         .settingsActionRow()
+        .plozziOSSidebarSelection(selection == destination)
     }
 
     private func settingsRow(
@@ -772,6 +804,7 @@ private struct PlozziOSSettingsSplitView: View {
                 .contentShape(Rectangle())
         }
         .settingsActionRow()
+        .plozziOSSidebarSelection(selection == destination)
     }
 
     private struct DetailIdentity: Equatable, Hashable {
@@ -820,7 +853,7 @@ private struct PlozziOSSettingsSplitView: View {
                 appModel: appModel,
                 editingProfile: appModel.profiles.activeProfile,
                 canDelete: false,
-                onFinished: { selection = nil }
+                onFinished: { selection = .profile(.playback) }
             )
         case .manageProfile:
             PlozziOSProfileSettingsView(
@@ -994,9 +1027,11 @@ private struct PlozziOSSettingsCompactMenu: View {
     @State private var confirmSignOutAll = false
     @State private var showMetadata = false
     @State private var searchSelection: SettingsSearchEntry?
-    @State private var isHeaderCollapsed = false
-    @State private var expandedTitleHeight: CGFloat = 0
+    @State private var searchQuery = ""
+    @State private var isSearching = false
+    @FocusState private var searchFocused: Bool
     private var developerMode: DeveloperModeModel { .shared }
+    private var showsSearchResults: Bool { isSearching || !searchQuery.isEmpty }
     /// Whether the Parental PIN has been entered for the Kids Profile currently
     /// open. View state, cleared when the profile changes.
     @State private var isParentalUnlocked = false
@@ -1013,19 +1048,22 @@ private struct PlozziOSSettingsCompactMenu: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: MobileSettingsMetrics.sectionSpacing) {
-                navigationTitles(NavigationLibraryLayout.settingsKey, default: Text("Settings"))
-                    .font(.largeTitle.bold())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("settings-expanded-title")
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-                        expandedTitleHeight = height
-                    }
+        VStack(spacing: 0) {
+            PlozzSearchField(
+                text: $searchQuery,
+                prompt: "Search settings",
+                focus: $searchFocused
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .accessibilityIdentifier("settings-search-field")
 
-                // Live media-share scan/enrich progress. Renders nothing when idle.
-                ShareScanStatusHeader(
+            ZStack {
+                ScrollView {
+                    VStack(spacing: MobileSettingsMetrics.sectionSpacing) {
+                        // Live media-share scan/enrich progress. Renders nothing when idle.
+                        ShareScanStatusHeader(
                     status: appModel.shareScanStatus,
                     shareIDs: appModel.mediaShareAccountIDs
                 )
@@ -1256,29 +1294,54 @@ private struct PlozziOSSettingsCompactMenu: View {
                         confirmSignOutAll = true
                     }
                 }
+                } // settings content
+            } // settings scroll
+            .settingsPageSurface(
+                titleDisplayMode: .large,
+                horizontalInset: 16
+            )
+            .opacity(showsSearchResults ? 0 : 1)
+            .allowsHitTesting(!showsSearchResults)
+            .accessibilityHidden(showsSearchResults)
+
+            if showsSearchResults {
+                SettingsSearchResults(
+                    query: searchQuery,
+                    platform: UIDevice.current.userInterfaceIdiom == .phone ? .phone : .tablet,
+                    isKids: appModel.profiles.activeProfile.isKids,
+                    featureFlags: appModel.runtimeFeatureFlags
+                ) { entry, _ in
+                    searchFocused = false
+                    searchSelection = entry
+                }
+                .background { SettingsPageBackground() }
             }
-        }
-        .contentMargins(.top, 8, for: .scrollContent)
-        .settingsPageSurface(
-            titleDisplayMode: .inline,
-            horizontalInset: 16
-        )
-        .navigationTitle(isHeaderCollapsed
-            ? navigationTitles(NavigationLibraryLayout.settingsKey, default: Text("Settings")) : Text(verbatim: ""))
-        .modifier(PlozziOSSettingsSearch(
-            appModel: appModel, isShowingDestination: searchSelection != nil
-        ) { searchSelection = $0 })
+            } // ZStack
+        } // Settings page column
+        .navigationTitle(navigationTitles(NavigationLibraryLayout.settingsKey, default: Text("Settings")))
+        .navigationBarTitleDisplayMode(.large)
         .navigationDestination(item: $searchSelection) { entry in
             PlozziOSSettingsSearchDestination(
                 entry: entry, appModel: appModel, onAddServer: onAddServer, onAddUser: onAddUser,
                 onFinish: { searchSelection = nil }
             )
         }
-        .onChange(of: appModel.profiles.activeProfileID) { _, _ in searchSelection = nil }
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > expandedTitleHeight
-        } action: { _, collapsed in
-            isHeaderCollapsed = collapsed
+        .onChange(of: appModel.profiles.activeProfileID) { _, _ in
+            searchSelection = nil
+            searchQuery = ""
+            isSearching = false
+            searchFocused = false
+        }
+        .onChange(of: searchFocused) { _, focused in
+            if focused {
+                isSearching = true
+            } else if searchQuery.isEmpty {
+                isSearching = false
+            }
+        }
+        .onChange(of: searchQuery) { _, query in
+            if !query.isEmpty { isSearching = true }
+            else if !searchFocused { isSearching = false }
         }
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in isParentalUnlocked = false }
         .onChange(of: appModel.profiles.parentalPIN) { _, _ in isParentalUnlocked = false }
@@ -1396,7 +1459,7 @@ private struct PlozziOSSettingsSearchDestination: View {
                         .id("\(appModel.profiles.activeProfileID)-\(entry.id)-\(targetID)")
                 }
             } else {
-                ContentUnavailableView("Setting unavailable", systemImage: "magnifyingglass")
+                PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
             }
         }
         .plozzSheet(isPresented: $showsParentalUnlock) {
@@ -1572,10 +1635,10 @@ private struct PlozziOSSettingsSearchDestination: View {
             if let music = appModel.music {
                 PlozziOSMusicPlayerSettingsView(model: music.settings)
             } else {
-                ContentUnavailableView("Setting unavailable", systemImage: "magnifyingglass")
+                PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
             }
         case .topShelf:
-            ContentUnavailableView("Setting unavailable", systemImage: "magnifyingglass")
+            PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
         case .releaseNotes:
             ReleaseNotesSettingsView(model: .shared)
         }

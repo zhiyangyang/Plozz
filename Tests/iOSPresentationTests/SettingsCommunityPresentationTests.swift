@@ -210,7 +210,7 @@ final class SettingsCommunityPresentationTests: XCTestCase {
         }
     }
 
-    func testCompactSettingsTitleStartsLeadingAndCentersOnlyAfterScrolling() async throws {
+    func testCompactSettingsUsesNativeLargeTitle() async throws {
         let model = PlozziOSAppModel()
         let originalTheme = model.settings.theme.theme
         model.settings.theme.theme = .dark
@@ -244,24 +244,23 @@ final class SettingsCommunityPresentationTests: XCTestCase {
             )
             window.makeKeyAndVisible()
             try await waitForHostedLayout(window)
+            let host = try XCTUnwrap(window.rootViewController)
             let bar = try XCTUnwrap(navigationBar(in: window))
             XCTAssertEqual(bar.topItem?.title, "Settings")
-            XCTAssertLessThanOrEqual(bar.bounds.height, 64, "Settings must not reserve a large-title block.")
-            let expanded = try settingsTitleFrame(in: window, name: "settings-leading-\(Int(size.width))-\(textSize)")
-            XCTAssertEqual(expanded.minX, 16, accuracy: 3,
-                           "The resting title must follow the leading card keyline.")
+            XCTAssertGreaterThan(bar.bounds.height, 64, "Settings must use a native large title at rest.")
+            let largeTitle = try settingsTitleFrame(in: window, name: "settings-large-\(Int(size.width))-\(textSize)")
+            XCTAssertLessThan(largeTitle.minX, 32, "The native large title must sit on the leading edge.")
+            XCTAssertGreaterThan(largeTitle.minX, 8)
             let scroll = try XCTUnwrap(scrollViews(in: window).first)
             XCTAssertLessThanOrEqual(scroll.contentSize.width, scroll.bounds.width + 1)
             scroll.setContentOffset(CGPoint(x: 0, y: scroll.contentOffset.y + 300), animated: false)
             try await waitForHostedLayout(window)
-            let collapsed = try settingsTitleFrame(in: window, name: "settings-scrolled-\(Int(size.width))-\(textSize)")
-            XCTAssertEqual(collapsed.midX, size.width / 2, accuracy: 4, "Only the scrolled title is centered.")
-            XCTAssertLessThanOrEqual(bar.bounds.height, 64)
-            scroll.setContentOffset(CGPoint(x: 0, y: -scroll.adjustedContentInset.top), animated: false)
-            try await waitForHostedLayout(window)
-            let restored = try settingsTitleFrame(in: window, name: "settings-restored-\(Int(size.width))-\(textSize)")
-            XCTAssertEqual(restored.minX, 16, accuracy: 3,
-                           "Returning to the top restores the aligned leading title.")
+            // The compact search field is a fixed content header, so the large
+            // title remains resident while the list scrolls beneath it.
+            XCTAssertEqual(bar.topItem?.title, "Settings")
+            XCTAssertFalse(descendants(host.view).compactMap { $0 as? UITextField }
+                .filter { $0.placeholder == "Search settings" || $0.accessibilityLabel == "Search settings" }
+                .isEmpty)
         }
     }
 
@@ -282,6 +281,10 @@ final class SettingsCommunityPresentationTests: XCTestCase {
     private func navigationBar(in view: UIView) -> UINavigationBar? {
         if let bar = view as? UINavigationBar { return bar }
         return view.subviews.lazy.compactMap { self.navigationBar(in: $0) }.first
+    }
+
+    private func descendants(_ view: UIView) -> [UIView] {
+        [view] + view.subviews.flatMap(descendants)
     }
 
     func testUpdateDialogShowsDiscordJoinButtonWithoutQRCodeOnPhoneAndPad() async throws {

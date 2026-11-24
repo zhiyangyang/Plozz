@@ -699,6 +699,7 @@ public enum SettingsSearchCatalog {
     ) -> [SettingsSearchEntry] {
         entries.filter {
             PlozzCustomization.isSettingsSearchPageVisible($0.page)
+                && PlozzCustomization.isSettingsSearchEntryVisible($0.id)
                 && $0.isAvailable(on: platform, osVersion: osVersion, isKids: isKids,
                                   featureFlags: featureFlags, releaseChannel: releaseChannel)
         }

@@ -306,8 +306,7 @@ struct SongServiceChooser: View {
             }
         }
         .frame(idealHeight: contentHeight + presentationInsets)
-        .presentationDetents([.height(max(300, contentHeight + presentationInsets)), .large])
-        .presentationDragIndicator(.visible)
+        .plozzSheetSize(.detents([.height(max(300, contentHeight + presentationInsets)), .large]))
         .presentationSizing(.form.fitted(horizontal: false, vertical: true))
         .accessibilityIdentifier("song-service-chooser")
         #endif

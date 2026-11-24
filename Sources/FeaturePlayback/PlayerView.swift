@@ -265,7 +265,7 @@ public struct PlayerView: View {
                         }
                     }
             }
-            .presentationDetents([.large])
+            .plozzSheetSize(.detents([.large]))
         }
         #endif
     }

@@ -45,7 +45,7 @@ extension JellyfinProvider: MediaLibraryQueryProviding {
             includeItemTypes: query.includeItemTypes, recursive: query.recursive,
             startIndex: page.startIndex, limit: page.limit,
             sort: page.sort.field != .random && fields.contains(page.sort.field) ? page.sort : .default,
-            fields: "PrimaryImageAspectRatio,ProviderIds,SortName,DateCreated,Genres,Studios,Tags"
+            fields: "PrimaryImageAspectRatio,ProviderIds,SortName,DateCreated,Genres,Studios,Tags,CommunityRating"
                 + (page.filters.filter.needsFileMetadata ? ",MediaSources,MediaStreams" : "")
         )
         guard let total = response.TotalRecordCount, total >= 0 else { throw AppError.invalidResponse }

@@ -61,8 +61,15 @@ struct PlozziOSRelatedSection: View {
             .navigationDestination(item: $browser) { model in
                 HomeRowBrowseView(
                     model: model,
-                    columns: appModel.settings.density.density.iOSPosterGridColumns(
-                        horizontalSizeClass: horizontalSizeClass, isRunningOnMac: isRunningOnMac
+                    columns: PlozziOSPosterGridStyle.columns(
+                        density: appModel.settings.density.density,
+                        horizontalSizeClass: horizontalSizeClass,
+                        dynamicTypeSize: dynamicTypeSize,
+                        isRunningOnMac: isRunningOnMac,
+                        spacing: PlozziOSPosterGridStyle.spacing(
+                            metrics: metrics,
+                            cardStyle: cardStyle
+                        )
                     )
                 ) { item in
                     card(item)

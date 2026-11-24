@@ -63,7 +63,7 @@ struct PlozziOSProfileSetupView: View {
                 initialProvider: addUserServer?.provider,
                 initialAddress: addUserServer?.baseURL.absoluteString ?? ""
             )
-            .presentationSizing(.page)
+            .plozzSheetSize(.page)
         }
         // These belong to the setup cover, not the app root. Keeping them here
         // prevents Home appearing between account/user selection, Plex PIN and

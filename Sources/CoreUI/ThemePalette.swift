@@ -113,6 +113,51 @@ public struct ThemePalette: Equatable, Sendable {
     /// unreachable server, etc). Theme-aware so it reads as a clear "danger" red
     /// against each background — brighter on dark and Black, deeper on light.
     public let errorText: Color
+
+    // MARK: Semantic roles
+
+    /// The page background. Named as a role so iOS surfaces can stop choosing
+    /// between the palette's gradient stops directly.
+    public var backgroundPrimary: Color { backgroundBase }
+    /// Grouped-content background (Settings, forms, sheets).
+    public var backgroundGrouped: Color { settingsBackground }
+    /// The default raised surface for cards and grouped content.
+    public var surfacePrimary: Color { raised.fill }
+    /// The resting card chrome colour. Distinct from ``raised`` where a card
+    /// needs a flatter fill than the elevation ladder.
+    public var surfaceSecondary: Color { cardSurface }
+    public var textPrimary: Color { primaryText }
+    public var textSecondary: Color { secondaryText }
+    public var textTertiary: Color { tertiaryText }
+    /// Destructive copy and glyphs. Alias of ``errorText`` so new code can use
+    /// the semantic name without waiting for a palette-wide rename.
+    public var destructive: Color { errorText }
+    public var selection: Color { accent }
+    public var disabledText: Color { tertiaryText }
+    public var placeholderText: Color { tertiaryText }
+    /// Dimming behind app-owned floating panels. System presentations own their
+    /// own scrim and must not apply this again.
+    public var scrim: Color { Color.black.opacity(isLight ? 0.28 : 0.55) }
+
+    /// Positive confirmation. Deliberately restrained: the app is monochrome by
+    /// default, so these are only for status, never chrome.
+    public var success: Color {
+        isLight
+            ? Color(red: 0.10, green: 0.50, blue: 0.28)
+            : Color(red: 0.38, green: 0.86, blue: 0.55)
+    }
+    /// Caution / partial failure.
+    public var warning: Color {
+        isLight
+            ? Color(red: 0.65, green: 0.42, blue: 0.00)
+            : Color(red: 1.00, green: 0.75, blue: 0.28)
+    }
+    /// Informational callouts and neutral status.
+    public var info: Color {
+        isLight
+            ? Color(red: 0.00, green: 0.42, blue: 0.62)
+            : Color(red: 0.36, green: 0.78, blue: 0.96)
+    }
     /// Optional accent glow bloomed from the top-centre of the background.
     /// `nil` keeps a theme flat (e.g. Black stays free of a colored glow).
     public let topGlow: Color?

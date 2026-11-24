@@ -1078,6 +1078,7 @@ struct PlozziOSPlayerTimeline: View {
 private struct PlozziOSSkipGlyph: View {
     enum Direction { case backward, forward }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let seconds: Int
     let direction: Direction
     let size: CGFloat
@@ -1116,7 +1117,7 @@ private struct PlozziOSSkipGlyph: View {
                 .rotationEffect(.degrees(Double(turns) * 360), anchor: Self.ringCentre)
                 // Keyed to the running total, so a press mid-spin extends the
                 // turn rather than snapping back and starting over.
-                .animation(.easeInOut(duration: 0.45), value: turns)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: turns)
 
             // Deliberately outside the rotation. The ring is the thing that
             // moves; a number that spun with it would be unreadable at exactly
@@ -1158,7 +1159,7 @@ private struct PlozziOSSubtitleOptionsSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
+        .plozzSheetSize(.detents([.large]))
         .accessibilityIdentifier(mode == .search ? "player-subtitle-search-sheet" : "player-subtitle-advanced-sheet")
         .task {
             if mode == .search, viewModel.controls.subtitleDownload.canSearch,
@@ -1356,7 +1357,7 @@ private struct PlozziOSPlaybackSpeedSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .plozzSheetSize(.detents([.medium]))
     }
 }
 
@@ -1450,7 +1451,7 @@ private struct PlozziOSAudioSyncSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .plozzSheetSize(.detents([.medium]))
     }
 }
 

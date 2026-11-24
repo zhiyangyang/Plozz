@@ -20,6 +20,7 @@ public struct NavigationLibraryLayout: Codable, Equatable, Sendable {
     /// order/hidden payload preserves the on-disk format and profile scoping.
     public static let homeKey = "plozz.navigation.home"
     public static let searchKey = "plozz.navigation.search"
+    public static let collectionsKey = "plozz.navigation.collections"
     public static let watchlistKey = "plozz.navigation.watchlist"
     public static let upcomingKey = "plozz.navigation.upcoming"
     public static let discoverKey = "plozz.navigation.discover"
@@ -246,6 +247,7 @@ public struct NavigationLibraryLayout: Codable, Equatable, Sendable {
         var keys: Set<String> = [
             homeKey,
             searchKey,
+            collectionsKey,
             watchlistKey,
             upcomingKey,
             discoverKey,

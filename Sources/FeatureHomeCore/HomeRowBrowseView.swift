@@ -7,10 +7,14 @@ import SwiftUI
 public struct HomeRowBrowseView<Card: View>: View {
     @Bindable private var model: HomeRowBrowseModel
     private let columns: [GridItem]
+    private let skeletonStyle: SkeletonCardView.Style
     private let card: (MediaItem) -> Card
     @Environment(\.locale) private var locale
     @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.plozzNavigationContentInset) private var navigationInset
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var moreRequest = 0
     #if os(tvOS)
     @Namespace private var entryFocusScope
@@ -23,10 +27,12 @@ public struct HomeRowBrowseView<Card: View>: View {
 
     public init(
         model: HomeRowBrowseModel, columns: [GridItem],
+        skeletonStyle: SkeletonCardView.Style = .poster,
         @ViewBuilder card: @escaping (MediaItem) -> Card
     ) {
         self.model = model
         self.columns = columns
+        self.skeletonStyle = skeletonStyle
         self.card = card
     }
 
@@ -48,7 +54,7 @@ public struct HomeRowBrowseView<Card: View>: View {
                 .focusSection()
                 #endif
                 if model.query == model.appliedQuery {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: metrics.gridSpacing) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: gridSpacing) {
                         ForEach(model.items, id: \.stablePresentationID) { item in
                             card(item)
                                 #if os(tvOS)
@@ -66,6 +72,7 @@ public struct HomeRowBrowseView<Card: View>: View {
                                 }
                         }
                     }
+                    .transition(.opacity)
                     #if os(tvOS)
                     .background {
                         NativeFocusRegionObserver(isEnabled: !hasResolvedEntryFocus) { hasResolvedEntryFocus = true }
@@ -77,9 +84,20 @@ public struct HomeRowBrowseView<Card: View>: View {
                         Text(error.userMessage)
                         Button("Retry") { moreRequest += 1 }
                     }
-                } else if model.isLoading || model.query != model.appliedQuery {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                } else if isGridLoading {
+                    Group {
+                        if PlozzCustomization.isCustomBuild {
+                            PlozzPosterGridSkeleton(
+                                columns: columns,
+                                spacing: gridSpacing,
+                                style: skeletonStyle
+                            )
+                        } else {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .transition(.opacity)
                 } else if model.hasMore {
                     Button("Load more") { moreRequest += 1 }
                         #if os(tvOS)
@@ -91,9 +109,15 @@ public struct HomeRowBrowseView<Card: View>: View {
                         .plozzForeground(.secondary)
                 }
             }
-            .padding(.leading, horizontalPadding + navigationInset)
-            .padding(.trailing, horizontalPadding)
-            .padding(.vertical, 24)
+            .padding(.leading, gridHorizontalPadding + navigationInset)
+            .padding(.trailing, gridHorizontalPadding)
+            .padding(.top, topPadding)
+            .padding(.bottom, PlozziOSMediaRailLayout.posterGridBottomPadding)
+            .animation(
+                reduceMotion || !PlozzCustomization.isCustomBuild
+                    ? nil : PageMotion.contentReveal,
+                value: isGridLoading
+            )
         }
         .scrollClipDisabled()
         .accessibilityIdentifier("home-row-browser")
@@ -139,6 +163,49 @@ public struct HomeRowBrowseView<Card: View>: View {
         PlozzTheme.Metrics.screenPadding
         #else
         20
+        #endif
+    }
+
+    /// The personal build aligns the See All wall's visible artwork with Home's
+    /// page inset, using the same slot padding that subtracts the card's
+    /// internal side margin.
+    private var gridHorizontalPadding: CGFloat {
+        #if os(iOS)
+        guard PlozzCustomization.isCustomBuild else { return horizontalPadding }
+        return PlozziOSMediaRailLayout.artworkAlignedInset(
+            PlozziOSMediaRailLayout.pageInset(
+                for: horizontalSizeClass,
+                usesDesktopSizing: metrics.usesDesktopSizing
+            ),
+            metrics: metrics,
+            cardStyle: cardStyle
+        )
+        #else
+        return horizontalPadding
+        #endif
+    }
+
+    private var isGridLoading: Bool {
+        model.isLoading || model.query != model.appliedQuery
+    }
+
+    private var gridSpacing: CGFloat {
+        #if os(iOS)
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSMediaRailLayout.stackSpacing(metrics: metrics, cardStyle: cardStyle)
+            : metrics.gridSpacing
+        #else
+        metrics.gridSpacing
+        #endif
+    }
+
+    private var topPadding: CGFloat {
+        #if os(iOS)
+        PlozzCustomization.isCustomBuild
+            ? PlozziOSMediaRailLayout.posterGridTopPadding
+            : 24
+        #else
+        24
         #endif
     }
 

@@ -323,6 +323,41 @@ public extension UniversalWatchlistHost {
         )
     }
 
+    /// Membership fallback for a card whose list payload carries no catalogue
+    /// ids.
+    ///
+    /// The alias ledger files the provider's own item id as a local source when
+    /// a title is minted or imported. A library list can arrive without
+    /// IMDb/TMDb ids, so identity resolution cannot reach the alias even though
+    /// the title is on the watchlist. This lookup uses the provider binding
+    /// directly, which is what makes a favorite star on a poster agree with the
+    /// Favorites page.
+    func universalWatchlistMembershipByProviderBinding(_ item: MediaItem) -> Bool {
+        guard runtimeFeatureFlags.isEnabled(.universalWatchlist) else { return false }
+        var keys: Set<MediaAliasLocalSourceKey> = []
+        if let accountID = item.sourceAccountID,
+           let key = MediaAliasLocalSourceKey(
+               accountDescriptorID: accountID,
+               providerItemID: item.id
+           ) {
+            keys.insert(key)
+        }
+        for source in item.sources {
+            if let key = MediaAliasLocalSourceKey(
+                accountDescriptorID: source.accountID,
+                providerItemID: source.itemID
+            ) {
+                keys.insert(key)
+            }
+        }
+        guard !keys.isEmpty else { return false }
+        let snapshot = mediaAliasLedger.activeSnapshot
+        let membershipIDs = universalWatchlistMembershipIDs
+        return keys.contains { key in
+            snapshot.aliases(for: key).contains { membershipIDs.contains($0) }
+        }
+    }
+
     /// The accounts the NATIVE watchlist import may read from — see
     /// `NativeWatchlistAccounts.resolve(profiles:accountsProviders:)`.
     var nativeWatchlistAccounts: [ResolvedAccount] {

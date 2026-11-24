@@ -373,7 +373,7 @@ struct LiveChannelOverlay: View {
         reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.5)
         #else
         // VOD's touch card curve (`PlayerTouchCardStrip.cardCurve`).
-        .easeInOut(duration: 0.24)
+        reduceMotion ? .easeInOut(duration: 0.16) : .easeInOut(duration: 0.24)
         #endif
     }
 

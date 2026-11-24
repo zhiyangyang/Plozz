@@ -121,7 +121,11 @@ public struct ArtworkCustomizationView: View {
             }
         ) {
             section("Home", areas: [.home, .homeRows])
-            section("Libraries", areas: [.recommendedHero, .recommended, .browse, .collections, .playlists])
+            section("Libraries", areas: [
+                .recommendedHero, .recommended, .browse, .collections, .playlists
+            ].filter {
+                PlozzCustomization.isCustomBuild ? ($0 == .browse || $0 == .collections) : true
+            })
             section("Across the app", areas: [
                 .continueWatching, .search, .watchlist, .details, .episodes,
                 .playback, .music, .topShelf, .downloads

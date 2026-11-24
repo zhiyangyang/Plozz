@@ -40,6 +40,31 @@ indicator. Both native TV and mobile headings use the same control; card content
 does not inherit it. Failures open recovery details only on selection, never an
 automatic alert. Reduce Motion uses a static refresh symbol.
 
+`PlozziOSPageHeader` remains the custom header for hero-adjacent and search
+surfaces. In the personal build, root content pages without a hero use the
+system large title instead: Library, Favorites, Collections, All Libraries and
+Upcoming. The canonical build keeps its prior inline/title behavior. The compact
+Settings root also uses a native large title; its iPad split view keeps the
+sidebar title and uses inline titles in the detail column.
+
+Tab changes are immediate. Do not add a timed fade or `Task.sleep` between
+tabs; the system owns that transition. `PlozzMotion` owns the levels for state a
+view changes itself, while modal and navigation transitions stay native.
+
+Compact Settings keeps its search field in content (`PlozzSearchField`) rather
+than the navigation-bar search drawer. On iOS 26 and later a drawer search field
+suppresses the native large title; the content field allows both. The iPad
+sidebar uses the system title, a visible selected row, a collapsible sidebar
+toggle and a bounded column width, while detail pages stay inline.
+
+`PlozziOSPageMetrics` owns ordinary iOS page insets, section spacing, row
+heights and maximum content widths. Media rails and grids continue to use
+`PlozzMetrics` / `PlozziOSMediaRailLayout` for their density-aware card geometry.
+`PlozzStateView` is the shared empty/failure wrapper over `ContentUnavailableView`;
+it adds the app's recovery actions without replacing the system layout.
+`plozzSheetSize(.form/.page/.full/.detents)` is the shared presentation geometry
+for app-owned sheets.
+
 `PlozziOSPageHeader` owns the mobile scrolling header's 20-point horizontal
 insets, 44-point minimum height and 12-point action spacing. Callers must not
 add another top or horizontal inset. `plozziOSPageAction` gives each button or

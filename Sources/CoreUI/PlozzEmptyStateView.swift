@@ -31,13 +31,19 @@ public struct PlozzEmptyStateView: View {
                 .interpolation(.none)
                 .scaledToFit()
                 .frame(width: imageSize, height: imageSize)
+                .accessibilityHidden(true)
             Text(message)
+                #if os(tvOS)
                 // ~30% smaller than the old .title2 empty-state text.
                 .font(.system(size: 27, weight: .regular))
+                #else
+                .font(.title2)
+                #endif
                 .multilineTextAlignment(.center)
                 .plozzForeground(.secondary)
                 .frame(maxWidth: 800)
         }
+        .accessibilityElement(children: .combine)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

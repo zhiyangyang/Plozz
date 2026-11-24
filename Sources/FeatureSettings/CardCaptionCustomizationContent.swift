@@ -55,9 +55,15 @@ enum CardCaptionSettingsPage: String, CaseIterable {
 extension CardCaptionSettingsScope {
     var pages: [CardCaptionSettingsPage] {
         switch self {
-        case .all: CardCaptionSettingsPage.allCases
+        case .all:
+            CardCaptionSettingsPage.allCases.filter {
+                !PlozzCustomization.isCustomBuild || ($0 != .recommended && $0 != .playlists)
+            }
         case .home: [.home]
         case .libraries: [.recommended, .browse, .collections, .playlists]
+            .filter {
+                !PlozzCustomization.isCustomBuild || ($0 == .browse || $0 == .collections)
+            }
         case .detail: [.detail]
         }
     }

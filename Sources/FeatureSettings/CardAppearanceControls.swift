@@ -316,9 +316,16 @@ public enum CardCaptionSettingsScope: CaseIterable, Sendable {
 
     public var views: [CardCaptionView] {
         switch self {
-        case .all: CardCaptionView.allCases
+        case .all:
+            CardCaptionView.allCases.filter {
+                !PlozzCustomization.isCustomBuild || ($0 != .recommended && $0 != .playlists)
+            }
         case .home: [.home, .continueWatching, .homeLibraries]
         case .libraries: [.recommended, .browse, .collections, .playlists, .continueWatching]
+            .filter {
+                PlozzCustomization.isCustomBuild
+                    ? ($0 == .browse || $0 == .collections || $0 == .continueWatching) : true
+            }
         case .detail: [.episodes, .related, .extras]
         }
     }

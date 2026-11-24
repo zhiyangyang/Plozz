@@ -111,10 +111,10 @@ struct PlozziOSLibraryDestinationView: View {
                 scanStatus: appModel.shareScanStatus
             )
         } else {
-            ContentUnavailableView(
-                "Server unavailable",
-                systemImage: "exclamationmark.triangle",
-                description: Text("This library's server is no longer connected.")
+            PlozzStateView(
+                icon: "exclamationmark.triangle",
+                title: Text("Server unavailable"),
+                message: Text("This library's server is no longer connected.")
             )
         }
     }

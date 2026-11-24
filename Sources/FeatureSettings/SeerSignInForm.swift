@@ -141,7 +141,7 @@ struct SeerSignInForm: View {
         #if os(tvOS)
         .defaultFocus($primaryFocused, true)
         #endif
-        .sheet(isPresented: $choosingAccount) {
+        .plozzThemedSheet(isPresented: $choosingAccount) {
             SeerAccountPage(title: Text("Choose existing account"), dismissTitle: "Cancel") {
                 SettingsSectionGroup {
                     ForEach(availableAccounts) { option in

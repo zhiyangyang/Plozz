@@ -96,10 +96,10 @@ struct SeerConnectionsContent: View {
                 }
                 Button("Add account") { reconnectID = nil; adding = true }.settingsActionRow()
             }
-            .sheet(isPresented: $adding) {
+            .plozzThemedSheet(isPresented: $adding) {
                 SeerAccountEditor(seer: seer, replacing: reconnectID)
             }
-            .sheet(item: $editing) { connection in
+            .plozzThemedSheet(item: $editing) { connection in
                 SeerConnectionDetail(seer: seer, connectionID: connection.id)
             }
             .onChange(of: seer.activeProfileID) { adding = false; editing = nil }
@@ -191,7 +191,7 @@ struct SeerConnectionDetail: View {
                 }
             }
         }
-        .sheet(isPresented: $reconnect) {
+        .plozzThemedSheet(isPresented: $reconnect) {
             SeerAccountEditor(seer: seer, replacing: connectionID)
         }
         .task(id: connectionID) {

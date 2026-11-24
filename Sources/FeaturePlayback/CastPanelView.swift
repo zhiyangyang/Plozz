@@ -1602,6 +1602,7 @@ struct CastCardFrameKey: PreferenceKey {
 /// drift from the poster that replaces it.
 private struct CastCreditPlaceholderTile: View {
     @Environment(\.playerControlForeground) private var foreground
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let width: CGFloat
     let height: CGFloat
     let cornerRadius: CGFloat
@@ -1616,7 +1617,9 @@ private struct CastCreditPlaceholderTile: View {
             .fill(foreground.opacity(dim ? 0.05 : 0.11))
             .frame(width: width, height: height)
             .animation(
-                .easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(delay),
+                reduceMotion
+                    ? nil
+                    : .easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(delay),
                 value: dim
             )
             .onAppear { dim = true }

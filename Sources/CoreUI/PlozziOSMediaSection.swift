@@ -17,7 +17,7 @@ public struct PlozziOSPageHeading: View {
 
     public var body: some View {
         title
-            .font(.largeTitle.bold())
+            .font(PlozzTypography.font(.pageTitle))
             .foregroundStyle(palette.primaryText)
             .accessibilityAddTraits(.isHeader)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,6 +89,13 @@ public enum PlozziOSMediaRailLayout {
     public static let visibleSpacing: CGFloat = 12
     public static let shadowClearance: CGFloat = 10
     public static let desktopBrowseThreshold = 10
+
+    /// Shared rhythm for the personal build's full-page poster walls. Every
+    /// wall uses the same gutter and the same vertical breathing room; Home
+    /// and the library already use `pageInset` as their visible artwork edge.
+    public static let posterGridSpacing: CGFloat = 18
+    public static let posterGridTopPadding: CGFloat = 16
+    public static let posterGridBottomPadding: CGFloat = 24
 
     public static func pageInset(
         for sizeClass: UserInterfaceSizeClass?, usesDesktopSizing: Bool = false
@@ -184,7 +191,7 @@ public struct PlozziOSMediaSection<Content: View>: View {
                     else if let onHeadingTap { title.onTapGesture(perform: onHeadingTap) }
                     else { title }
                 }
-                    .font(PlozziOSMediaRailLayout.headingFont)
+                    .font(PlozzTypography.font(.sectionTitle))
                     // Resolve from the active theme, not the hosting view's
                     // inherited primary colour: the offscreen Mac snapshot hosted
                     // this section with a light primary while the rest of the page

@@ -157,10 +157,10 @@ private struct PlozziOSRecentActivityView: View {
     var body: some View {
         List {
             if filtered.isEmpty {
-                ContentUnavailableView(
-                    entries.isEmpty ? "No Recent Activity" : "No Matches",
-                    systemImage: entries.isEmpty ? "waveform.slash" : "line.3.horizontal.decrease.circle",
-                    description: Text(entries.isEmpty
+                PlozzStateView(
+                    icon: entries.isEmpty ? "waveform.slash" : "line.3.horizontal.decrease.circle",
+                    title: Text(entries.isEmpty ? "No Recent Activity" : "No Matches"),
+                    message: Text(entries.isEmpty
                         ? "Activity recorded during this app session will appear here."
                         : "No log entries match the current filter.")
                 )

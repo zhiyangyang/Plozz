@@ -3,6 +3,16 @@ import SwiftUI
 import UIKit
 #endif
 
+/// Shared page motion. Loading reveals use one rhythm so a page cannot animate
+/// faster or slower merely because a different surface owns it.
+///
+/// Tab changes deliberately do not live here: the app uses the system's instant
+/// tab switch. `PlozzMotion` carries the general levels for owned state changes.
+public enum PageMotion {
+    public static let contentRevealDuration: Double = 0.24
+    public static let contentReveal: Animation = .easeOut(duration: contentRevealDuration)
+}
+
 /// Reserves a view's final geometry while its content is still loading.
 ///
 /// Loading placeholders exist for two different jobs, and mixing them up is what
@@ -63,7 +73,7 @@ public struct PlozzReservedPlaceholder<Placeholder: View, Content: View>: View {
         }
         // Content arrives underneath the viewer without moving the page; a short
         // fade keeps it from snapping in. Nothing here gates hit testing.
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.24), value: isPending)
+        .animation(PlozzMotion.animation(.content, reduceMotion: reduceMotion), value: isPending)
     }
 }
 
@@ -204,5 +214,48 @@ public extension View {
         duration: Double = 0.24, isReady: Bool = true, hasRevealed: Binding<Bool>? = nil
     ) -> some View {
         modifier(PlozzFadeInOnAppear(duration: duration, isReady: isReady, hasRevealed: hasRevealed))
+    }
+}
+
+/// A full-page poster skeleton that uses the same columns, gutter and page
+/// inset as the real wall, so every content page reserves its final geometry
+/// while loading.
+public struct PlozzPosterGridSkeleton: View {
+    private let columns: [GridItem]
+    private let spacing: CGFloat
+    private let horizontalPadding: CGFloat
+    private let style: SkeletonCardView.Style
+    private let rows: Int
+    private let showsProgress: Bool
+
+    public init(
+        columns: [GridItem],
+        spacing: CGFloat,
+        horizontalPadding: CGFloat = 0,
+        style: SkeletonCardView.Style = .poster,
+        rows: Int = 2,
+        showsProgress: Bool = false
+    ) {
+        self.columns = columns
+        self.spacing = spacing
+        self.horizontalPadding = horizontalPadding
+        self.style = style
+        self.rows = max(rows, 1)
+        self.showsProgress = showsProgress
+    }
+
+    public var body: some View {
+        let perRow = columns.count > 1 ? columns.count : 6
+        LazyVGrid(columns: columns, spacing: spacing) {
+            ForEach(0..<(perRow * rows), id: \.self) { index in
+                SkeletonCardView(
+                    style: style,
+                    showsProgress: showsProgress && index == 0
+                )
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }

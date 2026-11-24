@@ -41,15 +41,18 @@ public struct SettingsPageScroll<Content: View>: View {
 
 public struct SettingsPageSurface: ViewModifier {
     @Environment(\.themePalette) private var palette
-    private let titleDisplayMode: ToolbarTitleDisplayMode
+    private let titleDisplayMode: NavigationBarItem.TitleDisplayMode
     private let horizontalInset: CGFloat
+    private let contentMaxWidth: CGFloat
 
     public init(
-        titleDisplayMode: ToolbarTitleDisplayMode = .inline,
-        horizontalInset: CGFloat = MobileSettingsMetrics.pageInset
+        titleDisplayMode: NavigationBarItem.TitleDisplayMode = .inline,
+        horizontalInset: CGFloat = MobileSettingsMetrics.pageInset,
+        contentMaxWidth: CGFloat = PlozziOSPageMetrics.formMaxWidth
     ) {
         self.titleDisplayMode = titleDisplayMode
         self.horizontalInset = horizontalInset
+        self.contentMaxWidth = contentMaxWidth
     }
 
     public func body(content: Content) -> some View {
@@ -65,17 +68,23 @@ public struct SettingsPageSurface: ViewModifier {
             // Pushed navigation hosts need their own copy of the sheet background.
             .settingsPageBackground(paintsDialogBackground: true)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbarTitleDisplayMode(titleDisplayMode)
+            .navigationBarTitleDisplayMode(titleDisplayMode)
+            .frame(maxWidth: contentMaxWidth)
+            .frame(maxWidth: .infinity)
     }
 }
 
 public extension View {
     func settingsPageSurface(
-        titleDisplayMode: ToolbarTitleDisplayMode = .inline,
-        horizontalInset: CGFloat = MobileSettingsMetrics.pageInset
+        titleDisplayMode: NavigationBarItem.TitleDisplayMode = .inline,
+        horizontalInset: CGFloat = MobileSettingsMetrics.pageInset,
+        contentMaxWidth: CGFloat = PlozziOSPageMetrics.formMaxWidth
     ) -> some View {
         modifier(SettingsPageSurface(
-            titleDisplayMode: titleDisplayMode, horizontalInset: horizontalInset))
+            titleDisplayMode: titleDisplayMode,
+            horizontalInset: horizontalInset,
+            contentMaxWidth: contentMaxWidth
+        ))
     }
 }
 #endif

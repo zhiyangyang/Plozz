@@ -155,12 +155,16 @@ public struct NavigationLibrariesDetailView: View {
 
     /// Content glyphs match navigation; provider and server share the subtitle.
     static func rowsByKey(
-        visible: [AggregatedLibrary]
+        visible: [AggregatedLibrary],
+        customBuild: Bool = PlozzCustomization.isCustomBuild
     ) -> [String: LiftableReorderList<String>.Row] {
         var rows: [String: LiftableReorderList<String>.Row] = [
             NavigationLibraryLayout.homeKey: .init(title: Text("Home"), symbolName: "house.fill"),
             NavigationLibraryLayout.searchKey: .init(title: Text("Search"), symbolName: "magnifyingglass"),
-            NavigationLibraryLayout.watchlistKey: .init(title: Text("Watchlist"), symbolName: "bookmark.fill"),
+            NavigationLibraryLayout.watchlistKey: .init(
+                title: customBuild ? Text("Favorites") : Text("Watchlist"),
+                symbolName: customBuild ? "heart.fill" : "bookmark.fill"
+            ),
             NavigationLibraryLayout.upcomingKey: .init(title: Text("Upcoming"), symbolName: "calendar"),
             NavigationLibraryLayout.discoverKey: .init(title: Text("Discover"), symbolName: "sparkles"),
             NavigationLibraryLayout.musicKey: .init(title: Text("Music"), symbolName: "music.note"),
@@ -172,6 +176,11 @@ public struct NavigationLibrariesDetailView: View {
             )
         ]
         rows[NavigationLibraryLayout.liveTVKey] = .init(title: Text("Live TV"), symbolName: "antenna.radiowaves.left.and.right")
+        if customBuild {
+            rows[NavigationLibraryLayout.collectionsKey] = .init(
+                title: Text("Collections"), symbolName: "rectangle.stack"
+            )
+        }
         for aggregated in NavigationRailPlan.browsableLibraries(visible) {
             rows[aggregated.key] = LiftableReorderList<String>.Row(
                 title: aggregated.library.displayName,

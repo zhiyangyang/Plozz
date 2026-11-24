@@ -747,10 +747,96 @@ final class LibraryPresentationTests: XCTestCase {
         }
     }
 
+    func testCustomPosterGridHonorsTheCardSizeSetting() {
+        let metrics = PlozzMetrics.touch(density: .compact, dynamicTypeSize: .large)
+        let spacing = PlozziOSPosterGridStyle.spacing(
+            metrics: metrics,
+            cardStyle: .borderless,
+            customBuild: true
+        )
+        let compact = PlozziOSPosterGridStyle.columns(
+            density: .compact,
+            horizontalSizeClass: .regular,
+            dynamicTypeSize: .large,
+            isRunningOnMac: false,
+            spacing: spacing,
+            customBuild: true
+        )
+        let standard = PlozziOSPosterGridStyle.columns(
+            density: .standard,
+            horizontalSizeClass: .regular,
+            dynamicTypeSize: .large,
+            isRunningOnMac: false,
+            spacing: spacing,
+            customBuild: true
+        )
+        XCTAssertEqual(compact.count, 8)
+        XCTAssertEqual(standard.count, 6)
+        XCTAssertTrue(compact.allSatisfy { $0.spacing == spacing })
+        XCTAssertTrue(standard.allSatisfy { $0.spacing == spacing })
+    }
+
+    func testCustomPosterGridUsesHomeRailSpacing() {
+        let metrics = PlozzMetrics.touch(density: .compact, dynamicTypeSize: .large)
+        XCTAssertEqual(
+            PlozziOSPosterGridStyle.spacing(
+                metrics: metrics,
+                cardStyle: .borderless,
+                customBuild: true
+            ),
+            PlozziOSMediaRailLayout.stackSpacing(metrics: metrics, cardStyle: .borderless)
+        )
+    }
+
+    func testCustomPosterGridKeepsAdaptiveColumnsAtCompactWidth() {
+        let metrics = PlozzMetrics.touch(density: .compact, dynamicTypeSize: .large)
+        let spacing = PlozziOSPosterGridStyle.spacing(
+            metrics: metrics,
+            cardStyle: .borderless,
+            customBuild: true
+        )
+        let columns = PlozziOSPosterGridStyle.columns(
+            density: .compact,
+            horizontalSizeClass: .compact,
+            dynamicTypeSize: .large,
+            isRunningOnMac: false,
+            spacing: spacing,
+            customBuild: true
+        )
+        XCTAssertEqual(columns.count, 1)
+        guard case let .adaptive(minimum, _)? = columns.first?.size else {
+            return XCTFail("Compact width must keep an adaptive poster column")
+        }
+        XCTAssertGreaterThan(minimum, 0)
+        XCTAssertEqual(columns.first?.spacing, spacing)
+    }
+
+    func testCustomPosterGridAlignsVisibleArtworkToThirtySixPoints() {
+        let metrics = PlozzMetrics.touch(density: .standard, dynamicTypeSize: .large)
+        let padding = PlozziOSPosterGridStyle.gridPadding(
+            horizontalSizeClass: .regular,
+            usesDesktopSizing: false,
+            metrics: metrics,
+            cardStyle: .borderless
+        )
+        XCTAssertEqual(
+            padding + metrics.borderlessCardSideMargin,
+            PlozziOSMediaRailLayout.pageInset(
+                for: .regular, usesDesktopSizing: false
+            ),
+            accuracy: 0.5
+        )
+    }
+
     private func assertSelectedTab(
         _ mode: LibraryContentMode, observations: [VNRecognizedTextObservation], window: UIWindow
     ) throws {
-        let label = String(localized: mode.displayName)
+        // The fixture renders the library with an en_US environment, while
+        // `String(localized:)` otherwise follows the process locale. Resolve the
+        // expected label with the same locale the page is rendered in.
+        var resource = mode.displayName
+        resource.locale = Locale(identifier: "en_US")
+        let label = String(localized: resource)
         let tab = try recognizedLabelBounds(label, in: observations)
         XCTAssertGreaterThanOrEqual(tab.boundingBox.minX, 0)
         XCTAssertLessThanOrEqual(tab.boundingBox.maxX, 1)
