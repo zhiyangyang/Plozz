@@ -80,20 +80,6 @@ public struct HomeRowsSettingsView: View {
     public var body: some View {
         switch searchPage {
         case .home: menu
-        #if os(tvOS)
-        case .homeRowStyle:
-            if searchRequest?.targetID == "showcase-discovery-row", hero.settings.spotlightEnabled {
-                HomeHeroSettingsView(libraries: libraries, accounts: accounts, visibility: visibility)
-            } else {
-                HomeRowStyleSettingsView(libraries: libraries, accounts: accounts)
-            }
-        case .heroDiscovery where hero.settings.style == .followsFocus:
-            if hero.settings.showsDiscoverRow {
-                HeroSettingsScreen(page: .discovery, libraries: libraries, accounts: accounts)
-            } else {
-                HomeRowStyleSettingsView(libraries: libraries, accounts: accounts)
-            }
-        #endif
         case .hero, .heroContent, .heroRatings, .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections:
             HomeHeroSettingsView(
                 libraries: libraries, accounts: accounts, visibility: visibility, initialPage: heroPage
@@ -146,22 +132,6 @@ public struct HomeRowsSettingsView: View {
             .accessibilityValue(heroSummary ?? Text(verbatim: ""))
             .accessibilityIdentifier("home-section-hero")
             .settingsSearchAnchor("home-hero")
-            #if os(tvOS)
-            HomeEditorLink {
-                HomeRowStyleSettingsView(libraries: libraries, accounts: accounts)
-                    .environment(hero)
-                    .environment(heroBackground)
-            } label: {
-                HomeEditorRowLabel(
-                    title: Text("Row style"),
-                    value: hero.settings.immersiveRows ? Text("Showcase") : Text("Classic")
-                )
-            }
-            .accessibilityLabel(Text("Row style"))
-            .accessibilityValue(hero.settings.immersiveRows ? Text("Showcase") : Text("Classic"))
-            .accessibilityIdentifier("home-row-style")
-            .settingsSearchAnchor("home-row-style")
-            #endif
             HomeEditorLink {
                 CardCaptionCustomizationView(cards: cards, scope: .home, visibility: visibility)
                     .environment(hero)
@@ -199,11 +169,7 @@ public struct HomeRowsSettingsView: View {
     }
 
     private var heroSummary: Text? {
-        #if os(tvOS)
-        return hero.settings.spotlightEnabled ? Text("On") : Text("Off")
-        #else
         return hero.settings.isEnabled ? nil : Text("Off")
-        #endif
     }
 }
 
@@ -285,9 +251,6 @@ struct HomeSectionsSettingsView: View {
 
     private var editor: some View {
         HomeEditorPage(title: Text("Home rows"), showsHeader: true) {
-            #if os(tvOS)
-            reorderButton
-            #endif
         } content: {
             SettingsSectionGroup {
                 editorControls
@@ -384,22 +347,6 @@ struct HomeSectionsSettingsView: View {
                 .disabled(isReordering)
                 .accessibilityIdentifier("home-hidden-continue-watching-settings")
             }
-            #if os(tvOS)
-            if hero.settings.style == .followsFocus {
-                HomeEditorLink {
-                    HomeRowStyleSettingsView(libraries: libraries, accounts: accounts)
-                        .environment(hero)
-                        .environment(heroBackground)
-                } label: {
-                    HomeEditorRowLabel(
-                        title: Text("Discovery"),
-                        subtitle: Text("Managed by Row style.")
-                    )
-                }
-                .disabled(isReordering)
-                .accessibilityIdentifier("home-layout-discovery")
-            }
-            #endif
             if editError != nil {
                 InlineErrorMessage(Text("Couldn't update this row. Try again."))
             }
@@ -433,9 +380,6 @@ struct HomeSectionsSettingsView: View {
             .id(ObjectIdentifier(visibility))
             .disabled(isReordering)
             .frame(maxWidth: .infinity, alignment: .leading)
-            #if os(tvOS)
-            .focusSection()
-            #endif
     }
 
     private var reorderButton: some View {
@@ -453,9 +397,6 @@ struct HomeSectionsSettingsView: View {
         .disabled(isLifting || (!isReordering && currentCatalog.sections(in: visibility.visibility).enabled.isEmpty))
         .accessibilityIdentifier("home-section-reorder")
         .settingsSearchAnchor("home-row-arrangement")
-        #if os(tvOS)
-        .plozzActionButton(role: .secondary)
-        #endif
     }
 
     private func beginReordering(at element: HomeRowID? = nil) {
@@ -467,11 +408,7 @@ struct HomeSectionsSettingsView: View {
         reorderSession = HomeSectionReorderSession(
             catalog: catalog, visibility: visibility.visibility, initialElement: element
         )
-        #if os(tvOS)
-        isLifting = element != nil
-        #else
         isLifting = false
-        #endif
         editError = nil
     }
 

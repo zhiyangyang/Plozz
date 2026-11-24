@@ -56,23 +56,11 @@ struct PrototypePreviewLayout {
     }
 
     var heroAlignment: Alignment {
-        #if os(tvOS)
-        .topLeading
-        #else
         .bottomLeading
-        #endif
     }
 
     var availableSidebarWidth: CGFloat {
-        #if os(tvOS)
-        guard contentFrame.width >= 960,
-              contentFrame.height - heroHeight - PrototypeLayout.sectionGap >= 420 else { return 0 }
-        let preferred: CGFloat = contentFrame.width >= 1_400 ? 384 : 320
-        return min(preferred, contentFrame.width - PrototypeLayout.sectionGap
-            - PrototypeLayout.guideInset * 2 - PrototypeLayout.compactWidth)
-        #else
         return Self.categorySidebarWidth(contentFrame.size)
-        #endif
     }
 
     #if os(iOS)
@@ -93,35 +81,19 @@ struct PrototypePreviewLayout {
     }
 
     var heroWidth: CGFloat {
-        #if os(tvOS)
-        guideWidth
-        #else
         contentFrame.width
-        #endif
     }
 
     var guideBottomExtension: CGFloat {
-        #if os(tvOS)
-        max(0, bounds.maxY - contentFrame.maxY)
-        #else
         0
-        #endif
     }
 
     var guideTrailingExtension: CGFloat {
-        #if os(tvOS)
-        max(0, bounds.maxX - contentFrame.maxX)
-        #else
         guideSideBleed
-        #endif
     }
 
     var guideLeadingExtension: CGFloat {
-        #if os(tvOS)
-        0
-        #else
         guideSideBleed
-        #endif
     }
 
     init(
@@ -132,48 +104,26 @@ struct PrototypePreviewLayout {
         hidesSidebar: Bool = false, showsCategories: Bool = false,
         showsVideoPreview: Bool = false, toolbarControlsBottom: CGFloat? = nil
     ) {
-        #if os(tvOS)
-        self.hidesSidebar = hidesSidebar
-        sidebarLeadingFadeWidth = navigationInset > 0 ? PrototypeLayout.inset : 0
-        #else
         self.hidesSidebar = isSearching
         sidebarLeadingFadeWidth = 0
-        #endif
         bounds = CGRect(
             x: -safeAreaInsets.leading, y: -safeAreaInsets.top,
             width: size.width + safeAreaInsets.leading + safeAreaInsets.trailing,
             height: size.height + safeAreaInsets.top + safeAreaInsets.bottom
         )
         compact = bounds.width < 650
-        #if os(tvOS)
-        let side: CGFloat = topNavigationInsets.top > 0 ? topNavigationInsets.trailing : 32
-        // The rail and guide share physical-screen coordinates. Title-safe insets
-        // can change during mounting and must not move or resize the pinned guide.
-        let leading = (topNavigationInsets.top > 0 ? topNavigationInsets.leading : 32)
-            + (navigationInset > 0 ? PrototypeLayout.inset : 0)
-        let top = max(32, topNavigationInsets.top > 0 ? topNavigationInsets.top : safeAreaInsets.top)
-            + (nativeNavigation || topNavigationInsets.top > 0 ? 16 : 0)
-        let bottom: CGFloat = 20
-        guideSideBleed = 0
-        #else
         let side = max(16, safeAreaInsets.trailing)
         let leading = max(16, safeAreaInsets.leading)
         guideSideBleed = side == 16 && leading == 16 && navigationInset == 0 ? 14 : 0
         let top = max(12, safeAreaInsets.top)
         let bottom = max(12, safeAreaInsets.bottom)
-        #endif
         contentFrame = CGRect(
             x: bounds.minX + leading + navigationInset, y: bounds.minY + top,
             width: max(1, bounds.width - leading - side - navigationInset),
             height: max(1, bounds.height - top - bottom)
         )
-        #if os(tvOS)
-        short = false
-        self.isSearching = isSearching
-        #else
         short = !compact && !largeText && contentFrame.height < 500
         self.isSearching = isSearching || (showsCategories && !Self.hasRoomForCategorySidebar(contentFrame.size))
-        #endif
         let browsingHeroHeight = short ? 100 : min(
             contentFrame.height * (largeText ? 0.48 : 0.30),
             // Just the info bar: the art and its gap on a TV (no dead band above
@@ -182,13 +132,6 @@ struct PrototypePreviewLayout {
             // timing and two lines of summary, with no dead band above.)
             largeText ? 440 : (compact ? 184 : 236)
         )
-        #if os(tvOS)
-        let videoLeading = bounds.minX
-        let videoWidth = bounds.width
-        heroHeight = isSearching
-            ? min(browsingHeroHeight, largeText ? 230 : (compact ? 140 : 180))
-            : browsingHeroHeight
-        #else
         let categoryWidth = Self.categorySidebarWidth(contentFrame.size)
         let videoLeading = categoryWidth > 0
             ? contentFrame.minX + categoryWidth + PrototypeLayout.sectionGap - guideSideBleed
@@ -198,7 +141,6 @@ struct PrototypePreviewLayout {
         let previewHeight = min(videoWidth * 9 / 16, max(0, bounds.maxY - previewTop) * 0.48)
         heroHeight = self.isSearching || !showsVideoPreview
             ? 0 : max(0, previewTop + previewHeight - contentFrame.minY)
-        #endif
         metadataWidth = compact || largeText ? contentFrame.width : contentFrame.width * 0.56
         #if os(iOS)
         let videoHeight = previewHeight
@@ -296,17 +238,6 @@ struct PrototypeBrowseLayout<Header: View, Sidebar: View, Guide: View>: View {
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
-        #if os(tvOS)
-        HStack(alignment: .top, spacing: layout.sidebarWidth > 0 ? PrototypeLayout.sectionGap : 0) {
-            sidebarSlot
-            VStack(spacing: layout.sectionGap) {
-                header()
-                guideSlot
-            }
-            .frame(width: layout.guideWidth)
-        }
-        .animation(reduceMotion ? nil : PrototypeLayout.sidebarAnimation, value: layout.hidesSidebar)
-        #else
         HStack(alignment: .top, spacing: layout.sidebarWidth > 0 ? PrototypeLayout.sectionGap : 0) {
             sidebarSlot
             VStack(spacing: PrototypeLayout.smallGap) {
@@ -317,38 +248,18 @@ struct PrototypeBrowseLayout<Header: View, Sidebar: View, Guide: View>: View {
             .frame(width: layout.guideWidth)
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.28), value: layout.heroHeight)
-        #endif
     }
 
     @ViewBuilder private var sidebarSlot: some View {
         if layout.availableSidebarWidth > 0 {
             ZStack(alignment: .topLeading) {
-                #if os(tvOS)
-                // Keep the native scroll view and its viewport intact while the pane is hidden.
-                sidebar()
-                    .frame(width: layout.availableSidebarWidth)
-                    .geometryGroup()
-                    .offset(x: layout.hidesSidebar
-                        ? layout.availableSidebarWidth * (layoutDirection == .rightToLeft ? 1 : -1) : 0)
-                    .opacity(layout.hidesSidebar ? 0 : 1)
-                    .allowsHitTesting(!layout.hidesSidebar)
-                    .accessibilityHidden(layout.hidesSidebar)
-                #else
                 if layout.sidebarWidth > 0 {
                     sidebar()
                         .frame(width: layout.availableSidebarWidth)
                 }
-                #endif
             }
             .frame(width: layout.sidebarWidth, alignment: .leading)
-            #if os(tvOS)
-            .modifier(PrototypeSidebarViewport(
-                sidebarWidth: layout.availableSidebarWidth,
-                fadeWidth: layout.sidebarLeadingFadeWidth
-            ))
-            #else
             .clipped()
-            #endif
         }
     }
 
@@ -364,30 +275,6 @@ struct PrototypeBrowseLayout<Header: View, Sidebar: View, Guide: View>: View {
     private var trailingExtension: CGFloat { extendsGuideToEdges ? layout.guideTrailingExtension : 0 }
 }
 
-#if os(tvOS)
-struct PrototypeSidebarViewport: ViewModifier {
-    let sidebarWidth: CGFloat
-    let fadeWidth: CGFloat
-
-    func body(content: Content) -> some View {
-        let shadowRoom = PrototypeLayout.inset
-        let leadingRoom = fadeWidth > 0 ? fadeWidth : shadowRoom
-        content
-            .padding(.leading, leadingRoom)
-            .padding(.trailing, shadowRoom)
-            .padding(.vertical, shadowRoom)
-            .clipped()
-            .mask(alignment: .leading) {
-                // Keep the feather stationary in the extra content inset, clear of the nav icons.
-                LeadingEdgeFadeMask(fadeWidth: fadeWidth)
-                    .frame(width: sidebarWidth + leadingRoom + shadowRoom)
-            }
-            .padding(.vertical, -shadowRoom)
-            .padding(.trailing, -shadowRoom)
-            .padding(.leading, -leadingRoom)
-    }
-}
-#endif
 
 #if os(iOS)
 private struct PrototypeScrollTopBoundaryKey: EnvironmentKey {
@@ -667,16 +554,6 @@ struct PrototypePreviewHero: View {
                 .font(.caption.weight(.medium))
                 .foregroundStyle(palette.secondaryText)
                 .lineLimit(1)
-                #if os(tvOS)
-                .padding(.trailing, 44)
-                .overlay(alignment: .trailing) {
-                    if let activityLabel {
-                        ProgressView().controlSize(.small)
-                            .accessibilityLabel(Text(activityLabel))
-                            .allowsHitTesting(false)
-                    }
-                }
-                #endif
             Text(program?.title ?? channel.name)
                 .font((layout.compact ? Font.headline : Font.title3).weight(.semibold))
                 .lineLimit(1)

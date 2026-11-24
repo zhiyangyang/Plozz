@@ -89,11 +89,7 @@ public struct FeaturedMediaRow: View {
     }
 
     private var television: Bool {
-        #if os(tvOS)
-        true
-        #else
         false
-        #endif
     }
     private var candidate: MediaItem? {
         guard !isLoading, isActive, scenePhase == .active, !reduceMotion,
@@ -177,15 +173,6 @@ public struct FeaturedMediaRow: View {
             )
             .id(item.stablePresentationID)
         }
-        #if os(tvOS)
-        if let onBrowse {
-            MediaRowBrowseCard(
-                width: size.width, featuredSize: size,
-                onFocus: { focusedID = nil; coordinator.stop() },
-                action: { coordinator.stop(); onBrowse() }
-            )
-        }
-        #endif
     }
 }
 

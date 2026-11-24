@@ -47,10 +47,6 @@ struct AccountRecoveryScreen: View {
             .accessibilityIdentifier("account-recovery-cancel")
         }
         .controlSize(.large)
-        #if os(tvOS)
-        .defaultFocus($focused, onSignIn == nil ? .retry : .signIn)
-        .onExitCommand(perform: onCancel)
-        #endif
     }
 }
 

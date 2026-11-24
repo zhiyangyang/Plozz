@@ -8,14 +8,7 @@ struct ViewPreferenceChoiceGroup<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        #if os(tvOS)
-        SettingsCheckGroup(rowSize: rowSize) {
-            SettingsControlRows(content: content)
-        }
-        .environment(\.settingsFormRowsFlushLeading, false)
-        #else
         SettingsSectionGroup(content: content)
-        #endif
     }
 }
 
@@ -27,16 +20,6 @@ struct ViewPreferenceChoiceRow: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        #if os(tvOS)
-        SettingsCheckableRow(
-            title: Text(title),
-            subtitle: isFocused ? detail.map { Text($0) } : nil,
-            titleLineLimit: nil, subtitleLineLimit: nil,
-            isChecked: isSelected,
-            flushLeading: false, action: action
-        )
-        .focused($isFocused)
-        #else
         Button(action: action) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -56,7 +39,6 @@ struct ViewPreferenceChoiceRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        #endif
     }
 }
 
@@ -70,9 +52,6 @@ struct ViewCustomizationLink<Destination: View>: View {
             ViewCustomizationLinkLabel(isCustomized: isCustomized, title: title)
                 .settingsControlTarget()
         }
-        #if os(tvOS)
-        .buttonStyle(SettingsFocusButtonStyle(size: .contained))
-        #endif
     }
 }
 
@@ -100,9 +79,6 @@ private struct ViewCustomizationLinkLabel: View {
             }
             Image(systemName: "chevron.right").accessibilityHidden(true)
         }
-        #if os(tvOS)
-        .settingsFormRowLayout()
-        #endif
     }
 }
 
@@ -125,105 +101,10 @@ struct ViewCustomizationList<Content: View>: View {
     @Namespace private var focusScope
 
     var body: some View {
-        #if os(tvOS)
-        let help = focusedHelp(focusedRow ?? initialRowID)
-        VStack(spacing: 20) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    SettingsPageHeader(title)
-                        .environment(\.settingsPageBackButton, AnyView(
-                            SettingsBackButton {
-                                if let detailNavigation {
-                                    detailNavigation.pop(animated: !reduceMotion)
-                                } else {
-                                    dismiss()
-                                }
-                            }
-                            .accessibilityIdentifier("view-customization-back")
-                            .disabled(!hasEnteredList && searchRequest == nil && initialRowID != "view-customization-back")
-                            .modifier(ViewCustomizationRowFocus(id: "view-customization-back"))
-                        ))
-                    VStack(alignment: .leading, spacing: SettingsFormMetrics.controlSpacing) {
-                        Group(sections: content()) { sections in
-                            ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                                VStack(alignment: .leading, spacing: sectionSpacing) {
-                                    section.header
-                                        .padding(.horizontal, SettingsFormMetrics.headingInset)
-                                    if hasGroupedContent {
-                                        VStack(alignment: .leading, spacing: SettingsFormMetrics.controlSpacing) {
-                                            section.content
-                                        }
-                                    } else {
-                                        SettingsControlGroup { section.content }
-                                    }
-                                    section.footer
-                                        .settingsHelperText()
-                                        .padding(.horizontal, SettingsFormMetrics.headingInset)
-                                }
-                                if !pinsFocusedHelp, inlineHelpAfterSection == index, let help {
-                                    ViewCustomizationHelpCard(help: help)
-                                }
-                            }
-                            if !pinsFocusedHelp, inlineHelpAfterSection == nil, let help {
-                                ViewCustomizationHelpCard(help: help)
-                            }
-                        }
-                    }
-                }
-                .environment(\.viewCustomizationFocus, $focusedRow)
-                .focusScope(focusScope)
-                .defaultFocus($focusedRow, initialRowID)
-                .task(id: initialRowID) {
-                    guard searchRequest == nil else { return }
-                    focusedRow = initialRowID
-                }
-                .onChange(of: searchRequest?.revealed) { _, revealed in
-                    if revealed == true {
-                        hasEnteredList = true
-                        detailNavigation?.focusArrived()
-                    }
-                }
-                .onChange(of: focusedRow) { _, row in
-                    if row != nil {
-                        hasEnteredList = true
-                        detailNavigation?.focusArrived()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, SettingsFormMetrics.pageTopInset)
-                .padding(.bottom, SettingsFormMetrics.pageBottomInset)
-                .padding(.horizontal, SettingsFormMetrics.pageInset)
-            }
-            .contentMargins(.bottom, pinsFocusedHelp && help != nil ? 40 : 0, for: .scrollContent)
-            .scrollClipDisabled()
-            .mask {
-                // Keep mask geometry stable while native focus scrolls the controls.
-                VerticalEdgeFadeMask(
-                    fadeHeight: 40, topStrength: topFadeStrength,
-                    bottomStrength: pinsFocusedHelp && help != nil ? 1 : 0, horizontalOverhang: 20
-                )
-                .ignoresSafeArea(.container, edges: pinsFocusedHelp && help != nil ? .top : .vertical)
-            }
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                min(1, max(0, (geometry.contentOffset.y + geometry.contentInsets.top) / 40))
-            } action: { _, strength in
-                topFadeStrength = strength
-            }
-            .accessibilityIdentifier("view-customization-scroll")
-            if pinsFocusedHelp, let help {
-                ViewCustomizationHelpCard(help: help)
-                    .padding(.horizontal, SettingsFormMetrics.pageInset)
-                    .padding(.bottom, 24)
-            }
-        }
-        .buttonStyle(SettingsFocusButtonStyle(size: .contained))
-        .navigationTitle(Text(verbatim: ""))
-        #else
         SettingsPageList {
             content()
         }
         .navigationTitle(Text(title))
-        #endif
     }
 }
 
@@ -311,11 +192,7 @@ struct ViewCustomizationRow: View {
         Button(action: cycle) {
             ViewCustomizationRowLabel(title: title, value: value)
         }
-        #if os(tvOS)
-        .buttonStyle(SettingsFocusButtonStyle(size: .contained))
-        #else
         .buttonStyle(.plain)
-        #endif
         .accessibilityLabel(Text(title))
         .accessibilityValue(Text(value))
         .accessibilityHint(Text(detail ?? "Select to change."))
@@ -370,9 +247,6 @@ private struct ViewCustomizationRowLabel: View {
             }
         }
         .frame(minHeight: 44)
-        #if os(tvOS)
-        .settingsFormRowLayout()
-        #endif
         .contentShape(Rectangle())
     }
 
@@ -387,11 +261,7 @@ private struct ViewCustomizationRowLabel: View {
 
     private var titleText: some View {
         Text(title)
-            #if os(tvOS)
-            .font(SettingsRowMetrics.titleFont)
-            #else
             .font(.body.weight(.medium))
-            #endif
             .multilineTextAlignment(.leading)
     }
 

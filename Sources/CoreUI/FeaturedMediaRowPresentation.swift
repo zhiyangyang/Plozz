@@ -14,9 +14,6 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
     private let cards: (CGSize) -> Cards
     @Binding private var selectedID: String?
     @State private var viewportWidth: CGFloat = 390
-    #if os(tvOS)
-    @Environment(\.mediaRowSizingViewportWidth) private var sizingViewportWidth
-    #endif
     @Environment(\.plozzNavigationContentInset) private var navigationInset
     @Environment(\.plozzPinnedSidebarActive) private var pinnedSidebarActive
     @Environment(\.plozzMetrics) private var metrics
@@ -42,11 +39,7 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
     }
 
     private var television: Bool {
-        #if os(tvOS)
-        true
-        #else
         false
-        #endif
     }
 
     private var inset: CGFloat {
@@ -59,9 +52,6 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
     }
 
     private var size: CGSize {
-        #if os(tvOS)
-        let viewportWidth = sizingViewportWidth ?? self.viewportWidth
-        #endif
         if metrics.usesDesktopSizing {
             return DesktopMediaRailLayout.featuredSize(in: viewportWidth, metrics: metrics)
         }
@@ -72,9 +62,6 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: television ? metrics.sectionTitleSpacing - titleTightening : 12) {
-            #if os(tvOS)
-            MediaRowHeader(title: title, onSeeAll: usesRowBrowsing ? nil : onSeeAll)
-            #else
             HStack {
                 BrowseRowHeading(title: title, action: onBrowse)
                     .font(metrics.usesDesktopSizing ? .title3.weight(.semibold) : .title2.bold())
@@ -82,7 +69,6 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
                 if !usesRowBrowsing, let onSeeAll { Button("See all", action: onSeeAll) }
             }
             .padding(.horizontal, inset)
-            #endif
             if isEmpty && !isLoading {
                 Text("No titles in this collection.")
                     .plozzForeground(.secondary)
@@ -113,23 +99,13 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
     }
 
     @ViewBuilder private var rail: some View {
-        #if os(tvOS)
-        PinnedSidebarLeadingFade(
-            isActive: pinnedSidebarActive, inset: navigationInset,
-            verticalOverhang: metrics.railShadowClearance, cardPitch: size.width + cardSpacing
-        ) { scroll }
-        #else
         scroll
-        #endif
     }
 
     private var scroll: some View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: cardSpacing) { cards(size) }
                 .scrollTargetLayout()
-                #if os(tvOS)
-                .padding(.horizontal, inset)
-                #endif
                 .padding(.vertical, television ? metrics.railShadowClearance : 4)
         }
         #if os(iOS)
@@ -137,10 +113,6 @@ public struct FeaturedMediaRowPresentation<Cards: View>: View {
         #endif
         .scrollIndicators(.hidden)
         .scrollClipDisabled()
-        #if os(tvOS)
-        .modifier(HomeRowPreviewScrollViewport())
-        .padding(.vertical, metrics.railClearanceOffset(for: 24))
-        #endif
         #if os(iOS)
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $selectedID, anchor: .leading)

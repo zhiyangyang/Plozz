@@ -147,21 +147,7 @@ struct UpNextCardView: View {
         .onPreferenceChange(UpNextMediaHeightKey.self) { height in
             if height > 0 { mediaHeight = height }
         }
-        #if os(tvOS)
         button
-            .onExitCommand { onDismiss() }
-        // Play/Pause works while the card holds focus: toggle playback in place
-        // (the auto-advance ring freezes because it tracks playback position)
-        // without dismissing the card or losing focus.
-            .onPlayPauseCommand { onPlayPause() }
-            .onMoveCommand { direction in
-                // An upward swipe dismisses the card, matching the player's other Up
-                // gestures (which surface the transport / leave focusable overlays).
-                if direction == .up { onDismiss() }
-            }
-        #else
-        button
-        #endif
     }
 
     @ViewBuilder

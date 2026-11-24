@@ -44,34 +44,6 @@ struct PINProfileEntryLayout<Badge: View, Pad: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        #if os(tvOS)
-        HStack(spacing: PINMetrics.columnGap) {
-            PINProfileIdentity(
-                transition: transition, title: title, name: name, showsLock: showsLock,
-                availability: availability, errorMessage: errorMessage,
-                footnote: footnote, sequenceStep: sequenceStep, badge: badge
-            )
-            .frame(width: PINMetrics.proseColumnWidth)
-            ZStack {
-                if transition.isSource {
-                    Group {
-                        if availability == .available {
-                            pad()
-                        } else {
-                            PINProfileRequirementState(
-                                availability: availability, errorMessage: errorMessage, onRetry: onRetry
-                            )
-                        }
-                    }
-                    .transition(.identity)
-                }
-            }
-            .frame(width: PINMetrics.padWidth)
-        }
-        .frame(maxWidth: PINMetrics.compositionWidth, maxHeight: .infinity)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, PINMetrics.horizontalPadding)
-        #else
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 24) {
@@ -110,7 +82,6 @@ struct PINProfileEntryLayout<Badge: View, Pad: View>: View {
             }
             .scrollBounceBehavior(.basedOnSize)
         }
-        #endif
     }
 }
 
@@ -178,21 +149,7 @@ private struct PINProfileIdentity<Badge: View>: View {
     }
 
     private var identityName: some View {
-        #if os(tvOS)
-        HStack(spacing: 6) {
-            name
-            if showsLock {
-                Image(systemName: "lock.fill")
-                    .font(.caption2.weight(.semibold))
-                    .accessibilityHidden(true)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(name)
-        .accessibilityValue(showsLock ? Text(ProfileLockCopy.title) : Text(verbatim: ""))
-        #else
         PINIdentityName(name: name, showsLock: showsLock)
-        #endif
     }
 }
 

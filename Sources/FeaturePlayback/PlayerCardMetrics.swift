@@ -270,11 +270,7 @@ struct PlayerCardMetrics: Equatable {
         detailChromeHeight: 84
     )
 
-    #if os(tvOS)
-    static let platformDefault = tv
-    #else
     static let platformDefault = horizontalWide
-    #endif
 
     /// The widths the horizontal anchors describe. Below the first the card is
     /// drawn at its narrow size, above the second at its full one, and in between
@@ -302,9 +298,6 @@ struct PlayerCardMetrics: Equatable {
     /// makes, and it is why a phone on its side should look like an iPad rather
     /// than like a phone.
     static func resolved(forWidth width: CGFloat, height: CGFloat) -> PlayerCardMetrics {
-        #if os(tvOS)
-        return .tv
-        #else
         // Zero on the very first pass, before the geometry reader has reported.
         // Assume the roomy layout rather than the cramped one: a card that starts
         // full and stays full is the common case, and guessing narrow would make
@@ -335,10 +328,8 @@ struct PlayerCardMetrics: Equatable {
         metrics.contentHeight = max(min(metrics.contentHeight, available), 160).rounded()
         metrics.castIdentityWidth = identityWidth(forCardWidth: width, metrics: metrics)
         return metrics
-        #endif
     }
 
-    #if !os(tvOS)
     /// The live player's cards on touch.
     ///
     /// Every live card is a band — the Info card, a row of On Now cards, the
@@ -364,7 +355,6 @@ struct PlayerCardMetrics: Equatable {
         metrics.contentHeight = min(max(height * 0.15, 100), 150).rounded()
         return metrics
     }
-    #endif
 
     /// Where `value` sits across `range`, as 0…1.
     private static func progress(_ value: CGFloat, in range: ClosedRange<CGFloat>) -> CGFloat {

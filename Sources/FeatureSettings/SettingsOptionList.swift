@@ -14,11 +14,7 @@ struct SettingsCheckGroup<Content: View>: View {
     var rowSize: SettingsRowSize = .standard
     @ViewBuilder var content: () -> Content
     private var cornerRadius: CGFloat {
-        #if os(tvOS)
-        rowSize == .contained ? SettingsFormMetrics.groupCornerRadius : PlozzTheme.Metrics.Radius.card
-        #else
         PlozzTheme.Metrics.Radius.card
-        #endif
     }
 
     var body: some View {
@@ -34,9 +30,6 @@ struct SettingsCheckGroup<Content: View>: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
             )
-            #if os(tvOS)
-            .environment(\.settingsFormTextInset, rowSize == .contained ? SettingsRowMetrics.horizontalPadding : 0)
-            #endif
     }
 }
 

@@ -13,35 +13,6 @@ private struct PlaybackVersionChoicePresentation: ViewModifier {
     let model: PlaybackVersionChoiceModel
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        // The player is already a full-screen presentation. A second cover
-        // would disappear/cancel the playback owner while it waits for a choice.
-        content
-            .disabled(model.prompt != nil)
-            .allowsHitTesting(model.prompt == nil)
-            .accessibilityHidden(model.prompt != nil)
-            .overlay {
-                if model.prompt != nil {
-                    GeometryReader { geometry in
-                        ZStack {
-                            PlozzDialogBackdrop()
-                            ViewThatFits(in: .vertical) {
-                                PlaybackVersionChoiceView(model: model)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                PlaybackVersionChoiceView(model: model)
-                            }
-                            .frame(width: min(1_100, max(0, geometry.size.width - 64)))
-                            .plozzSurface(.overlay, cornerRadius: 32)
-                            .accessibilityElement(children: .contain)
-                            .accessibilityIdentifier("version-choice-dialog")
-                            // Bound the proposal without stretching the card's surface.
-                            .frame(maxHeight: min(860, max(0, geometry.size.height - 64)))
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-            }
-        #else
         content.plozzSheet(isPresented: Binding(
             get: { model.prompt != nil },
             set: { if !$0 { model.cancel() } }
@@ -49,7 +20,6 @@ private struct PlaybackVersionChoicePresentation: ViewModifier {
             PlaybackVersionChoiceView(model: model)
                 .interactiveDismissDisabled()
         }
-        #endif
     }
 }
 
@@ -83,9 +53,6 @@ public struct PlaybackVersionChoiceView: View {
                     .accessibilityIdentifier("version-choice-cancel")
                     .padding()
             }
-            #if os(tvOS)
-            .onExitCommand { model.cancel() }
-            #endif
             #endif
         }
     }
@@ -129,20 +96,13 @@ private struct PlaybackVersionChoiceList: View {
     @Environment(\.locale) private var locale
     @Environment(\.themePalette) private var palette
     @FocusState private var focusedID: String?
-    #if os(tvOS)
-    @ScaledMetric(relativeTo: .headline) private var headingSize: CGFloat = 34
-    #endif
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 #if !os(iOS)
                 Text("Choose a version")
-                    #if os(tvOS)
-                    .font(.system(size: headingSize, weight: .semibold))
-                    #else
                     .font(.title.bold())
-                    #endif
                     .foregroundStyle(palette.primaryText)
                     .accessibilityAddTraits(.isHeader)
                 #endif
@@ -165,9 +125,6 @@ private struct PlaybackVersionChoiceList: View {
             .frame(maxWidth: 1_100, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        #if os(tvOS)
-        .defaultFocus($focusedID, prompt.selectedVersionID ?? prompt.versions.first?.id, priority: .userInitiated)
-        #endif
     }
 }
 

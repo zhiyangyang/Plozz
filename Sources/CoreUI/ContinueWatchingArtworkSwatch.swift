@@ -124,10 +124,6 @@ public struct ContinueWatchingArtworkSwatch: View {
 
     private func card(width: CGFloat, height: CGFloat, chromeScale: CGFloat) -> some View {
         let radius = min(cornerRadius, width * 0.06)
-        #if os(tvOS)
-        // Keep miniature playback details legible at TV viewing distance.
-        let chromeScale = chromeScale * 1.4
-        #endif
         return ZStack {
             artwork(width: width, height: height)
                 .frame(width: width, height: height)

@@ -70,11 +70,7 @@ public final class SiloAuthViewModel {
                 try await service.validateServer()
                 try Task.checkCancellation()
                 guard generation == current else { return }
-                #if os(tvOS)
-                let platform = "tvos"
-                #else
                 let platform = "ios"
-                #endif
                 stage = .start
                 let challenge = try await service.beginPairing(platform: platform)
                 try Task.checkCancellation()

@@ -385,9 +385,7 @@ private struct LibraryChannelManagementContent: View {
             }
             if let issue = issue ?? service.issue { Text(issue.message) }
         }
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #elseif os(iOS)
+        #if os(iOS)
         .toggleStyle(SettingsSwitchToggleStyle())
         #endif
         .task {
@@ -414,24 +412,7 @@ private struct LibraryChannelAutomaticLineupView: View {
     var body: some View {
         if !channels.isEmpty {
             SettingsSectionGroup("Generated channels") {
-                #if os(tvOS)
-                let inset: CGFloat = 8
-                let rowHeight = SettingsRowMetrics.minHeight(.primary)
-                    + 2 * SettingsRowMetrics.verticalPadding(.primary)
-                FadingScrollView(
-                    maxHeight: inset + 4.5 * rowHeight + 4 * SettingsRowMetrics.formRowSpacing,
-                    fadeLength: 12,
-                    verticalContentInset: inset
-                ) {
-                    VStack(spacing: SettingsRowMetrics.formRowSpacing) {
-                        channelRows
-                    }
-                }
-                .focusSection()
-                .accessibilityIdentifier("live-tv-generated-lineup")
-                #else
                 channelRows
-                #endif
             }
         }
     }
@@ -445,21 +426,10 @@ private struct LibraryChannelAutomaticLineupView: View {
 
 private struct LibraryChannelGeneratedRow: View {
     let channel: LibraryChannelDefinition
-    #if os(tvOS)
-    @FocusState private var focused: Bool
-    #endif
 
     var body: some View {
         Group {
-            #if os(tvOS)
-            SettingsFocusRow(isFocused: focused, size: .contained) {
-                label.settingsFormRowLayout()
-            }
-            .focusable()
-            .focused($focused)
-            #else
             label
-            #endif
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("live-tv-generated-channel-\(channel.id.uuidString)")

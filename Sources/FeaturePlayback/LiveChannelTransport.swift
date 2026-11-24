@@ -112,11 +112,7 @@ struct LiveChannelOverlay: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.locale) private var locale
     @State private var openMenu: LiveChannelTrackMenuKind?
-    #if os(tvOS)
-    @State private var returningMenu: LiveChannelTrackMenuKind?
-    #else
     @State private var menuReturnFocus: LiveChannelControl?
-    #endif
     /// The VOD player's options panel, fed the channel's tracks: its model, the
     /// Subtitles screen it shows, its remembered heights, the Menu press that
     /// steps it back, and the focus inside it.
@@ -278,17 +274,6 @@ struct LiveChannelOverlay: View {
             }
         }
         #endif
-        #if os(tvOS)
-        .observingSystemPlaybackAudio(trackOptions.systemAudio, isVisible: true)
-        .onChange(of: openMenu.map(hasTVMenu) ?? true) { _, available in
-            if !available { closeMenu() }
-        }
-        .onChange(of: returningMenu.map(hasTVMenu) ?? true) { _, available in
-            if !available { returningMenu = nil; focus = .timeline }
-        }
-        .onExitCommand(perform: handleExit)
-        .background(TVFocusActivityObserver(onActivity: onControlActivity))
-        #endif
     }
 
     private var mobileOptionsBusy: Bool {
@@ -340,15 +325,9 @@ struct LiveChannelOverlay: View {
 
     // MARK: Layout constants (see `PlayerControls` for the parking arithmetic)
 
-    #if os(tvOS)
-    private static let horizontalMargin: CGFloat = 60
-    private static let bottomMargin: CGFloat = 48
-    private static let cardGap: CGFloat = 32
-    #else
     private static let horizontalMargin: CGFloat = 0
     private static let bottomMargin: CGFloat = 0
     private static let cardGap: CGFloat = 18
-    #endif
     private static let stackSpacing: CGFloat = 18
     private static let panelLift: CGFloat = 18
     private static var cardCatchUp: CGFloat { max(0, bottomMargin - cardGap) }
@@ -358,23 +337,15 @@ struct LiveChannelOverlay: View {
     /// Every card shares VOD's height except the guide, which needs room for
     /// several rows. The pill row rises with it rather than covering it.
     private var cardHeight: CGFloat {
-        #if os(tvOS)
-        cardTab == .guide ? 540 : metrics.cardHeight
-        #else
         cardTab == .guide ? touchGuideHeight : touchMetrics.cardHeight
-        #endif
     }
 
     private var availableTabs: [LiveChannelCardTab] {
         LiveChannelCardTab.allCases.filter { $0 != .guide || guideContent != nil }
     }
     private var revealClock: Animation {
-        #if os(tvOS)
-        reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.5)
-        #else
         // VOD's touch card curve (`PlayerTouchCardStrip.cardCurve`).
         reduceMotion ? .easeInOut(duration: 0.16) : .easeInOut(duration: 0.24)
-        #endif
     }
 
     private var status: LocalizedStringResource {
@@ -428,15 +399,10 @@ struct LiveChannelOverlay: View {
         }
         .foregroundStyle(.white)
         .padding(.horizontal, Self.horizontalMargin)
-        #if os(tvOS)
-        .padding(.top, 60)
-        .opacity(cardOpen ? 0 : 1)
-        #else
         // Level with the host's PiP / AirPlay row, which is laid out
         // beside the close button (see `touchTopBarInset`). Stays up with a
         // card open: a finger has no Menu button to back out with.
         .padding(.top, Self.touchTopBarInset)
-        #endif
         .plozzFocusSection()
     }
 
@@ -548,11 +514,7 @@ struct LiveChannelOverlay: View {
     }
 
     private static var logoSize: CGSize {
-        #if os(tvOS)
-        CGSize(width: 72, height: 44)
-        #else
         CGSize(width: 48, height: 30)
-        #endif
     }
 
     // MARK: Track options (the VOD player's panel)
@@ -578,9 +540,6 @@ struct LiveChannelOverlay: View {
     }
 
     private var menuCapabilities: PlayerEngineCapabilities {
-        #if os(tvOS)
-        if tracks.continuesExternally { return tracks.engine.capabilities.subtracting(.videoZoom) }
-        #endif
         return tracks.engine.capabilities
     }
 
@@ -638,35 +597,10 @@ struct LiveChannelOverlay: View {
         openMenu == .subtitles && subtitleScreen.isStyleFamily
     }
 
-    #if os(tvOS)
-    @ViewBuilder
-    private func optionsPanel(_ kind: LiveChannelTrackMenuKind) -> some View {
-        PlayerOptionsPanel(
-            category: kind.category, model: trackOptions, palette: palette, actions: trackActions,
-            subtitleScreen: $subtitleScreen, heightCache: $panelHeights, focus: $panelFocus,
-            close: closeMenu, backRequest: panelBackRequest,
-            maximumHeight: max(
-                0,
-                availableSize.height - Self.horizontalMargin
-                    - (styleEditing ? Self.horizontalMargin : menuBottomInset)
-            ),
-            // A live channel draws one subtitle line.
-            offersDualSubtitles: false,
-            playbackScreen: $playbackScreen, videoZoom: tracks.videoZoom,
-            audioScreen: $audioScreen, additionalPlaybackRows: multiviewRows
-        )
-        .reportSubtitleControlsFrame(in: tracks.subtitles.controlsLayout, region: .menu, isVisible: !styleEditing)
-        .id(kind)
-        .plozzFocusSection()
-    }
-    #endif
 
     // Let tvOS recover directly to the opener when the focused menu row disappears.
     // Otherwise the much wider timeline wins the native recovery before the badge.
     private func menuReturnLocksOut(_ control: LiveChannelControl) -> Bool {
-        #if os(tvOS)
-        if let returningMenu { return returningMenu.control != control }
-        #endif
         return false
     }
 
@@ -674,34 +608,9 @@ struct LiveChannelOverlay: View {
 
     private var showsAudio: Bool {
         if trackOptions.engineCapabilities.contains(.audioDelay) { return true }
-        #if os(tvOS)
-        return Self.showsAudio(trackCount: tracks.audioTracks.count, systemAudio: trackOptions.systemAudio)
-        #else
         return !tracks.audioTracks.isEmpty
-        #endif
     }
 
-    #if os(tvOS)
-    static func showsAudio(trackCount: Int, systemAudio: SystemPlaybackAudio) -> Bool {
-        trackCount > 1 || !systemAudio.availableSettings.isEmpty
-    }
-
-    private func hasTVMenu(_ kind: LiveChannelTrackMenuKind) -> Bool {
-        switch kind {
-        case .audio: showsAudio
-        case .subtitles: showsSubtitles
-        case .playback: showsZoom || onMultiview != nil
-        }
-    }
-
-    private var multiviewRows: [PlayerOptionsRowSpec] {
-        guard let onMultiview else { return [] }
-        return [.init(slot: PlaybackOptionsPane.multiviewSlot, title: "Multiview", kind: .action {
-            closeMenu()
-            onMultiview()
-        })]
-    }
-    #endif
 
     /// Subtitles once the stream offers any, as VOD.
     private var showsSubtitles: Bool { !tracks.subtitleTracks.isEmpty }
@@ -764,13 +673,6 @@ struct LiveChannelOverlay: View {
         PlayerControlButton(title, systemImage: systemImage, prominent: prominent, action: action)
         .focused($focus, equals: control)
         .disabled(openMenu != nil || cardOpen || menuReturnLocksOut(control))
-        #if os(tvOS)
-        .background {
-            if returningMenu?.control == control {
-                NativeFocusRegionObserver { returningMenu = nil }
-            }
-        }
-        #endif
     }
 
     /// The open track menu, resting just above the badges that opened it.
@@ -781,20 +683,6 @@ struct LiveChannelOverlay: View {
     @ViewBuilder
     private var menuLayer: some View {
         if let openMenu {
-            #if os(tvOS)
-            VStack(spacing: 0) {
-                // Style pins to the TOP, as VOD's does, so its height changes
-                // extend downward; every other menu rests above its buttons.
-                if !styleEditing { Spacer(minLength: 0) }
-                optionsPanel(openMenu)
-                if styleEditing { Spacer(minLength: 0) }
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.horizontal, Self.horizontalMargin)
-            .padding(.top, Self.horizontalMargin)
-            .padding(.bottom, styleEditing ? Self.horizontalMargin : menuBottomInset)
-            .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
-            #else
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 LiveChannelTrackPanel(kind: openMenu, model: tracks, focus: $focus, onSelect: closeMenu)
@@ -805,7 +693,6 @@ struct LiveChannelOverlay: View {
             .padding(.top, Self.horizontalMargin)
             .padding(.bottom, menuBottomInset)
             .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
-            #endif
         }
     }
 
@@ -818,38 +705,6 @@ struct LiveChannelOverlay: View {
 
     @ViewBuilder
     private var timelineRow: some View {
-        #if os(tvOS)
-        Button(action: timelineSelected) { timeline }
-            .buttonStyle(LiveChannelTimelineButtonStyle { focused in
-                timelineFocused = focused
-                if focused { leftTabRow() } else { resetScrub() }
-            })
-            .background(timelineScrubPan)
-            // VOD's left/right skip, through the stream's own rewind window.
-            .onMoveCommand { direction in
-                guard let window = seekWindowSeconds, !scrubPanActive,
-                      scrubEndedAt.map({ Date().timeIntervalSince($0) > 0.5 }) ?? true else { return }
-                // A click while a scrub waits moves the pending position, as VOD's skip does mid-scrub.
-                if scrubPending, let pending = scrubBehind {
-                    let step = direction == .left ? Self.seekStep : direction == .right ? -Self.seekStep : 0
-                    guard step != 0 else { return }
-                    scrubBehind = min(max(pending + step, 0), window)
-                    awaitScrubConfirmation()
-                    return
-                }
-                guard scrubBehind == nil else { return }
-                switch direction {
-                case .left: onSeekBy(-Self.seekStep)
-                case .right: onSeekBy(Self.seekStep)
-                default: break
-                }
-            }
-            .focusEffectDisabled()
-            .focused($focus, equals: .timeline)
-            .disabled(openMenu != nil || menuReturnLocksOut(.timeline))
-            .accessibilityIdentifier("live-channel-timeline")
-            .accessibilityLabel(Text(status))
-        #else
         VStack(spacing: 14) {
             timeline
             HStack(spacing: 28) {
@@ -874,7 +729,6 @@ struct LiveChannelOverlay: View {
             }
             .font(.title3.weight(.semibold))
         }
-        #endif
     }
 
     private var timeline: some View {
@@ -902,50 +756,6 @@ struct LiveChannelOverlay: View {
         #endif
     }
 
-    #if os(tvOS)
-    /// The remote's touch surface scrubs while the timeline holds focus.
-    private var timelineScrubPan: some View {
-        LiveChannelTimelineScrubPan(
-            isEnabled: timelineFocused && seekWindowSeconds != nil && openMenu == nil && !cardOpen,
-            began: {
-                scrubPanActive = true
-                scrubConfirmTask?.cancel()
-                scrubConfirmTask = nil
-                // A swipe after a lift carries on from the pending position.
-                scrub.begin(behindLive: scrubBehind ?? behindLiveSeconds)
-            },
-            changed: { translation, speed in
-                guard scrubPanActive, let window = seekWindowSeconds else { return }
-                scrub.change(
-                    translationX: Double(translation.x), translationY: Double(translation.y),
-                    speed: speed, windowSeconds: window
-                )
-                // Undecided or vertical leaves any pending position where it is.
-                if let behind = scrub.behindLive {
-                    onControlActivity()
-                    scrubBehind = behind
-                }
-            },
-            ended: { committed in
-                scrubPanActive = false
-                let landing = committed ? scrub.end() : nil
-                if !committed { scrub.cancel() }
-                if landing != nil || scrubBehind != nil { scrubEndedAt = Date() }
-                // Lifting is not a choice on the remote: hold the position for
-                // Select to confirm.
-                if let landing {
-                    scrubBehind = landing
-                    scrubPending = true
-                    awaitScrubConfirmation()
-                } else if scrubPending {
-                    awaitScrubConfirmation()
-                } else {
-                    scrubBehind = nil
-                }
-            }
-        )
-    }
-    #endif
 
     /// One remote press through the rewind window.
     static let seekStep: TimeInterval = 10
@@ -1098,24 +908,6 @@ struct LiveChannelOverlay: View {
     /// act on where focus lands, not on the press.
     @ViewBuilder
     private var cardExitGuide: some View {
-        #if os(tvOS)
-        if cardExitGuideActive {
-            // A button reporting its own native focus, like the pills: the
-            // shared focus state alone never registered the landing.
-            Button(action: exitCard) {
-                // Not `Color.clear`: UIKit won't focus a fully transparent view.
-                Color.black.opacity(0.001)
-                    .frame(height: 8)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(LiveChannelTimelineButtonStyle { focused in
-                if focused { exitCard() }
-            })
-            .focusEffectDisabled()
-            .focused($focus, equals: .cardExit)
-            .offset(y: -26)
-        }
-        #endif
     }
 
     /// Only while focus is on the pill row, so Up from inside the card stops
@@ -1130,11 +922,7 @@ struct LiveChannelOverlay: View {
     /// Touch has no focus order to narrow.
     private func isFocusable(_ control: LiveChannelControl) -> Bool {
         guard openMenu == nil else { return false }
-        #if os(tvOS)
-        return !menuReturnLocksOut(control) && (cardOpen || control == .cardTab(cardTab))
-        #else
         return true
-        #endif
     }
 
     @ViewBuilder
@@ -1272,17 +1060,11 @@ struct LiveChannelOverlay: View {
     private func exitCard() {
         guard cardOpen else { return }
         closeCard()
-        #if os(tvOS)
-        focus = .timeline
-        #endif
     }
 
     private func toggleCard(_ tab: LiveChannelCardTab) {
         if cardOpen, cardTab == tab {
             closeCard()
-            #if os(tvOS)
-            focus = .timeline
-            #endif
         } else if cardOpen {
             select(tab)
         } else {
@@ -1292,49 +1074,29 @@ struct LiveChannelOverlay: View {
 
     private func selectOnNow(_ item: LiveChannelOnNowItem) {
         closeCard()
-        #if os(tvOS)
-        focus = .timeline
-        #endif
         guard item.channelID != channelID else { return }
         onTuneChannel?(item.channelID)
     }
 
     private func toggleMenu(_ kind: LiveChannelTrackMenuKind) {
-        #if os(tvOS)
-        guard hasTVMenu(kind) else { return }
-        #endif
         if openMenu == kind {
             closeMenu()
             return
         }
-        #if !os(tvOS)
         menuReturnFocus = focus ?? kind.control
-        #endif
         subtitleScreen = .tracks
         playbackScreen = .options
         audioScreen = .options
         openMenu = kind
         // After tvOS's own default-focus pass over the new rows — see
         // `PlayerControls.restoreFocus`.
-        #if os(tvOS)
-        let target = PlayerOptionsPanel.preferredFocus(
-            for: kind.category, subtitleScreen: .tracks, model: trackOptions, additionalPlaybackRows: multiviewRows
-        )
-        DispatchQueue.main.async { panelFocus = target }
-        #else
         let row = LiveChannelTrackPanel.selectedRow(kind: kind, model: tracks)
         DispatchQueue.main.async { focus = .trackRow(row) }
-        #endif
     }
 
     private func closeMenu() {
-        #if os(tvOS)
-        returningMenu = openMenu.flatMap { hasTVMenu($0) ? $0 : nil }
-        let returnFocus = returningMenu?.control ?? .timeline
-        #else
         let returnFocus = menuReturnFocus
         menuReturnFocus = nil
-        #endif
         openMenu = nil
         subtitleScreen = .tracks
         playbackScreen = .options
@@ -2253,18 +2015,6 @@ private struct LiveChannelTimeline: View {
 
     // Touch has no focused shape to make room for, and VOD's touch bar is a
     // slim line with small times, so the phone gets the compact row.
-    #if os(tvOS)
-    private static let rowSpacing: CGFloat = 8
-    private static let barRowHeight: CGFloat = 44
-    private static let labelRowHeight: CGFloat = 30
-    private static let restingBarHeight: CGFloat = 12
-    private static let restingKnobHeight: CGFloat = 12
-    private static let scrubbingKnobWidth: CGFloat = 8
-    private static let scrubbingKnobHeight: CGFloat = 40
-    private static let pauseGlyphSize: CGFloat = 24
-    private static let pauseGlyphOffset: CGFloat = 40
-    private static let timeFont: Font = .callout.weight(.semibold)
-    #else
     private static let rowSpacing: CGFloat = 2
     private static let barRowHeight: CGFloat = 18
     private static let labelRowHeight: CGFloat = 20
@@ -2272,7 +2022,6 @@ private struct LiveChannelTimeline: View {
     private static let pauseGlyphSize: CGFloat = 16
     private static let pauseGlyphOffset: CGFloat = 24
     private static let timeFont: Font = .caption.weight(.semibold)
-    #endif
 
     /// With a rewind window the faint fill is the window itself (VOD's buffered
     /// fill: what can be reached), and the bright fill runs from its start to
@@ -2286,12 +2035,6 @@ private struct LiveChannelTimeline: View {
             // and its focused shape with a lifted knob on the remote.
             let scrubbing = scrubBehind != nil
             let barHeight: CGFloat = focused || scrubbing ? 20 : Self.restingBarHeight
-            #if os(tvOS)
-            let fillStart = width * CGFloat(layout.seekableStart ?? 0)
-            let knobWidth: CGFloat = scrubbing ? Self.scrubbingKnobWidth : focused ? 8 : 4
-            let knobHeight: CGFloat = scrubbing ? Self.scrubbingKnobHeight
-                : focused ? 32 : Self.restingKnobHeight
-            #endif
             ZStack(alignment: .leading) {
                 #if os(iOS)
                 LiveChannelTouchTrack(
@@ -2327,13 +2070,6 @@ private struct LiveChannelTimeline: View {
                     )
                         .transition(.opacity)
                 }
-                #if os(tvOS)
-                RoundedRectangle(cornerRadius: focused || scrubbing ? knobWidth / 2 : 0, style: .continuous)
-                    .fill(Color.white)
-                    .frame(width: knobWidth, height: knobHeight)
-                    .offset(x: knobX - knobWidth / 2)
-                    .shadow(radius: 4)
-                #endif
             }
             .frame(maxHeight: .infinity, alignment: .center)
             .animation(.easeOut(duration: 0.2), value: focused)
@@ -2441,12 +2177,6 @@ private struct LiveChannelScrubThumbnail: View {
     var availableSize: CGSize = .zero
     @Environment(\.plozzReduceTransparency) private var reduceTransparency
 
-    #if os(tvOS)
-    private static let width: CGFloat = 483
-    private static let border: CGFloat = 12
-    private static let corner: CGFloat = 18
-    private static let lift: CGFloat = 34
-    #else
     private static let width: CGFloat = 200
     /// AVPlayerViewController's scrub preview size: live previews are a
     /// glance at where the scrub lands, and VOD's larger box covered half a
@@ -2455,7 +2185,6 @@ private struct LiveChannelScrubThumbnail: View {
     private static let border: CGFloat = 6
     private static let corner: CGFloat = 10
     private static let lift: CGFloat = 22
-    #endif
 
     var body: some View {
         #if os(iOS)
@@ -2742,21 +2471,12 @@ private struct LiveChannelTrackPanel: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 18)
             let rows = rows
-            #if os(tvOS)
-            if rows.count > Self.rowsBeforeScrolling {
-                ScrollView { rowStack(rows) }
-                    .frame(height: Self.scrollingHeight)
-            } else {
-                rowStack(rows)
-            }
-            #else
             // A phone on its side has well under seven rows of room above the
             // badges, so scroll whenever the rows don't fit the space given.
             ViewThatFits(in: .vertical) {
                 rowStack(rows)
                 ScrollView { rowStack(rows) }
             }
-            #endif
         }
         .padding(.bottom, 14)
         .padding(.horizontal, 14)
@@ -2794,13 +2514,7 @@ private struct LiveChannelTrackPanel: View {
         }
     }
 
-    #if os(tvOS)
-    private static let rowsBeforeScrolling = 7
-    private static let width: CGFloat = 520
-    private static let scrollingHeight: CGFloat = 440
-    #else
     private static let width: CGFloat = 320
-    #endif
 }
 
 // MARK: - On Now
@@ -2896,11 +2610,7 @@ struct LiveChannelOnNowCard: View {
     @Environment(\.isFocused) private var focused
 
     private static let spacing: CGFloat = 10
-    #if os(tvOS)
-    private static let progressHeight: CGFloat = 6
-    #else
     private static let progressHeight: CGFloat = 4
-    #endif
 
     private var inset: CGFloat { metrics.contentPadding }
 

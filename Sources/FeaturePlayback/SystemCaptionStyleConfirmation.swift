@@ -4,31 +4,17 @@ import SwiftUI
 
 enum SystemCaptionStyleCopy {
     static var optionTitle: LocalizedStringResource {
-        #if os(tvOS)
-        LocalizedStringResource(
-            "Match Apple TV Subtitle Style",
-            comment: "Toggle: use this Apple TV's system subtitle appearance instead of a custom Plozz appearance."
-        )
-        #else
         LocalizedStringResource(
             "Match Device Subtitle Style",
             comment: "Toggle: use this iPhone or iPad's system subtitle appearance instead of a custom Plozz appearance."
         )
-        #endif
     }
 
     static var confirmationTitle: LocalizedStringResource {
-        #if os(tvOS)
-        LocalizedStringResource(
-            "Match Apple TV Subtitle Style?",
-            comment: "Confirmation title before replacing the custom subtitle appearance with this Apple TV's system appearance."
-        )
-        #else
         LocalizedStringResource(
             "Match Device Subtitle Style?",
             comment: "Confirmation title before replacing the custom subtitle appearance with this iPhone or iPad's system appearance."
         )
-        #endif
     }
 }
 

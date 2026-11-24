@@ -34,13 +34,6 @@ public struct SettingsStepper<Value: Hashable>: View {
 
     @Environment(\.themePalette) private var palette
     @FocusState private var focusedButton: StepperButton?
-    #if os(tvOS)
-    @FocusState private var isFocused: Bool
-    @State private var swipeIndex: Int?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.layoutDirection) private var layoutDirection
-    @Environment(\.settingsFormRowsFlushLeading) private var flushLeading
-    #endif
 
     private enum StepperButton { case minus, plus }
 
@@ -173,46 +166,13 @@ public struct SettingsStepper<Value: Hashable>: View {
     private var glyphSize: CGFloat { compact ? 16 : 26 }
     private var rowSpacing: CGFloat { compact ? 12 : 24 }
     private var valueMinWidth: CGFloat {
-        #if os(tvOS)
-        64
-        #else
         compact ? 52 : 96
-        #endif
     }
     private var valueFont: Font {
-        #if os(tvOS)
-        SettingsRowMetrics.titleFont.weight(.regular)
-        #else
         compact ? .body : .headline.weight(.semibold)
-        #endif
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsAdjustmentFocusScope(
-            content: televisionControl,
-            screen: options,
-            adjustableRow: { isFocused ? 0 : nil },
-            onSwipe: swipeEditingBegan == nil ? nil : adjustSwipe,
-            onEditingEnded: {
-                swipeIndex = nil
-                editingEnded?($0)
-            },
-            onMove: { direction, repeating in
-                switch direction {
-                case .left, .right:
-                    if let directionalAdjustment {
-                        directionalAdjustment(direction == .right, repeating)
-                    } else {
-                        step(by: direction == .right ? 1 : -1)
-                    }
-                default: break
-                }
-            }
-        )
-        .fixedSize(horizontal: label == nil, vertical: true)
-        .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
-        #else
         if let label {
             LabeledSettingRow(label, subtitle: subtitle, labelWidth: labelWidth) {
                 buttonPair
@@ -220,10 +180,8 @@ public struct SettingsStepper<Value: Hashable>: View {
         } else {
             buttonPair
         }
-        #endif
     }
 
-    #if !os(tvOS)
     private var buttonPair: some View {
         HStack(spacing: rowSpacing) {
             stepButton(symbol: "minus", dimmed: !canDecrement, focus: .minus) {
@@ -244,142 +202,11 @@ public struct SettingsStepper<Value: Hashable>: View {
             onFocusChange?(focused != nil)
         }
     }
-    #endif
 
     private func step(by delta: Int) {
         if let next = stepped(by: delta) { selection = next }
     }
 
-    #if os(tvOS)
-    private func adjustSwipe(by steps: Int, began: Bool) {
-        if began {
-            swipeIndex = index
-            swipeEditingBegan?()
-        }
-        guard let current = swipeIndex, !options.isEmpty else { return }
-        let target = current + steps
-        let next = wraps
-            ? (target % options.count + options.count) % options.count
-            : min(options.count - 1, max(0, target))
-        // Keep the gesture's index current even before SwiftUI renders the new binding.
-        swipeIndex = next
-        if next != current { selection = options[next] }
-    }
-
-    @ViewBuilder private var televisionControl: some View {
-        if label != nil {
-            televisionButton
-                .buttonStyle(SettingsFormButtonStyle())
-                .padding(.leading, flushLeading ? -SettingsRowMetrics.horizontalPadding : 0)
-        } else {
-            televisionButton
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-        }
-    }
-
-    private var televisionButton: some View {
-        Button { step(by: 1) } label: {
-            if let label {
-                if compact && rangeLabels != nil && !inlineRange {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(label).font(SettingsRowMetrics.titleFont)
-                        if let subtitle {
-                            Text(subtitle).font(SettingsRowMetrics.helperFont).settingsRowSecondary()
-                        }
-                        adjustmentValue
-                    }
-                    .padding(.horizontal, SettingsRowMetrics.verticalPadding(.primary) - SettingsRowMetrics.horizontalPadding)
-                } else {
-                    LabeledSettingRow(
-                        label, subtitle: subtitle, labelWidth: labelWidth, trailingAlignment: .trailing
-                    ) {
-                        adjustmentValue
-                    }
-                }
-            } else {
-                adjustmentValue
-            }
-        }
-        .focused($isFocused)
-        .onChange(of: focusRequest) { _, _ in isFocused = true }
-        .disabled(options.isEmpty)
-        .accessibilityLabel(label.map(Text.init) ?? title(selection))
-        .accessibilityValue(title(selection))
-        .accessibilityHint(subtitle.map(Text.init) ?? Text(verbatim: ""))
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .decrement: step(by: -1)
-            case .increment: step(by: 1)
-            @unknown default: break
-            }
-        }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: index)
-    }
-
-    @ViewBuilder private var adjustmentValue: some View {
-        if rangeLabels != nil, inlineRange {
-            HStack(spacing: 12) {
-                adjustmentGlyph("minus", enabled: canDecrement)
-                HStack(spacing: 4) {
-                    ForEach(rangePositions, id: \.self) { position in
-                        Capsule()
-                            .fill(.primary.opacity(position <= index ? 1 : 0.2))
-                            .frame(height: position == options.count / 2 ? 10 : 6)
-                    }
-                }
-                .frame(width: 180)
-                adjustmentGlyph("plus", enabled: canIncrement)
-            }
-            .environment(\.layoutDirection, .leftToRight)
-            .accessibilityHidden(true)
-        } else if let rangeLabels {
-            HStack(alignment: .top, spacing: 12) {
-                adjustmentGlyph("minus", enabled: canDecrement)
-                VStack(spacing: 0) {
-                    HStack(spacing: 4) {
-                        ForEach(rangePositions, id: \.self) { position in
-                            Capsule()
-                                .fill(.primary.opacity(position <= index ? 1 : 0.2))
-                                .frame(height: 6)
-                        }
-                    }
-                    .frame(height: SettingsRowMetrics.minHeight(.secondary))
-                    HStack {
-                        Text(rangeLabels.0)
-                        Spacer()
-                        Text(rangeLabels.1)
-                    }
-                    .overlay {
-                        if let rangeMidpointLabel { Text(rangeMidpointLabel) }
-                    }
-                    .font(.caption)
-                }
-                adjustmentGlyph("plus", enabled: canIncrement)
-            }
-            .frame(minWidth: compact ? 300 : 380, maxWidth: compact ? .infinity : 380)
-            .environment(\.layoutDirection, .leftToRight)
-            .accessibilityHidden(true)
-        } else {
-            HStack(spacing: compact ? 12 : 16) {
-                adjustmentGlyph("minus", enabled: canDecrement)
-                value
-                    .environment(\.layoutDirection, layoutDirection)
-                adjustmentGlyph("plus", enabled: canIncrement)
-            }
-            // Keep the physical arrows consistent while the enclosing row follows RTL.
-            .environment(\.layoutDirection, .leftToRight)
-        }
-    }
-
-    private func adjustmentGlyph(_ symbol: String, enabled: Bool) -> some View {
-        Image(systemName: symbol)
-            .font(SettingsRowMetrics.titleFont.weight(.semibold))
-            .frame(width: 32, height: SettingsRowMetrics.minHeight(.secondary))
-            .opacity(enabled ? 1 : 0.35)
-            .accessibilityHidden(true)
-    }
-    #endif
 
     private var value: some View {
         let sizingOptions = sizingOptions ?? options
@@ -400,9 +227,7 @@ public struct SettingsStepper<Value: Hashable>: View {
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize()
-            #if !os(tvOS)
             .foregroundStyle(palette.primaryText)
-            #endif
     }
 
     private func stepButton(symbol: String, dimmed: Bool, focus: StepperButton, action: @escaping () -> Void) -> some View {

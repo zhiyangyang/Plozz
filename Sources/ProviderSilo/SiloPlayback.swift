@@ -573,13 +573,8 @@ struct SiloPlaybackStart: Encodable {
         client_capabilities = Codecs(codecs_video: video, codecs_video_hardware: hardwareVideo, codecs_audio: audio,
                                      containers: containers, hdr: capabilities.supportsHDR10 || capabilities.supportsHLG,
                                      hdr_details: hdr)
-        #if os(tvOS)
-        let platform = "tvos"
-        let form = "tv"
-        #else
         let platform = "ios"
         let form = "mobile"
-        #endif
         client_playback_context = Context(
             form_factor: form, app_version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
             device: .init(platform: platform), output: .init(hdr_details: hdr),

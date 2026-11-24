@@ -31,13 +31,7 @@ public extension View {
     /// Scope television playback chrome, not the window or the browsing theme.
     @ViewBuilder
     func playerPlatformAppearance() -> some View {
-        #if os(tvOS)
-        environment(\.colorScheme, .dark)
-            .environment(\.themePalette, .dark)
-            .tint(nil)
-        #else
         self
-        #endif
     }
 }
 

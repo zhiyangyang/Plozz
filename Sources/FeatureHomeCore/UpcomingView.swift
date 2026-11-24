@@ -10,15 +10,7 @@
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var agendaSize = CGSize.zero
         @State private var dateScrollRequest: UUID?
-        #if os(tvOS)
-            @Environment(\.plozzNavigationContentInset) private var navigationInset
-            @Environment(\.plozzTopNavigationContentInsets) private var topNavigationInsets
-            @State private var didChooseCalendarDate = false
-            @State private var dateFocusRequest: UUID?
-            @State private var displayedWeek = Calendar.current.startOfDay(for: Date())
-            @State private var headerHeight: CGFloat = 0
-            @FocusState private var calendarIsFocused: Bool
-        #elseif os(iOS)
+        #if os(iOS)
             @Environment(\.horizontalSizeClass) private var sizeClass
             @Environment(\.plozzCardStyle) private var cardStyle
             @State private var availableSize = CGSize.zero
@@ -57,35 +49,6 @@
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(alignment: .top, spacing: 0) {
                         ScrollView {
-                            #if os(tvOS)
-                            VStack(alignment: .leading, spacing: 20) {
-                                HStack {
-                                    Text("Upcoming").font(.title.bold())
-                                    Spacer()
-                                    toolbarControls
-                                }
-                                .plozzActionButton(role: .secondary)
-                                .focusSection()
-                                .navigationEntryFocus(.fallback)
-                                .id("upcoming.header")
-                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
-                                UpcomingTVAgenda(
-                                    model: model,
-                                    selectedDay: Binding(get: { selectedDay }, set: requestDateScroll),
-                                    displayedWeek: $displayedWeek,
-                                    interval: calendarInterval, hasReleases: !visibleReleases.isEmpty,
-                                    minimumLastDayHeight: visibleReleases.isEmpty
-                                        ? max(0, agendaHeight - headerHeight - 20) : agendaHeight,
-                                    contentWidth: agendaContentWidth,
-                                    focusRequest: dateFocusRequest,
-                                    onFocusRequestHandled: { request in
-                                        if dateFocusRequest == request { dateFocusRequest = nil }
-                                    }
-                                )
-                            }
-                            .padding(.vertical)
-                            .padding(.horizontal, PlozzTheme.Metrics.screenPadding + metrics.railShadowClearance)
-                            #else
                             UpcomingAgenda(
                                 model: model, selectedDay: selectedDay,
                                 minimumLastDayHeight: agendaHeight, contentWidth: agendaContentWidth,
@@ -105,7 +68,6 @@
                             #endif
                             .opacity(visibleReleases.isEmpty ? 0 : 1)
                             .accessibilityHidden(visibleReleases.isEmpty)
-                            #endif
                         }
                         #if os(iOS)
                         .overlay {
@@ -176,15 +138,8 @@
                     }
                     if model.lastHiddenTitle != nil {
                         Button("Undo hide", action: model.undoHide)
-                            #if os(tvOS)
-                            .padding(.horizontal, PlozzTheme.Metrics.screenPadding)
-                            #endif
                     }
                 }
-                #if os(tvOS)
-                .padding(.leading, navigationInset)
-                .padding(.top, topNavigationInsets.top)
-                #else
                 .navigationTitle(
                     PlozzCustomization.isCustomBuild
                         ? Text(verbatim: "")
@@ -202,25 +157,8 @@
                 .onChange(of: supportsInlineCalendar) { _, supported in
                     if supported { showingCalendar = false }
                 }
-                #endif
                 .tint(palette.primaryText)
                 .onAppear { model.refreshIfStale() }
-                #if os(tvOS)
-                .sheet(isPresented: $showingCalendar, onDismiss: {
-                    if didChooseCalendarDate {
-                        didChooseCalendarDate = false
-                        requestDateScroll(to: selectedDay)
-                    }
-                }) {
-                    UpcomingCalendar(selectedDay: Binding(
-                        get: { selectedDay },
-                        set: {
-                            selectedDay = Calendar.current.startOfDay(for: $0)
-                            didChooseCalendarDate = true
-                        }
-                    ), interval: calendarInterval)
-                }
-                #endif
             }
         }
 
@@ -243,9 +181,6 @@
             .accessibilityValue(Text(selectedDay, format: .dateTime.month().day()))
             .accessibilityIdentifier("upcoming.calendar")
             .help(calendarActionTitle)
-            #if os(tvOS)
-            .focused($calendarIsFocused)
-            #endif
             #if os(iOS)
             .accessibilityAddTraits(showsInlineCalendar ? .isSelected : [])
             .popover(isPresented: $showingCalendar) {
@@ -273,24 +208,10 @@
             scrollPosition.isPositionedByUser = true
             #endif
             selectedDay = Calendar.current.startOfDay(for: day)
-            #if os(tvOS)
-            displayedWeek = selectedDay
-            let hasDestination = model.visibleReleases.contains { $0.date >= selectedDay }
-            dateFocusRequest = hasDestination ? UUID() : nil
-            #else
             hasScrolledAgenda = false
-            #endif
             dateScrollRequest = UUID()
         }
 
-        #if os(tvOS)
-        private var calendarInterval: DateInterval {
-            DateInterval(
-                start: min(interval.end, max(interval.start, Calendar.current.startOfDay(for: Date()))),
-                end: interval.end
-            )
-        }
-        #endif
 
         #if os(iOS)
         private var calendarSelection: Binding<Date> {
@@ -349,59 +270,11 @@
             }
         #endif
 
-        #if os(tvOS)
-            private var toolbarControls: some View {
-                HStack(spacing: 20) {
-                    calendarButton
-                    UpcomingFilterMenu(model: model)
-                }
-            }
-        #endif
     }
 
-    #if os(tvOS)
-    private struct UpcomingTVAgenda: View {
-        let model: UpcomingFeedModel
-        @Binding var selectedDay: Date
-        @Binding var displayedWeek: Date
-        let interval: DateInterval
-        let hasReleases: Bool
-        let minimumLastDayHeight: CGFloat
-        let contentWidth: CGFloat
-        let focusRequest: UUID?
-        let onFocusRequestHandled: (UUID) -> Void
-        @Environment(\.plozzMetrics) private var metrics
-        @State private var weekHeight: CGFloat = 0
-
-        var body: some View {
-            VStack(alignment: .leading, spacing: metrics.rowSpacing) {
-                UpcomingWeekCalendar(selectedDay: $selectedDay, displayedWeek: $displayedWeek, interval: interval)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { weekHeight = $0 }
-                if hasReleases {
-                    UpcomingAgenda(
-                        model: model, selectedDay: selectedDay,
-                        minimumLastDayHeight: minimumLastDayHeight, contentWidth: contentWidth,
-                        focusRequest: focusRequest, onFocusRequestHandled: onFocusRequestHandled
-                    )
-                } else {
-                    UpcomingFeedStatus(model: model)
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: max(0, minimumLastDayHeight - weekHeight - metrics.rowSpacing)
-                        )
-                }
-            }
-        }
-    }
-    #endif
 
     private func upcomingAgendaReleases(_ releases: [UpcomingRelease]) -> [UpcomingRelease] {
-        #if os(tvOS)
-        let today = Calendar.current.startOfDay(for: Date())
-        return releases.filter { $0.date >= today }
-        #else
         return releases
-        #endif
     }
 
     private struct UpcomingFeedStatus: View {
@@ -520,15 +393,6 @@
                 ?? Self.snapshot(releases: resolvedReleases, selectedDay: selectedDay)
             let groups = snapshot.groups
             let days = snapshot.days
-            #if os(tvOS)
-                let visibleDays = days.filter { $0 >= calendar.startOfDay(for: Date()) }
-                let spacing = metrics.cardSpacing
-                let gridMetrics = metrics
-                let width = metrics.portraitRowSlotWidth(
-                    viewportWidth: contentWidth, leadingInset: 0, cardStyle: cardStyle
-                )
-                let columns = [GridItem(.adaptive(minimum: width, maximum: width), spacing: spacing, alignment: .topLeading)]
-            #else
                 let visibleDays = days
                 let layout = PlozziOSPosterGridLayout(contentWidth: contentWidth, metrics: metrics, cardStyle: cardStyle)
                 let gridMetrics = layout.metrics
@@ -537,7 +401,6 @@
                     repeating: GridItem(.fixed(width), spacing: layout.spacing, alignment: .topLeading),
                     count: layout.columns
                 )
-            #endif
             #if os(iOS)
             VStack(alignment: .leading, spacing: 28) {
                 dateGroups(visibleDays, groups: groups, columns: columns, metrics: gridMetrics, width: width)
@@ -568,13 +431,7 @@
             releases: [UpcomingRelease], selectedDay: Date
         ) -> AgendaSnapshot {
             let calendar = Calendar.current
-            #if os(tvOS)
-            let agendaReleases = releases.filter {
-                $0.date >= calendar.startOfDay(for: Date())
-            }
-            #else
             let agendaReleases = releases
-            #endif
             let groups = Dictionary(grouping: agendaReleases) {
                 calendar.startOfDay(for: $0.date)
             }
@@ -620,32 +477,6 @@
             let focusTargetID = resolvedReleases.first { $0.date >= selectedDay }?.id
             return ForEach(days, id: \.self) { day in
                 Group {
-                    #if os(tvOS)
-                    MediaRowSection(title: dayTitle(day), leadingInset: 0) {
-                        if let releases = groups[day], !releases.isEmpty {
-                            MediaRowScroll(
-                                metrics: metrics,
-                                leadingInset: metrics.cardRowLeadingPadding(0, cardStyle: cardStyle),
-                                trailingInset: PlozzTheme.Metrics.screenPadding
-                            ) {
-                                ForEach(releases) { release in
-                                    UpcomingReleaseCard(
-                                        release: release,
-                                        focusRequest: release.id == focusTargetID ? focusRequest : nil,
-                                        onFocusRequestHandled: onFocusRequestHandled
-                                    )
-                                        .frame(width: width)
-                                        .contextMenu { Button("Hide title") { model.hide(release) } }
-                                        .navigationEntryFocus(day >= selectedDay ? .content : nil)
-                                }
-                            }
-                            .padding(.top, metrics.railTopClearanceOffset)
-                            .padding(.bottom, metrics.railBottomClearanceOffset)
-                        }
-                    }
-                    .environment(\.plozzNavigationContentInset, 0)
-                    .environment(\.plozzCardCaptionView, .home)
-                    #else
                     VStack(alignment: .leading, spacing: 12) {
                         dayTitle(day)
                             .font(PlozziOSMediaRailLayout.headingFont)
@@ -653,19 +484,13 @@
                             .accessibilityAddTraits(.isHeader)
                         releaseGrid(groups[day] ?? [], columns: columns, metrics: metrics, width: width)
                     }
-                    #endif
                 }
                 .frame(minHeight: day == days.last ? minimumLastDayHeight : 0, alignment: .top)
-                #if os(tvOS)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
-                #else
                 .background {
                     if Calendar.current.isDateInToday(day) {
                         UpcomingTodayAnchor()
                     }
                 }
-                #endif
                 .id(day)
             }
         }
@@ -726,23 +551,7 @@
         }
 
         public var body: some View {
-            #if os(tvOS)
-                MediaRowView(
-                    title: title, items: releases.map(\.item), style: .landscape,
-                    leadingInset: 0, onFocusEntered: onFocusEntered,
-                    onFocusChange: onFocusChange, onCardFocused: onCardFocused,
-                    statusCue: { item in
-                        guard
-                            let release = releases.first(where: {
-                                $0.item.stablePresentationID == item.stablePresentationID
-                            })
-                        else { return nil }
-                        return statusCue(for: release)
-                    },
-                    onSelect: { navigate?($0) }
-                )
-                .browsingRow(onSeeAll)
-            #elseif os(iOS)
+            #if os(iOS)
                 PlozziOSHomeRailLayout { metrics in
                     PlozziOSMediaSection(
                         title: title, artworkInset: cardStyle == .framed ? metrics.cardInset : 0,
@@ -823,67 +632,6 @@
         @State private var month: Date = Date()
 
         var body: some View {
-            #if os(tvOS)
-                let calendar = Calendar.current
-                let start = calendar.dateInterval(of: .month, for: month)!.start
-                let dayCount = calendar.range(of: .day, in: .month, for: month)!.count
-                let offset = (calendar.component(.weekday, from: start) - calendar.firstWeekday + 7) % 7
-                VStack(spacing: 24) {
-                    HStack {
-                        calendarControl(
-                            Button("Previous month", systemImage: "chevron.left") {
-                                month = calendar.date(byAdding: .month, value: -1, to: month)!
-                            }
-                            .labelStyle(.iconOnly)
-                            .accessibilityIdentifier("upcoming.calendar.previous")
-                            .disabled(start <= interval.start)
-                        )
-                        Text(month, format: .dateTime.month(.wide).year())
-                            .font(.headline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                            .frame(maxWidth: .infinity)
-                            .layoutPriority(1)
-                            .accessibilityIdentifier("upcoming.calendar.month")
-                        calendarControl(
-                            Button("Next month", systemImage: "chevron.right") {
-                                month = calendar.date(byAdding: .month, value: 1, to: month)!
-                            }
-                            .labelStyle(.iconOnly)
-                            .accessibilityIdentifier("upcoming.calendar.next")
-                            .disabled(calendar.date(byAdding: .month, value: 1, to: start)! >= interval.end)
-                        )
-                    }
-                    Grid(horizontalSpacing: 16, verticalSpacing: 16) {
-                        GridRow {
-                            ForEach(0..<7, id: \.self) { index in
-                                Text(
-                                    verbatim: calendar.shortStandaloneWeekdaySymbols[
-                                        (calendar.firstWeekday - 1 + index) % 7]
-                                )
-                                .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        ForEach(0..<((offset + dayCount + 6) / 7), id: \.self) { week in
-                            GridRow {
-                                ForEach(0..<7, id: \.self) { weekday in
-                                    let index = week * 7 + weekday - offset
-                                    if index >= 0, index < dayCount {
-                                        calendarCell(calendar.date(byAdding: .day, value: index, to: start)!)
-                                    } else {
-                                        Color.clear.frame(width: 104, height: 66)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Button("Cancel") { dismiss() }
-                }
-                .plozzActionButton(role: .secondary)
-                .frame(width: 7 * 104 + 6 * 16)
-                .padding(48)
-                .onAppear { month = selectedDay }
-            #else
                 DatePicker(
                     "Date", selection: $selectedDay,
                     in: interval.start...interval.end.addingTimeInterval(-1),
@@ -900,61 +648,7 @@
                 .onChange(of: selectedDay) { _, _ in
                     if dismissesOnSelection { dismiss() }
                 }
-            #endif
         }
 
-        #if os(tvOS)
-        private func calendarCell(_ day: Date) -> some View {
-            let calendar = Calendar.current
-            return calendarControl(dayButton(day))
-                .modifier(UpcomingDateSelectionBackground(
-                    isSelected: calendar.isDate(day, inSameDayAs: selectedDay)
-                ))
-                .disabled(day < interval.start || day >= interval.end)
-                .accessibilityAddTraits(calendar.isDate(day, inSameDayAs: selectedDay) ? .isSelected : [])
-                .accessibilityLabel(Text(day, format: .dateTime.weekday().month().day()))
-                .accessibilityValue(calendar.isDateInToday(day) ? Text("Today") : Text(verbatim: ""))
-                .accessibilityIdentifier("upcoming.calendar.day.\(calendar.component(.day, from: day))")
-        }
-
-        @ViewBuilder
-        private func calendarControl(_ control: some View) -> some View {
-            if #available(tvOS 26.0, *) {
-                control
-                    .buttonSizing(.flexible)
-                    .frame(width: 104, height: 66)
-            } else {
-                control.frame(width: 104, height: 66)
-            }
-        }
-
-        private func dayButton(_ day: Date) -> some View {
-            let isToday = Calendar.current.isDateInToday(day)
-            return Button {
-                selectedDay = day
-                dismiss()
-            } label: {
-                Text(day, format: .dateTime.day())
-                    .font(.body)
-                    .fontWeight(isToday ? .bold : .regular)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .frame(width: 40, height: 32)
-                    .overlay(alignment: .bottom) {
-                        if isToday {
-                            Circle().fill()
-                                .frame(width: 5, height: 5)
-                                .offset(y: 7)
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
-                        }
-                    }
-            }
-            .buttonBorderShape(.roundedRectangle(radius: 16))
-            .plozzActionButton(role: .secondary)
-            .tint(palette.primaryText)
-        }
-        #endif
     }
 #endif

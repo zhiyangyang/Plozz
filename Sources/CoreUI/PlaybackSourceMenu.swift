@@ -165,11 +165,7 @@ private struct PlaybackSourceMenuPresentation: ViewModifier {
     func body(content: Content) -> some View {
         content
             .plozzFullScreenCover(isPresented: $state.isPresented, onDismiss: onDismiss) {
-                #if os(tvOS)
-                tvOSPresentation
-                #else
                 iosPresentation
-                #endif
             }
             // Kill the cover's own bottom-up slide: this is a menu anchored to a
             // button, not a drawer. The panel fades/scales in from the trigger
@@ -177,7 +173,6 @@ private struct PlaybackSourceMenuPresentation: ViewModifier {
             .transaction(value: state.isPresented) { $0.disablesAnimations = true }
     }
 
-    #if !os(tvOS)
     /// iOS/iPadOS presentation. Deliberately NOT `.sheet` or `.popover`: both
     /// own a surface of their own (so our panel nests inside a second one), and
     /// neither can animate its own height. This mirrors the tvOS player's
@@ -262,32 +257,7 @@ private struct PlaybackSourceMenuPresentation: ViewModifier {
         }
         .presentationBackground(.clear)
     }
-    #endif
 
-    #if os(tvOS)
-    private var tvOSPresentation: some View {
-        GeometryReader { geometry in
-            let margin: CGFloat = 32
-            let width = min(PlaybackSourceMenuMetrics.panelWidth(for: state.page),
-                            max(0, geometry.size.width - margin * 2))
-            let height = min(panelHeight, max(0, geometry.size.height - margin * 2))
-            ZStack(alignment: .topLeading) {
-                Color.black.opacity(0.001)
-                    .contentShape(Rectangle())
-                    .onTapGesture { state.isPresented = false }
-
-                panel(maxHeight: height, maxWidth: width)
-                    .offset(
-                        x: min(max(margin, state.triggerFrame.minX), geometry.size.width - width - margin),
-                        y: min(max(margin, state.triggerFrame.minY - height - 12),
-                               geometry.size.height - height - margin)
-                    )
-            }
-        }
-        .ignoresSafeArea()
-        .presentationBackground(.clear)
-    }
-    #endif
 
     private func panel(maxHeight: CGFloat = 620, maxWidth: CGFloat = 800) -> some View {
         PlaybackSourceMenuPanel(
@@ -314,11 +284,6 @@ private struct PlaybackSourceMenuPresentation: ViewModifier {
                 state.isPresented = false
             }
         )
-        #if os(tvOS)
-        .onExitCommand {
-            handleExit()
-        }
-        #endif
     }
 
     private var panelHeight: CGFloat {
@@ -345,11 +310,7 @@ struct PlaybackSourceMenuPanel: View {
     @Binding var page: PlaybackSourceMenuButtonPage
     /// Ceiling imposed by the room available on the trigger's chosen side.
     /// Past this the rows scroll rather than the panel running off screen.
-    #if os(tvOS)
-    var maxHeight: CGFloat = 820
-    #else
     var maxHeight: CGFloat = 620
-    #endif
     var maxWidth: CGFloat = 800
     let sources: [MediaSourceRef]
     let selectedSourceID: String?
@@ -364,11 +325,7 @@ struct PlaybackSourceMenuPanel: View {
 
     @Namespace private var panelFocusScope
     @Environment(\.locale) private var locale
-    #if os(tvOS)
-    @Environment(\.resetFocus) private var resetFocus
-    #endif
     @FocusState private var focusedRowID: String?
-    #if !os(tvOS)
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var navDirection: Edge = .trailing
     @State private var contentHeight: CGFloat = 220
@@ -376,18 +333,8 @@ struct PlaybackSourceMenuPanel: View {
     /// only animate when this differs from the page on screen (a real drill-in);
     /// a re-measure of the same page is a geometry correction and snaps.
     @State private var measuredPage: PlaybackSourceMenuButtonPage?
-    #endif
     var body: some View {
         panelContent
-            #if os(tvOS)
-            .frame(width: min(PlaybackSourceMenuMetrics.panelWidth(for: page), maxWidth))
-            .frame(height: min(panelHeight, maxHeight), alignment: .top)
-            // Page content swaps immediately; only the glass container morphs.
-            .animation(nil, value: page)
-            // tvOS presents the panel bare inside a full-screen cover, so it has
-            // to draw its own glass surface.
-            .plozzGlassPanel(cornerRadius: 32, scrimOpacity: 0.08)
-            #else
             // The panel is presented as a bare overlay (no sheet, no popover), so
             // it owns the ONE surface and an explicit, animatable height. Width
             // comes from the presenter.
@@ -422,12 +369,6 @@ struct PlaybackSourceMenuPanel: View {
                 }
             }
             .plozzGlassPanel(cornerRadius: 32, scrimOpacity: 0.08)
-            #endif
-            #if os(tvOS)
-            .focusScope(panelFocusScope)
-            .focusSection()
-            .defaultFocus($focusedRowID, initialRowID)
-            #endif
             .onAppear { focusFirstRow() }
             .onChange(of: page) { _, _ in focusFirstRow() }
             .onChange(of: versions.map(\.id)) { _, _ in focusFirstRow() }
@@ -435,20 +376,6 @@ struct PlaybackSourceMenuPanel: View {
 
     @ViewBuilder
     private var panelContent: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 12) {
-            if page != .root {
-                header(for: page)
-            }
-            ScrollView {
-                LazyVStack(spacing: 8) { rows(for: page) }
-                    .padding(14)
-            }
-            .scrollIndicators(.hidden)
-            // A shorter page must not inherit the outgoing page's native offset.
-            .id(page)
-        }
-        #else
         // Pages slide horizontally as you drill in/out. The column scrolls
         // because the panel has an explicit (animating) height, so a page taller
         // than the cap stays reachable.
@@ -458,10 +385,8 @@ struct PlaybackSourceMenuPanel: View {
                 .id(page)
         }
         .scrollIndicators(.hidden)
-        #endif
     }
 
-    #if !os(tvOS)
     /// One page of the menu, built for an explicit page value so the instance
     /// left behind by the push transition keeps rendering — and reporting the
     /// height of — *its own* content.
@@ -493,7 +418,6 @@ struct PlaybackSourceMenuPanel: View {
             }
         )
     }
-    #endif
 
     @ViewBuilder
     private func rows(for pageValue: PlaybackSourceMenuButtonPage) -> some View {
@@ -525,10 +449,6 @@ struct PlaybackSourceMenuPanel: View {
                 .font(.headline.weight(.semibold))
             Spacer()
         }
-        #if os(tvOS)
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-        #endif
     }
 
     @ViewBuilder
@@ -560,9 +480,7 @@ struct PlaybackSourceMenuPanel: View {
             }
         }
         if hasVersion {
-            #if !os(tvOS)
             if hasServer { rowSeparator }
-            #endif
             drillInRow(
                 id: "root.versions",
                 title: versions.contains(where: \.isExternalSource) ? "Source" : "Version",
@@ -582,9 +500,7 @@ struct PlaybackSourceMenuPanel: View {
             Divider().padding(.vertical, 4)
         }
         ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
-            #if !os(tvOS)
             if index > 0 { rowSeparator }
-            #endif
             menuRowButton(id: "action.\(action.id)") {
                 onPerformAction(action.id)
             } label: {
@@ -598,9 +514,7 @@ struct PlaybackSourceMenuPanel: View {
     @ViewBuilder
     private var serverRows: some View {
         ForEach(Array(sources.enumerated()), id: \.element.accountID) { index, source in
-            #if !os(tvOS)
             if index > 0 { rowSeparator }
-            #endif
             let isOffline = offlineSourceAccountIDs.contains(source.accountID)
             if isOffline {
                 offlineServerRow(source)
@@ -685,19 +599,9 @@ struct PlaybackSourceMenuPanel: View {
                     }
                     .focused($focusedRowID, equals: rowID)
                     .accessibilityIdentifier(rowID)
-                    #if os(tvOS)
-                    .prefersDefaultFocus(rowID == initialRowID, in: panelFocusScope)
-                    #endif
                 }
             }
             .onAppear {
-                #if os(tvOS)
-                if let selected = inventory.first(where: { $0.id == selectedVersionID })
-                    ?? inventory.sortedForPicker().first {
-                    focusedRowID = "version.\(selected.id)"
-                    resetFocus(in: panelFocusScope)
-                }
-                #endif
             }
         }
     }
@@ -728,11 +632,7 @@ struct PlaybackSourceMenuPanel: View {
             .settingsRowSecondary()
         let chevron = Image(systemName: "chevron.forward")
             .settingsRowSecondary()
-        #if os(tvOS)
-        let stacksSummary = false
-        #else
         let stacksSummary = destination == .versions && dynamicTypeSize.isAccessibilitySize
-        #endif
         return menuRowButton(id: id, fixedHeight: rootRowHeight) {
             navigate(to: destination)
         } label: {
@@ -783,16 +683,8 @@ struct PlaybackSourceMenuPanel: View {
         }
         .buttonStyle(SettingsFocusButtonStyle(size: .contained))
         .focused($focusedRowID, equals: id)
-        #if os(tvOS)
-        .prefersDefaultFocus(id == initialRowID, in: panelFocusScope)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.primary.opacity(0.055))
-        )
-        #endif
     }
 
-    #if !os(tvOS)
     /// A hairline divider between flat rows on iOS/iPadOS. The rows sit directly
     /// on the single glass panel (no per-row card), so a leading-inset separator
     /// gives the grouped-list feel without nesting cards inside the panel.
@@ -802,7 +694,6 @@ struct PlaybackSourceMenuPanel: View {
             .frame(height: 0.5)
             .padding(.leading, 16)
     }
-    #endif
 
     private var selectedSource: MediaSourceRef? {
         sources.first { $0.accountID == selectedSourceID } ?? sources.first
@@ -833,18 +724,12 @@ struct PlaybackSourceMenuPanel: View {
         // On iOS/iPadOS programmatically focusing a row inside the ScrollView
         // makes UIKit scroll that row into view mid-transition, which is what
         // made the selected server behave differently from its siblings.
-        #if os(tvOS)
-        focusedRowID = initialRowID
-        resetFocus(in: panelFocusScope)
-        #endif
     }
 
     private func navigate(to destination: PlaybackSourceMenuButtonPage) {
-        #if !os(tvOS)
         // Deeper (root → servers/versions) slides in from the trailing edge; going
         // back to root slides in from the leading edge.
         navDirection = destination == .root ? .leading : .trailing
-        #endif
         withAnimation(.easeInOut(duration: 0.28)) {
             page = destination
         }
@@ -875,52 +760,28 @@ struct PlaybackSourceMenuPanel: View {
     }
 
     private var providerMarkSize: CGFloat {
-        #if os(tvOS)
-        34
-        #else
         24
-        #endif
     }
 
 
     private var rowVerticalPadding: CGFloat {
-        #if os(tvOS)
-        18
-        #else
         13
-        #endif
     }
 
     private var rootRowHeight: CGFloat? {
-        #if os(tvOS)
-        82
-        #else
         nil
-        #endif
     }
 
     private var rowTitleFont: Font {
-        #if os(tvOS)
-        .system(size: 26, weight: .semibold)
-        #else
         .body.weight(.semibold)
-        #endif
     }
 
     private var rowDetailFont: Font {
-        #if os(tvOS)
-        .system(size: 20)
-        #else
         .subheadline
-        #endif
     }
 
     private var rowCategoryFont: Font {
-        #if os(tvOS)
-        .system(size: 14, weight: .semibold)
-        #else
         .caption2.weight(.semibold)
-        #endif
     }
 
 }
@@ -930,9 +791,6 @@ private struct PlaybackSourceMenuVersionSummary: View {
     let fallback: Text
 
     var body: some View {
-        #if os(tvOS)
-        fallback
-        #else
         let pictureFacts = [
             ("edition", version?.editionLabel),
             ("resolution", version?.resolutionLabel),
@@ -962,11 +820,9 @@ private struct PlaybackSourceMenuVersionSummary: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(fallback)
-        #endif
     }
 }
 
-#if !os(tvOS)
 private struct PlaybackSourceMenuSummaryFacts: View {
     let facts: [(id: String, text: String)]
 
@@ -984,7 +840,6 @@ private struct PlaybackSourceMenuSummaryFacts: View {
         }
     }
 }
-#endif
 
 private struct PlaybackSourceMenuRowHeight: ViewModifier {
     let fixedHeight: CGFloat?
@@ -1006,7 +861,6 @@ enum PlaybackSourceMenuButtonPage: Hashable {
     case versions
 }
 
-#if !os(tvOS)
 /// Where the menu panel sits relative to its trigger. Derived from the trigger
 /// and the window only — deliberately NOT from the panel's height — so it stays
 /// put as the panel grows and can be recomputed on any layout pass. Drives
@@ -1106,9 +960,7 @@ struct PlaybackSourceMenuSide: Equatable {
         }
     }
 }
-#endif
 
-#if !os(tvOS)
 /// Each rendered page's natural height, tagged with the page it belongs to.
 /// During the push transition the outgoing and incoming pages are both on
 /// screen and both report; an untagged `max()` reduce would hold the taller of
@@ -1130,14 +982,8 @@ private struct PlaybackSourceMenuContentHeightKey: PreferenceKey {
     }
 }
 
-#endif
 
 private enum PlaybackSourceMenuMetrics {
-    #if os(tvOS)
-    static func panelWidth(for page: PlaybackSourceMenuButtonPage) -> CGFloat {
-        page == .versions ? 800 : 620
-    }
-    #endif
 
     static func panelHeight(
         page: PlaybackSourceMenuButtonPage,
@@ -1145,26 +991,7 @@ private enum PlaybackSourceMenuMetrics {
         versionCount: Int,
         actionCount: Int
     ) -> CGFloat {
-        #if os(tvOS)
-        switch page {
-        case .root:
-            let optionCount = (sourceCount > 1 ? 1 : 0) + (versionCount > 1 ? 1 : 0)
-            let rowCount = optionCount + actionCount
-            let rowSpacing = CGFloat(max(rowCount - 1, 0)) * 8
-            let dividerHeight: CGFloat = optionCount > 0 && actionCount > 0 ? 17 : 0
-            let contentHeight = CGFloat(optionCount) * 82
-                + CGFloat(actionCount) * 67
-                + rowSpacing
-                + dividerHeight
-            return min(max(contentHeight + 28, 110), 700)
-        case .servers:
-            return min(max(CGFloat(sourceCount) * 104 + 94, 250), 700)
-        case .versions:
-            return min(max(CGFloat(versionCount) * 190 + 94, 360), 820)
-        }
-        #else
         return 620
-        #endif
     }
 }
 

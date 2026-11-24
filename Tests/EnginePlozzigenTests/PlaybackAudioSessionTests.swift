@@ -1,4 +1,4 @@
-#if os(tvOS) || os(iOS)
+#if os(iOS)
 import AVFoundation
 import CoreModels
 import FeaturePlayback

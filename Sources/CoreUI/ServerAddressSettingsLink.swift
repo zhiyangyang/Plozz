@@ -27,11 +27,7 @@ public struct ServerAddressSettingsLink: View {
                 }
             }
         }
-        #if os(tvOS)
-        .buttonStyle(SettingsFormButtonStyle())
-        #else
         .buttonStyle(.plain)
-        #endif
         .disabled(accounts.isEmpty || router == nil)
         .accessibilityIdentifier("manageServerAddresses")
         .confirmationDialog("Choose a sign-in", isPresented: $choosingSignIn, titleVisibility: .visible) {

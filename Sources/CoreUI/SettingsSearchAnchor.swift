@@ -1,6 +1,6 @@
 import Observation
 import SwiftUI
-#if os(iOS) || os(tvOS)
+#if os(iOS)
 import UIKit
 #endif
 
@@ -90,9 +90,6 @@ private struct SettingsSearchAnchor: ViewModifier {
     @Environment(\.settingsSearchRowOwnsHighlight) private var rowOwnsHighlight
     @State private var isNativeListRow = false
     #endif
-    #if os(tvOS)
-    @Environment(\.settingsPageContext) private var page
-    #endif
 
     private var id: String {
         guard let target = request?.targetID, fallbackFor.contains(target) else { return anchorID }
@@ -100,11 +97,7 @@ private struct SettingsSearchAnchor: ViewModifier {
     }
 
     private var canReveal: Bool {
-        #if os(tvOS)
-        page?.isCurrent ?? true
-        #else
         true
-        #endif
     }
 
     func body(content: Content) -> some View {
@@ -113,20 +106,7 @@ private struct SettingsSearchAnchor: ViewModifier {
             .onAppear {
                 if request?.targetID == id { request?.hasMountedAnchor = true }
             }
-            #if os(tvOS)
-            .focused($focused)
-            #endif
             .background {
-                #if os(tvOS)
-                if canReveal, let request, request.targetID == id, !request.revealed {
-                    SettingsSearchFocusReady {
-                        guard canReveal, !request.revealed else { return }
-                        if let focusAction { focusAction() }
-                        else { focused = true }
-                        request.revealed = true
-                    }
-                }
-                #endif
                 #if os(iOS)
                 if let request, request.targetID == id, !request.revealed {
                     SettingsSearchNativeReveal { nativeListRow in
@@ -150,12 +130,6 @@ private struct SettingsSearchAnchor: ViewModifier {
             )
             #endif
             .task(id: canReveal) {
-                #if os(tvOS)
-                guard canReveal, let request, request.targetID == id, !request.revealed else { return }
-                await Task.yield()
-                guard !Task.isCancelled else { return }
-                scroll?(id)
-                #endif
             }
             #if os(iOS)
             .task(id: highlighted) {
@@ -167,41 +141,6 @@ private struct SettingsSearchAnchor: ViewModifier {
     }
 }
 
-#if os(tvOS)
-/// Native menus register their focusable view during layout, after SwiftUI's task starts.
-private struct SettingsSearchFocusReady: UIViewRepresentable {
-    let onReady: @MainActor () -> Void
-
-    func makeUIView(context: Context) -> ReadyView { ReadyView(onReady: onReady) }
-    func updateUIView(_ view: ReadyView, context: Context) {
-        view.onReady = onReady
-        view.setNeedsLayout()
-    }
-
-    final class ReadyView: UIView {
-        var onReady: @MainActor () -> Void
-        private var scheduled = false
-
-        init(onReady: @escaping @MainActor () -> Void) {
-            self.onReady = onReady
-            super.init(frame: .zero)
-            isUserInteractionEnabled = false
-        }
-
-        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            guard window != nil, bounds.width > 0, bounds.height > 0, !scheduled else { return }
-            scheduled = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self, window != nil else { return }
-                onReady()
-            }
-        }
-    }
-}
-#endif
 
 #if os(iOS)
 private struct SettingsSearchRowOwnsHighlightKey: EnvironmentKey {

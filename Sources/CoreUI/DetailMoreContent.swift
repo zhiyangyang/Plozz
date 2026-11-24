@@ -11,55 +11,10 @@ import SwiftUI
 
 extension PlozzSheetStyle {
     static var detailReader: Self {
-        #if os(tvOS)
-        .floatingCard
-        #else
         .standard
-        #endif
     }
 }
 
-#if os(tvOS)
-private struct DetailReaderHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-/// The existing About reader surface, shared by every detail expansion.
-struct DetailReaderCard<Content: View>: View {
-    @ViewBuilder let content: Content
-    @State private var contentHeight: CGFloat = 0
-
-    var body: some View {
-        ZStack {
-            PlozzDialogBackdrop()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    content
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(48)
-                .background {
-                    GeometryReader { geometry in
-                        Color.clear.preference(
-                            key: DetailReaderHeightKey.self,
-                            value: geometry.size.height
-                        )
-                    }
-                }
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(width: 900, height: min(max(contentHeight, 220), 760))
-            .onPreferenceChange(DetailReaderHeightKey.self) { contentHeight = $0 }
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .plozzSurface(.overlay, cornerRadius: 32)
-            .accessibilityIdentifier("detail-reader-card")
-        }
-    }
-}
-#endif
 
 public struct DetailMoreLabel: View {
     public init() {}
@@ -71,11 +26,7 @@ public struct DetailMoreLabel: View {
     }
 
     private var labelFont: Font {
-        #if os(tvOS)
-        .system(size: 20, weight: .semibold)
-        #else
         .footnote.weight(.semibold)
-        #endif
     }
 }
 
@@ -136,14 +87,6 @@ public struct DetailMoreSheet<Content: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        DetailReaderCard {
-            PlozzDialogHeading(title)
-                .accessibilityIdentifier("detail-more-title")
-            content
-                .font(.system(size: 29))
-        }
-        #else
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -163,7 +106,6 @@ public struct DetailMoreSheet<Content: View>: View {
                 }
             }
         }
-        #endif
     }
 }
 

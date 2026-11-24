@@ -264,13 +264,6 @@ struct NavigationNameEditor: View {
     var body: some View {
         HomeEditorPage(title: defaultTitle, showsHeader: true) {
             SettingsSectionGroup {
-                #if os(tvOS)
-                HomeEditorAutosavingNameInput(
-                    "Name", name: name, prompt: defaultTitle, identifier: "navigation-name-input"
-                ) { value in
-                    navigation.renameDestination(key, to: value, homeVisibility: visibility)
-                }
-                #else
                 SettingsInputRow("Name") {
                     TextField("Name", text: $name, prompt: defaultTitle)
                         .focused($isNameFocused)
@@ -282,9 +275,8 @@ struct NavigationNameEditor: View {
                         #endif
                         .accessibilityIdentifier("navigation-name-input")
                 }
-                #endif
             }
-            #if !os(iOS) && !os(tvOS)
+            #if !os(iOS)
             Button(action: save) {
                 Text("Save changes").plozzPageActionLabel()
             }

@@ -37,11 +37,7 @@ private struct CircularFocusStyleScope: ViewModifier {
     @Environment(\.plozzCardFocusStyle) private var selected
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        content.environment(\.plozzCardFocusStyle, CircularControlFocusStyle.resolve(selected))
-        #else
         content
-        #endif
     }
 }
 #endif

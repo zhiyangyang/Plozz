@@ -20,9 +20,6 @@ struct IntegrationsDetailView: View {
     let serverCount: Int
     @State private var confirmingTraktReconnect = false
     @State private var confirmingWetrakrReconnect = false
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
 
     var body: some View {
         SettingsSplitLayout(title: "Trackers", rows: rows)
@@ -212,14 +209,6 @@ struct IntegrationsDetailView: View {
             }
         ]
 
-        #if os(tvOS)
-        if inWorkspace {
-            let phases = [traktRowPhase, simklRowPhase, wetrakrRowPhase, anilistRowPhase, malRowPhase, lastfmRowPhase]
-            trackers = zip(trackers, phases).map { row, phase in
-                row.page(summary: statusLabel(phase))
-            }
-        }
-        #endif
         return trackers.filter { $0.id != "wetrakr" || wetrakr.isConfigured } + watchStatus
     }
 

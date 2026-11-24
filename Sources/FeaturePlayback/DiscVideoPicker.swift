@@ -44,11 +44,6 @@ struct DiscVideoPicker: View {
                 ProgressView("Reading disc")
             }
         }
-        #if os(tvOS)
-        .onChange(of: videos?.first?.playlist) { _, playlist in
-            focusedPlaylist = playlist
-        }
-        #endif
         .task(id: reloadID) {
             videos = nil
             failure = nil
@@ -70,27 +65,6 @@ struct DiscPlaybackDialog<Content: View>: View {
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 24) {
-            Text(title)
-                .font(.title2.bold())
-                .accessibilityAddTraits(.isHeader)
-            ViewThatFits(in: .vertical) {
-                VStack(alignment: .leading, spacing: 16, content: content)
-                    .padding(16)
-                    .fixedSize(horizontal: false, vertical: true)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16, content: content)
-                        .padding(16)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            Button("Close", action: close)
-                .discPlaybackActionButton()
-        }
-        .padding(32)
-        .onExitCommand(perform: close)
-        #else
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16, content: content)
@@ -107,18 +81,13 @@ struct DiscPlaybackDialog<Content: View>: View {
             }
         }
         .tint(palette.primaryText)
-        #endif
     }
 }
 
 extension View {
     @ViewBuilder
     func discPlaybackActionButton() -> some View {
-        #if os(tvOS)
-        self.buttonStyle(.bordered)
-        #else
         self.plozzActionButton(role: .secondary)
-        #endif
     }
 
     /// Keep the TV playback owner mounted, as with the shared version-choice dialog.
@@ -126,31 +95,7 @@ extension View {
         isPresented: Binding<Bool>, onDismiss: @escaping () -> Void = {},
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        #if os(tvOS)
-        self
-            .disabled(isPresented.wrappedValue)
-            .accessibilityHidden(isPresented.wrappedValue)
-            .overlay {
-                if isPresented.wrappedValue {
-                    GeometryReader { geometry in
-                        ZStack {
-                            PlozzDialogBackdrop()
-                            content()
-                                .frame(width: min(1_100, max(0, geometry.size.width - 64)))
-                                .plozzSurface(.overlay, cornerRadius: 32)
-                                .accessibilityElement(children: .contain)
-                                .frame(maxHeight: min(860, max(0, geometry.size.height - 64)))
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-            }
-            .onChange(of: isPresented.wrappedValue) { old, new in
-                if old && !new { onDismiss() }
-            }
-        #else
         self.plozzSheet(isPresented: isPresented, onDismiss: onDismiss, content: content)
-        #endif
     }
 }
 #endif

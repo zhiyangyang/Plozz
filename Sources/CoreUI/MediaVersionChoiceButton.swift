@@ -40,10 +40,6 @@ public struct MediaVersionChoiceButton: View {
             label
                 .padding(.horizontal, 6)
                 .padding(.vertical, 8)
-                #if os(tvOS)
-                .environment(\.themePalette, isFocused ? .light : palette)
-                .environment(\.colorScheme, isFocused ? .light : colorScheme)
-                #endif
         }
         .plozzActionButton(role: .secondary)
         .buttonBorderShape(.roundedRectangle(radius: 16))
@@ -74,11 +70,7 @@ public struct MediaVersionChoiceButton: View {
                 }
                 if !presentation.badges.isEmpty {
                     versionBadges(languages: languages)
-                        #if os(tvOS)
-                        .environment(\.mediaBadgeScale, 1.7)
-                        #else
                         .environment(\.mediaBadgeScale, 0.85)
-                        #endif
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,11 +119,7 @@ public struct MediaVersionChoiceButton: View {
     }
 
     private var badgeSpacing: CGFloat {
-        #if os(tvOS)
-        MetadataBadgeSpacing.betweenBadges
-        #else
         8
-        #endif
     }
 
     private var formatBadges: some View {
@@ -195,9 +183,6 @@ public struct MediaVersionPicker: View {
                             .focused($focusedID, equals: version.id)
                             .accessibilityIdentifier("version-choice-\(version.id)")
                         }
-                        #if os(tvOS)
-                        .onAppear { focusedID = selectedVersionID ?? inventory.sortedForPicker().first?.id }
-                        #endif
                     }
                     if let footer {
                         Text(footer)
@@ -224,9 +209,6 @@ public struct MediaVersionPicker: View {
                 }
                 #endif
             }
-            #if os(tvOS)
-            .defaultFocus($focusedID, selectedVersionID ?? versions.sortedForPicker().first?.id)
-            #endif
         }
     }
 }

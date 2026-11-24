@@ -603,12 +603,7 @@ public struct PlozzMetrics: Equatable, Sendable {
         // unchanged, so standard density on both platforms is byte-identical, and
         // it grows on the `.subheadline` curve from there — the same curve the
         // title already follows.
-        #if os(tvOS)
-        let baseTitleFontSize = preferred(.subheadline)
-        // tvOS keeps its own tuned constant (20 against a 29pt title), scaled on
-        // the same curve as the title so it tracks the reader's text size.
-        let baseSubtitleFontSize = scaled(.subheadline, PlozzTheme.Metrics.cardSubtitleFontSize)
-        #elseif canImport(UIKit)
+        #if canImport(UIKit)
         let baseTitleFontSize = preferred(.subheadline)
         // iOS/iPadOS: one step BELOW the title. `cardSubtitleFontSize` is a tvOS
         // value (20 reads as secondary against a 29pt title) and applying it here
@@ -643,14 +638,7 @@ public struct PlozzMetrics: Equatable, Sendable {
         // The bar is the exception on BOTH platforms: its tuned size is kept at
         // the default text size and only ever scaled UP from there — see
         // `barTypeScale`.
-        #if os(tvOS)
-        let baseChipFont = scaled(.subheadline, PlozzTheme.Metrics.resumeChipFontSize)
-        let baseChipInset = scaled(.subheadline, PlozzTheme.Metrics.resumeChipInset)
-        let barScale = barTypeScale(scaled(.subheadline, 100) / 100)
-        let baseChipBarWidth = PlozzTheme.Metrics.resumeChipBarWidth * barScale
-        let baseChipBarHeight = PlozzTheme.Metrics.resumeChipBarHeight * barScale
-        let baseChipAccessory = scaled(.subheadline, PlozzTheme.Metrics.resumeChipAccessorySize)
-        #elseif canImport(UIKit)
+        #if canImport(UIKit)
         let baseChipFont = preferred(.subheadline)
         let baseChipInset: CGFloat = 12
         let barScale = barTypeScale(scaled(.subheadline, 100) / 100)
@@ -674,11 +662,7 @@ public struct PlozzMetrics: Equatable, Sendable {
         self.resumeChipAccessorySize = (baseChipAccessory * densityScale).rounded()
         // Hero Play button bar. Same rule: the tuned height at the default text
         // size, scaled up only as the reader's text grows.
-        #if os(tvOS)
-        let heroBarBase: CGFloat = 10
-        #else
         let heroBarBase: CGFloat = 6
-        #endif
         #if canImport(UIKit)
         let heroBarScale = barTypeScale(scaled(.subheadline, 100) / 100)
         #else
@@ -691,10 +675,7 @@ public struct PlozzMetrics: Equatable, Sendable {
 
         // Same treatment for the artwork "…" affordance: tuned tvOS constants as the
         // base, scaled on the `.headline` curve the iOS branch below already uses.
-        #if os(tvOS)
-        let baseMenuGlyph = scaled(.headline, PlozzTheme.Metrics.artworkMenuGlyphSize)
-        let baseMenuTarget = scaled(.headline, PlozzTheme.Metrics.artworkMenuTargetSize)
-        #elseif canImport(UIKit)
+        #if canImport(UIKit)
         // Match the episode rows' existing, proven affordance: a bold `.headline`
         // glyph in a 44pt target.
         let baseMenuGlyph = preferred(.headline)
@@ -708,15 +689,7 @@ public struct PlozzMetrics: Equatable, Sendable {
         // touch minimum.
         self.artworkMenuTargetSize = max((baseMenuTarget * densityScale).rounded(), 44)
         self.artworkMenuInset = (PlozzTheme.Metrics.artworkMenuInset * densityScale).rounded()
-        #if os(tvOS)
-        let statusCueFont = PlozzTheme.Metrics.cardStatusCueFontSize
-        let statusCueMinFont = PlozzTheme.Metrics.cardStatusCueMinFontSize
-        let statusCueHorizontalPadding = PlozzTheme.Metrics.cardStatusCueHorizontalPadding
-        let statusCueMinHorizontalPadding =
-            PlozzTheme.Metrics.cardStatusCueMinHorizontalPadding
-        let statusCueVerticalPadding = PlozzTheme.Metrics.cardStatusCueVerticalPadding
-        let statusCueMinVerticalPadding = PlozzTheme.Metrics.cardStatusCueMinVerticalPadding
-        #elseif canImport(UIKit)
+        #if canImport(UIKit)
         let statusCueFont = preferred(.caption2)
         let statusCueMinFont = PlozzTheme.Metrics.cardStatusCueTouchMinFontSize
         let statusCueHorizontalPadding = scaled(

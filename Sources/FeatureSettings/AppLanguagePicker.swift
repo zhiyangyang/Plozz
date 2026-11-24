@@ -16,10 +16,6 @@ struct AppLanguagePicker: View {
     @Bindable var model: AppLanguageSettingsModel
     var isCategoryRow = false
     @Environment(\.locale) private var locale
-    #if os(tvOS)
-    @State private var showingFeedback = false
-    @Environment(SettingsNavigationModel.self) private var navigation: SettingsNavigationModel?
-    #endif
 
     private var languages: [AppLanguage] { AppLanguage.available() }
 
@@ -76,15 +72,6 @@ struct AppLanguagePicker: View {
     /// menu — which on tvOS is a scrollable overlay the remote is already good at.
     @ViewBuilder
     private var languageMenu: some View {
-        #if os(tvOS)
-        SettingsMenuRow(
-            title: "Language", value: label(for: model.language),
-            icon: isCategoryRow ? "globe" : nil
-        ) {
-            languageOptions
-        }
-        .settingsSearchAnchor("language")
-        #else
         Menu {
             languageOptions
         } label: {
@@ -92,7 +79,6 @@ struct AppLanguagePicker: View {
         }
         .menuStyle(.button)
         .settingsSearchAnchor("language")
-        #endif
     }
 
     @ViewBuilder
@@ -102,14 +88,6 @@ struct AppLanguagePicker: View {
                 label(for: language).tag(language)
             }
         }
-        #if os(tvOS)
-        if isCategoryRow, translationIssueURL != nil {
-            Button("Send Feedback") {
-                showingFeedback = true
-            }
-            .accessibilityIdentifier("settings-language-feedback")
-        }
-        #endif
     }
 
     private var menuLabel: some View {
@@ -139,30 +117,7 @@ struct AppLanguagePicker: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        if isCategoryRow {
-            languageMenu
-                .settingsCategoryFocus(.language)
-                .accessibilityLabel(Text("Language"))
-                .accessibilityValue(label(for: model.language))
-                .plozzSheet(isPresented: $showingFeedback, onDismiss: {
-                    navigation?.restoreCategoryFocus()
-                }) {
-                    VStack(spacing: 24) {
-                        if let translationIssueURL {
-                            translationFeedback(for: translationIssueURL)
-                        }
-                        Button("Close") { showingFeedback = false }
-                            .accessibilityIdentifier("settings-language-feedback-close")
-                    }
-                    .padding(36)
-                }
-        } else {
-            detailContent
-        }
-        #else
         detailContent
-        #endif
     }
 
     private var detailContent: some View {
@@ -175,26 +130,12 @@ struct AppLanguagePicker: View {
             }
 
             if let translationIssueURL {
-                #if os(tvOS)
-                translationFeedback(for: translationIssueURL)
-                #else
                 Link(destination: translationIssueURL) {
                     Label("Send Feedback", systemImage: "exclamationmark.bubble")
                 }
-                #endif
             }
         }
     }
 
-    #if os(tvOS)
-    private func translationFeedback(for url: URL) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Send Feedback")
-                .font(.headline)
-            SettingsQRCode(string: url.absoluteString, correctionLevel: .medium)
-                .frame(width: 180, height: 180)
-        }
-    }
-    #endif
 }
 #endif

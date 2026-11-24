@@ -27,20 +27,6 @@ public struct ThemeMusicVolumeControl: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            #if os(tvOS)
-            SettingsStepper(
-                options: Array(0...100),
-                selection: Binding(
-                    get: { Int((level.wrappedValue * 100).rounded()) },
-                    set: { level.wrappedValue = Double($0) / 100 }
-                ),
-                compact: true,
-                label: "Theme music volume",
-                textTitle: { Text(Double($0) / 100, format: .percent.precision(.fractionLength(0))) }
-            )
-            .environment(\.settingsAdjustmentRepeatSpeed, .fast)
-            .accessibilityIdentifier("theme-music-volume").settingsSearchAnchor("theme-music-volume")
-            #else
             HStack(spacing: 16) {
                 Text("Theme music volume")
                 Slider(value: level, in: 0...1, step: 0.01) {
@@ -53,7 +39,6 @@ public struct ThemeMusicVolumeControl: View {
                     .monospacedDigit()
                     .frame(minWidth: 44, alignment: .trailing)
             }
-            #endif
             Button {
                 if ownsPreview, let previewRequest {
                     controller?.stopPreview(owner: previewRequest)

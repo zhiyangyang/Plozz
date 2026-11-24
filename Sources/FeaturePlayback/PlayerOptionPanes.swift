@@ -56,15 +56,7 @@ struct PlayerMenuRowStack: View {
         Button(action: row.action) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    #if os(tvOS)
-                    if row.marqueeTitle {
-                        MarqueeText(text: row.title)
-                    } else {
-                        row.title.font(.body).lineLimit(row.titleLineLimit)
-                    }
-                    #else
                     row.title.font(.body).lineLimit(row.titleLineLimit)
-                    #endif
                     if let facts = row.facts {
                         facts
                             .font(.caption2)
@@ -130,10 +122,6 @@ struct PlayerMenuRowStack: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlayerMenuRowButtonStyle())
-        #if os(tvOS)
-        .accessibilityIdentifier("player-option-row-\(row.id)")
-        .accessibilityValue(row.isUpdating ? Text("Updating") : (row.isSelected ? Text("On") : Text("Off")))
-        #endif
         .focusEffectDisabled()
         .focused($focus, equals: .row(row.id))
     }
@@ -152,25 +140,11 @@ struct AudioPaneView: View {
     @ViewBuilder
     var body: some View {
         if rows.isEmpty {
-            #if os(tvOS)
-            VStack(alignment: .leading, spacing: 12) {
-                Text("No audio controls available")
-                    .font(.title3)
-                    .plozzForeground(.secondary)
-                Button("Back", action: close)
-                    .buttonStyle(PlayerMenuRowButtonStyle())
-                    .focusEffectDisabled()
-                    .focused($focus, equals: .subBack)
-            }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 16)
-            #else
             Text("No alternate audio")
                 .font(.title3)
                 .plozzForeground(.secondary)
                 .padding(.horizontal, 28)
                 .padding(.vertical, 16)
-            #endif
         } else {
             PlayerMenuRowStack(rows: rows, palette: palette, focus: $focus)
                 .padding(.horizontal, 14)

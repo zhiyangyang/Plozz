@@ -59,11 +59,7 @@ final class DownloadStoragePolicyTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let capacity = DownloadStorageCapacity { url, key in
             XCTAssertEqual(url, directory)
-            #if os(tvOS)
-            XCTAssertEqual(key, .volumeAvailableCapacityKey)
-            #else
             XCTAssertEqual(key, .volumeAvailableCapacityForImportantUsageKey)
-            #endif
             return 96_080_000_000
         }
 

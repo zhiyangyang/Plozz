@@ -103,11 +103,7 @@ enum SubtitleOverlayGeometry {
     }
 
     static var controlsClearance: CGFloat {
-        #if os(tvOS)
-        24
-        #else
         12
-        #endif
     }
 
     static func upwardOffset(

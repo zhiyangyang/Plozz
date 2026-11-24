@@ -20,18 +20,11 @@ final class LosslessAudioControlHostedTests: XCTestCase {
         let suite = "LosslessAudioControlHostedTests.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        #if os(tvOS)
-        let sizes: [(CGSize, DynamicTypeSize)] = [
-            (.init(width: 1100, height: 400), .large),
-            (.init(width: 760, height: 600), .accessibility3)
-        ]
-        #else
         let sizes: [(CGSize, DynamicTypeSize)] = [
             (.init(width: 320, height: 320), .large),
             (.init(width: 390, height: 440), .accessibility3),
             (.init(width: 768, height: 320), .large)
         ]
-        #endif
         for (size, typeSize) in sizes {
             let window = UIWindow(windowScene: scene)
             window.frame = CGRect(origin: .zero, size: size)

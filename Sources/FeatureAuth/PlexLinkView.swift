@@ -64,9 +64,6 @@ public struct PlexLinkView: View {
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .defaultFocus($focused, defaultControl)
-        #if os(tvOS)
-        .onExitCommand { requestCancel() }
-        #endif
         .onAppear { viewModel.startIfNeeded() }
         .onDisappear { viewModel.cancel() }
         .onChange(of: viewModel.phase) { _, newPhase in

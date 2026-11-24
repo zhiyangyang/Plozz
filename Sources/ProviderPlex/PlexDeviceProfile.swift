@@ -43,9 +43,7 @@ public struct PlexDeviceProfile: Sendable, Hashable {
     }
 
     private static var currentPlatform: String {
-        #if os(tvOS)
-        "tvOS"
-        #elseif os(iOS)
+        #if os(iOS)
         "iOS"
         #elseif os(macOS)
         "macOS"

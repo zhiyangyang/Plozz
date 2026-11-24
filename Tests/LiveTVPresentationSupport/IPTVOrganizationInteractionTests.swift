@@ -7,11 +7,7 @@ final class IPTVOrganizationInteractionTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
-        #if os(tvOS)
-        app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
     }
 
     override func tearDown() {
@@ -107,18 +103,6 @@ final class IPTVOrganizationInteractionTests: XCTestCase {
                       "An explicitly hidden category must not be restored by a matching region.")
     }
 
-    #if os(tvOS)
-    func testRestoringLastChannelRetainsFocusOnPreviousChannelThenReset() {
-        launch(["--organization-hidden"])
-        activate(app.buttons["live-tv-show-events"])
-        XCTAssertTrue(app.buttons["live-tv-show-community"].hasFocus, app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        XCTAssertTrue(app.buttons["live-tv-show-cinema"].hasFocus, app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        XCTAssertTrue(app.buttons["live-tv-reset-visibility"].hasFocus, app.debugDescription)
-        XCTAssertTrue(app.staticTexts["No hidden channels"].exists)
-    }
-    #endif
 
     func testReadOnlyRecoveryCannotMutate() {
         launch(["--organization-hidden", "--organization-read-only"])
@@ -171,33 +155,14 @@ final class IPTVOrganizationInteractionTests: XCTestCase {
     private func activate(_ target: XCUIElement) {
         XCTAssertTrue(target.waitForExistence(timeout: 5), app.debugDescription)
         reveal(target)
-        #if os(tvOS)
-        XCTAssertTrue(target.hasFocus || target.descendants(matching: .any)
-            .matching(NSPredicate(format: "hasFocus == true")).firstMatch.exists, app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        #else
         if target.elementType == .switch, target.switches.firstMatch.exists {
             target.switches.firstMatch.tap()
         } else {
             target.tap()
         }
-        #endif
     }
 
     private func reveal(_ target: XCUIElement) {
-        #if os(tvOS)
-        for _ in 0..<24 {
-            if target.hasFocus || target.descendants(matching: .any)
-                .matching(NSPredicate(format: "hasFocus == true")).firstMatch.exists { return }
-            let focused = app.descendants(matching: .any)
-                .matching(NSPredicate(format: "hasFocus == true")).firstMatch
-            let direction: XCUIRemote.Button
-            if !focused.exists || target.frame.midY > focused.frame.midY + 10 { direction = .down }
-            else if target.frame.midY < focused.frame.midY - 10 { direction = .up }
-            else { direction = target.frame.midX < focused.frame.midX ? .left : .right }
-            XCUIRemote.shared.press(direction)
-        }
-        #else
         for _ in 0..<16 {
             let safeFrame = app.windows.firstMatch.frame.insetBy(dx: 0, dy: 100)
             if target.exists && target.isHittable && safeFrame.contains(target.frame) { return }
@@ -207,16 +172,11 @@ final class IPTVOrganizationInteractionTests: XCTestCase {
                 app.scrollViews.firstMatch.swipeUp()
             }
         }
-        #endif
         XCTFail("Could not reach control: \(target.identifier)\n\(app.debugDescription)")
     }
 
     private func back() {
-        #if os(tvOS)
-        XCUIRemote.shared.press(.menu)
-        #else
         app.navigationBars.buttons.firstMatch.tap()
-        #endif
     }
 
     private func capture(_ name: String) {

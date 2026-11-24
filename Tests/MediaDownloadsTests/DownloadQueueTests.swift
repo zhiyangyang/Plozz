@@ -1240,7 +1240,6 @@ final class DownloadQueueTests: XCTestCase {
         XCTAssertEqual(final?.status, .failed)
     }
 
-    #if !os(tvOS)
     func testDownloadUsesReclaimableCapacityWhenRawFreeSpaceIsTooSmall() async throws {
         let capacity = DownloadStorageCapacity { _, key in
             key == .volumeAvailableCapacityForImportantUsageKey
@@ -1253,7 +1252,6 @@ final class DownloadQueueTests: XCTestCase {
             expectedStatus: .completed
         )
     }
-    #endif
 
     func testInsufficientCapacityRejectsDownloadBeforeStartingTransfer() async throws {
         try await assertStoragePreflight(

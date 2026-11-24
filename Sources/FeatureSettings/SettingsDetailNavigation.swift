@@ -69,11 +69,6 @@ struct SettingsDetailPages<Root: View, Detail: View>: View {
                     detail()
                         .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                         .transition(reduceMotion ? .identity : SettingsPageMotion.transition(edge: .trailing))
-                        #if os(tvOS)
-                        .onExitCommand {
-                            navigation.pop(animated: !reduceMotion)
-                        }
-                        #endif
                 }
             }
         }
@@ -95,9 +90,6 @@ struct SettingsDetailLink<Destination: View, Label: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.settingsDetailRootFocusScope) private var rootFocusScope
     @Environment(\.settingsDetailRootEnabled) private var rootEnabled
-    #if os(tvOS)
-    @Environment(\.resetFocus) private var resetFocus
-    #endif
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -115,33 +107,21 @@ struct SettingsDetailLink<Destination: View, Label: View>: View {
                     rootEnabled && !navigation.isPresented
                         && (!navigation.awaitingFocus || navigation.pageID == pageID)
                 )
-                #if os(tvOS)
-                .background {
-                    NativeFocusRegionObserver(isEnabled: !navigation.isPresented) {
-                        navigation.focusArrived()
-                    }
-                }
-                #endif
             } else {
                 SettingsPageLink(destination: destination, label: label)
                     .focused($isFocused)
             }
 
         }
-        #if !os(tvOS)
         .onChange(of: isFocused) { _, focused in
             if focused { navigation?.focusArrived() }
         }
-        #endif
         .task(id: navigation?.returnFocusGeneration) {
             guard let navigation, navigation.pageID == pageID, navigation.returnFocusGeneration > 0 else { return }
             isFocused = false
             await Task.yield()
             if !Task.isCancelled, !navigation.isPresented {
                 isFocused = true
-                #if os(tvOS)
-                if let rootFocusScope { resetFocus(in: rootFocusScope) }
-                #endif
             }
         }
     }
@@ -150,10 +130,6 @@ struct SettingsDetailLink<Destination: View, Label: View>: View {
 struct SettingsRouteLink<Label: View>: View {
     let value: SettingsRoute
     let label: Label
-    #if os(tvOS)
-    @Environment(SettingsNavigationModel.self) private var navigation: SettingsNavigationModel?
-    @Environment(\.settingsPageContext) private var pageContext
-    #endif
 
     init(value: SettingsRoute, @ViewBuilder label: () -> Label) {
         self.value = value
@@ -161,17 +137,7 @@ struct SettingsRouteLink<Label: View>: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        if let navigation, pageContext != nil {
-            SettingsPageActionLink { source in
-                navigation.pages.push(value, sourceID: source)
-            } label: { label }
-        } else {
-            NavigationLink(value: value) { label }
-        }
-        #else
         NavigationLink(value: value) { label }
-        #endif
     }
 }
 

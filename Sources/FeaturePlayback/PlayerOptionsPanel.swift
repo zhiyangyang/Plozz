@@ -103,31 +103,6 @@ struct PlayerOptionsPanel: View {
                 if let error = model.upscaling.error { Text(error) }
             }
             .onAppear { reconcileSubtitleScreen() }
-            #if os(tvOS)
-            .onAppear {
-                if category == .audio { model.systemAudio.refresh() }
-            }
-            .onChange(of: model.systemAudio.availableSettings) { _, _ in
-                guard category == .audio, audioScreen == .options else { return }
-                let rows = Self.audioRows(model: model, actions: actions)
-                if case let .row(id) = focus, !rows.contains(where: { $0.id == id }) {
-                    restoreFocus(rows.first.map { .row($0.id) } ?? .subBack)
-                } else if focus == .subBack, let first = rows.first {
-                    restoreFocus(.row(first.id))
-                }
-            }
-            .onChange(of: model.systemAudio.dialogueLevel != nil) { _, available in
-                if category == .audio, audioScreen == .dialogue, !available { openAudioScreen(.options) }
-            }
-            .alert("Couldn't change audio setting", isPresented: Binding(
-                get: { category == .audio && model.systemAudio.failure != nil },
-                set: { if !$0 { model.systemAudio.failure = nil } }
-            )) {
-                Button("OK", role: .cancel) { model.systemAudio.failure = nil }
-            } message: {
-                Text("Try changing this setting in Apple TV Settings.")
-            }
-            #endif
             .onChange(of: model.subtitleStyleAdjustable) { _, _ in reconcileSubtitleScreen() }
             .onChange(of: backRequest) { _, _ in
                 if category == .subtitles, subtitleScreen != .tracks {
@@ -234,15 +209,7 @@ struct PlayerOptionsPanel: View {
             ).first.map { .row($0.slot) }
         case .audio:
             if audioScreen == .sync { return .row(0) }
-            #if os(tvOS)
-            if audioScreen == .dialogue {
-                return dialogueRows(model: model).first(where: \.isSelected).map { .row($0.id) } ?? .subBack
-            }
-            return audioRows(model: model, actions: PlayerOptionsActions()).isEmpty
-                ? .subBack : .row(selectedRowIndex(for: panel, model: model))
-            #else
             return .row(selectedRowIndex(for: panel, model: model))
-            #endif
         case .version:
             return .row(selectedRowIndex(for: panel, model: model))
         case .sync:
@@ -274,9 +241,6 @@ struct PlayerOptionsPanel: View {
         // room to be readable without being absurdly wide.
         case .subtitles where subtitleScreen == .download: return 860
         case .subtitles: return SubtitleStylePanel.panelWidth
-        #if os(tvOS)
-        case .audio: return 580
-        #endif
         default: return standardWidth
         }
     }
@@ -726,13 +690,6 @@ struct PlayerOptionsPanel: View {
         // The stepper owns a native hosting boundary, not the panel's FocusState.
         // Keep competing controls ineligible until it reports actual entry.
         if screen == .sync { return }
-        #if os(tvOS)
-        if screen == .options, model.systemAudio.values[.enhanceDialogue] != nil {
-            restoreFocus(.row(SystemPlaybackAudioSetting.enhanceDialogue.rawValue))
-        } else {
-            restoreFocus(preferredFocus)
-        }
-        #endif
     }
 
     @ViewBuilder
@@ -744,47 +701,10 @@ struct PlayerOptionsPanel: View {
                 onControlFocus: { syncControlHasReceivedFocus = true }
             )
         } else {
-            #if os(tvOS)
-            if audioScreen == .dialogue {
-                PlayerMenuRowStack(
-                    rows: Self.dialogueRows(model: model, selected: {
-                        if audioScreen == .dialogue { openAudioScreen(.options) }
-                    }),
-                    palette: palette, focus: $focus
-                )
-                .padding(.horizontal, 14)
-            } else {
-                let rows = Self.audioRows(model: model, actions: actions, openDialogue: { openAudioScreen(.dialogue) })
-                PlayerOptionsInputScope(
-                    screen: audioScreen, rows: rows.compactMap(\.submenu), focus: $focus,
-                    content: AudioPaneView(rows: rows, palette: palette, focus: $focus, close: close)
-                )
-            }
-            #else
             AudioPaneView(rows: Self.audioRows(model: model, actions: actions), palette: palette, focus: $focus, close: close)
-            #endif
         }
     }
 
-    #if os(tvOS)
-    static func dialogueRows(model: PlayerControlsModel, selected: @escaping () -> Void = {}) -> [TrackRow] {
-        let audio = model.systemAudio
-        guard audio.dialogueLevel != nil else { return [] }
-        return SystemDialogueLevel.choices.map { level in
-            TrackRow(
-                id: -200 - level.rawValue, header: nil, title: Text(level.title), subtitle: nil,
-                isSelected: audio.dialogueLevel == level, isToggle: false,
-                action: {
-                    Task {
-                        await audio.setDialogueLevel(level)
-                        if !Task.isCancelled, audio.pending.isEmpty,
-                           audio.failure == nil, audio.dialogueLevel == level { selected() }
-                    }
-                }
-            )
-        }
-    }
-    #endif
 
     static func availableSubtitleScreen(
         _ screen: SubtitleScreen, model: PlayerControlsModel, offersDualSubtitles: Bool
@@ -905,37 +825,6 @@ struct PlayerOptionsPanel: View {
             ))
             index += 1
         }
-        #if os(tvOS)
-        let audio = model.systemAudio
-        var adjustments: [TrackRow] = []
-        for setting in audio.availableSettings {
-            let enabled = audio.values[setting] == true
-            let submenu: PlayerOptionsRowSpec? = setting == .enhanceDialogue
-                ? audio.dialogueLevel.map { level in
-                    .init(slot: setting.rawValue, title: setting.title,
-                          kind: .submenu(summary: Text(level.title), open: openDialogue))
-                } : nil
-            adjustments.append(TrackRow(
-                id: setting.rawValue,
-                header: nil,
-                title: Text(setting.title),
-                subtitle: nil,
-                isSelected: submenu == nil && enabled,
-                isToggle: submenu == nil,
-                isUpdating: audio.pending.contains(setting),
-                submenu: submenu,
-                action: {
-                    if submenu != nil {
-                        openDialogue()
-                    } else {
-                        Task { await audio.setEnabled(!enabled, for: setting) }
-                    }
-                }
-            ))
-        }
-        if !adjustments.isEmpty, !rows.isEmpty { rows[0].startsSection = true }
-        rows = adjustments + rows
-        #endif
         return rows
     }
 

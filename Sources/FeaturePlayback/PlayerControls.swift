@@ -145,11 +145,7 @@ struct PlayerControls: View {
             case .audio: return "waveform"
             case .speed: return "speedometer"
             case .playback:
-                #if os(tvOS)
-                return "ellipsis"
-                #else
                 return "slider.horizontal.3"
-                #endif
             case .sync: return "slider.horizontal.below.square.and.square.filled"
             case .info: return "info.circle"
             case .cast: return "person.2"
@@ -379,9 +375,6 @@ struct PlayerControls: View {
         // is nil for Info, so this can't fire for — or retime — the Info reveal.
         .animation(.easeInOut(duration: 0.2), value: optionsPanel)
         .animation(.spring(response: 0.22, dampingFraction: 0.72), value: model.skipGesture.hintVisible)
-        #if os(tvOS)
-        .observingSystemPlaybackAudio(model.systemAudio, isVisible: model.controlsVisible)
-        #endif
         .task {
             // The capture rig asking for a panel it cannot reach without the
             // remote. Set before the player was built, so one read is enough —
@@ -1443,13 +1436,7 @@ struct PlayerControls: View {
 
     private var infoCard: some View {
         Group {
-            #if os(tvOS)
-            PlayerControlsCardStage(isPresented: infoMode) {
-                cardContent
-            }
-            #else
             cardContent
-            #endif
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1731,30 +1718,6 @@ struct PlayerControls: View {
     }
 }
 
-#if os(tvOS)
-/// Reserve the card's layout without initializing its optional content on transport entry.
-struct PlayerControlsCardStage<Content: View>: View {
-    let isPresented: Bool
-    @ViewBuilder var content: () -> Content
-    @State private var hasPresented = false
-
-    var body: some View {
-        Group {
-            if hasPresented || isPresented {
-                content().transition(.identity)
-            } else {
-                Color.clear
-                    .frame(height: InfoPanelView.cardHeight)
-                    .accessibilityHidden(true)
-                    .transition(.identity)
-            }
-        }
-        .onChange(of: isPresented, initial: true) { _, presented in
-            if presented { hasPresented = true }
-        }
-    }
-}
-#endif
 
 extension PlayerControlsModel {
     var subtitleTrackListFocus: PlayerControls.FocusSlot {

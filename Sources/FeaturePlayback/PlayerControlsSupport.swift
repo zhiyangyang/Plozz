@@ -579,11 +579,7 @@ struct PlayerTabButtonStyle: ButtonStyle {
                 .plozzFrostedBackground(shape, raised: selected)
                 .plozzFrostedBorder(shape)
         } else if !reduceTransparency, #available(iOS 26.0, tvOS 26.0, *) {
-            #if os(tvOS)
-            PlayerNativeGlassSurface(shape, glass: selected ? .regular.tint(.white.opacity(0.30)) : .regular)
-            #else
             PlayerNativeGlassSurface(shape)
-            #endif
         } else {
             shape.fill(.clear)
                 .plozzFrostedBackground(shape, raised: selected)
@@ -694,11 +690,7 @@ struct TrackControlsTopKey: PreferenceKey {
 extension View {
     @ViewBuilder
     func plozzFocusSection() -> some View {
-        #if os(tvOS)
-        focusSection()
-        #else
         self
-        #endif
     }
 
     @ViewBuilder
@@ -707,40 +699,13 @@ extension View {
         onPlayPause: @escaping () -> Void,
         onMove: @escaping (PlozzMoveCommandDirection) -> Void
     ) -> some View {
-        #if os(tvOS)
         self
-            .onExitCommand(perform: onExit)
-            .onPlayPauseCommand(perform: onPlayPause)
-            .onMoveCommand { direction in
-                switch direction {
-                case .up: onMove(.up)
-                case .down: onMove(.down)
-                case .left: onMove(.left)
-                case .right: onMove(.right)
-                @unknown default: break
-                }
-            }
-        #else
-        self
-        #endif
     }
 
     @ViewBuilder
     func plozzMoveCommand(
         perform action: @escaping (PlozzMoveCommandDirection) -> Void
     ) -> some View {
-        #if os(tvOS)
-        onMoveCommand { direction in
-            switch direction {
-            case .up: action(.up)
-            case .down: action(.down)
-            case .left: action(.left)
-            case .right: action(.right)
-            @unknown default: break
-            }
-        }
-        #else
         self
-        #endif
     }
 }

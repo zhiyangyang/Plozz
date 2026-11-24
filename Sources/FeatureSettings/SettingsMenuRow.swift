@@ -13,21 +13,6 @@ struct SettingsMenuRow<Options: View>: View {
     @ViewBuilder var options: () -> Options
 
     var body: some View {
-        #if os(tvOS)
-        Menu {
-            options().pickerStyle(.inline)
-        } label: {
-            SettingsSectionLabel(
-                title: Text(title), icon: icon, assetIcon: nil,
-                value: value, subtitle: subtitle.map(Text.init),
-                accessorySymbol: "chevron.up.chevron.down"
-            )
-        }
-        .menuStyle(.button)
-        .buttonStyle(SettingsFocusButtonStyle(size: .contained))
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(value)
-        #else
         Menu {
             options().pickerStyle(.inline)
         } label: {
@@ -52,7 +37,6 @@ struct SettingsMenuRow<Options: View>: View {
         .settingsActionRow()
         .accessibilityLabel(Text(title))
         .accessibilityValue(value)
-        #endif
     }
 }
 #endif

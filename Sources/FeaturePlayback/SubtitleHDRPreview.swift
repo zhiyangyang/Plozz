@@ -43,29 +43,14 @@ final class SubtitleHDRPreview {
     @ObservationIgnored private var criteriaRequested = false
     @ObservationIgnored private var surface: SubtitleHDRVideoView?
     @ObservationIgnored private var startupTimeout: Task<Void, Never>?
-    #if os(tvOS)
-    @ObservationIgnored private let displayCriteria = NativeDisplayCriteriaController(requiresUnownedTarget: true)
-    #endif
 
     init(assetURL: @escaping @MainActor () -> URL? = { SubtitleHDRPreview.assetURL }) {
         assetURLProvider = assetURL
-        #if os(tvOS)
-        displayCriteria.onOwnershipConflict = { [weak self] in self?.fail(.displayOwned) }
-        displayCriteria.onCriteriaFailure = { [weak self] in self?.fail(.displayCriteria) }
-        displayCriteria.onCriteriaRequested = { [weak self] in
-            self?.criteriaRequested = true
-            self?.updateReadyState()
-        }
-        #endif
     }
 
     deinit {
         startupTimeout?.cancel()
         if let failureObserver { NotificationCenter.default.removeObserver(failureObserver) }
-        #if os(tvOS)
-        let criteria = displayCriteria
-        Task { @MainActor in criteria.stop() }
-        #endif
     }
 
     func start(animate: Bool) {
@@ -127,12 +112,7 @@ final class SubtitleHDRPreview {
                 self.fail(.playback)
             }
         }
-        #if os(tvOS)
-        displayCriteria.attach(to: surface?.window)
-        displayCriteria.configure(asset: asset, fallback: nil)
-        #else
         criteriaRequested = true
-        #endif
         applyTransport()
         PlozzLog.playback.debug("Started local HDR10 subtitle preview")
     }
@@ -152,9 +132,6 @@ final class SubtitleHDRPreview {
     }
 
     func surfaceWindowChanged(_ window: UIWindow?) {
-        #if os(tvOS)
-        displayCriteria.attach(to: window)
-        #endif
         updateReadyState()
     }
 
@@ -216,9 +193,6 @@ final class SubtitleHDRPreview {
         surface?.playerLayer.player = nil
         player = nil
         criteriaRequested = false
-        #if os(tvOS)
-        displayCriteria.stop()
-        #endif
     }
 }
 

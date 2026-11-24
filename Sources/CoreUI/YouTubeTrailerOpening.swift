@@ -29,10 +29,8 @@ public final class YouTubeTrailerOpening {
         }
         if await openURL(appURL) { return }
         guard !Task.isCancelled else { return }
-        #if !os(tvOS)
         if await openURL(watchURL) { return }
         guard !Task.isCancelled else { return }
-        #endif
         reportFailure()
     }
 

@@ -199,9 +199,6 @@ public struct MusicTabView<LandingActions: View>: View {
                 )
             }
         }
-        #if os(tvOS)
-        .toolbar(.hidden, for: .tabBar)
-        #endif
         // Re-inject the "open full player" action here too. Custom environment
         // values set on the NavigationStack (line ~68) are inherited by the root
         // content but NOT reliably by `navigationDestination`-pushed views, so

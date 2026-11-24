@@ -2,11 +2,6 @@ import CoreUI
 import FeatureLiveTVCore
 import SwiftUI
 
-#if os(tvOS)
-enum PrototypeSearchScope {
-    case channels, programs
-}
-#endif
 
 #if os(iOS)
 import UIKit
@@ -364,11 +359,7 @@ struct PrototypeCategorySearchResults: View {
     let categories: [LiveTVBrowseCategory]
     let select: (String) -> Void
     @Environment(\.themePalette) private var palette
-    #if os(tvOS)
-    @ScaledMetric(relativeTo: .headline) private var tileHeight: CGFloat = 128
-    #else
     @ScaledMetric(relativeTo: .headline) private var tileHeight: CGFloat = 68
-    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: PrototypeLayout.smallGap) {
@@ -416,48 +407,6 @@ struct PrototypeSearchFocusBoundary<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        #if os(tvOS)
-        if isSearchResult {
-            PrototypeSearchRowHost(content: content())
-        } else {
-            content()
-        }
-        #else
         content()
-        #endif
     }
 }
-
-#if os(tvOS)
-import UIKit
-
-/// Give native Search a row-sized focused UIView, not the entire lazy stack.
-/// Its keyboard-collapse scrolling still runs unchanged using this real boundary.
-struct PrototypeSearchRowHost<Content: View>: UIViewControllerRepresentable {
-    let content: Content
-
-    struct HostedContent: View {
-        let content: Content
-        let environment: EnvironmentValues
-        var body: some View { content.environment(\.self, environment) }
-    }
-
-    func makeUIViewController(context: Context) -> UIHostingController<HostedContent> {
-        let controller = UIHostingController(rootView: HostedContent(content: content, environment: context.environment))
-        controller.view.backgroundColor = .clear
-        controller.safeAreaRegions = []
-        return controller
-    }
-
-    func updateUIViewController(_ controller: UIHostingController<HostedContent>, context: Context) {
-        controller.rootView = HostedContent(content: content, environment: context.environment)
-    }
-
-    func sizeThatFits(
-        _ proposal: ProposedViewSize, uiViewController: UIHostingController<HostedContent>, context: Context
-    ) -> CGSize? {
-        guard let width = proposal.width else { return nil }
-        return uiViewController.sizeThatFits(in: CGSize(width: width, height: UIView.layoutFittingExpandedSize.height))
-    }
-}
-#endif

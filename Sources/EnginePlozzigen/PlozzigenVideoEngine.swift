@@ -1133,48 +1133,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     private func reconcileLiveDisplayPolicy() {
-        #if os(tvOS)
-        guard !outputLoadInProgress, outputPolicyReload == nil, status == .ready, engine.isSessionReady,
-              let loadedDisplaySuppression,
-              failedDisplaySuppression != liveOutputPolicy.suppressesDisplayMatching,
-              loadedDisplaySuppression != liveOutputPolicy.suppressesDisplayMatching else { return }
-        let generation = outputLoadGeneration
-        let policy = liveOutputPolicy
-        switch engine.updateDisplayMatching(enabled: !policy.suppressesDisplayMatching) {
-        case .applied:
-            self.loadedDisplaySuppression = policy.suppressesDisplayMatching
-            return
-        case .notReady:
-            return
-        case .requiresReload:
-            break
-        }
-        outputPolicyReload = Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer {
-                if outputLoadGeneration == generation {
-                    outputPolicyReload = nil
-                    reconcileLiveDisplayPolicy()
-                }
-            }
-            guard outputLoadGeneration == generation, !Task.isCancelled,
-                  liveOutputPolicy.suppressesDisplayMatching == policy.suppressesDisplayMatching else { return }
-            do {
-                // HDR output changes still need a pipeline rebuild.
-                try await reloadSession(outputPolicy: policy)
-                guard outputLoadGeneration == generation, !Task.isCancelled else { return }
-                self.loadedDisplaySuppression = policy.suppressesDisplayMatching
-            } catch is CancellationError {
-                // A newer source, stop or foreground teardown owns playback.
-            } catch {
-                guard outputLoadGeneration == generation, !Task.isCancelled else { return }
-                let failure = (error as? AppError) ?? .unknown(String(describing: error))
-                failedDisplaySuppression = policy.suppressesDisplayMatching
-                PlozzLog.playback.error("Channel display policy could not be applied")
-                onFailure?(failure)
-            }
-        }
-        #endif
     }
 
     nonisolated static func supportsFELConversion(for request: PlaybackRequest) -> Bool {
@@ -1293,9 +1251,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     nonisolated static func applyLiveOutputPolicy(_ policy: LiveChannelOutputPolicy, to options: inout LoadOptions) {
-        #if os(tvOS)
-        options.displayCriteriaOwner = policy.suppressesDisplayMatching ? .host : .engine
-        #endif
         options.suppressDisplayCriteria = policy.suppressesDisplayMatching
         options.matchContentEnabled = !policy.suppressesDisplayMatching
     }
@@ -1305,16 +1260,12 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     ) async throws {
         guard outputPolicy.isAudible, !outputPolicy.sharesAudioSession else { return }
         try Task.checkCancellation()
-        #if os(iOS) || os(tvOS)
+        #if os(iOS)
         // Browsing previews mix with other audio. Aether preserves host category
         // settings, so each movie load must clear that process-wide preview policy.
         try await Task.detached(priority: .userInitiated) {
             let session = AVAudioSession.sharedInstance()
-            #if os(tvOS)
-            let defaultPolicy: AVAudioSession.RouteSharingPolicy = .longFormAudio
-            #else
             let defaultPolicy: AVAudioSession.RouteSharingPolicy = .default
-            #endif
             let policy = session.category == .playback ? session.routeSharingPolicy : defaultPolicy
             try session.setCategory(.playback, mode: .moviePlayback, policy: policy, options: [])
         }.value
@@ -1323,7 +1274,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     private nonisolated static func activateLiveAudioSession() throws {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS)
         try AVAudioSession.sharedInstance().setActive(true)
         #endif
     }
@@ -1914,7 +1865,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
         case .idle, .paused, .ended, .error: return false
         }
     }
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     public func previewVideoFrame() -> CVPixelBuffer? { engine.latestSoftwareVideoFrame() }
     public var previewFrameGeneration: UInt64? { engine.softwareVideoFrameGeneration }
     #endif
@@ -2408,14 +2359,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
             }
             .store(in: &cancellables)
 
-        #if os(tvOS)
-        // Native HLS can become ready before its source format and dimensions arrive.
-        engine.$sourceVideoWidth
-            .combineLatest(engine.$sourceVideoHeight, engine.$sourceVideoFormat)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.reconcileLiveDisplayPolicy() }
-            .store(in: &cancellables)
-        #endif
 
         // State → status/isPaused/onEnded/onFailure
         engine.$state

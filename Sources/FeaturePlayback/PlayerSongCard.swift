@@ -32,15 +32,7 @@ struct PlayerSongLayout<Content: View>: View {
     }
 
     private var allowsSongFocus: Bool {
-        #if os(tvOS)
-        if optionsPresented { return true }
-        switch focus {
-        case .infoRestart, .infoPrev, .infoNext, .infoStats, .infoSong: return true
-        default: return false
-        }
-        #else
         true
-        #endif
     }
 
     private var song: SongMatch? {
@@ -95,19 +87,9 @@ struct PlayerSongCard: View {
     var body: some View {
         Button(action: onSelect) {
             label
-                #if !os(tvOS)
                 .modifier(PanelGlassBackground(cornerRadius: metrics.panelCornerRadius, mediaGlass: true))
-                #endif
         }
-        #if os(tvOS)
-        .buttonStyle(PlayerOverVideoCardStyle(
-            focused: focus == .infoSong, cornerRadius: metrics.panelCornerRadius,
-            focusScale: metrics.isVertical ? 1 : 1.10,
-            pressScale: metrics.isVertical ? 0.98 : 1, mediaGlass: true
-        ))
-        #else
         .buttonStyle(.plain)
-        #endif
         .focused($focus, equals: .infoSong)
         .plozzFocusSection()
         .accessibilityElement(children: .ignore)
@@ -223,66 +205,23 @@ struct SongServiceChooser: View {
     #endif
 
     static var presentationStyle: PlozzSheetStyle {
-        #if os(tvOS)
-        .floatingCard
-        #else
         .standard
-        #endif
     }
 
     var body: some View {
         presentation
             .task(id: request?.id) {
                 guard let link = request?.link else { return }
-                #if os(tvOS)
-                let opened = await UIApplication.shared.open(link.url, options: [.universalLinksOnly: true])
-                guard !Task.isCancelled else { return }
-                if !opened {
-                    PlozzLog.app.info("Song service has no available app handler; showing phone link")
-                    phoneLink = link
-                }
-                #else
                 openURL(link.url) { accepted in
                     if !accepted {
                         PlozzLog.app.error("Unable to open song service link")
                         phoneLink = link
                     }
                 }
-                #endif
             }
     }
 
     @ViewBuilder private var presentation: some View {
-        #if os(tvOS)
-        GeometryReader { geometry in
-            ZStack {
-                PlozzDialogBackdrop()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        HStack {
-                            PlozzDialogHeading(Text("Open song"))
-                            Spacer()
-                            Button("Done") { dismiss() }
-                                .buttonStyle(.bordered)
-                        }
-                        SongServiceChooserContent(song: song, phoneLink: phoneLink, select: select)
-                            .padding(12)
-                    }
-                    .padding(32)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                .frame(
-                    width: min(phoneLink == nil ? 820 : 1180, max(0, geometry.size.width - 96)),
-                    height: min(max(contentHeight, 300), max(0, geometry.size.height - 96))
-                )
-                .plozzSurface(.overlay, cornerRadius: 32)
-                .accessibilityIdentifier("song-service-chooser")
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .onExitCommand { dismiss() }
-        #else
         NavigationStack {
             ScrollView {
                 SongServiceChooserContent(song: song, phoneLink: phoneLink, select: select)
@@ -309,7 +248,6 @@ struct SongServiceChooser: View {
         .plozzSheetSize(.detents([.height(max(300, contentHeight + presentationInsets)), .large]))
         .presentationSizing(.form.fitted(horizontal: false, vertical: true))
         .accessibilityIdentifier("song-service-chooser")
-        #endif
     }
 
     private func select(_ link: SongServiceLink) {
@@ -324,22 +262,12 @@ struct SongServiceChooserContent: View {
     let select: (SongServiceLink) -> Void
 
     var body: some View {
-        #if os(tvOS)
-        HStack(alignment: .top, spacing: 32) {
-            SongServiceOptions(song: song, select: select)
-            if let phoneLink {
-                SongServicePhoneLink(link: phoneLink)
-                    .frame(width: 300)
-            }
-        }
-        #else
         VStack(alignment: .leading, spacing: 24) {
             SongServiceOptions(song: song, select: select)
             if let phoneLink {
                 SongServicePhoneLink(link: phoneLink)
             }
         }
-        #endif
     }
 }
 
@@ -350,9 +278,6 @@ private struct SongServiceOptions: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             SongServiceHeader(song: song)
-                #if os(tvOS)
-                .padding(.vertical, 12)
-                #endif
             VStack(spacing: 12) {
                 ForEach(SongServiceLink.links(for: song)) { link in
                     SongServiceButton(link: link) { select(link) }
@@ -368,11 +293,7 @@ private struct SongServiceHeader: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        #if os(tvOS)
-        let artworkSpacing: CGFloat = 32
-        #else
         let artworkSpacing: CGFloat = 20
-        #endif
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
             : AnyLayout(HStackLayout(alignment: .center, spacing: artworkSpacing))
@@ -434,11 +355,7 @@ private struct SongServiceButton: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        #if os(tvOS)
-        .buttonStyle(.bordered)
-        #else
         .plozzActionButton(role: .secondary)
-        #endif
         .buttonBorderShape(.roundedRectangle(radius: 16))
         .accessibilityIdentifier("song-service-\(link.service.rawValue)")
     }

@@ -47,10 +47,6 @@ public struct AccountReauthenticationView<ManagedSignIn: View>: View {
             }
         }
         .onDisappear { model.cancel() }
-        #if os(tvOS)
-        .plozzDialogSurface()
-        .onExitCommand(perform: cancel)
-        #endif
     }
 
     private func cancel() {

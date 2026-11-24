@@ -10,13 +10,8 @@ public struct WatchlistBrowseControls: View {
 
     public var body: some View {
         BrowseQueryControls {
-            #if os(tvOS)
-            WatchlistFilterMenu(filter: $preferences.filter)
-            WatchlistSortMenu(sort: $preferences.sort)
-            #else
             WatchlistSortMenu(sort: $preferences.sort)
             WatchlistFilterMenu(filter: $preferences.filter)
-            #endif
         }
     }
 }

@@ -97,9 +97,6 @@ public struct CircularFocusTile<Avatar: View, Caption: View>: View {
     private let nativeName: String?
 
     @PlozzCardFocus private var isFocused: Bool
-    #if os(tvOS)
-    @State private var nativeArtwork = ArtworkResolutionState()
-    #endif
     @Environment(\.plozzMetrics) private var metrics
     @Environment(\.plozzCardFocusStyle) private var focusStyle
 
@@ -139,16 +136,9 @@ public struct CircularFocusTile<Avatar: View, Caption: View>: View {
             caption(isFocused)
                 .offset(y: focusStyle.usesSystemEffect || isFocused ? 0 : -push)
         }
-        #if os(tvOS)
-        .focusableCard(
-            isFocused: $isFocused, cornerRadius: diameter / 2,
-            nativeFocusInContent: true, action: action
-        )
-        #else
         .focusable(true)
         .focused($isFocused.focusState)
         .onTapGesture(perform: action)
-        #endif
         .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
         .accessibilityAddTraits(.isButton)
         .plozzCardFocusTransition(isFocused: isFocused)
@@ -157,26 +147,7 @@ public struct CircularFocusTile<Avatar: View, Caption: View>: View {
 
     @ViewBuilder
     private var avatarContent: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            NativeTVMonogram(
-                image: nativeArtwork.image, name: nativeName,
-                diameter: diameter, focus: $isFocused, action: action
-            )
-            .focused($isFocused.focusState)
-            .background {
-                avatar()
-                    .environment(\.artworkResolutionState, nativeArtwork)
-                    .frame(width: diameter, height: diameter)
-                    .hidden()
-                    .accessibilityHidden(true)
-            }
-        } else {
-            customAvatar
-        }
-        #else
         customAvatar
-        #endif
     }
 
     private var customAvatar: some View {

@@ -6,27 +6,6 @@ import XCTest
 
 final class ViewCustomizationCycleTests: XCTestCase {
     func testEpisodeDescriptionPreviewTracksFocusPreferenceWithoutMovingCards() throws {
-        #if os(tvOS)
-        func geometry(onFocus: Bool) throws -> SettingsIllustrationCardGeometry {
-            let preview = CardLabelScopePreview.snapshot(
-                page: .detail, editing: .episodes,
-                settings: CardCaptionSettings(episodeDescriptionsOnFocus: onFocus),
-                isShowcase: false, seriesArtwork: true, layout: .landscape
-            )
-            return SettingsIllustrationCardGeometry(
-                row: try XCTUnwrap(preview.rows.first { $0.view == .episodes }), preview: preview,
-                style: .borderless, metrics: .standard, playbackDetails: .detailed, viewportWidth: 1920
-            )
-        }
-        let always = try geometry(onFocus: false)
-        let focused = try geometry(onFocus: true)
-        XCTAssertGreaterThan(always.cards.count, 1)
-        XCTAssertEqual(always.height, focused.height)
-        XCTAssertEqual(always.cards.map(\.artwork), focused.cards.map(\.artwork))
-        XCTAssertTrue(always.cards.allSatisfy { $0.captions.count == 4 })
-        XCTAssertEqual(focused.cards.first?.captions.count, 4)
-        XCTAssertTrue(focused.cards.dropFirst().allSatisfy { $0.captions.count == 1 })
-        #endif
     }
 
     func testMixedHelpExplainsBehaviorOnlyWhenSelected() throws {
@@ -40,11 +19,7 @@ final class ViewCustomizationCycleTests: XCTestCase {
                     let text = String(localized: try XCTUnwrap(explanation))
                     XCTAssertTrue(text.contains("series artwork"))
                     XCTAssertTrue(text.contains("other cards keep their labels"))
-                    #if os(tvOS)
-                    XCTAssertTrue(text.contains("Showcase"))
-                    #else
                     XCTAssertFalse(text.contains("Showcase"))
-                    #endif
                     XCTAssertEqual(settings.cardLabelHelp(in: view), explanation)
                 } else {
                     XCTAssertEqual(settings.cardLabelHelp(in: view), view.cardLabelDetail)

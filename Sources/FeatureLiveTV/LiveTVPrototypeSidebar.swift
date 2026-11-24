@@ -26,9 +26,6 @@ struct PrototypeBrowseSidebar: View {
     @State private var hasFocusedControl = false
     @ScaledMetric(relativeTo: .subheadline) private var fontSize = PrototypeLayout.guideFontSize
     @Environment(\.layoutDirection) private var layoutDirection
-    #if os(tvOS)
-    @Environment(\.plozzNativeControlFocusRequest) private var requestNativeFocus
-    #endif
 
     enum Control: Hashable {
         case source
@@ -64,57 +61,15 @@ struct PrototypeBrowseSidebar: View {
     }
 
     private var readyCategoryFocusRequest: Int? {
-        #if os(tvOS)
-        // The shared owner can focus the laid-out control while its pane is moving.
-        if requestNativeFocus != nil { return restoresCategoryFocus ? categoryFocusRequest : nil }
-        #endif
         return restoresCategoryFocus && !isRevealing ? categoryFocusRequest : nil
     }
 
     @ViewBuilder private func nativeFocusRequest(for control: Control) -> some View {
-        #if os(tvOS)
-        NativeControlFocusRequest(request: isRestoringFocus && control == entryTarget ? readyCategoryFocusRequest : nil)
-            // A moving virtual item may not yet be capturable as the rail's return target.
-            .navigationEntryFocus(control == entryTarget ? .content : nil)
-        #endif
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: PrototypeLayout.gap) {
-            #if os(tvOS)
-            PrototypeBrowseSourceMenu(
-                configuration: configuration, selectedSourceID: model.configuredSourceID,
-                includesLibraryChannels: model.channels.contains { $0.source == .plozz },
-                selectSource: selectSource, addSource: addSource
-            )
-            .modifier(PrototypeSidebarNativeControl())
-            .focused($focused, equals: .source)
-            .onMoveCommand { move(from: .source, direction: $0) }
-            .background { nativeFocusRequest(for: .source) }
-            .prototypeFocusGate(isFocusDisabled(.source))
-            .padding(.top, PrototypeLayout.gap)
-
-            HStack(spacing: PrototypeLayout.gap) {
-                Button(action: search) {
-                    Label(isSearching ? "Back to guide" : "Search", systemImage: isSearching ? "chevron.backward" : "magnifyingglass")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .modifier(PrototypeSidebarNativeControl())
-                .focused($focused, equals: .search)
-                .onMoveCommand { move(from: .search, direction: $0) }
-                .background { nativeFocusRequest(for: .search) }
-                .prototypeFocusGate(isFocusDisabled(.search))
-                .accessibilityValue(model.query)
-                .accessibilityIdentifier("live-tv-search")
-                #if DEBUG
-                .modifier(PrototypeBrowseLayoutObservation(element: "sidebar-search"))
-                #endif
-
-                sidebarActions
-            }
-            #else
             sidebarActions
-            #endif
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -136,23 +91,10 @@ struct PrototypeBrowseSidebar: View {
                                         .accessibilityHidden(true)
                                 }
                                 .lineLimit(2)
-                                #if os(tvOS)
-                                .frame(
-                                    maxWidth: .infinity, minHeight: PrototypeLayout.controlHeight, alignment: .leading
-                                )
-                                .padding(.horizontal, PrototypeLayout.gap)
-                                #else
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                #endif
                                 .contentShape(Rectangle())
                             }
-                            #if os(tvOS)
-                            .buttonStyle(PrototypeButtonStyle(padded: false, surface: .control))
-                            .focusEffectDisabled()
-                            .onMoveCommand { move(from: .category(category), direction: $0) }
-                            #else
                             .buttonStyle(.bordered)
-                            #endif
                             .focused($focused, equals: .category(category))
                             .background { nativeFocusRequest(for: .category(category)) }
                             .prototypeFocusGate(isFocusDisabled(.category(category)))
@@ -166,9 +108,6 @@ struct PrototypeBrowseSidebar: View {
                     .padding(.vertical, PrototypeLayout.smallGap)
                 }
                 .scrollIndicators(.hidden)
-                #if os(tvOS)
-                .focusSection()
-                #endif
                 .verticalEdgeFadeMask(
                     fadeHeight: PrototypeLayout.verticalFade,
                     topStrength: categoryFade.leading,
@@ -189,25 +128,11 @@ struct PrototypeBrowseSidebar: View {
                     if case .category = target, !hasFocusedControl || target != lastFocusedControl {
                         proxy.scrollTo(target)
                     }
-                    #if os(tvOS)
-                    if requestNativeFocus == nil { focused = target }
-                    #else
                     focused = target
-                    #endif
                 }
             }
         }
-        #if os(tvOS)
-        .font(.system(size: fontSize, weight: .regular))
-        #endif
         .lineLimit(1)
-        #if os(tvOS)
-        .focusSection()
-        .defaultFocus(
-            $focused, restoresCategoryFocus ? entryTarget : .search,
-            priority: .automatic
-        )
-        #endif
         .onChange(of: focused) { _, target in
             guard let target else { return }
             hasFocusedControl = true
@@ -228,21 +153,9 @@ struct PrototypeBrowseSidebar: View {
         if let multiviews {
             Button(action: multiviews) {
                 Label("Multiviews", systemImage: "rectangle.split.2x2")
-                    #if os(tvOS)
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 30))
-                    .frame(width: 38, height: 38)
-                    #else
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    #endif
             }
-            #if os(tvOS)
-            .modifier(PrototypeSidebarNativeControl(iconOnly: true))
-            .onMoveCommand { move(from: .multiviews, direction: $0) }
-            .help("Multiviews")
-            #else
             .buttonStyle(.bordered)
-            #endif
             .focused($focused, equals: .multiviews)
             .background { nativeFocusRequest(for: .multiviews) }
             .prototypeFocusGate(isFocusDisabled(.multiviews))
@@ -251,21 +164,9 @@ struct PrototypeBrowseSidebar: View {
         if let manageChannels {
             Button(action: manageChannels) {
                 Label("Manage channels", systemImage: "slider.horizontal.3")
-                    #if os(tvOS)
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 30))
-                    .frame(width: 38, height: 38)
-                    #else
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    #endif
             }
-            #if os(tvOS)
-            .modifier(PrototypeSidebarNativeControl(iconOnly: true))
-            .onMoveCommand { move(from: .manageChannels, direction: $0) }
-            .help("Manage channels")
-            #else
             .buttonStyle(.bordered)
-            #endif
             .focused($focused, equals: .manageChannels)
             .background { nativeFocusRequest(for: .manageChannels) }
             .prototypeFocusGate(isFocusDisabled(.manageChannels))
@@ -273,50 +174,11 @@ struct PrototypeBrowseSidebar: View {
         }
     }
 
-    #if os(tvOS)
-    private func move(from control: Control, direction: MoveCommandDirection) {
-        if control == .manageChannels, direction == .down {
-            focused = .category(nil)
-            return
-        }
-        guard direction == (layoutDirection == .rightToLeft ? .left : .right) else { return }
-        if control == .search, multiviews != nil || manageChannels != nil { return }
-        if control == .multiviews, manageChannels != nil { return }
-        enterGuide()
-    }
-    #endif
 }
 
 extension View {
     /// Navigation can exclude a control without telling its native style that its action is unavailable.
     @ViewBuilder func prototypeFocusGate(_ blocked: Bool) -> some View {
-        #if os(tvOS)
-        allowsHitTesting(!blocked).accessibilityHidden(blocked)
-        #else
         disabled(blocked)
-        #endif
     }
 }
-
-#if os(tvOS)
-private struct PrototypeSidebarNativeControl: ViewModifier {
-    var iconOnly = false
-    @Environment(\.themePalette) private var palette
-
-    func body(content: Content) -> some View {
-        sized(content)
-            .plozzActionButton(role: .secondary)
-            .buttonBorderShape(iconOnly ? .circle : .capsule)
-            .controlSize(.regular)
-            .tint(palette.accent)
-    }
-
-    @ViewBuilder private func sized(_ content: Content) -> some View {
-        if #available(tvOS 26.0, *), !iconOnly {
-            content.buttonSizing(.flexible)
-        } else {
-            content
-        }
-    }
-}
-#endif

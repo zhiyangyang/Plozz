@@ -2290,60 +2290,14 @@ final class PlayerViewModelEOFTests: XCTestCase {
         await viewModel.load()
 
         viewModel.didBecomeInactive()
-        #if os(tvOS)
-        XCTAssertFalse(engine.isPaused)
-        XCTAssertFalse(viewModel.controls.intendsPause)
-        #else
         XCTAssertTrue(engine.isPaused)
-        #endif
         await viewModel.resumeAfterBackground()
 
         XCTAssertEqual(engine.reloadAfterForegroundCount, 0)
-        #if os(tvOS)
-        XCTAssertFalse(engine.isPaused)
-        for _ in 0..<10 { await Task.yield() }
-        let reports = await provider.reports
-        XCTAssertEqual(reports.map(\.event.rawValue), ["start"])
-        #else
-        XCTAssertTrue(engine.isPaused)
-        #endif
-        await viewModel.stop()
-    }
-
-    #if os(tvOS)
-    func testCoalescedBackgroundAfterInactivityRestoresPositionAndStaysPaused() async {
-        let (viewModel, engine, _) = makeViewModel()
-        await viewModel.load()
-        engine.currentTime = 30
-        viewModel.didBecomeInactive()
-        engine.currentTime = 0
-        engine.status = .idle
-
-        await viewModel.resumeAfterBackground()
-
-        XCTAssertEqual(engine.reloadAfterForegroundCount, 1)
-        XCTAssertEqual(engine.currentTime, 30)
         XCTAssertTrue(engine.isPaused)
         await viewModel.stop()
     }
 
-    func testBackgroundAfterOverlayUsesObservedPositionIfEngineAlreadyToreDown() async {
-        let (viewModel, engine, _) = makeViewModel()
-        await viewModel.load()
-        engine.currentTime = 30
-        viewModel.didBecomeInactive()
-        viewModel.controls.currentSeconds = 45
-        engine.currentTime = 0
-        engine.status = .idle
-
-        viewModel.didEnterBackground()
-        await viewModel.resumeAfterBackground()
-
-        XCTAssertEqual(engine.currentTime, 45)
-        XCTAssertTrue(engine.isPaused)
-        await viewModel.stop()
-    }
-    #endif
 
     func testTransientInactivityDoesNotResumeAnExplicitPause() async {
         let (viewModel, engine, _) = makeViewModel()
@@ -2364,9 +2318,6 @@ final class PlayerViewModelEOFTests: XCTestCase {
         await viewModel.load()
         engine.currentTime = 30
         viewModel.didBecomeInactive()
-        #if os(tvOS)
-        engine.currentTime = 45
-        #endif
 
         viewModel.didEnterBackground()
         XCTAssertTrue(engine.isPaused)
@@ -2374,11 +2325,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         await viewModel.resumeAfterBackground()
 
         XCTAssertEqual(engine.reloadAfterForegroundCount, 1)
-        #if os(tvOS)
-        XCTAssertEqual(engine.currentTime, 45, "Keep progress made while the system overlay was open")
-        #else
         XCTAssertEqual(engine.currentTime, 30)
-        #endif
         XCTAssertTrue(engine.isPaused)
         await viewModel.stop()
     }

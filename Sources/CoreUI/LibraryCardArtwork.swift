@@ -35,9 +35,6 @@ private struct LibraryCollageArtwork: View {
     let policy: ArtworkPresentationPolicy
     @State private var image: UIImage?
     @State private var resolved: Bool
-    #if os(tvOS)
-    @Environment(\.artworkResolutionState) private var resolution
-    #endif
 
     init(source: LibraryArtworkSource?, provider: ProviderKind, policy: ArtworkPresentationPolicy) {
         self.source = source
@@ -56,14 +53,6 @@ private struct LibraryCollageArtwork: View {
                 LibraryArtworkFallback(provider: provider)
             }
         }
-        #if os(tvOS)
-        .onChange(of: image, initial: true) { _, value in
-            resolution?.image = value
-        }
-        .onChange(of: resolved, initial: true) { _, value in
-            resolution?.isResolved = value
-        }
-        #endif
         .task(id: source.map { LibraryCollageCache.identity(for: $0, policy: policy) }) {
             guard image == nil, let source else { return }
             let loaded = await LibraryCollageCache.shared.image(for: source, policy: policy)

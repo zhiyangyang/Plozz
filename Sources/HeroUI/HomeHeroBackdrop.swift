@@ -9,13 +9,8 @@ import UIKit
 #endif
 
 private enum HomeBackdropCompositing {
-    #if os(tvOS)
-    static let usesCachedScrim =
-        ProcessInfo.processInfo.environment["PLZHOME_CACHED_SCRIM"] != "0"
-    #else
     static let usesCachedScrim =
         ProcessInfo.processInfo.environment["PLZHOME_CACHED_SCRIM"] == "1"
-    #endif
 }
 
 /// Shared Home **hero** backdrop, designed around the Apple TV app's "parallax

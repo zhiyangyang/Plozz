@@ -9,13 +9,8 @@ import XCTest
 @MainActor
 final class HomeSectionStatusViewTests: XCTestCase {
     func testEmptySectionReservesSpaceWithoutRecoveryControls() async throws {
-        #if os(tvOS)
-        let widths: [CGFloat] = [800, 1600]
-        let minimumHeight = 336
-        #else
         let widths: [CGFloat] = [280, 360, 760]
         let minimumHeight = 180
-        #endif
         for width in widths {
             let image = try await render(.empty, width: width)
             let text = try recognize(image)
@@ -76,11 +71,7 @@ final class HomeSectionStatusViewTests: XCTestCase {
     #endif
 
     func testEmptySectionOffersOptionalHomeCustomization() async throws {
-        #if os(tvOS)
-        let width: CGFloat = 1000
-        #else
         let width: CGFloat = 360
-        #endif
         let image = try await render(.empty, width: width, onCustomizeHome: {}, onDismissEmpty: {})
         let text = try recognize(image)
         XCTAssertTrue(text.contains("Customize Home"), text)
@@ -103,11 +94,7 @@ final class HomeSectionStatusViewTests: XCTestCase {
     }
 
     func testEmptySectionRetainsOptionalBrowseAction() async throws {
-        #if os(tvOS)
-        let width: CGFloat = 1000
-        #else
         let width: CGFloat = 360
-        #endif
         let text = try recognize(await render(.empty, width: width, onSeeAll: {}))
         XCTAssertTrue(text.contains("See all"), text)
         XCTAssertFalse(text.contains("Details"), text)
@@ -115,11 +102,7 @@ final class HomeSectionStatusViewTests: XCTestCase {
     }
 
     func testCustomizationActionUsesNeutralThemeInkInsteadOfInheritedBlue() async throws {
-        #if os(tvOS)
-        let width: CGFloat = 1000
-        #else
         let width: CGFloat = 360
-        #endif
         for (name, palette) in [("dark", ThemePalette.dark), ("light", ThemePalette.light)] {
             let image = try await render(
                 .empty, width: width, onCustomizeHome: {}, palette: palette, inheritedTint: .blue

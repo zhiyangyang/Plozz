@@ -40,9 +40,6 @@ struct CollectionSectionSettingsView: View {
     @State private var choosingSource = false
     @State private var saveFailed = false
     @State private var preferencesSaveFailed = false
-    #if os(tvOS)
-    @State private var exitConfirmation = SettingsPageBackConfirmation()
-    #endif
     @FocusState private var isNameFocused: Bool
     @Environment(CardStyleSettingsModel.self) private var cards
     @Environment(\.homeContentSnapshot) private var homeSnapshot
@@ -105,25 +102,7 @@ struct CollectionSectionSettingsView: View {
                 }
                 .buttonStyle(SettingsFormButtonStyle())
                 .accessibilityIdentifier("collection-section-source")
-                #if os(tvOS)
-                if !isNew {
-                    HomeEditorAutosavingNameInput(
-                        "Name", name: draft.name, prompt: draft.localizedContentTitle.map(Text.init) ?? Text(verbatim: draft.contentTitle),
-                        identifier: "collection-section-name", axis: .horizontal
-                    ) { value in
-                        guard var saved = visibility.visibility.collectionSections.first(where: { $0.id == draft.id })
-                        else { throw AppError.notFound }
-                        saved.name = value
-                        guard canSaveSources(saved) else { throw AppError.notFound }
-                        try visibility.saveCollectionSection(saved, catalog: currentCatalog)
-                        draft.name = value
-                    }
-                } else {
-                    nameInput
-                }
-                #else
                 nameInput
-                #endif
                 SettingsMenuRow(title: "Sort", value: sortValue, minimumContentHeight: 44) {
                     HomeContentSortOptions(query: $draft.query)
                 }
@@ -156,9 +135,7 @@ struct CollectionSectionSettingsView: View {
                 .padding(.top, 8)
                 .accessibilityIdentifier("collection-section-preview")
             }
-            #if os(tvOS)
-            if isNew { explicitSaveAction }
-            #elseif !os(iOS)
+            #if !os(iOS)
             explicitSaveAction
             #endif
             if !isNew {
@@ -175,12 +152,6 @@ struct CollectionSectionSettingsView: View {
             if saveFailed || preferencesSaveFailed {
                 InlineErrorMessage(Text("Couldn't update this row. Try again."))
             }
-            #if os(tvOS)
-            if !isNew && preferencesSaveFailed {
-                Button("Retry", action: saveExistingPreferences)
-                    .plozzActionButton(role: .secondary)
-            }
-            #endif
         }
         #if os(iOS)
         .modifier(HomeEditorSaveAction(
@@ -188,18 +159,6 @@ struct CollectionSectionSettingsView: View {
             isEnabled: canSave,
             identifier: "collection-section-save", action: save
         ))
-        #elseif os(tvOS)
-        .onChange(of: draft.cardStyle) { _, _ in saveExistingPreferences() }
-        .onChange(of: draft.titleLogo) { _, _ in saveExistingPreferences() }
-        .onChange(of: draft.sources) { _, _ in saveExistingPreferences() }
-        .onChange(of: draft.query) { _, _ in saveExistingPreferences() }
-        .settingsPageBackConfirmation(isNew && draft != original ? exitConfirmation : nil)
-        .alert("Save this row?", isPresented: $exitConfirmation.isPresented) {
-            Button("Add to Home", action: saveAndDismiss)
-                .disabled(!canSaveSources(draft))
-            Button("Discard", role: .destructive, action: dismiss)
-            Button("Keep Editing", role: .cancel) {}
-        }
         #endif
         .settingsPageDestination(isPresented: $choosingSource) {
             HomeContentPickerView(
@@ -263,25 +222,6 @@ struct CollectionSectionSettingsView: View {
         }
     }
 
-    #if os(tvOS)
-    private func saveExistingPreferences() {
-        guard !isNew else { return }
-        do {
-            guard var saved = visibility.visibility.collectionSections.first(where: { $0.id == draft.id })
-            else { throw AppError.notFound }
-            saved.cardStyle = draft.cardStyle
-            saved.titleLogo = draft.titleLogo
-            saved.sources = draft.sources
-            saved.query = draft.query
-            guard canSaveSources(saved) else { throw AppError.notFound }
-            try visibility.saveCollectionSection(saved, catalog: currentCatalog)
-            preferencesSaveFailed = false
-        } catch {
-            preferencesSaveFailed = true
-            PlozzLog.app.error("Could not autosave collection preferences")
-        }
-    }
-    #endif
 
     private var canSave: Bool {
         var normalizedDraft = draft
@@ -322,9 +262,7 @@ struct CollectionSectionSettingsView: View {
                 title: draft.localizedTitle.map(Text.init) ?? Text(verbatim: draft.title),
                 items: items, style: draft.cardStyle, spoilers: spoilerSettings, hasMore: previewHasMore
             )
-            #if !os(tvOS)
             .padding(.horizontal, -24)
-            #endif
             .accessibilityIdentifier("collection-section-preview-cards")
         }
     }

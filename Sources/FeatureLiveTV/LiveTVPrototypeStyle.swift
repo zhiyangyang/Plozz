@@ -39,41 +39,20 @@ enum PrototypeLayout {
     static let controlRadius = PlozzTheme.Metrics.Radius.control
     static let controlInset = PlozzTheme.Spacing.xSmall
     static let controlGroupRadius = controlRadius + controlInset
-    #if os(tvOS)
-    static let inset = PlozzTheme.Spacing.xLarge
-    static let stationSize: CGFloat = 96
-    static let controlHeight: CGFloat = 56
-    static let guideFontSize: CGFloat = 26
-    static let sectionFontSize: CGFloat = 22
-    static let rowTextVerticalInset: CGFloat = 20
-    static let rowHeight = ceil(UIFont.systemFont(ofSize: guideFontSize).lineHeight) + rowTextVerticalInset * 2
-    #else
     static let inset = PlozzTheme.Spacing.medium
     static let stationSize: CGFloat = 80
     static let controlHeight: CGFloat = 44
     static let guideFontSize: CGFloat = 16
     static let sectionFontSize: CGFloat = 14
     static let rowHeight = stationSize + rowInset * 2
-    #endif
-    #if os(tvOS)
-    static let stationColumnWidth: CGFloat = 140
-    static let guideStationArtworkInset: CGFloat = 4
-    static let guideStationHorizontalArtworkInset: CGFloat? = 20
-    #else
     static let stationColumnWidth = stationSize * 1.75 + rowInset * 2
     static let guideStationArtworkInset = stationArtworkInset
     static let guideStationHorizontalArtworkInset: CGFloat? = nil
-    #endif
     static var guideShape: UnevenRoundedRectangle {
-        #if os(tvOS)
-        let bottom: CGFloat = 0
-        let trailing: CGFloat = 0
-        #else
         // Square along the bottom: the list fades out toward the tab bar
         // (see the guide's scroll fade) rather than being cut by a curve.
         let bottom: CGFloat = 0
         let trailing = guideRadius
-        #endif
         return UnevenRoundedRectangle(
             topLeadingRadius: guideRadius, bottomLeadingRadius: bottom,
             bottomTrailingRadius: bottom, topTrailingRadius: trailing
@@ -125,11 +104,6 @@ enum PrototypeLayout {
         usesCompactRows(width) ? scaledHeight * compactRowHeight / rowHeight : scaledHeight
     }
 
-    #if os(tvOS)
-    static func guideSectionLabelHeight(fontSize: CGFloat) -> CGFloat {
-        max(sectionLabelHeight, ceil(UIFont.systemFont(ofSize: fontSize, weight: .medium).lineHeight))
-    }
-    #endif
 
     static func timelineWidth(for width: CGFloat) -> CGFloat {
         max(1, width - stationWidth(for: width) - columnGap)
@@ -298,17 +272,7 @@ struct PrototypeGuideButtonStyle: PrimitiveButtonStyle {
 
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            PrototypeNativeGuideButton(
-                configuration: configuration, surface: surface, focusChanged: focusChanged
-            )
-        } else {
-            fallback(configuration)
-        }
-        #else
         fallback(configuration)
-        #endif
     }
 
     private func fallback(_ configuration: Configuration) -> some View {
@@ -322,48 +286,6 @@ struct PrototypeGuideButtonStyle: PrimitiveButtonStyle {
     }
 }
 
-#if os(tvOS)
-private struct PrototypeNativeGuideButton: View {
-    let configuration: PrimitiveButtonStyleConfiguration
-    let surface: PrototypeButtonSurface
-    let focusChanged: ((Bool) -> Void)?
-    var body: some View {
-        Button(role: configuration.role, action: configuration.trigger) {
-            PrototypeNativeGuideLabel(content: configuration.label, surface: surface, focusChanged: focusChanged)
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-    }
-}
-
-struct PrototypeNativeGuideLabel<Content: View>: View {
-    let content: Content
-    let surface: PrototypeButtonSurface
-    let focusChanged: ((Bool) -> Void)?
-    @Environment(\.isFocused) private var focused
-    @Environment(\.themePalette) private var palette
-    @Environment(\.plozzReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
-
-    var body: some View {
-        content
-            .foregroundStyle(focused ? palette.onAccent : palette.primaryText)
-            .background {
-                if focused {
-                    palette.accent
-                } else if surface == .program {
-                    palette.fillSubtle.opacity(reduceTransparency || contrast == .increased ? 1 : 0.45)
-                }
-            }
-            .transaction {
-                $0.animation = nil
-                $0.disablesAnimations = true
-            }
-            // Observe the native label, without introducing another focus binding.
-            .onChange(of: focused, initial: true) { _, value in focusChanged?(value) }
-    }
-}
-#endif
 
 struct PrototypeGuideStationStyle: ViewModifier {
     let focusChanged: ((Bool) -> Void)?
@@ -371,15 +293,7 @@ struct PrototypeGuideStationStyle: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            content.buttonStyle(.plain).focusEffectDisabled()
-        } else {
-            content.buttonStyle(PrototypeGuideButtonStyle(surface: .station, focusChanged: focusChanged))
-        }
-        #else
         content.buttonStyle(PrototypeGuideButtonStyle(surface: .station, focusChanged: focusChanged))
-        #endif
     }
 }
 

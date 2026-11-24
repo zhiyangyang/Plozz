@@ -31,34 +31,7 @@ struct DiscMenuPlayerContent: View {
                     Button("Try another region") { tryAnotherRegion() }.discPlaybackActionButton()
                     Button("Close", action: dismiss).discPlaybackActionButton()
                 }
-                #if os(tvOS)
-                .onExitCommand(perform: dismiss)
-                #endif
             } else {
-                #if os(tvOS)
-                if !showsActions && !model.showsDiscVideos {
-                    Button { state.sendKey(16) } label: {
-                        Color.clear.contentShape(Rectangle())
-                    }
-                    .buttonStyle(DiscMenuInputStyle())
-                    .focusEffectDisabled()
-                    .accessibilityLabel("Select")
-                    .accessibilityIdentifier("disc-menu-select")
-                    .focused($menuFocused)
-                    .onMoveCommand {
-                        switch $0 {
-                        case .up: state.sendKey(12)
-                        case .down: state.sendKey(13)
-                        case .left: state.sendKey(14)
-                        case .right: state.sendKey(15)
-                        @unknown default: break
-                        }
-                    }
-                    .onPlayPauseCommand { model.togglePlayPause() }
-                    .onExitCommand { showsActions = true }
-                    .onAppear { menuFocused = true }
-                }
-                #else
                 DiscMenuTouchControls(state: state) {
                     Section {
                         Button("Open disc menu", systemImage: "opticaldisc") { state.openMenu() }
@@ -70,31 +43,10 @@ struct DiscMenuPlayerContent: View {
                         Button("Close player", systemImage: "xmark", action: dismiss)
                     }
                 }
-                #endif
             }
         }
-        #if os(tvOS)
-        .discPlaybackSheet(isPresented: $showsActions, onDismiss: performPendingAction) {
-            DiscPlaybackDialog(title: "Disc menu", close: { showsActions = false }) {
-                actionButton("Open disc menu") { state.openMenu() }
-                    .focused($actionFocused)
-                actionButton("Play video") { model.playVideoWithoutMenus() }
-                actionButton("Disc videos", action: showVideos)
-                actionButton("Try another region", action: tryAnotherRegion)
-                actionButton("Close player", action: dismiss)
-            }
-            .defaultFocus($actionFocused, true, priority: .userInitiated)
-        }
-        #endif
     }
 
-    #if os(tvOS)
-    private struct DiscMenuInputStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-        }
-    }
-    #endif
 
     private func tryAnotherRegion() {
         model.retryDiscMenu(region: state.region == 1 ? 2 : state.region == 2 ? 4 : 1)

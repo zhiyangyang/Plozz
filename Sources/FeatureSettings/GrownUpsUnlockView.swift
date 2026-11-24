@@ -21,9 +21,6 @@ struct GrownUpsUnlockView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var errorMessage: LocalizedStringResource?
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
 
     var body: some View {
         ParentalPINView(
@@ -36,11 +33,7 @@ struct GrownUpsUnlockView: View {
     }
 
     private var usesCompactLayout: Bool {
-        #if os(tvOS)
-        inWorkspace
-        #else
         false
-        #endif
     }
 
     private func submit(_ pin: String) {

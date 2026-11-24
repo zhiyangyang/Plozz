@@ -29,11 +29,7 @@ public struct SetupSectionCard<Content: View>: View {
             }
             content
         }
-        #if os(tvOS)
-        .padding(32)
-        #else
         .padding(20)
-        #endif
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.cardSurface, in: RoundedRectangle(cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius))
         .overlay {
@@ -47,9 +43,6 @@ public struct SetupSectionCard<Content: View>: View {
 /// profile avatars and retain responsibility for applying setup and dismissing it.
 public struct SetupSummaryView<Profiles: View>: View {
     @Environment(\.themePalette) private var palette
-    #if os(tvOS)
-    @State private var hasContentBelow = false
-    #endif
     private let title: LocalizedStringResource
     private let serverGroups: [SyncedServerAccountGroup]
     private let pendingIDs: Set<String>
@@ -78,9 +71,6 @@ public struct SetupSummaryView<Profiles: View>: View {
             summaryContent
             summaryAction
         }
-        #if os(tvOS)
-        .ignoresSafeArea(.container, edges: .top)
-        #endif
     }
 
     private var summaryContent: some View {
@@ -90,19 +80,12 @@ public struct SetupSummaryView<Profiles: View>: View {
                     .padding(.vertical, 12)
                 if !serverGroups.isEmpty {
                     SetupSectionCard("Servers", count: serverGroups.count) {
-                        #if os(tvOS)
-                        let columns = [GridItem(.flexible(), spacing: 32), GridItem(.flexible(), spacing: 32)]
-                        #else
                         let columns = [GridItem(.flexible())]
-                        #endif
                         LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                             ForEach(serverGroups) { group in
                                 SetupSummaryServerRow(
                                     group: group, needsSignIn: group.accounts.contains { pendingIDs.contains($0.id) }
                                 )
-                                #if os(tvOS)
-                                .focusable()
-                                #endif
                             }
                         }
                     }
@@ -119,27 +102,8 @@ public struct SetupSummaryView<Profiles: View>: View {
             }
             .frame(maxWidth: contentWidth)
             .padding(24)
-            #if os(tvOS)
-            .padding(.top, 24)
-            #endif
             .frame(maxWidth: .infinity)
         }
-        #if os(tvOS)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentSize.height + geometry.contentInsets.bottom
-                - geometry.contentOffset.y - geometry.containerSize.height > 2
-        } action: { _, hasContentBelow in
-            self.hasContentBelow = hasContentBelow
-        }
-        .mask {
-            VerticalEdgeFadeMask(
-                fadeHeight: 64,
-                topStrength: 0,
-                bottomStrength: hasContentBelow ? 1 : 0,
-                horizontalOverhang: 32
-            )
-        }
-        #endif
     }
 
     private var summaryAction: some View {
@@ -147,9 +111,7 @@ public struct SetupSummaryView<Profiles: View>: View {
             Text(actionTitle)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-                #if !os(tvOS)
                 .frame(maxWidth: .infinity)
-                #endif
         }
         .plozzActionButton()
         .controlSize(.large)
@@ -158,19 +120,11 @@ public struct SetupSummaryView<Profiles: View>: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        #if os(tvOS)
-        .focusSection()
-        #else
         .background(palette.backgroundBase)
-        #endif
     }
 
     private var contentWidth: CGFloat {
-        #if os(tvOS)
-        1320
-        #else
         640
-        #endif
     }
 }
 

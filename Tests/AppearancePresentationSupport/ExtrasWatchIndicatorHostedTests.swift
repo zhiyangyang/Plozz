@@ -3,11 +3,7 @@ import CoreModels
 import SwiftUI
 import UIKit
 import XCTest
-#if os(tvOS)
-@testable import FeatureHome
-#else
 @testable import AppShelliOS
-#endif
 
 @MainActor
 final class ExtrasWatchIndicatorHostedTests: XCTestCase {
@@ -141,23 +137,6 @@ final class ExtrasWatchIndicatorHostedTests: XCTestCase {
 
     private func artworkSnapshot(_ window: UIWindow) -> UIImage {
         window.layoutIfNeeded()
-        #if os(tvOS)
-        func poster(in view: UIView) -> NativePosterButton? {
-            (view as? NativePosterButton) ?? view.subviews.lazy.compactMap { poster(in: $0) }.first
-        }
-        if let button = poster(in: window), let image = button.image {
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = image.scale
-            format.preferredRange = .standard
-            return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
-                image.draw(at: .zero)
-                // Watched badges occupy the installed foreground; unwatched flags remain baked in.
-                if !button.indicatorView.isHidden {
-                    button.indicatorView.image?.draw(in: CGRect(origin: .zero, size: image.size))
-                }
-            }
-        }
-        #endif
         return snapshot(window)
     }
 
@@ -239,13 +218,7 @@ private struct ExtraStatusFixture: View {
                 .frame(width: 400)
             } else {
                 let extra = MediaExtra(item: item, kind: .behindTheScenes)
-                #if os(tvOS)
-                ExtrasRowView(
-                    state: .loaded([extra]), leadingInset: 0, onSelect: { _ in }, onRetry: {}
-                )
-                #else
                 PlozziOSExtrasSection(state: .loaded([extra]), inset: 0, onSelect: { _ in }, onRetry: {})
-                #endif
             }
         }
         .environment(\.plozzArtworkArea, continueWatching ? .continueWatching : nil)
@@ -261,10 +234,6 @@ private struct ExtraStatusFixture: View {
     }
 
     private var metrics: PlozzMetrics {
-        #if os(tvOS)
-        .standard
-        #else
         .touch(density: .standard)
-        #endif
     }
 }

@@ -52,9 +52,6 @@ public struct ServerAddressesView: View {
                 .scrollClipDisabled()
             }
         }
-        #if os(tvOS)
-        .defaultFocus($closeFocused, true, priority: .userInitiated)
-        #endif
         .onDisappear {
             operation?.cancel()
             model.cancel()
@@ -76,13 +73,7 @@ private struct ServerAddressesHeader: View {
                 .labelStyle(.iconOnly)
                 .plozzActionButton(role: .secondary)
                 .accessibilityIdentifier("closeServerAddresses")
-                #if os(tvOS)
-                .focused(closeFocused)
-                #endif
         }
-        #if os(tvOS)
-        .focusSection()
-        #endif
     }
 }
 
@@ -157,9 +148,6 @@ private struct ServerSavedAddresses: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        #if os(tvOS)
-        .focusSection()
-        #endif
         .confirmationDialog("Remove this address?", isPresented: Binding(
             get: { pendingRemoval != nil },
             set: { if !$0 { pendingRemoval = nil } }
@@ -273,9 +261,6 @@ private struct ServerAddAddressForm: View {
                 }
             }
         }
-        #if os(tvOS)
-        .focusSection()
-        #endif
     }
 }
 #endif

@@ -78,11 +78,7 @@ public struct HomeSectionStatusView: View {
     }
 
     private var emptyRowHeight: CGFloat {
-        #if os(tvOS)
-        metrics.posterHeight * 0.8
-        #else
         metrics.usesDesktopSizing ? metrics.posterHeight * 0.8 : 180
-        #endif
     }
 
     @ViewBuilder

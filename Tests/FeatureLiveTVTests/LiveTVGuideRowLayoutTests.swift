@@ -75,26 +75,6 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
         XCTAssertEqual(withoutGuide, regular, accuracy: 0.5)
     }
 
-    #if os(tvOS)
-    func testNativeSectionRowMetricsMatchRenderedContentAtEveryTextSize() {
-        for width: CGFloat in [320, 1_400] {
-            for typeSize in [DynamicTypeSize.large, .accessibility3, .accessibility5] {
-                let row = VStack(alignment: .leading, spacing: PrototypeLayout.sectionLabelGap) {
-                    PrototypeGuideSectionLabel(section: .channels)
-                        .padding(.top, PrototypeLayout.smallGap)
-                    GuideRowFixture(programs: [], start: start, width: width)
-                }
-                .padding(.bottom, PrototypeLayout.rowGap)
-                .dynamicTypeSize(typeSize)
-                let proposal = CGSize(width: width, height: 10_000)
-                let actual = UIHostingController(rootView: row).sizeThatFits(in: proposal)
-                let expected = UIHostingController(rootView: NativeGuideMetricsFixture(width: width)
-                    .dynamicTypeSize(typeSize)).sizeThatFits(in: proposal)
-                XCTAssertEqual(actual.height, expected.height, accuracy: 0.5, "\(width), \(typeSize)")
-            }
-        }
-    }
-    #endif
 
     func testPreviewExtendsToTheScreenEdgeInsteadOfStackingSafeAreaMargins() {
         let layout = PrototypePreviewLayout(
@@ -103,44 +83,11 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
         )
         XCTAssertEqual(layout.bounds, CGRect(x: -90, y: -60, width: 1_920, height: 1_080))
         XCTAssertEqual(layout.videoFrame.maxX, layout.bounds.maxX, accuracy: 0.5)
-        #if os(tvOS)
-        XCTAssertEqual(layout.videoFrame.minX, layout.bounds.minX, accuracy: 0.5)
-        XCTAssertEqual(layout.videoFrame.minY, layout.bounds.minY, accuracy: 0.5)
-        XCTAssertEqual(layout.videoFrame.width / layout.videoFrame.height, 16.0 / 9.0, accuracy: 0.001)
-        XCTAssertEqual(layout.contentFrame.minX - layout.bounds.minX, 32, accuracy: 0.5)
-        XCTAssertEqual(layout.bounds.maxX - layout.contentFrame.maxX, 32, accuracy: 0.5)
-        XCTAssertEqual(layout.bounds.maxY - layout.contentFrame.maxY, 20, accuracy: 0.5)
-        #else
         XCTAssertGreaterThan(layout.videoFrame.minX, layout.contentFrame.minX + layout.sidebarWidth)
         XCTAssertEqual(layout.videoFrame.minY, layout.contentFrame.minY + 8, accuracy: 0.5)
-        #endif
     }
 
     func testWiderCategoriesKeepEnoughRoomForTheTVGuide() {
-        #if os(tvOS)
-        for navigationInset: CGFloat in [0, 112] {
-            let layout = PrototypePreviewLayout(
-                size: CGSize(width: 1_740, height: 960),
-                safeAreaInsets: EdgeInsets(top: 60, leading: 90, bottom: 60, trailing: 90),
-                navigationInset: navigationInset
-            )
-            XCTAssertEqual(layout.sidebarWidth, 384)
-            XCTAssertGreaterThan(layout.guideWidth, 1_200)
-        }
-        let smaller = PrototypePreviewLayout(size: CGSize(width: 1_280, height: 1_080))
-        XCTAssertEqual(smaller.sidebarWidth, 320)
-        XCTAssertGreaterThan(smaller.guideWidth, 850)
-        let collapsed = PrototypePreviewLayout(
-            size: CGSize(width: 1_280, height: 1_080), hidesSidebar: true
-        )
-        XCTAssertEqual(collapsed.availableSidebarWidth, smaller.sidebarWidth)
-        XCTAssertEqual(collapsed.sidebarWidth, 0)
-        XCTAssertEqual(collapsed.guideWidth, smaller.guideWidth + 320 + PrototypeLayout.sectionGap)
-        XCTAssertEqual(smaller.heroWidth, smaller.guideWidth)
-        XCTAssertEqual(collapsed.heroWidth, collapsed.guideWidth)
-        XCTAssertEqual(collapsed.heroHeight, smaller.heroHeight)
-        XCTAssertEqual(collapsed.contentFrame, smaller.contentFrame)
-        #else
         XCTAssertEqual(
             PrototypePreviewLayout(size: CGSize(width: 1_920, height: 1_080)).sidebarWidth, 272
         )
@@ -149,7 +96,6 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
         )
         let mobile = PrototypePreviewLayout(size: CGSize(width: 1_920, height: 1_080))
         XCTAssertEqual(mobile.heroWidth, mobile.contentFrame.width)
-        #endif
         XCTAssertEqual(PrototypePreviewLayout(size: CGSize(width: 390, height: 844)).sidebarWidth, 0)
         XCTAssertEqual(PrototypePreviewLayout(size: CGSize(width: 844, height: 390)).sidebarWidth, 0)
     }
@@ -236,15 +182,8 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
             size: CGSize(width: 1_740, height: 960),
             safeAreaInsets: EdgeInsets(top: 60, leading: 90, bottom: 60, trailing: 90)
         )
-        #if os(tvOS)
-        XCTAssertEqual(layout.contentFrame.maxY + layout.guideBottomExtension, layout.bounds.maxY)
-        XCTAssertGreaterThan(layout.guideBottomExtension, 0)
-        XCTAssertEqual(PrototypeLayout.guideShape.cornerRadii.bottomLeading, 0)
-        XCTAssertEqual(PrototypeLayout.guideShape.cornerRadii.bottomTrailing, 0)
-        #else
         XCTAssertEqual(layout.guideBottomExtension, 0)
         XCTAssertLessThan(layout.contentFrame.maxY, layout.bounds.maxY)
-        #endif
     }
 
     func testGuideExtendsToTrailingScreenEdgeWithoutMovingItsLeadingControls() {
@@ -255,18 +194,8 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
                     safeAreaInsets: EdgeInsets(top: 60, leading: 90, bottom: 60, trailing: 90),
                     navigationInset: navigationInset, isSearching: searching
                 )
-                #if os(tvOS)
-                XCTAssertEqual(layout.contentFrame.maxX + layout.guideTrailingExtension, layout.bounds.maxX)
-                XCTAssertEqual(
-                    layout.contentFrame.minX - layout.bounds.minX,
-                    32 + (navigationInset > 0 ? PrototypeLayout.inset : 0) + navigationInset
-                )
-                XCTAssertEqual(PrototypeLayout.guideTrailingInset, PrototypeLayout.guideInset)
-                XCTAssertEqual(PrototypeLayout.guideShape.cornerRadii.topTrailing, 0)
-                #else
                 XCTAssertEqual(layout.guideTrailingExtension, 0)
                 XCTAssertEqual(PrototypeLayout.guideTrailingInset, PrototypeLayout.guideInset)
-                #endif
             }
         }
     }
@@ -276,19 +205,7 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
             .sizeThatFits(in: CGSize(width: 500, height: 500))
         XCTAssertEqual(size.height, PrototypeLayout.stationSize, accuracy: 0.5)
         XCTAssertEqual(size.width, PrototypeLayout.stationSize * 1.75, accuracy: 0.5)
-        #if os(tvOS)
-        XCTAssertGreaterThan(size.width, 126)
-        XCTAssertGreaterThan(size.height, 72)
-        let station = PrototypeGuideStation(
-            channel: LiveTVPrototypeModel().channels[0], section: .channels,
-            favorite: false, playing: false, tune: {}, toggleFavorite: {}, controls: {}, top: {}
-        )
-        let stationSize = UIHostingController(rootView: station).sizeThatFits(in: CGSize(width: 500, height: 500))
-        XCTAssertEqual(stationSize.width, 140, accuracy: 0.5)
-        XCTAssertEqual(stationSize.height, PrototypeLayout.rowHeight, accuracy: 0.5)
-        #else
         XCTAssertEqual(PrototypeLayout.stationColumnWidth - size.width, PrototypeLayout.rowInset * 2, accuracy: 0.5)
-        #endif
     }
 
     func testSectionLabelsFitTheStationColumnInBothReadingDirections() {
@@ -710,36 +627,11 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
         let rail = PrototypePreviewLayout(size: size, safeAreaInsets: insets, navigationInset: 112)
         XCTAssertEqual(rail.bounds, plain.bounds)
         XCTAssertEqual(rail.videoFrame, plain.videoFrame)
-        #if os(tvOS)
-        XCTAssertEqual(rail.contentFrame.minX - plain.contentFrame.minX, 112 + PrototypeLayout.inset, accuracy: 0.5)
-        #else
         XCTAssertEqual(rail.contentFrame.minX - plain.contentFrame.minX, 112, accuracy: 0.5)
-        #endif
         XCTAssertEqual(rail.contentFrame.maxX, plain.contentFrame.maxX, accuracy: 0.5)
     }
 
     func testExtraLeadingClearanceOnlyAppliesToVisiblePinnedNavigation() {
-        #if os(tvOS)
-        for safeLeading: CGFloat in [0, 90] {
-            let insets = EdgeInsets(top: 60, leading: safeLeading, bottom: 60, trailing: safeLeading)
-            let normal = PrototypePreviewLayout(size: CGSize(width: 1_740, height: 960), safeAreaInsets: insets)
-            let pinned = PrototypePreviewLayout(
-                size: CGSize(width: 1_740, height: 960), safeAreaInsets: insets, navigationInset: 64
-            )
-            let hiddenForSearch = PrototypePreviewLayout(
-                size: CGSize(width: 1_740, height: 960), safeAreaInsets: insets, isSearching: true
-            )
-            XCTAssertEqual(normal.contentFrame.minX - normal.bounds.minX, 32)
-            XCTAssertGreaterThanOrEqual(
-                pinned.contentFrame.minX - normal.contentFrame.minX,
-                64 + PrototypeLayout.inset
-            )
-            XCTAssertEqual(pinned.contentFrame.minX - pinned.bounds.minX, 32 + PrototypeLayout.inset + 64)
-            XCTAssertEqual(pinned.contentFrame.maxX, normal.contentFrame.maxX)
-            XCTAssertEqual(pinned.videoFrame, normal.videoFrame)
-            XCTAssertEqual(hiddenForSearch.contentFrame, normal.contentFrame)
-        }
-        #endif
     }
 
     func testNativeNavigationAddsSixteenPointsAboveBrowsingWithoutMovingVideo() {
@@ -749,12 +641,7 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
             let native = PrototypePreviewLayout(
                 size: CGSize(width: 1_760, height: 900), safeAreaInsets: insets, nativeNavigation: true
             )
-            #if os(tvOS)
-            XCTAssertEqual(native.contentFrame.minY - plain.contentFrame.minY, 16)
-            XCTAssertEqual(plain.contentFrame.height - native.contentFrame.height, 16)
-            #else
             XCTAssertEqual(native.contentFrame, plain.contentFrame)
-            #endif
             XCTAssertEqual(native.contentFrame.maxY, plain.contentFrame.maxY)
             XCTAssertEqual(native.contentFrame.minX, plain.contentFrame.minX)
             XCTAssertEqual(native.contentFrame.width, plain.contentFrame.width)
@@ -764,20 +651,6 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
     }
 
     func testTVLayoutLeavesRoomForSevenCompactRows() {
-        #if os(tvOS)
-        let layout = PrototypePreviewLayout(
-            size: CGSize(width: 1_740, height: 960),
-            safeAreaInsets: EdgeInsets(top: 60, leading: 90, bottom: 60, trailing: 90)
-        )
-        let toolbarAndRuler: CGFloat = 44
-        let spacing = PrototypeLayout.sectionGap + PrototypeLayout.guideInset * 2
-            + PrototypeLayout.gap + PrototypeLayout.smallGap * 2
-        let listHeight = layout.contentFrame.height - layout.heroHeight - toolbarAndRuler - spacing
-        let visibleRows = listHeight / (PrototypeLayout.rowHeight + PrototypeLayout.rowGap)
-        XCTAssertGreaterThanOrEqual(visibleRows, 7)
-        XCTAssertLessThan(visibleRows, 8)
-        XCTAssertLessThanOrEqual(PrototypeLayout.rowHeight, 128 * 0.7)
-        #endif
     }
 
     func testWideGuideReservesSpaceForPinnedControlsWithoutShrinkingVideo() {
@@ -789,13 +662,9 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
                 layout.contentFrame.width, accuracy: 0.01
             )
             XCTAssertGreaterThanOrEqual(layout.guideWidth - PrototypeLayout.guideInset * 2, 650)
-            #if os(tvOS)
-            XCTAssertEqual(layout.videoFrame.width, layout.bounds.width)
-            #else
             XCTAssertLessThan(layout.videoFrame.width, layout.bounds.width)
             XCTAssertGreaterThan(layout.videoFrame.minX, layout.contentFrame.minX + layout.sidebarWidth)
             XCTAssertEqual(layout.videoFrame.maxX, layout.bounds.maxX)
-            #endif
         }
     }
 
@@ -819,15 +688,11 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
             XCTAssertEqual(searching.contentFrame, browsing.contentFrame)
             XCTAssertEqual(searching.fadeEnd, browsing.fadeEnd)
             XCTAssertLessThanOrEqual(searching.heroHeight, browsing.heroHeight)
-            #if os(tvOS)
-            XCTAssertGreaterThan(searching.heroHeight, 0)
-            #else
             XCTAssertEqual(searching.heroHeight, 0)
             XCTAssertEqual(searching.heroArtworkSize, .zero)
             XCTAssertEqual(searching.sectionGap, PrototypeLayout.smallGap)
             XCTAssertEqual(searching.sidebarWidth, 0)
             XCTAssertEqual(searching.guideWidth, searching.contentFrame.width)
-            #endif
         }
     }
 
@@ -885,13 +750,7 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
                 .dynamicTypeSize(.large)
             let size = UIHostingController(rootView: fixture)
                 .sizeThatFits(in: CGSize(width: width, height: 300))
-            #if os(tvOS)
-            if width < 650 || width >= 1_400 {
-                XCTAssertLessThanOrEqual(size.width, width + 0.5)
-            }
-            #else
             XCTAssertLessThanOrEqual(size.width, width + 0.5)
-            #endif
             XCTAssertGreaterThanOrEqual(size.height, PrototypeBrowseToolbar.controlHeight)
         }
     }
@@ -984,20 +843,6 @@ final class LiveTVGuideRowLayoutTests: XCTestCase {
     }
 }
 
-#if os(tvOS)
-private struct NativeGuideMetricsFixture: View {
-    let width: CGFloat
-    @ScaledMetric(relativeTo: .subheadline) private var rowHeight = PrototypeLayout.rowHeight
-    @ScaledMetric(relativeTo: .caption) private var sectionFontSize = PrototypeLayout.sectionFontSize
-
-    var body: some View {
-        Color.clear.frame(height:
-            PrototypeLayout.rowHeight(for: width, scaledHeight: rowHeight) + PrototypeLayout.rowGap
-                + PrototypeLayout.guideSectionLabelHeight(fontSize: sectionFontSize)
-                + PrototypeLayout.smallGap + PrototypeLayout.sectionLabelGap)
-    }
-}
-#endif
 
 private struct GuideRowFixture: View {
     let programs: [LiveTVPrototypeProgram]

@@ -264,13 +264,6 @@ private struct BrowseButton: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            NativeMusicBrowseButton(title: title, action: action)
-        } else {
-            customButton
-        }
-        #else
         Button(action: action) {
             Text(title).font(.subheadline.weight(.medium))
                 .fixedSize(horizontal: true, vertical: false)
@@ -279,7 +272,6 @@ private struct BrowseButton: View {
         .buttonBorderShape(.capsule)
         .controlSize(.large)
         .tint(palette.primaryText)
-        #endif
     }
 
     private var customButton: some View {
@@ -317,34 +309,6 @@ private struct MobileMusicBrowseStyle: ViewModifier {
 }
 #endif
 
-#if os(tvOS)
-private struct NativeMusicBrowseButton: View {
-    let title: LocalizedStringResource
-    let action: () -> Void
-    @Environment(\.plozzMetrics) private var metrics
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: metrics.cardTitleFontSize, weight: .semibold))
-        }
-        .modifier(NativeMusicBrowseStyle())
-        .buttonBorderShape(.roundedRectangle(radius: metrics.landscapeCardCornerRadius))
-        .fixedSize(horizontal: true, vertical: false)
-    }
-}
-
-private struct NativeMusicBrowseStyle: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(tvOS 26.0, *) {
-            content.buttonStyle(.glass)
-        } else {
-            content.buttonStyle(.bordered)
-        }
-    }
-}
-#endif
 
 /// A horizontal rail with a title.
 private struct MusicRow<Content: View>: View {
@@ -409,9 +373,6 @@ private struct MusicRow<Content: View>: View {
                     // Reserve space for focus growth without changing row spacing.
                     .padding(.vertical, MusicLayout.isMobile ? 0 : metrics.railShadowClearance)
                 }
-                #if os(tvOS)
-                .scrollClipDisabled(focusStyle.usesSystemEffect)
-                #endif
                 // Match the shared rails: a tight `railTopPadding`-based gap above the
                 // cards (not the wide `railVerticalPadding` used below the row), so the
                 // section header hugs the cards instead of floating far above them.
@@ -438,9 +399,6 @@ struct MusicPageHeader: View {
             Text(title).font(MusicLayout.isMobile ? .largeTitle.bold() : titleFont)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 24)
-            #if os(tvOS)
-            NowPlayingCard(controller: controller)
-            #endif
         }
         .padding(.horizontal, MusicLayout.screenPadding)
     }
@@ -712,17 +670,11 @@ struct ArtistDetailView: View {
                     }
                     Spacer()
                     // Now Playing card scrolls with the page, pinned top-right.
-                    #if os(tvOS)
-                    NowPlayingCard(controller: controller)
-                    #endif
                 }
                 .padding(.horizontal, PlozzTheme.Metrics.screenPadding)
                 // Make the hero its own focus section so pressing Up from anywhere
                 // in the albums grid below reliably lands on the Now Playing card,
                 // even when it's far to the right (off the album's vertical axis).
-                #if os(tvOS)
-                .focusSection()
-                #endif
 
                 Text("Albums").font(.system(size: metrics.sectionHeaderFontSize, weight: .bold))
                     .padding(.horizontal, PlozzTheme.Metrics.screenPadding)
@@ -736,9 +688,6 @@ struct ArtistDetailView: View {
                 // Own focus section so pressing Down from the Now Playing card
                 // (pinned top-right of the hero) drops back into the grid, even
                 // though no album sits directly beneath it.
-                #if os(tvOS)
-                .focusSection()
-                #endif
             }
             .padding(.vertical, metrics.rowSpacing)
         }
@@ -833,11 +782,6 @@ struct AlbumDetailView: View {
             // The Now Playing card sits under the Play/Shuffle buttons. It shows
             // whenever something is playing (including a track from this very
             // album) so the user always has a quick way back to the player.
-            #if os(tvOS)
-            NowPlayingCard(controller: controller, fillWidth: true)
-                .frame(width: columnWidth)
-                .padding(.top, 12)
-            #endif
         }
     }
 
@@ -945,11 +889,6 @@ struct PlaylistDetailView: View {
             // The Now Playing card sits under the Play/Shuffle buttons. It shows
             // whenever something is playing (including a track from this very
             // playlist) so the user always has a quick way back to the player.
-            #if os(tvOS)
-            NowPlayingCard(controller: controller, fillWidth: true)
-                .frame(width: columnWidth)
-                .padding(.top, 12)
-            #endif
         }
     }
 

@@ -11,22 +11,6 @@ public struct ReleaseNotesSettingsView: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 28) {
-                SettingsPageHeader("Release Notes")
-                ReleaseNotesStartupPreferenceView(model: model)
-                ForEach(model.allVersionGroups) { group in
-                    ReleaseNotesVersionCard(group: group)
-                }
-            }
-            .frame(maxWidth: 1200, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.horizontal, PlozzTheme.Metrics.screenPadding)
-            .padding(.vertical, 40)
-        }
-        .scrollClipDisabled()
-        #else
         List {
             ReleaseNotesStartupPreferenceView(model: model)
 
@@ -38,7 +22,6 @@ public struct ReleaseNotesSettingsView: View {
         }
         .settingsPageSurface()
         .navigationTitle("Release Notes")
-        #endif
     }
 }
 
@@ -56,63 +39,6 @@ public struct ReleaseNotesStartupView: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        ZStack {
-            PlozzDialogBackdrop(minimumOpacity: 0.72)
-
-            VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .center, spacing: 24) {
-                    Text("What’s New in Plozz")
-                        .font(.system(size: 34, weight: .semibold))
-
-                    Spacer()
-
-                    Button("Done") {
-                        model.dismissStartupNotes()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .focused($focusedAction, equals: .done)
-                }
-                .focusSection()
-
-                FadingScrollView(maxHeight: 600) {
-                    VStack(alignment: .leading, spacing: 32) {
-                        featuredContent
-                        ReleaseNotesVersionList(groups: model.pendingVersionGroups)
-
-                        Button("Don’t Show Again", role: .destructive) {
-                            confirmsDisable = true
-                        }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 8)
-                }
-            }
-            .padding(40)
-            .frame(maxWidth: 1120)
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius,
-                    style: .continuous
-                )
-            )
-            .plozzSurface(.overlay, cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius)
-            .padding(96)
-        }
-        .defaultFocus($focusedAction, .done)
-        .task { focusedAction = .done }
-        .onExitCommand { model.dismissStartupNotes() }
-        .alert("Don’t show release notes again?", isPresented: $confirmsDisable) {
-            Button("Don’t Show Again", role: .destructive) {
-                model.setShowsOnStartup(false)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You can still view every release in Settings.")
-        }
-        #else
         NavigationStack {
             ScrollView {
                 VStack(spacing: 32) {
@@ -148,19 +74,12 @@ public struct ReleaseNotesStartupView: View {
         } message: {
             Text("You can still view every release in Settings.")
         }
-        #endif
     }
 
     @ViewBuilder
     private var featuredContent: some View {
         switch model.pendingFeaturedContent {
         case .discord:
-            #if os(tvOS)
-            SettingsCommunityCard.discord(caption: "Join the new Discord community")
-                .focusable()
-                .focusEffectDisabled()
-                .accessibilityIdentifier("ReleaseNotes.DiscordCard")
-            #else
             SettingsPanel {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsCommunityLogo(brand: .discord, height: 32)
@@ -179,7 +98,6 @@ public struct ReleaseNotesStartupView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .accessibilityIdentifier("ReleaseNotes.DiscordCard")
-            #endif
         case nil:
             EmptyView()
         }
@@ -190,16 +108,9 @@ private struct ReleaseNotesStartupPreferenceView: View {
     let model: ReleaseNotesModel
 
     var body: some View {
-        #if os(tvOS)
-        SettingsPanel(title: "Startup") {
-            ReleaseNotesPreferenceToggle(model: model)
-                .toggleStyle(SettingsSwitchToggleStyle())
-        }
-        #else
         SettingsSectionGroup("Startup") {
             ReleaseNotesPreferenceToggle(model: model)
         }
-        #endif
     }
 }
 
@@ -272,26 +183,6 @@ private struct ReleaseNotesSectionView: View {
     let section: ReleaseNotesSection
 
     var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(chunks) { chunk in
-                VStack(alignment: .leading, spacing: 10) {
-                    if chunk.showsHeading {
-                        Text(verbatim: section.category.rawValue)
-                            .font(.headline)
-                    }
-                    ForEach(chunk.items) { item in
-                        ReleaseNotesBullet(item: item.text)
-                    }
-                }
-                // tvOS scrolls by moving focus. Bounded multi-note chunks create
-                // fewer stops than one-per-bullet while keeping every stop short
-                // enough for the scroll view to reveal completely.
-                .focusable()
-                .focusEffectDisabled()
-            }
-        }
-        #else
         VStack(alignment: .leading, spacing: 10) {
             Text(verbatim: section.category.rawValue)
                 .font(.headline)
@@ -299,21 +190,8 @@ private struct ReleaseNotesSectionView: View {
                 ReleaseNotesBullet(item: item.text)
             }
         }
-        #endif
     }
 
-    #if os(tvOS)
-    private var chunks: [ReleaseNotesSectionChunk] {
-        stride(from: 0, to: section.items.count, by: 3).map { start in
-            let end = min(start + 3, section.items.count)
-            return ReleaseNotesSectionChunk(
-                id: "\(section.category.rawValue)-\(start)",
-                items: Array(section.items[start..<end]),
-                showsHeading: start == 0
-            )
-        }
-    }
-    #endif
 }
 
 private struct ReleaseNotesBullet: View {
@@ -329,11 +207,4 @@ private struct ReleaseNotesBullet: View {
     }
 }
 
-#if os(tvOS)
-private struct ReleaseNotesSectionChunk: Identifiable {
-    let id: String
-    let items: [ReleaseNotesItem]
-    let showsHeading: Bool
-}
-#endif
 #endif

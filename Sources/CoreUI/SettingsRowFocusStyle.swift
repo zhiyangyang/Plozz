@@ -41,19 +41,11 @@ public enum SettingsFormMetrics {
     public static let dividerFocusClearance = PlozzTheme.Spacing.xSmall
     public static let illustratedGroupSpacing = PlozzTheme.Spacing.medium
     public static var groupInset: CGFloat {
-        #if os(tvOS)
-        illustratedGroupSpacing
-        #else
         PlozzTheme.Spacing.large
-        #endif
     }
     public static let pageInset = sectionSpacing
     public static var headingInset: CGFloat {
-        #if os(tvOS)
-        groupInset + SettingsRowMetrics.horizontalPadding
-        #else
         PlozzTheme.Spacing.medium
-        #endif
     }
     public static let pageTopInset = PlozzTheme.Spacing.xSmall
     public static let pageBottomInset = PlozzTheme.Spacing.xxxLarge + PlozzTheme.Spacing.small
@@ -68,40 +60,24 @@ public enum SettingsRowMetrics {
     /// Control labels share the navigation-row size; headings use separate styles.
     public static let titleFont: Font = .body
     public static var optionFont: Font {
-        #if os(tvOS)
-        titleFont
-        #else
         .headline
-        #endif
     }
     public static var helperFont: Font {
         descriptionFont
     }
     public static var descriptionFont: Font {
-        #if os(tvOS)
-        .caption
-        #else
         .footnote
-        #endif
     }
     public static let segmentedTrackInset: CGFloat = 4
 
     public static let formRowSpacing: CGFloat = 8
     public static let formSectionSpacing: CGFloat = 24
     public static var formGroupInset: CGFloat {
-        #if os(tvOS)
-        SettingsFormMetrics.groupInset
-        #else
         10
-        #endif
     }
     public static let navigationCornerRadius = SettingsFormMetrics.groupCornerRadius
     public static var formRowCornerRadius: CGFloat {
-        #if os(tvOS)
-        SettingsFormMetrics.groupCornerRadius - formGroupInset
-        #else
         PlozzTheme.Metrics.Radius.card - formGroupInset
-        #endif
     }
 
     /// Minimum content height before vertical padding.
@@ -193,19 +169,7 @@ public extension View {
     /// Shared content bounds for form buttons, On/Off rows, and inline controls.
     @ViewBuilder
     func settingsFormRowLayout() -> some View {
-        #if os(tvOS)
         self
-            .environment(\.settingsFormTextInset, 0)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: SettingsRowMetrics.minHeight(.primary),
-                alignment: .leading
-            )
-            .padding(.horizontal, SettingsRowMetrics.horizontalPadding)
-            .padding(.vertical, SettingsRowMetrics.verticalPadding(.primary))
-        #else
-        self
-        #endif
     }
 
     /// Static text joins the control-label keyline only inside a grouped form.
@@ -218,13 +182,7 @@ private struct SettingsFormTextLayout: ViewModifier {
     @Environment(\.settingsFormTextInset) private var inset
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
         content
-            .environment(\.settingsFormTextInset, 0)
-            .padding(.horizontal, inset)
-        #else
-        content
-        #endif
     }
 }
 
@@ -309,11 +267,7 @@ public struct SettingsFocusRow<Content: View>: View {
     }
 
     private var effectiveSize: SettingsRowSize {
-        #if os(tvOS)
-        size == .standard && textInset > 0 ? .contained : size
-        #else
         size
-        #endif
     }
 
     private var corner: CGFloat {
@@ -546,11 +500,7 @@ public struct SettingsCheckmark: View {
     }
 
     private var glyphFont: Font {
-        #if os(tvOS)
-        SettingsRowMetrics.descriptionFont.weight(.semibold)
-        #else
         prominence == .primary ? .headline.weight(.bold) : .callout.weight(.bold)
-        #endif
     }
 
     public var body: some View {
@@ -616,18 +566,10 @@ public extension View {
     /// reads as a *header* and never collides with the sentence-case, primary
     /// control labels beneath it, nor with its own regular-weight, dimmer description.
     func settingsSectionHeader() -> some View {
-        #if os(tvOS)
-        font(SettingsRowMetrics.descriptionFont.weight(.semibold))
-            .textCase(.uppercase)
-            .tracking(1.8)
-            .plozzForeground(.secondary)
-            .settingsFormTextLayout()
-        #else
         font(.subheadline.weight(.bold))
             .textCase(.uppercase)
             .tracking(1.8)
             .plozzForeground(.secondary)
-        #endif
     }
 
     /// Shared supporting-copy typography for settings controls and page introductions.

@@ -12,11 +12,7 @@ public struct HeroTextSize: RawRepresentable, Codable, Hashable, Sendable {
     }
 
     public var scale: Double {
-        #if os(tvOS)
-        let increment = rawValue > 0 ? 0.1 : 0.05
-        #else
         let increment = 0.05
-        #endif
         return 1 + Double(rawValue) * increment
     }
     public var position: Int { rawValue - Self.steps.lowerBound }

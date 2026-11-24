@@ -29,16 +29,7 @@ public struct DiscoverBrowseView<RowContent: View, PageActions: View>: View {
         @Bindable var browse = model
         ScrollView {
             LazyVStack(alignment: .leading, spacing: metrics.rowSpacing) {
-                #if os(tvOS)
-                HStack {
-                    Text("Discover").font(.largeTitle.bold())
-                    Spacer()
-                    BrowseQueryControls { DiscoverFilterMenu(filters: $browse.filters) }
-                }
-                .padding(.leading, PlozzTheme.Metrics.screenPadding + navigationInset)
-                .padding(.trailing, PlozzTheme.Metrics.screenPadding)
-                .focusSection()
-                #elseif os(iOS)
+                #if os(iOS)
                 PlozziOSPageHeader(navigationTitles(NavigationLibraryLayout.discoverKey, default: Text("Discover"))) {
                     DiscoverFilterMenu(filters: $browse.filters)
                         .plozziOSPageAction()
@@ -112,11 +103,7 @@ public struct DiscoverBrowseView<RowContent: View, PageActions: View>: View {
     }
 
     private var horizontalInset: CGFloat {
-        #if os(tvOS)
-        PlozzTheme.Metrics.screenPadding
-        #else
         20
-        #endif
     }
 
     private var topPadding: CGFloat {

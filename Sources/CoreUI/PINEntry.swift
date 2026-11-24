@@ -16,31 +16,16 @@ public enum PINLayout {
 }
 
 enum PINMetrics {
-    #if os(tvOS)
-    static let horizontalPadding: CGFloat = 110
-    static let badgeSize: CGFloat = 72
-    static let keyDiameter: CGFloat = 108
-    static let keySpacing: CGFloat = 22
-    static let dotSize: CGFloat = 30
-    #else
     static let horizontalPadding: CGFloat = 24
     static let badgeSize: CGFloat = 48
     static let keyDiameter: CGFloat = 74
     static let keySpacing: CGFloat = 16
     static let dotSize: CGFloat = 24
-    #endif
 
-    #if os(tvOS)
-    static let titleFont: Font = .system(size: 64, weight: .bold)
-    static let subtitleFont: Font = .title3
-    static let nameFont: Font = .title3.weight(.semibold)
-    static let proseMaxWidth: CGFloat = 720
-    #else
     static let titleFont: Font = .title2.weight(.bold)
     static let subtitleFont: Font = .body
     static let nameFont: Font = .headline
     static let proseMaxWidth: CGFloat = .infinity
-    #endif
 
     /// Width of the delete key: it spans the two trailing columns of the bottom
     /// row, so it lines up with the grid rather than floating.
@@ -49,15 +34,6 @@ enum PINMetrics {
     /// Intrinsic width of the 3-column dial pad.
     static var padWidth: CGFloat { keyDiameter * 3 + keySpacing * 2 }
 
-    #if os(tvOS)
-    /// Fixed width for the prose column, rather than letting it absorb every
-    /// spare point. See the layout note in ``PINEntryScaffold``.
-    static let proseColumnWidth: CGFloat = 720
-    /// The real, honest gap between prose and pad.
-    static let columnGap: CGFloat = 120
-    /// Prose + gap + pad, centered on screen as one unit.
-    static var compositionWidth: CGFloat { proseColumnWidth + columnGap + padWidth }
-    #endif
 }
 
 /// Position inside a chained PIN gate. Omitted for ordinary one-PIN flows.
@@ -209,39 +185,6 @@ public struct PINEntryScaffold<Badge: View>: View {
                     onRetry: onRetry, onCancel: cancelEntry
                 )
             } else {
-                #if os(tvOS)
-                // Prose on the left, pad on the right, and the PAIR centered on
-                // screen as one composition. The prose column is sized explicitly
-                // rather than absorbing the slack: when it was greedy the pad landed
-                // near 75% of the screen and had to be dragged back with a hand-tuned
-                // `.offset`, which moved pixels without moving layout.
-                //
-                // Which arrangement to use is a fact the HOST supplies, not something
-                // to measure. `ViewThatFits` here froze the app outright: the wide
-                // composition is 1208pt and the settings content column is 1200pt, so
-                // the candidates sat on the fit boundary and the enclosing view
-                // re-evaluated ~180 times a second. Before that a `GeometryReader`
-                // collapsed the pad to nothing inside a content-sized card. A flag
-                // is duller than both and cannot oscillate.
-                if isCompact {
-                    VStack(spacing: 28) {
-                        prose(centered: true)
-                        padColumn
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 28)
-                } else {
-                    HStack(alignment: .center, spacing: PINMetrics.columnGap) {
-                        prose(centered: false)
-                            .frame(width: PINMetrics.proseColumnWidth, alignment: .leading)
-                        padColumn
-                    }
-                    .frame(maxWidth: PINMetrics.compositionWidth, maxHeight: .infinity)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, PINMetrics.horizontalPadding)
-                }
-                #else
                 GeometryReader { proxy in
                     if usesTwoColumnLayout(proxy.size) {
                         HStack(alignment: .center, spacing: 56) {
@@ -272,14 +215,8 @@ public struct PINEntryScaffold<Badge: View>: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                #endif
             }
         }
-        #if os(tvOS)
-        // Menu on the Siri remote backs out. iOS has no equivalent command, so
-        // the Cancel button is the way out there.
-        .onExitCommand(perform: cancelEntry)
-        #endif
         .onDisappear(perform: entry.reset)
         .onChange(of: availability) { _, newValue in
             if newValue != .available { entry.reset() }
@@ -363,12 +300,7 @@ public struct PINEntryScaffold<Badge: View>: View {
     // MARK: Pad column
 
     private var animatesKeyEntrance: Bool {
-        #if os(tvOS)
-        // Native focus must never land on a key that has not appeared yet.
-        false
-        #else
         profileTransition != nil
-        #endif
     }
 
     @ViewBuilder
@@ -389,11 +321,6 @@ public struct PINEntryScaffold<Badge: View>: View {
                 .disabled(isSubmitting || entry.isCommitting)
                 .opacity(isSubmitting ? 0.5 : 1.0)
         }
-        #if os(tvOS)
-        // Keep the pad a single focus region so Left from any key returns to the
-        // prose side rather than hunting between rows.
-        .focusSection()
-        #endif
     }
 
     // MARK: Entry
@@ -607,9 +534,6 @@ public struct PINDialPad: View {
                             Text(verbatim: digit).font(digitFont)
                         }
                         .buttonStyle(PINKeyStyle(width: PINMetrics.keyDiameter))
-                        #if os(tvOS)
-                        .settingsPageEntryFocus(enabled: digit == "1")
-                        #endif
                         .modifier(PINKeyEntrance(
                             enabled: animatesEntrance, position: rowIndex * 3 + columnIndex,
                             reduceMotion: reduceMotion
@@ -767,9 +691,7 @@ private struct PINKeyBody: View {
                     releasePress()
                 }
             }
-            #if !os(tvOS)
             .onHover { hovering in isHovering = hovering }
-            #endif
             #if os(iOS)
             // A glass key has no travel and no click, so touch is the only
             // channel left to confirm a digit actually landed.

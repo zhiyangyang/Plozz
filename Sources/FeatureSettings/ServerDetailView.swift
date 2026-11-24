@@ -80,9 +80,7 @@ struct ServerDetailView: View {
                         Text("This server is no longer signed in.")
                             .font(.headline)
                             .plozzForeground(.secondary)
-                        #if !os(tvOS)
                         SettingsBackButton { dismiss() }
-                        #endif
                     }
                 }
             }

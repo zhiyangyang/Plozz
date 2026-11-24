@@ -117,9 +117,6 @@ public struct LiveChannelPlayerView: View {
     private let guideOverlay: ((LiveChannelGuideEmbedding) -> AnyView)?
 
     @Environment(\.dismiss) private var dismiss
-    #if os(tvOS)
-    @Environment(\.retainedFullscreenWorkspace) private var workspace
-    #endif
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var autoHideVoiceOver
@@ -133,9 +130,6 @@ public struct LiveChannelPlayerView: View {
     @State private var returnsToGuideAfterFullscreen = false
     @State private var opensMultiviewAfterFullscreen = false
     @State private var videoHandoff: VideoPresentationHandoff?
-    #if os(tvOS)
-    @State private var audioGlow = VideoAudioGlowState()
-    #endif
     @Environment(\.videoCardFocus) private var videoCardFocus
     @State private var engineInitializationFailed = false
     @State private var controlsVisible = true
@@ -172,11 +166,7 @@ public struct LiveChannelPlayerView: View {
     }
 
     private var allowsDisplayMatching: Bool {
-        #if os(tvOS)
-        isExpanded || isMultiview
-        #else
         true
-        #endif
     }
 
     private var hasInlineControls: Bool {
@@ -389,12 +379,6 @@ public struct LiveChannelPlayerView: View {
                 )
                 let showsReflection = hasInlineControls && !reduceTransparency && isActive
                     && scenePhase == .active && !model.continuesExternally
-                #if os(tvOS)
-                let showsAudioGlow = videoCardFocus?.audible == true && sourceMatches && model.hasPresentedFrame
-                    && isActive && isAuthorized && scenePhase == .active && !reduceTransparency
-                    && (videoCardFocus?.cornerRadius ?? 0) > 0 && !model.continuesExternally
-                    && model.interruption == nil && model.networkBlock == nil
-                #endif
                 ZStack {
                     VideoSurfaceContainer(
                         engine: model.engine, zoom: model.videoZoom.settings,
@@ -423,24 +407,9 @@ public struct LiveChannelPlayerView: View {
                     }
                 }
                 .videoCardFocusSurface { focused in
-                    #if os(tvOS)
-                    VideoAudioGlow(state: audioGlow, isActive: showsAudioGlow,
-                                   cornerRadius: videoCardFocus?.cornerRadius ?? 0, isFocused: focused)
-                    #endif
                 }
-                #if os(tvOS)
-                .onChange(of: showsAudioGlow, initial: true) { _, enabled in
-                    audioGlow.update(engine: model.engine, enabled: enabled)
-                }
-                .onChange(of: ObjectIdentifier(model.engine)) { _, _ in
-                    audioGlow.update(engine: model.engine, enabled: showsAudioGlow)
-                }
-                .onDisappear { audioGlow.stop() }
-                .transition(isMultiview && !reduceMotion ? .opacity : .identity)
-                #else
                 .transition(isMultiview && !reduceMotion
                     ? .scale(scale: 0.94).combined(with: .opacity) : .identity)
-                #endif
                 .ignoresSafeArea(.all, edges: hasInlineControls || isMultiview ? [] : .all)
 
                 #if os(iOS)
@@ -456,19 +425,6 @@ public struct LiveChannelPlayerView: View {
                 }
                 #endif
 
-                #if os(tvOS)
-                if isExpanded, diagnosticsEnabled, sourceMatches, model.hasPresentedFrame {
-                    PlaybackDiagnosticsOverlay(
-                        diagnostics: diagnosticsSampler.latest,
-                        televisionControlsLayout: model.subtitles.controlsLayout
-                    )
-                        // Pinned to the top-left corner, as the VOD player's is.
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .allowsHitTesting(false)
-                        .ignoresSafeArea()
-                        .transition(.opacity)
-                }
-                #endif
 
                 if !isMultiview,
                    !sourceMatches || !model.hasPresentedFrame || (!isExpanded && model.interruption != nil) {
@@ -482,15 +438,6 @@ public struct LiveChannelPlayerView: View {
                 if let networkBlock = model.networkBlock {
                     LiveChannelNetworkStatus(block: networkBlock)
                 } else if hasInteractiveControls {
-                    #if os(tvOS)
-                    if !controlsVisible {
-                        LiveChannelRevealSurface(
-                            focus: $focusedControl,
-                            onReveal: revealControls
-                        )
-                        .transition(.identity)
-                    }
-                    #endif
 
                     if controlsVisible || touchGestures.skip != nil,
                        hasInlineControls || !sourceMatches || model.interruption == nil {
@@ -659,25 +606,6 @@ public struct LiveChannelPlayerView: View {
             key: LiveChannelSystemOverlaysHiddenKey.self,
             value: isActive && isAuthorized && isExpanded && !isMultiview && !controlsVisible
         )
-        #endif
-        #if os(tvOS)
-        .onReceive(NotificationCenter.default.publisher(for: LiveTVGuideButton.pressed)) { _ in
-            guard isExpanded, isActive, guideOverlay != nil else { return }
-            openGuide()
-        }
-        .background(LiveChannelRemotePresses(
-            isEnabled: isExpanded && isActive,
-            channelUp: channelNext,
-            channelDown: channelPrevious
-        ))
-        .onExitCommand {
-            guard isExpanded else { return }
-            dismissPlayer()
-        }
-        .onPlayPauseCommand {
-            guard isExpanded else { return }
-            togglePlayPause()
-        }
         #endif
         .task(id: autoHideRevision) {
             let startedAt = ProcessInfo.processInfo.systemUptime
@@ -860,9 +788,6 @@ public struct LiveChannelPlayerView: View {
     }
 
     struct LiveChannelActivityObserver: ViewModifier {
-        #if os(tvOS)
-        @Environment(\.retainedFullscreenWorkspace) private var workspace
-        #endif
         let isActive: Bool
         let isAuthorized: Bool
         let scenePhase: ScenePhase
@@ -889,9 +814,6 @@ public struct LiveChannelPlayerView: View {
                     if !authorized { stopPlayback() }
                 }
                 .onDisappear {
-                    #if os(tvOS)
-                    if isActive, isAuthorized, workspace?.isTransferring == true { return }
-                    #endif
                     // Fullscreen obscures its inline owner without retiring it.
                     guard !isActive || !fullscreenOwnsSurface() else { return }
                     currentModel()?.setVisible(false)
@@ -901,12 +823,7 @@ public struct LiveChannelPlayerView: View {
     }
 
     private var wantsNativeFullscreen: Bool {
-        #if os(tvOS)
-        usesNativeFullscreen && isExpanded && isActive
-            && workspace?.isPresented != true && workspace?.isHostingFullscreen != true
-        #else
         false
-        #endif
     }
 
     private func updateFullscreenPresentation(_ presented: Bool) {
@@ -1074,11 +991,7 @@ public struct LiveChannelPlayerView: View {
     }
 
     private var liveDisplayFadesEnabled: Bool {
-        #if os(tvOS)
-        true
-        #else
         false
-        #endif
     }
 
     private func updateDisplayTransition() {
@@ -1187,39 +1100,9 @@ public struct LiveChannelPlayerView: View {
     }
 
     private func focusAfterPresentation(_ control: LiveChannelControl) {
-        #if os(tvOS)
-        guard isExpanded else { return }
-        focusRevision &+= 1
-        let revision = focusRevision
-        Task { @MainActor in
-            await Task.yield()
-            guard isExpanded, revision == focusRevision else { return }
-            focusedControl = control
-        }
-        #endif
     }
 
     private func focusPlaybackControlIfNeeded() {
-        #if os(tvOS)
-        let availability = playbackFocusAvailability
-        guard availability.isPresented,
-              !availability.contains(focusedControl) else {
-            return
-        }
-        focusRevision &+= 1
-        let revision = focusRevision
-        Task { @MainActor in
-            await Task.yield()
-            let latestAvailability = playbackFocusAvailability
-            guard isExpanded,
-                  revision == focusRevision,
-                  latestAvailability.isPresented,
-                  !latestAvailability.contains(focusedControl) else {
-                return
-            }
-            focusedControl = latestAvailability.preferredControl
-        }
-        #endif
     }
 
     private func focusInterruptionAction() {
@@ -1576,12 +1459,6 @@ private struct LiveChannelRevealSurface: View {
         Color.clear
             .contentShape(Rectangle())
             .onTapGesture(perform: onReveal)
-            #if os(tvOS)
-            .focusable(true)
-            .focused($focus, equals: .surface)
-            .focusEffectDisabled()
-            .onMoveCommand { _ in onReveal() }
-            #endif
             .accessibilityIdentifier("live-channel-reveal-surface")
     }
 }
@@ -2461,10 +2338,6 @@ final class LiveChannelPlayerModel {
             idleSleepGuard.allowSleep()
             return
         }
-        #if os(tvOS)
-        // Control Center/Siri must not pause, cancel a seek, or retire a live stream.
-        if scenePhase == .inactive { return }
-        #endif
         switch scenePhase {
         case .active:
             guard isSuspended, !stopped else { return }

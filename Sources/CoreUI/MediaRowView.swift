@@ -17,11 +17,7 @@ public enum PlozzRailTitle {
     /// no account of Dynamic Type; `.title2` is what every other iOS surface in
     /// this app titles a rail with, and it scales with the user's text size.
     public static func font(sectionHeaderFontSize: CGFloat) -> Font {
-        #if os(tvOS)
-        return .system(size: sectionHeaderFontSize, weight: .bold)
-        #else
         return .title2.bold()
-        #endif
     }
 }
 
@@ -212,12 +208,6 @@ public struct MediaRowView: View {
     @Environment(\.plozzArtworkPolicy) private var presentationArtworkPolicy
     /// Keeps branch-specific masking completely out of native navigation styles.
     @Environment(\.plozzPinnedSidebarActive) private var pinnedSidebarActive
-    #if os(tvOS)
-    @Environment(\.mediaRowHeaderTrailingInset) private var pageTrailingSafeInset
-    @State private var portraitViewportWidth: CGFloat = 0
-    @Environment(\.mediaRowSizingViewportWidth) private var sizingViewportWidth
-    @State private var trailingSafeInset: CGFloat = 0
-    #endif
 
     /// Extra scroll margin beyond the fade, so a FOCUSED card — which grows
     /// outward past its layout frame — still parks entirely clear of the feather.
@@ -634,40 +624,12 @@ public struct MediaRowView: View {
                                     onLiveChannelFocused?(focused)
                                 }
                             }
-                            #if os(tvOS)
-                            if let onBrowse, loadingPlaceholderCount == 0 {
-                                MediaRowBrowseCard(
-                                    width: cardSlotWidth,
-                                    style: presentation == .poster ? .poster : .landscape,
-                                    showsSeriesArtwork: showsSeriesArtwork,
-                                    onFocus: {
-                                        activity.pendingReport?.cancel()
-                                        activity.pendingReport = nil
-                                        onFocusEntered?()
-                                        onFocusChange?(nil)
-                                    }, action: onBrowse
-                                )
-                            }
-                            #endif
                     }
                     .loadingMoreOnScroll(
                         onLoadMore,
                         trailingPlaceholderWidth: CGFloat(loadingPlaceholderCount)
                             * (cardSlotWidth + layoutMetrics.cardSpacing)
                     )
-                    #if os(tvOS)
-                    .ignoresSafeArea(.container, edges: presentation == .poster ? .trailing : [])
-                    // This width already excludes the navigation safe area.
-                    // Observe size only; scrolling must not invalidate the row.
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        presentation == .poster ? geometry.containerSize.width : 0
-                    } action: { _, width in
-                        portraitViewportWidth = width
-                    }
-                    #endif
-                    #if os(tvOS)
-                    .modifier(HomeRowPreviewScrollViewport())
-                    #endif
                     .padding(.top, layoutMetrics.railTopClearanceOffset)
                     .padding(.bottom, layoutMetrics.railBottomClearanceOffset)
                     .coordinateSpace(name: episodeEntrySpace)
@@ -686,26 +648,7 @@ public struct MediaRowView: View {
                             episodeEntryPlaceholder
                         }
                     }
-                    #if os(tvOS)
-                    .onGeometryChange(for: CGFloat.self) { geometry in
-                        presentation == .poster ? geometry.safeAreaInsets.trailing : 0
-                    } action: { _, inset in
-                        trailingSafeInset = inset
-                    }
-                    #endif
                     .background {
-                        #if os(tvOS)
-                        if episodeEntry != nil {
-                            NativeFocusRegionObserver(isEnabled: !isCovered && episodeEntry?.isEnabled != false) {
-                                if showsEntryPlaceholder {
-                                    pendingEntryHandoff = true
-                                    reportEpisodeEntry()
-                                } else {
-                                    onFocusEntered?()
-                                }
-                            }
-                        }
-                        #endif
                     }
                     .onPreferenceChange(MediaRowEntryLayoutKey.self) { layout in
                         acceptEntryLayout(layout, using: proxy)
@@ -869,15 +812,6 @@ public struct MediaRowView: View {
                 }
             }
             .background {
-                #if os(tvOS)
-                if let onItemExposed {
-                    MediaRowExposureDriver(
-                        tracker: activity.exposure,
-                        isActive: isExposureActive,
-                        onExposure: onItemExposed
-                    )
-                }
-                #endif
             }
         }
     }
@@ -898,14 +832,7 @@ public struct MediaRowView: View {
     /// inside the link's label and could swallow the link's own tap.
     @ViewBuilder
     private func tappableCard(for item: MediaItem) -> some View {
-        #if os(tvOS)
-        if let onPlay {
-            card(for: item)
-                .onPlayPauseCommand { onPlay(item) }
-        } else {
-            card(for: item)
-        }
-        #elseif os(iOS)
+        #if os(iOS)
         MediaArtworkZoomButton(id: item.stablePresentationID) { source in
             if let onSelectArtwork {
                 onSelectArtwork(item, source)
@@ -996,11 +923,6 @@ public struct MediaRowView: View {
             .frame(width: cardSlotWidth)
             .id(item.stablePresentationID)
             .background {
-                #if os(tvOS)
-                if onItemExposed != nil {
-                    MediaRowExposureAnchor(tracker: activity.exposure, item: item)
-                }
-                #endif
                 if episodeEntry != nil, !activity.focusEngaged, item.stablePresentationID == gateTarget {
                     GeometryReader { geometry in
                         Color.clear.preference(
@@ -1037,13 +959,7 @@ public struct MediaRowView: View {
     }
 
     private var cardsTrailingInset: CGFloat {
-        #if os(tvOS)
-        // Full-bleed artwork still needs a scrollable tail for the last card's
-        // native focus lift. A parent may already have consumed the safe area.
-        PlozzTheme.Metrics.screenPadding + max(trailingSafeInset, pageTrailingSafeInset)
-        #else
         PlozzTheme.Metrics.screenPadding
-        #endif
     }
 
     /// The layout width reserved for one card in the rail — its full glass-surface
@@ -1052,15 +968,7 @@ public struct MediaRowView: View {
     private var cardSlotWidth: CGFloat {
         switch presentation {
         case .poster:
-            #if os(tvOS)
-            return metrics.portraitRowSlotWidth(
-                viewportWidth: sizingViewportWidth ?? portraitViewportWidth,
-                leadingInset: leadingInset,
-                cardStyle: cardStyle
-            )
-            #else
             return metrics.posterWidth
-            #endif
         case .landscape:
             return metrics.cardSlotWidth(
                 for: .landscape,
@@ -1153,20 +1061,10 @@ public struct MediaRowView: View {
                     nativeFocus: $entryPlaceholderFocused,
                     onSelect: selectEpisodeEntryPlaceholder
                 )
-                #if os(tvOS)
-                .focusableCard(
-                    isFocused: $entryPlaceholderFocused,
-                    cornerRadius: layoutMetrics.landscapeCardCornerRadius,
-                    isEnabled: episodeEntry?.isEnabled != false,
-                    nativeFocusInContent: true,
-                    action: selectEpisodeEntryPlaceholder
-                )
-                #else
                 .focusable(episodeEntry?.isEnabled != false)
                 .plozzCardFocusEffect()
                 .focused($entryPlaceholderFocused.focusState)
                 .onTapGesture(perform: selectEpisodeEntryPlaceholder)
-                #endif
                 .accessibilityIdentifier("episode-entry-placeholder")
                 .environment(\.plozzCardStyle, .borderless)
                 if episodeEntry?.phase == .loading || episodeEntry?.phase == .ready {
@@ -1518,11 +1416,6 @@ public struct MediaRowView: View {
               !activity.prefetchedHeroIDs.contains(item.stablePresentationID) else {
             return
         }
-        #if os(tvOS)
-        // Movie/show cards warm the policy-selected backdrop themselves. Do not
-        // compete with that request by also warming a different library image.
-        if item.kind == .movie || item.kind == .series { return }
-        #endif
         let references = presentationArtworkPolicy.forArea(.details)
             .references(for: item, placement: .detailBackdrop)
         guard let reference = references.first else { return }
@@ -1628,9 +1521,6 @@ private struct MediaRowCardFocus: ViewModifier {
 @MainActor
 @Observable
 private final class MediaRowActivity {
-    #if os(tvOS)
-    @ObservationIgnored let exposure = MediaRowExposureTracker()
-    #endif
     // Only gated episode rows render these values. Ordinary Home rows report
     // focus without rebuilding every card and its context menu.
     var focusEngaged = false
@@ -1763,15 +1653,7 @@ private extension View {
     /// geometric X-projection (no per-section last-focus memory).
     @ViewBuilder
     func focusSectionIf(_ enabled: Bool) -> some View {
-        #if os(tvOS)
-        if enabled {
-            focusSection()
-        } else {
-            self
-        }
-        #else
         self
-        #endif
     }
 }
 

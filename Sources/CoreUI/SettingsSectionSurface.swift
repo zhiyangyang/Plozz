@@ -350,12 +350,7 @@ public struct SettingsSectionGroup<Content: View, Footer: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        let cornerRadius = SettingsFormMetrics.groupCornerRadius
-        let horizontalInset = SettingsFormMetrics.groupInset
-        let verticalInset = SettingsFormMetrics.groupInset
-        let captionSpacing: CGFloat = 4
-        #elseif os(iOS)
+        #if os(iOS)
         let cornerRadius = MobileSettingsMetrics.groupCornerRadius
         let horizontalInset = MobileSettingsMetrics.rowInset
         let verticalInset = MobileSettingsMetrics.controlVerticalInset
@@ -428,17 +423,11 @@ public struct SettingsSectionGroup<Content: View, Footer: View>: View {
             .environment(\.settingsSearchRowOwnsHighlight, true)
             #endif
             .labelStyle(SettingsIconLabelStyle())
-            #if os(tvOS)
-            .buttonStyle(SettingsFormButtonStyle())
-            .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-            .environment(\.settingsFormRowsFlushLeading, false)
-            #else
             .buttonStyle(SettingsSectionButtonStyle())
             .toggleStyle(SettingsSwitchToggleStyle())
             // A group is one List cell. Automatic pickers can claim the whole
             // cell's primary action, stealing taps from sibling controls.
             .pickerStyle(.menu)
-            #endif
             .settingsGroupSurface(cornerRadius: cornerRadius)
 
             footer
@@ -451,9 +440,7 @@ public struct SettingsSectionGroup<Content: View, Footer: View>: View {
         #endif
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
-        #if !os(tvOS)
         .listRowSeparator(.hidden)
-        #endif
     }
 }
 

@@ -193,11 +193,7 @@ private struct ThemeCardButtonBody: View {
     @Environment(\.settingsFormTextInset) private var textInset
 
     private var isContained: Bool {
-        #if os(tvOS)
-        textInset > 0
-        #else
         false
-        #endif
     }
 
     private var corner: CGFloat {
@@ -331,9 +327,6 @@ public struct PreviewCard<Swatch: View>: View {
     }
 
     private var titleFont: Font {
-        #if os(tvOS)
-        if compact { return SettingsRowMetrics.titleFont }
-        #endif
         return compact ? .headline : .title3.weight(.semibold)
     }
 

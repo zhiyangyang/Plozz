@@ -104,11 +104,7 @@ final class PlozzigenLiveOutputTests: XCTestCase {
                     to: &options)
                 XCTAssertFalse(options.panelIsInHDRMode)
                 XCTAssertTrue(options.attemptsHDRMasterOnUnprovenPanel)
-                #if os(tvOS)
-                XCTAssertEqual(options.displayCriteriaOwner, suppressesDisplayMatching ? .host : .engine)
-                #else
                 XCTAssertEqual(options.displayCriteriaOwner, .engine)
-                #endif
                 XCTAssertEqual(options.suppressDisplayCriteria, suppressesDisplayMatching)
                 XCTAssertEqual(options.matchContentEnabled, !suppressesDisplayMatching)
             }

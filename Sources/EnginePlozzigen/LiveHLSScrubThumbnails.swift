@@ -417,11 +417,7 @@ final class LiveHLSScrubThumbnails {
         sysctlbyname("kern.osversion", &build, &size, nil, 0)
         let version = ProcessInfo.processInfo.operatingSystemVersion
         let os = "\(version.majorVersion)_\(version.minorVersion)" + (version.patchVersion > 0 ? "_\(version.patchVersion)" : "")
-        #if os(tvOS)
-        let device = "Apple TV"
-        #else
         let device = "iPhone"
-        #endif
         let locale = Locale.current.identifier.lowercased()
         return "AppleCoreMedia/1.0.0.\(String(cString: build)) (\(device); U; CPU OS \(os) like Mac OS X; \(locale))"
     }()

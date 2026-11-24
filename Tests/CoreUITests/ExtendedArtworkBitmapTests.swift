@@ -400,11 +400,6 @@ final class ExtendedArtworkBitmapTests: XCTestCase {
                     progressivelyBlursReflection: true
                 ))
                 var images = [prepared]
-                #if os(tvOS)
-                images.append(try XCTUnwrap(NativePosterArtworkBitmap.image(
-                    source: prepared, size: size, scale: scale, backgroundColor: .darkGray, clipsToArtwork: false
-                )))
-                #endif
                 for image in images {
                     let data = try pixels(image)
                     let pixelWidth = try XCTUnwrap(image.cgImage).width

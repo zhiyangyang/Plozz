@@ -125,30 +125,7 @@ struct PlayerOptionsInputScope<Screen: Equatable, Content: View>: View {
     @State private var accelerator = SubtitleStyleAccelerator()
 
     var body: some View {
-        #if os(tvOS)
-        PlayerOptionsFocusScope(
-            content: content,
-            screen: screen,
-            adjustableRow: {
-                guard let row = focusedRow else { return nil }
-                switch row.kind {
-                case .number, .choice: return row.slot
-                default: return nil
-                }
-            },
-            submenuRow: {
-                guard let row = focusedRow, case .submenu = row.kind else { return nil }
-                return row.slot
-            },
-            idealWidth: PlayerOptionsPanel.standardWidth,
-            onMove: { direction, isRepeat in
-                if !isRepeat { accelerator = SubtitleStyleAccelerator() }
-                move(direction)
-            }
-        )
-        #else
         content
-        #endif
     }
 
     private var focusedRow: PlayerOptionsRowSpec? {

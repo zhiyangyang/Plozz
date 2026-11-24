@@ -22,11 +22,7 @@ public struct HeroLogoSizeControl: View {
     }
 
     private var layout: HeroLogoSizing.Layout {
-        #if os(tvOS)
-        surface == .showcase ? .showcase : .television
-        #else
         sizeClass == .compact ? .compact : .regular
-        #endif
     }
 
     private var position: Binding<Int> {
@@ -58,47 +54,6 @@ public struct HeroLogoSizeControl: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        HStack(spacing: SettingsFormMetrics.groupInset) {
-            if surface == .detail || showsLibraryPreview {
-                Color.clear
-                    .frame(width: surface == .detail ? 400 : 320)
-                    .frame(minHeight: surface == .detail ? 300 : 180)
-                    .overlay {
-                        preview
-                            .aspectRatio(surface == .detail ? 4.0 / 3.0 : 16.0 / 9.0, contentMode: .fill)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: SettingsRowMetrics.formRowCornerRadius))
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                SettingsStepper(
-                    options: Array(HeroLogoSize.allSizes.indices), selection: position, compact: true,
-                    label: "Logo size", labelWidth: 160, rangeLabels: ("Small", "Large"),
-                    inlineRange: true,
-                    title: { $0 == HeroLogoSize.default.position ? "Default" : "\($0 + 1) of \(HeroLogoSize.allSizes.count)" }
-                )
-                .accessibilityIdentifier("logo-size-adjustment")
-                .settingsSearchAnchor("\(searchPrefix)-logo-size")
-                if let textPosition {
-                    SettingsStepper(
-                        options: Array(HeroTextSize.allSizes.indices), selection: textPosition, compact: true,
-                        label: "Text size", labelWidth: 160, rangeLabels: ("Small", "Large"),
-                        inlineRange: true,
-                        title: {
-                            $0 == HeroTextSize.default.position ? "Default" : "\($0 + 1) of \(HeroTextSize.allSizes.count)"
-                        }
-                    )
-                    .accessibilityIdentifier("text-size-adjustment")
-                    .settingsSearchAnchor("\(searchPrefix)-text-size")
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .focusSection()
-        .environment(\.settingsFormRowsFlushLeading, false)
-        .accessibilityElement(children: .contain)
-        #else
         VStack(alignment: .leading, spacing: 20) {
             preview
                 .frame(maxWidth: 720)
@@ -117,10 +72,8 @@ public struct HeroLogoSizeControl: View {
             }
         }
         .accessibilityElement(children: .contain)
-        #endif
     }
 
-    #if !os(tvOS)
     private func slider(
         _ label: LocalizedStringResource, position: Binding<Int>, count: Int,
         isDefault: Bool, identifier: String
@@ -138,6 +91,5 @@ public struct HeroLogoSizeControl: View {
             .accessibilityIdentifier(identifier)
         }
     }
-    #endif
 }
 #endif

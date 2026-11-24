@@ -660,23 +660,6 @@ final class PlayerVideoZoomTests: XCTestCase {
         XCTAssertEqual(engine.output.frame, frame)
     }
 
-    #if os(tvOS)
-    func testSafeAreaFittingOptInIsInertOnTelevision() throws {
-        let controller = UIViewController()
-        controller.additionalSafeAreaInsets = UIEdgeInsets(top: 20, left: 60, bottom: 40, right: 10)
-        controller.view.frame = television
-        let video = VideoPresentationView(frame: television)
-        controller.view.addSubview(video)
-        let engine = ZoomVideoEngine()
-        video.attach(engine)
-        video.update(zoom: PlayerVideoZoom(), fitsInsideSafeArea: true)
-        video.layoutIfNeeded()
-        XCTAssertNil(video.fitBounds)
-        XCTAssertEqual(video.videoRect, PlayerVideoZoom().videoRect(in: television, aspectRatio: 4 / 3))
-        XCTAssertEqual(engine.output.frame, television)
-        XCTAssertTrue(engine.transportCalls.isEmpty)
-    }
-    #endif
 }
 
 @MainActor

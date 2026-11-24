@@ -562,12 +562,7 @@ public final class PlayerControlsModel {
     // MARK: Transport UI state (written by the input controller)
     public var controlsVisible: Bool = false {
         didSet {
-            #if os(tvOS)
-            // Keep the outgoing labels intact until the controls have faded.
-            if controlsVisible && !oldValue { timelineClock.isEnabled = false }
-            #else
             if !controlsVisible { timelineClock.isEnabled = false }
-            #endif
         }
     }
     public let timelineClock = PlayerTimelineClock()
@@ -624,20 +619,9 @@ public final class PlayerControlsModel {
     /// against the observable surface, so they cost nothing here.
     public let upNextCard = UpNextModel()
 
-    #if os(tvOS)
-    let systemAudio: SystemPlaybackAudio
-
-    init(systemAudio: SystemPlaybackAudio) {
-        self.systemAudio = systemAudio
-        audioSyncAdjustment = PlayerAudioSyncEditor()
-    }
-    #endif
 
     public init(audioDelayRange: ClosedRange<TimeInterval> = PlayerAudioSyncAdjustment.range) {
         audioSyncAdjustment = PlayerAudioSyncEditor(range: audioDelayRange)
-        #if os(tvOS)
-        systemAudio = .shared
-        #endif
     }
 
     /// Where the transport playhead should render: the scrub target while
@@ -656,9 +640,6 @@ public final class PlayerControlsModel {
 
     public var hasSelectableAudio: Bool { audioOptions.count > 1 }
     public var hasAudioControls: Bool {
-        #if os(tvOS)
-        if !systemAudio.availableSettings.isEmpty { return true }
-        #endif
         return hasSelectableAudio || !engineCapabilities.intersection([.dialogEnhance, .audioDelay]).isEmpty
     }
     public var hasSelectableSubtitles: Bool { !subtitleOptions.isEmpty }

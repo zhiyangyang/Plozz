@@ -8,32 +8,16 @@ import XCTest
 final class SettingsWorkspaceNavigationTests: XCTestCase {
     func testHomeCustomizationShortcutReplacesStalePagesWithoutGrowingTheStack() {
         let navigation = SettingsNavigationModel()
-        #if os(tvOS)
-        navigation.pages.animationsEnabled = false
-        navigation.beginSearch()
-        navigation.searchQuery = "server"
-        #endif
         navigation.path = [.appearance, .artwork]
         for _ in 0..<3 {
             navigation.openHomeCustomization()
-            #if os(tvOS)
-            XCTAssertEqual(navigation.section, .screensNavigation)
-            #else
             XCTAssertEqual(navigation.section, .customizeHome)
-            #endif
             XCTAssertEqual(navigation.path, [.customizeHome])
             XCTAssertTrue(navigation.enteringDetail)
             XCTAssertFalse(navigation.restoringSidebar)
-            #if os(tvOS)
-            XCTAssertFalse(navigation.isSearching)
-            XCTAssertTrue(navigation.searchQuery.isEmpty)
-            #endif
             navigation.path.append(.searchResult("home-row-arrangement"))
         }
         navigation.returnToSidebar()
-        #if os(tvOS)
-        XCTAssertEqual(navigation.section, .screensNavigation)
-        #endif
         XCTAssertTrue(navigation.path.isEmpty)
     }
 
@@ -67,95 +51,6 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "com.plozz.playbackSettings"))
     }
 
-    #if os(tvOS)
-    func testInlineSearchDoesNotPushAPageAndRetainsQueryAcrossResultNavigation() {
-        let navigation = SettingsNavigationModel()
-        navigation.pages.animationsEnabled = false
-        navigation.beginSearch()
-        XCTAssertTrue(navigation.isSearching)
-        XCTAssertEqual(navigation.section, .search)
-        XCTAssertTrue(navigation.path.isEmpty)
-        navigation.searchQuery = "subtitles"
-        let source = UUID()
-        navigation.pages.push(.searchResult("subtitle-size"), sourceID: source)
-        XCTAssertEqual(navigation.path, [.searchResult("subtitle-size")])
-        navigation.pages.pop()
-        navigation.restoreCategoryFocus()
-        XCTAssertEqual(navigation.searchQuery, "subtitles")
-        XCTAssertTrue(navigation.isSearching)
-        XCTAssertEqual(navigation.pages.returnSourceID, source)
-        navigation.endSearch()
-        XCTAssertFalse(navigation.isSearching)
-        XCTAssertTrue(navigation.searchQuery.isEmpty)
-        XCTAssertTrue(navigation.path.isEmpty)
-        XCTAssertEqual(navigation.section, .search)
-        XCTAssertTrue(navigation.restoringSidebar)
-        XCTAssertGreaterThan(navigation.sidebarFocusRequest, 0)
-    }
-
-    func testProfileResetClearsInlineSearchAndItsResult() {
-        let navigation = SettingsNavigationModel()
-        navigation.pages.animationsEnabled = false
-        navigation.beginSearch()
-        navigation.searchQuery = "server"
-        navigation.pages.push(.searchResult("servers"), sourceID: UUID())
-        navigation.resetForProfile()
-        XCTAssertFalse(navigation.isSearching)
-        XCTAssertTrue(navigation.searchQuery.isEmpty)
-        XCTAssertTrue(navigation.path.isEmpty)
-        XCTAssertEqual(navigation.section, .playback)
-    }
-
-    func testSharedStackRetainsRepeatedRouteIdentityAndReturnsToItsSource() {
-        let pages = SettingsPageNavigation<SettingsRoute>()
-        pages.animationsEnabled = false
-        let firstSource = UUID()
-        let secondSource = UUID()
-        pages.push(.about, sourceID: firstSource)
-        pages.push(.about, sourceID: secondSource)
-        let identities = pages.pages.map(\.id)
-        pages.routes.append(.help)
-        XCTAssertEqual(Array(pages.pages.prefix(2)).map(\.id), identities)
-        pages.pop()
-        XCTAssertEqual(pages.pages.map(\.id), identities)
-        pages.pop()
-        XCTAssertEqual(pages.returnSourceID, secondSource)
-        XCTAssertEqual(pages.routes, [.about])
-        pages.pop()
-        XCTAssertEqual(pages.returnSourceID, firstSource)
-        XCTAssertTrue(pages.pages.isEmpty)
-    }
-
-    func testSharedStackResetInvalidatesOutstandingReturnCompletion() async throws {
-        let pages = SettingsPageNavigation<SettingsRoute>()
-        pages.push(.artwork, sourceID: UUID())
-        pages.pop()
-        pages.reset()
-        pages.animationsEnabled = false
-        pages.push(.about)
-        try await Task.sleep(for: .milliseconds(600))
-        XCTAssertEqual(pages.routes, [.about])
-        XCTAssertEqual(pages.returnGeneration, 0)
-        XCTAssertNil(pages.returnSourceID)
-    }
-
-    func testCategoryReturnDoesNotRecloseAnAlreadyRestoredNativeFocusGate() {
-        for focusArrived in [false, true] {
-            let navigation = SettingsNavigationModel()
-            navigation.pages.animationsEnabled = false
-            navigation.select(.myLibraries)
-            let source = UUID()
-            navigation.enterDetail(sourceID: source)
-            navigation.enteringDetail = false
-            navigation.focusInDetail = !focusArrived
-            navigation.pages.pop()
-            navigation.restoreCategoryFocus()
-            XCTAssertEqual(navigation.restoringSidebar, !focusArrived)
-            XCTAssertEqual(navigation.pages.returnSourceID, source)
-            XCTAssertEqual(navigation.sidebarFocusRequest, 0)
-        }
-    }
-    #endif
 
     func testPlaybackIsTheInitialSectionAndSidebarOwnsEntry() {
         let navigation = SettingsNavigationModel()

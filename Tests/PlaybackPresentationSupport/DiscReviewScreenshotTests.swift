@@ -6,12 +6,8 @@ import UIKit
 @MainActor
 final class DiscReviewScreenshotTests: XCTestCase {
     private func launch(_ scenario: String) -> XCUIApplication {
-        #if os(tvOS)
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         XCUIDevice.shared.orientation = .landscapeLeft
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
         app.launchArguments = ["--disc-review-fixture", scenario]
         app.launch()
         addTeardownBlock { @MainActor in app.terminate() }
@@ -30,15 +26,9 @@ final class DiscReviewScreenshotTests: XCTestCase {
 
     func testCaptureDiscNavigationAndActions() {
         let app = launch("menu")
-        #if os(tvOS)
-        XCTAssertTrue(app.buttons["disc-menu-select"].waitForExistence(timeout: 10))
-        capture(app, "Navigation")
-        XCUIRemote.shared.press(.menu)
-        #else
         XCTAssertTrue(app.buttons["disc-menu-control-circle"].waitForExistence(timeout: 10))
         capture(app, "Navigation")
         app.buttons["disc-menu-control-opticaldisc"].tap()
-        #endif
         XCTAssertTrue(app.buttons["Try another region"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "watched")).firstMatch.exists)
         #if os(iOS)
@@ -50,23 +40,13 @@ final class DiscReviewScreenshotTests: XCTestCase {
         let playlist = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Playlist 00800")).firstMatch
         XCTAssertTrue(playlist.waitForExistence(timeout: 10), "Actions must dismiss before the picker opens")
         activate(app.buttons["Close"].firstMatch, in: app)
-        #if os(tvOS)
-        XCTAssertTrue(app.buttons["disc-menu-select"].waitForExistence(timeout: 5))
-        focus(app.buttons["disc-menu-select"], in: app)
-        XCUIRemote.shared.press(.menu)
-        #else
         app.buttons["disc-menu-control-opticaldisc"].tap()
-        #endif
         XCTAssertTrue(app.buttons["Try another region"].waitForExistence(timeout: 5))
-        #if os(tvOS)
-        activate(app.buttons["Close"].firstMatch, in: app)
-        #else
         activate(app.collectionViews.buttons["Close player"], in: app)
         let hidden = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"), object: app.buttons["Try another region"]
         )
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 5), .completed)
-        #endif
     }
 
     func testCaptureMenuFailure() {
@@ -88,14 +68,6 @@ final class DiscReviewScreenshotTests: XCTestCase {
         XCTAssertTrue(first.label.contains("2:00:00 \u{00B7} 18 chapters"),
                       "Duration and chapter count should form one compact metadata line")
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "watched")).firstMatch.exists)
-        #if os(tvOS)
-        let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasFocus == true"), object: first)
-        XCTAssertEqual(XCTWaiter.wait(for: [focused], timeout: 5), .completed)
-        for id in ["00800", "00801", "00012"] {
-            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Playlist \(id)"))
-                .firstMatch.isHittable)
-        }
-        #endif
         capture(app, "Disc videos")
         activate(app.buttons["Close"].firstMatch, in: app)
         let hidden = XCTNSPredicateExpectation(
@@ -114,20 +86,10 @@ final class DiscReviewScreenshotTests: XCTestCase {
 
     func testCaptureTransportAction() {
         let app = launch("transport")
-        #if os(tvOS)
-        XCUIRemote.shared.press(.playPause)
-        let more = app.buttons["player-control-ellipsis"]
-        XCTAssertTrue(more.waitForExistence(timeout: 10))
-        XCUIRemote.shared.press(.up)
-        focus(more, in: app)
-        XCUIRemote.shared.press(.select)
-        let button = app.buttons["Disc videos"]
-        #else
         let options = app.buttons[app.frame.width > app.frame.height ? "player-settings" : "player-playback-options"]
         XCTAssertTrue(options.waitForExistence(timeout: 10))
         options.tap()
         let button = app.buttons["Disc videos"]
-        #endif
         XCTAssertTrue(button.waitForExistence(timeout: 10))
         capture(app, "Player disc action")
     }
@@ -137,12 +99,7 @@ final class DiscReviewScreenshotTests: XCTestCase {
         let play = app.buttons["detail-hero-play"]
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         capture(app, "Detail hero")
-        #if os(tvOS)
-        focus(play, in: app)
-        XCUIRemote.shared.press(.select, forDuration: 1.2)
-        #else
         play.press(forDuration: 1.2)
-        #endif
         let expected = scenario == "detail-unavailable" ? "This disc's menu format is not supported."
             : scenario == "detail-menu-default" ? "Play video" : "Open disc menu"
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", expected))
@@ -195,14 +152,9 @@ final class DiscReviewScreenshotTests: XCTestCase {
     #endif
 
     func testCapturePlaybackSetting() {
-        #if os(tvOS)
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        app.launchArguments = ["--read-ahead-settings-fixture", "--playback-settings-workspace"]
-        #else
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .phone ? .portrait : .landscapeLeft
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
         app.launchArguments = ["--playback-settings-fixture", "--share-only-playback"]
-        #endif
         app.launch()
         defer { app.terminate() }
         let picker = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Disc playback")).firstMatch
@@ -226,64 +178,18 @@ final class DiscReviewScreenshotTests: XCTestCase {
                       "The setting and complete note must be visible below the navigation bar")
         #endif
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        #if os(tvOS)
-        focus(picker, in: app)
-        XCTAssertEqual(picker.value as? String, "Play video")
-        XCTAssertFalse(app.segmentedControls.containing(.button, identifier: "Play video").firstMatch.exists)
-        #endif
         XCTAssertTrue(notice.waitForExistence(timeout: 5))
         capture(app, "Playback setting")
-        #if os(tvOS)
-        XCUIRemote.shared.press(.select)
-        #else
         picker.tap()
-        #endif
         let openMenu = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Open disc menu")).firstMatch
         XCTAssertTrue(openMenu.waitForExistence(timeout: 5))
         capture(app, "Playback setting choices")
-        #if os(tvOS)
-        focus(openMenu, in: app)
-        XCUIRemote.shared.press(.select)
-        let changed = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "Open disc menu"), object: picker
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
-        focus(picker, in: app)
-        XCUIRemote.shared.press(.select)
-        focus(app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "Play video")).firstMatch, in: app)
-        XCUIRemote.shared.press(.select)
-        XCTAssertEqual(picker.value as? String, "Play video")
-        #endif
     }
 
     private func activate(_ button: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(button.waitForExistence(timeout: 5))
-        #if os(tvOS)
-        focus(button, in: app)
-        XCUIRemote.shared.press(.select)
-        #else
         button.tap()
-        #endif
     }
 
-    #if os(tvOS)
-    private func focus(_ target: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<30 {
-            if target.hasFocus || target.descendants(matching: .any)
-                .matching(NSPredicate(format: "hasFocus == true")).firstMatch.exists { return }
-            let current = app.descendants(matching: .any)
-                .matching(NSPredicate(format: "hasFocus == true")).firstMatch
-            if current.exists, current.elementType == .cell, current.frame.contains(target.frame) { return }
-            let direction: XCUIRemote.Button
-            if !current.exists { direction = .down }
-            else if target.frame.minX > current.frame.maxX { direction = .right }
-            else if target.frame.maxX < current.frame.minX { direction = .left }
-            else { direction = target.frame.midY < current.frame.midY ? .up : .down }
-            XCUIRemote.shared.press(direction)
-        }
-        XCTFail("Could not focus \(target.label)")
-    }
-    #endif
 }

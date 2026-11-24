@@ -1,9 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
 import Observation
-#if os(tvOS)
-import UIKit
-#endif
 
 /// How far the page's content has been pushed in from the leading edge to make
 /// room for the custom navigation rail, in points. `0` under horizontal navigation
@@ -52,11 +49,6 @@ public final class TopNavigationScroll {
     public private(set) var stageTransition: StageTransition?
     @ObservationIgnored private var source: UUID?
     @ObservationIgnored private var reset: (() -> Void)?
-    #if os(tvOS)
-    @ObservationIgnored private weak var motionView: UIView?
-    @ObservationIgnored private var maximumMotionOffset: CGFloat = 0
-    @ObservationIgnored private var motionKeys: [String] = []
-    #endif
 
     public init() {}
 
@@ -101,57 +93,8 @@ public final class TopNavigationScroll {
         return true
     }
 
-    #if os(tvOS)
-    public func bindMotionView(_ view: UIView, maximumOffset: CGFloat) {
-        if let previous = motionView, previous !== view { unbindMotionView(previous) }
-        motionView = view
-        maximumMotionOffset = maximumOffset
-        applyMotion()
-    }
-
-    public func unbindMotionView(_ view: UIView) {
-        guard motionView === view else { return }
-        for key in motionKeys { view.layer.removeAnimation(forKey: key) }
-        motionKeys.removeAll()
-        motionView = nil
-    }
-
-    /// Add to the feature's current animation transaction; no per-frame SwiftUI updates.
-    public func animateStage(
-        from progress: CGFloat, spring: Spring, key: String, source: UUID
-    ) {
-        guard self.source == source, let layer = motionView?.layer else { return }
-        motionKeys.removeAll { layer.animation(forKey: $0) == nil }
-        let animation = CASpringAnimation(keyPath: "transform.translation.y")
-        animation.fromValue = -progress * maximumMotionOffset
-        animation.toValue = 0
-        animation.isAdditive = true
-        animation.mass = spring.mass
-        animation.stiffness = spring.stiffness
-        animation.damping = spring.damping
-        animation.duration = spring.settlingDuration
-        layer.add(animation, forKey: key)
-        motionKeys.append(key)
-    }
-
-    public func stopStageAnimations(source: UUID) {
-        guard self.source == source else { return }
-        applyMotion(resetAnimations: true)
-    }
-    #endif
 
     private func applyMotion(resetAnimations: Bool = false) {
-        #if os(tvOS)
-        guard let layer = motionView?.layer else { return }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layer.setValue(-visibleOffset(maximum: maximumMotionOffset), forKeyPath: "transform.translation.y")
-        if resetAnimations {
-            for key in motionKeys { layer.removeAnimation(forKey: key) }
-            motionKeys.removeAll()
-        }
-        CATransaction.commit()
-        #endif
     }
 }
 
@@ -185,9 +128,6 @@ public final class PlozzPinnedSidebarInteraction: ObservableObject {
 
     @MainActor
     public func requestOpen() {
-        #if os(tvOS)
-        guard !DetailTransitionNavigation.isNavigationInputSuppressed else { return }
-        #endif
         openRequest &+= 1
     }
 }

@@ -166,11 +166,7 @@ struct PlexHomeOnboardingContent: View {
     }
 
     private var previewAvatarSize: CGFloat {
-        #if os(tvOS)
-        64
-        #else
         52
-        #endif
     }
 
     private func userSelection(addAllProfiles: Bool) -> some View {
@@ -185,11 +181,7 @@ struct PlexHomeOnboardingContent: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
                     }
-                    #if os(tvOS)
-                    .buttonStyle(SettingsFocusButtonStyle())
-                    #else
                     .buttonStyle(.plain)
-                    #endif
                     .focused($focused, equals: user.id)
                     .accessibilityIdentifier("plex-home-user-\(user.id)")
                 }
@@ -200,11 +192,6 @@ struct PlexHomeOnboardingContent: View {
                     .accessibilityIdentifier("plex-home-back")
             }
         }
-        #if os(tvOS)
-        .onExitCommand {
-            if !addAllProfiles { stage = .choice }
-        }
-        #endif
     }
 }
 #endif

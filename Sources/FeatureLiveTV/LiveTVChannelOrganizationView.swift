@@ -123,9 +123,6 @@ private struct LiveTVCategoryManagementRow: View {
             .accessibilityLabel("Favorite \(summary.rule.name)")
             .accessibilityIdentifier("live-tv-category-favorite-\(summary.id)")
         }
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #endif
     }
 }
 
@@ -215,9 +212,6 @@ private struct LiveTVRegionManagementView: View {
         }
         .buttonStyle(SettingsFocusButtonStyle(size: .contained))
         .disabled(!canMutate())
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #endif
     }
 }
 
@@ -262,9 +256,6 @@ private struct LiveTVRegionChoices: View {
             }
         }
         .disabled(!canMutate())
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #endif
     }
 
     private func name(_ value: String) -> String {
@@ -302,9 +293,6 @@ struct LiveTVHiddenChannelManagementView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            #if os(tvOS)
-            .focusSection()
-            #endif
             if model.hiddenChannelEntries.isEmpty {
                 ContentUnavailableView("No hidden channels", systemImage: "eye")
             }
@@ -370,9 +358,6 @@ private struct LiveTVHiddenChannelRow: View {
                 }
             }
         }
-        #if os(tvOS)
-        .focusSection()
-        #endif
     }
 }
 

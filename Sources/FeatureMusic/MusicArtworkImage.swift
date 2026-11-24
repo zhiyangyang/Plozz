@@ -154,18 +154,6 @@ struct MusicCard: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            NativeArtworkPoster(
-                width: scaledWidth, title: title, subtitle: subtitle,
-                placeholderSymbol: systemPlaceholder, focus: $isFocused, action: action
-            ) {
-                artwork
-            }
-        } else {
-            customCard
-        }
-        #else
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
                 artwork.frame(width: 150, height: 150)
@@ -178,7 +166,6 @@ struct MusicCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        #endif
     }
 
     @ViewBuilder

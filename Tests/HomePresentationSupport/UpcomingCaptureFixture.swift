@@ -7,54 +7,15 @@ import MetadataKit
 import SwiftUI
 import UIKit
 import Vision
-#if os(tvOS)
-@testable import AppShell
-import FeatureHome
-#else
 @testable import AppShelliOS
-#endif
 
 struct UpcomingCaptureFixture: View {
     @State private var fixture = UpcomingCaptureState()
     @State private var isLoaded = false
-    #if os(tvOS)
-    @State private var navigationChrome = NavigationChromeModel()
-    @State private var tvSelection: NavigationRailDestination =
-        ProcessInfo.processInfo.arguments.contains("--capture-home") ? .home : .upcoming
-    #endif
     private let palette = ThemePalette.dark
 
     var body: some View {
         Group {
-            #if os(tvOS)
-            if ProcessInfo.processInfo.arguments.contains("--capture-pinned") {
-                NavigationRailShell(
-                    profile: Profile(name: "Viewer"), entries: [],
-                    destinations: [.home, .upcoming], selection: $tvSelection,
-                    onOpenProfileSwitcher: {}, chrome: navigationChrome,
-                    content: page(home: tvSelection == .home), contentDestination: tvSelection
-                )
-                .environment(navigationChrome)
-                .environment(\.plozzNavigationStyle, .rail)
-            } else {
-                TopBarNavigation(
-                    destinations: [.home, .upcoming, .watchlist, .search],
-                    selection: $tvSelection, preventsAccidentalExit: true,
-                    content: { destination, _ in
-                        AnyView(page(home: destination == .home))
-                    },
-                    label: { destination in
-                        switch destination {
-                        case .home: AnyView(Label("Home", systemImage: "house"))
-                        case .upcoming: AnyView(Label("Upcoming", systemImage: "calendar"))
-                        case .watchlist: AnyView(Label("Watchlist", systemImage: "bookmark"))
-                        default: AnyView(Label("Search", systemImage: "magnifyingglass"))
-                        }
-                    },
-                    profile: Profile(name: "Viewer"), onOpenProfileSwitcher: {}
-                )
-            }
-            #else
             if isLoaded {
                 fixture.shell
                     .environment(fixture.app)
@@ -64,7 +25,6 @@ struct UpcomingCaptureFixture: View {
             } else {
                 Color.clear
             }
-            #endif
         }
         .environment(\.themePalette, palette)
         .environment(\.plozzCardStyle, .borderless)
@@ -663,46 +623,6 @@ struct UpcomingCaptureFixture: View {
     }
     #endif
 
-    #if os(tvOS)
-    private func page(home: Bool) -> some View {
-        NavigationStack {
-            Group {
-                if home {
-                    if ProcessInfo.processInfo.arguments.contains("--capture-sparse") {
-                        Button("Home fixture") {}.navigationEntryFocus(.content)
-                    } else {
-                        homeContent
-                    }
-                } else {
-                    UpcomingView(
-                        model: fixture.home.upcoming,
-                        interval: DateInterval(
-                            start: Date().addingTimeInterval(-30 * 86_400),
-                            end: Date().addingTimeInterval(90 * 86_400)
-                        )
-                    )
-                }
-            }
-            .background { AppBackground(palette: palette) }
-        }
-    }
-
-    @ViewBuilder
-    private var homeContent: some View {
-        HomeView(
-            viewModel: fixture.home, visibility: fixture.visibility,
-            heroSettings: fixture.hero,
-            heroBackground: fixture.background,
-            heroTrailerController: fixture.trailer,
-            heroIsFrontmost: true, heroRuntime: fixture.heroRuntime,
-            navigationStyle: .tabBar,
-            onSelectItem: { _ in }, onPlayItem: { _ in },
-            onSelectLibrary: { _ in }, onBrowse: { destination in
-                if case .upcoming = destination { tvSelection = .upcoming }
-            }
-        )
-    }
-    #endif
 }
 
 @MainActor
@@ -714,13 +634,9 @@ final class UpcomingCaptureState {
     let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
     let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
     let trailer = HeroTrailerController()
-    #if os(tvOS)
-    let heroRuntime = HomeHeroRuntimeState()
-    #else
     let app: PlozziOSAppModel
     let shell: PlozziOSTabShell
     let sidebar = PlozziOSSidebarGeometryModel()
-    #endif
 
     init(releases: [UpcomingRelease]? = nil) {
         let phases = UpcomingCapturePhases()
@@ -730,9 +646,6 @@ final class UpcomingCaptureState {
         let provider = UpcomingCaptureProvider()
         let account = Account(id: "upcoming-capture", from: provider.session)
         let defaults = UserDefaults(suiteName: "UpcomingCapture.\(UUID().uuidString)")!
-        #if os(tvOS)
-        visibility = HomeLibraryVisibilityModel(store: HomeLibraryVisibilityStore(defaults: defaults))
-        #else
         SyncSetupFeatureFlag().isEnabled = false
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         app = PlozziOSAppModel(accountStore: accounts, profileStore: ProfileStore(defaults: defaults))
@@ -768,7 +681,6 @@ final class UpcomingCaptureState {
             disabledOrder: MetadataSourceAttribution.all.map(\.id)
         )
         visibility = app.settings.homeVisibility
-        #endif
         hero.settings.isEnabled = false
         hero.settings.style = .carousel
         visibility.useRowDefaults(.combined)
@@ -778,15 +690,6 @@ final class UpcomingCaptureState {
             .init(enabled: rows, disabled: HomeRowChoice.shared.map(\.id).filter { !rows.contains($0) }),
             choices: HomeRowChoice.shared
         )
-        #if os(tvOS)
-        let visibility = visibility
-        home = HomeViewModel(
-            accounts: [.init(account: account, provider: provider)],
-            profileNamespace: "upcoming-capture",
-            layoutStore: InMemoryHomeLayoutStore(), contentStore: InMemoryHomeContentStore(),
-            currentVisibility: { visibility.visibility }
-        )
-        #else
         var shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
             showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
@@ -802,16 +705,11 @@ final class UpcomingCaptureState {
         }
         self.shell = shell
         home = shell.sharedHomeViewModel
-        #endif
     }
 
     func load() async {
         await home.load()
         if ProcessInfo.processInfo.arguments.contains("--capture-progressive") { return }
-        #if os(tvOS)
-        let scope = "upcoming-capture"
-        let namespace: String? = "upcoming-capture"
-        #else
         let scope = UpcomingFeedLoader.scopeKey(
             profileID: app.profiles.activeProfileID, accounts: app.upcomingAccounts,
             requestIdentity: app.profiles.activeProfile.seerrRequestIdentity,
@@ -819,7 +717,6 @@ final class UpcomingCaptureState {
             language: Locale.current.identifier, regionCode: Locale.current.region?.identifier
         )
         let namespace = app.profiles.activeNamespace
-        #endif
         let releases = releases
         await home.upcoming.refresh(scope: scope, namespace: namespace, isCurrent: { true }) {
             UpcomingFeedSnapshot(releases: releases)

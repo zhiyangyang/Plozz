@@ -52,11 +52,7 @@ public struct SettingsRowLabel<Secondary: View, Trailing: View>: View {
     private let contentInsets: EdgeInsets?
 
     private var titleFont: Font {
-        #if os(tvOS)
-        SettingsRowMetrics.titleFont
-        #else
         .callout.weight(.medium)
-        #endif
     }
 
     /// Row label that is app COPY — the common case, so literals work unchanged.
@@ -110,13 +106,9 @@ public struct SettingsRowLabel<Secondary: View, Trailing: View>: View {
             if let contentInsets {
                 rowContent.padding(contentInsets)
             } else {
-                #if os(tvOS)
-                rowContent.settingsFormRowLayout()
-                #else
                 rowContent
                     .padding(.horizontal, SettingsRowMetrics.horizontalPadding)
                     .padding(.vertical, 12)
-                #endif
             }
         }
         .contentShape(Rectangle())

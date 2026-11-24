@@ -43,19 +43,7 @@ public struct LabeledSettingRow<Trailing: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        ViewThatFits(in: .horizontal) {
-            horizontalRow
-            VStack(alignment: .leading, spacing: SettingsFormMetrics.relatedControlSpacing) {
-                label(wrapping: true)
-                trailing
-                    .frame(maxWidth: .infinity, alignment: trailingAlignment)
-            }
-        }
-        .settingsFormTextLayout()
-        #else
         horizontalRow
-        #endif
     }
 
     private var horizontalRow: some View {
@@ -74,13 +62,8 @@ public struct LabeledSettingRow<Trailing: View>: View {
                 .fixedSize(horizontal: !wrapping, vertical: wrapping)
             if let subtitle {
                 Text(subtitle)
-                    #if os(tvOS)
-                    .font(SettingsRowMetrics.helperFont)
-                    .settingsRowSecondary()
-                    #else
                     .font(.footnote)
                     .plozzForeground(.secondary)
-                    #endif
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

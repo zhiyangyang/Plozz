@@ -34,28 +34,14 @@ final class PlozzMetricsTests: XCTestCase {
     #endif
     func testSettingsControlLabelsUseTheNavigationBodyFont() {
         XCTAssertEqual(SettingsRowMetrics.titleFont, Font.body)
-        #if os(tvOS)
-        XCTAssertEqual(SettingsRowMetrics.optionFont, SettingsRowMetrics.titleFont)
-        XCTAssertEqual(SettingsRowMetrics.helperFont, SettingsRowMetrics.descriptionFont)
-        XCTAssertEqual(SettingsRowMetrics.descriptionFont, Font.caption)
-        #else
         XCTAssertEqual(SettingsRowMetrics.descriptionFont, Font.footnote)
-        #endif
         XCTAssertGreaterThan(SettingsRowMetrics.segmentedTrackInset, 0)
         XCTAssertLessThan(SettingsRowMetrics.segmentedTrackInset, SettingsRowMetrics.verticalPadding(.primary))
     }
 
     func testContainedSettingsFocusCornersAreConcentricWithTheirGroup() {
         XCTAssertGreaterThan(SettingsRowMetrics.formGroupInset, 0)
-        #if os(tvOS)
-        let groupRadius = SettingsFormMetrics.groupCornerRadius
-        XCTAssertEqual(SettingsFormMetrics.groupInset, 16)
-        XCTAssertEqual(SettingsRowMetrics.formGroupInset, SettingsFormMetrics.groupInset)
-        XCTAssertEqual(SettingsRowMetrics.formRowCornerRadius, 12)
-        XCTAssertEqual(SettingsFormMetrics.headingInset, 28)
-        #else
         let groupRadius = PlozzTheme.Metrics.Radius.card
-        #endif
         XCTAssertEqual(
             SettingsRowMetrics.formRowCornerRadius + SettingsRowMetrics.formGroupInset,
             groupRadius
@@ -144,11 +130,7 @@ final class PlozzMetricsTests: XCTestCase {
                 }
             }
         }
-        #if os(tvOS)
-        XCTAssertEqual(PlozzMetrics.standard.progressBarHeight, 8)
-        #else
         XCTAssertEqual(PlozzMetrics.touch(density: .standard).progressBarHeight, 6)
-        #endif
     }
 
     func testTouchCardsUseProportionateBadgesAndCaptionSpacing() {

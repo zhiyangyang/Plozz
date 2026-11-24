@@ -56,31 +56,8 @@ public struct HomeLiveTVCard: View {
 
     @ViewBuilder
     private var control: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            Button { open(channel.route) } label: { label }
-                .buttonStyle(.card)
-                .focused($isFocused)
-                .frame(width: width, height: width * 9 / 16)
-        } else {
-            label
-                .plozzFocusHalo(
-                    cornerRadius: metrics.landscapeCardCornerRadius,
-                    focusScale: reduceMotion ? 1 : PlozzTheme.Metrics.mediumFocusedCardScale,
-                    isFocused: isFocused
-                )
-                .focusableCard(
-                    isFocused: $isFocused, cornerRadius: metrics.landscapeCardCornerRadius,
-                    action: { open(channel.route) }
-                )
-                .frame(width: width, height: width * 9 / 16)
-                .zIndex(isFocused ? 1 : 0)
-                .plozzCardFocusTransition(isFocused: isFocused, animates: !reduceMotion)
-        }
-        #else
         Button { open(channel.route) } label: { label }
             .buttonStyle(.plain)
-        #endif
     }
 
     private var label: some View {
@@ -118,13 +95,7 @@ public struct HomeLiveTVCard: View {
         .frame(width: width, height: width * 9 / 16, alignment: .leading)
         .foregroundStyle(palette.primaryText)
         .background {
-            #if os(tvOS)
-            if !focusStyle.usesSystemEffect {
-                fallbackSurface
-            }
-            #else
             fallbackSurface
-            #endif
         }
     }
 

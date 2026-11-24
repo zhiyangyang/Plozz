@@ -26,11 +26,7 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
         model.duration = 3_600
         model.currentSeconds = 100
         model.infoCard.cast = (0..<20).map { .init(id: "\($0)", name: "Person \($0 + 1)", role: "Character") }
-        #if os(tvOS)
-        let sizes = [CGSize(width: 1920, height: 1080)]
-        #else
         let sizes = [CGSize(width: 320, height: 568), .init(width: 568, height: 320), .init(width: 1024, height: 768)]
-        #endif
         for size in sizes {
             let metrics = PlayerCardMetrics.resolved(forWidth: size.width, height: size.height)
             for mode in ["native", "frosted", "reduced-transparency"] {
@@ -129,9 +125,6 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
         window.makeKeyAndVisible()
         for backdrop in [Color.black, .white] {
             state.backdrop = backdrop
-            #if os(tvOS)
-            state.focusNativeButton = false
-            #endif
             for reduced in [false, true] {
                 state.reduced = reduced
                 var snapshots: [[String: [UInt8]]] = []
@@ -145,13 +138,8 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
                     add(attachment)
                     XCTAssertEqual(probe.surroundingScheme, scheme, "Do not override the player/sheet host.")
                     XCTAssertEqual(probe.surroundingPalette, scheme == .light ? .light : .dark)
-                    #if os(tvOS)
-                    XCTAssertEqual(probe.surfaceScheme, .dark, "TV playback retains build 57's dark glass.")
-                    XCTAssertEqual(probe.surfacePalette, .dark)
-                    #else
                     XCTAssertEqual(probe.surfaceScheme, scheme)
                     XCTAssertEqual(probe.surfacePalette, scheme == .light ? .light : .dark)
-                    #endif
                     var samples: [String: [UInt8]] = [:]
                     for name in ["circle", "tab", "track", "panel", "card", "native-button"] {
                         let rect = try XCTUnwrap(probe.frames[name], name)
@@ -185,15 +173,6 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
                         XCTAssertLessThan(surfaceLevel, 0.6)
                     }
                     #endif
-                    #if os(tvOS)
-                    let button = try XCTUnwrap(probe.frames["native-button"])
-                    let buttonInk = luminance(try pixels(image, rect: CGRect(
-                        x: button.midX - 3, y: button.midY - 3, width: 6, height: 6
-                    )))
-                    if reduced {
-                        XCTAssertGreaterThan(buttonInk, 0.85, "Dark fallback needs a light play icon.")
-                    }
-                    #endif
                     #if os(iOS)
                     if !reduced {
                         XCTAssertGreaterThan(inkLevel, 0.85, "Native video controls retain white ink in Light mode.")
@@ -208,44 +187,14 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
                     let dark = try XCTUnwrap(snapshots[0][name])
                     let light = try XCTUnwrap(snapshots[1][name])
                     XCTAssertEqual(dark.count, light.count, "Appearance must not change \(name) geometry.")
-                    #if os(tvOS)
-                    if reduced {
-                        XCTAssertEqual(luminance(light), luminance(dark), accuracy: 0.01,
-                                       "TV fallback chrome keeps its dark playback scope.")
-                    }
-                    #else
                     if reduced && name == "track" {
                         XCTAssertEqual(luminance(light), luminance(dark), accuracy: 0.01,
                                        "Playback tracks must not invert to a pale slab in Light mode.")
                     } else if reduced {
                         XCTAssertGreaterThan(luminance(light) - luminance(dark), 0.25, name)
                     }
-                    #endif
                 }
             }
-            #if os(tvOS)
-            state.reduced = false
-            _ = try await capture(window)
-            state.focusNativeButton = true
-            let focusedImage = try await capture(window)
-            XCTAssertTrue(probe.nativeButtonFocused)
-            let attachment = XCTAttachment(image: focusedImage)
-            attachment.name = "Player-native-focused-\(backdrop)"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-            let button = try XCTUnwrap(probe.frames["native-button"])
-            let focusedFrame = try XCTUnwrap(nativeFocusFrame(in: window))
-            XCTAssertTrue(button.contains(CGPoint(x: focusedFrame.midX, y: focusedFrame.midY)),
-                          "The native focus system must actually focus the play button.")
-            let ink = try pixels(focusedImage, rect: CGRect(
-                x: button.midX - 3, y: button.midY - 3, width: 6, height: 6
-            ))
-            let surface = try pixels(focusedImage, rect: CGRect(
-                x: button.minX + 10, y: button.midY - 3, width: 6, height: 6
-            ))
-            XCTAssertGreaterThan(abs(luminance(ink) - luminance(surface)), 0.45,
-                                 "Native focus must keep the play icon readable.")
-            #endif
         }
     }
 
@@ -280,19 +229,6 @@ final class PlayerSurfaceAppearanceHostedTests: XCTestCase {
         } / Double(max(1, pixels.count / 4)) / 255
     }
 
-    #if os(tvOS)
-    private func nativeFocusFrame(in window: UIWindow) -> CGRect? {
-        guard let item = UIFocusSystem(for: window)?.focusedItem else { return nil }
-        var environment: (any UIFocusEnvironment)? = item
-        while let current = environment {
-            if let container = current.focusItemContainer {
-                return container.coordinateSpace.convert(item.frame, to: window)
-            }
-            environment = current.parentFocusEnvironment
-        }
-        return nil
-    }
-    #endif
 
     #if os(iOS)
     private func descendant(in view: UIView, identifier: String) -> UIView? {
@@ -343,9 +279,6 @@ private final class SurfaceState: ObservableObject {
     @Published var scheme = ColorScheme.dark
     @Published var reduced = false
     @Published var backdrop = Color.black
-    #if os(tvOS)
-    @Published var focusNativeButton = false
-    #endif
 }
 
 @MainActor
@@ -355,18 +288,11 @@ private final class SurfaceProbe {
     var surroundingPalette: ThemePalette?
     var surfaceScheme: ColorScheme?
     var surfacePalette: ThemePalette?
-    #if os(tvOS)
-    var nativeButtonFocused = false
-    #endif
 }
 
 private struct SurfaceFixture: View {
     @ObservedObject var state: SurfaceState
     let probe: SurfaceProbe
-    #if os(tvOS)
-    private enum Focus { case parking, native }
-    @FocusState private var focus: Focus?
-    #endif
 
     var body: some View {
         VStack(spacing: 24) {
@@ -427,15 +353,6 @@ private struct SurfaceFixture: View {
             .buttonStyle(PlayerOverVideoCardStyle(focused: false, cornerRadius: 32, mediaGlass: true))
             .disabled(true)
             .recordSurface("card", probe: probe)
-            #if os(tvOS)
-            Button("Focus parking") {}
-                .foregroundStyle(.black)
-                .focused($focus, equals: .parking)
-                .onAppear { focus = .parking }
-                .onChange(of: state.focusNativeButton) { _, value in
-                    focus = value ? .native : .parking
-                }
-            #endif
         }
         .playerPlatformAppearance()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -444,11 +361,6 @@ private struct SurfaceFixture: View {
         .environment(\.colorScheme, state.scheme)
         .environment(\.themePalette, state.scheme == .light ? .light : .dark)
         .environment(\.plozzReduceTransparency, state.reduced)
-        #if os(tvOS)
-        .onChange(of: focus, initial: true) { _, value in
-            probe.nativeButtonFocused = value == .native
-        }
-        #endif
     }
 }
 

@@ -1,12 +1,10 @@
-#if os(tvOS) || os(iOS)
+#if os(iOS)
 import AppRuntime
 import CoreModels
 import CryptoKit
 import FeatureAuth
 import XCTest
-#if os(tvOS)
-@testable import AppShell
-#elseif os(iOS)
+#if os(iOS)
 @testable import AppShelliOS
 #endif
 
@@ -18,9 +16,7 @@ final class WatchlistCloudApplyTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         let profileStore = ProfileStore(defaults: defaults)
-        #if os(tvOS)
-        let app = AppState(accountStore: accounts, profilesModel: ProfilesModel(store: profileStore))
-        #elseif os(iOS)
+        #if os(iOS)
         let app = PlozziOSAppModel(accountStore: accounts, profileStore: profileStore)
         #endif
         let profileID = ProfileStore.defaultProfileID

@@ -5,9 +5,6 @@ import Vision
 import XCTest
 @testable import CoreUI
 @testable import MetadataKit
-#if os(tvOS)
-import TVUIKit
-#endif
 
 @MainActor
 final class ContinueWatchingArtworkHostedTests: XCTestCase {
@@ -140,18 +137,10 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             settings: .init(preference: .library), shape: .poster, width: width
         ) { window in
             try await waitUntil { try self.coloredPixels(window)[0] > 10_000 }
-            #if os(tvOS)
-            // Native focus enlarges the displayed image; sample its composited bitmap.
-            let image = try XCTUnwrap(nativePoster(in: window)?.image)
-            let column = try self.artworkPixels(image).centerRed
-            let height = CGFloat(column.count)
-            let top: CGFloat = 0
-            #else
             let column = try self.artworkPixels(window).centerRed
             let artworkWidth = width - 2 * PlozzMetrics.standard.borderlessCardSideMargin
             let height = artworkWidth / ContinueWatchingPlaybackDetails.detailed.cardAspectRatio
             let top = (window.bounds.height - height) / 2
-            #endif
             let original = Double(column[Int(top + height * 0.45)])
             XCTAssertGreaterThan(original, 200)
             for fraction: CGFloat in [0.72, 0.80, 0.86] {
@@ -194,13 +183,8 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                 providerPolicyIdentity: source.policy.identity
             )
             XCTAssertEqual(ArtworkSeedMemo.prepared(for: key, variant: .posterCard)?.reference, .remote(poster))
-            #if os(tvOS)
-            let width: CGFloat = 300
-            let metrics = PlozzMetrics.standard
-            #else
             let width: CGFloat = 132
             let metrics = PlozzMetrics.touch(density: .standard)
-            #endif
             let presentations = ContinueWatchingPlaybackDetails.allCases.flatMap { details in
                 [CardStyle.borderless, .framed].map { ($0, details) }
             }
@@ -213,13 +197,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                     let counts = try coloredPixels(window)
                     XCTAssertEqual(counts[1], 0, "Portrait must not show the episode still.")
                     XCTAssertEqual(counts[2], 0, "Portrait must not crop a landscape backdrop.")
-                    #if os(tvOS)
-                    if style == .borderless {
-                        let native = try XCTUnwrap(nativePoster(in: window))
-                        XCTAssertEqual(native.bounds.height / native.bounds.width,
-                                       1.5, accuracy: 0.02, "Both treatments must match a normal poster.")
-                    }
-                    #endif
                     let text = try recognizedText(window)
                     if details == .detailed {
                         XCTAssertTrue(text.contains { $0.contains("POSTER") },
@@ -256,11 +233,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             backdropURL: backdrop, logoURL: logo
         )
         let store = makeStore { _ in nil }
-        #if os(tvOS)
-        let metrics = PlozzMetrics.standard
-        #else
         let metrics = PlozzMetrics.touch(density: .standard)
-        #endif
         for parent in [CardCaptionView.home, .recommended] {
             for choice in CardCaptionView.continueWatching.customizationChoices {
                 var captions = CardCaptionSettings(overrides: [.home: true, .recommended: false])
@@ -303,9 +276,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         )
         let modes: [ContinueWatchingPlaybackDetails] = [.detailed, .progressOnly, .detailed]
         var step = 0
-        #if os(tvOS)
-        var owner: NativePosterButton?
-        #endif
         try await withCard(
             item, store: makeStore { _ in nil }, style: .borderless,
             settings: .init(preference: .library), shape: .poster,
@@ -322,12 +292,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                     && self.coloredPixels(window)[0] > 10_000
             }
             _ = try recognizedText(window, attachmentName: "continue-watching-details-step-\(step)")
-            #if os(tvOS)
-            let current = try XCTUnwrap(nativePoster(in: window))
-            if let owner { XCTAssertTrue(current === owner, "Changing details must not replace the native focus owner.") }
-            owner = current
-            XCTAssertEqual(current.bounds.height / current.bounds.width, 1 / modes[step].cardAspectRatio, accuracy: 0.02)
-            #endif
             step += 1
         }
         XCTAssertEqual(step, modes.count)
@@ -367,15 +331,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                                  "The resolver must paint the prepared winner without an asynchronous image load.")
             for cardStyle in [CardStyle.borderless, .framed] {
                 try await withCard(fixture.item, store: store, style: cardStyle, settings: policy.settings) { window in
-                    #if os(tvOS)
-                    if cardStyle == .borderless {
-                        // Native artwork composition is asynchronous even when its source bitmap is prepared.
-                        try await waitUntil {
-                            guard let image = self.nativePoster(in: window)?.image else { return false }
-                            return try self.artworkPixels(image).colors[expected] > 500
-                        }
-                    }
-                    #endif
                     XCTAssertGreaterThan(
                         try coloredPixels(window)[expected], 500,
                         "Prepared card winner: \(preference) / \(cardStyle)"
@@ -451,18 +406,11 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                 }
                 let requests = await gate.requests
                 XCTAssertEqual(requests, 1, "The card must start its own textless lookup, without row prefetch.")
-                #if os(tvOS)
-                let poster = nativePoster(in: window)
-                if style == .borderless { XCTAssertNotNil(poster) }
-                #endif
                 let before = try coloredPixels(window)
                 XCTAssertEqual(before[0], 0)
                 XCTAssertEqual(before[1], 0, "Do not paint and pin the generic background while textless art is pending.")
                 await gate.finish(fixture.clean)
                 try await waitUntil { try self.coloredPixels(window)[2] > 500 }
-                #if os(tvOS)
-                if let poster { XCTAssertTrue(nativePoster(in: window) === poster, "Keep the native focus owner mounted.") }
-                #endif
             }
             await gate.finish(nil)
         }
@@ -546,13 +494,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         let store = makeStore { _ in await gate.lookup() }
         try await withCard(fixture.item, store: store, style: .borderless) { window in
             window.layoutIfNeeded()
-            #if os(tvOS)
-            let poster = try XCTUnwrap(nativePoster(in: window))
-            #endif
             try await waitUntil { try self.coloredPixels(window)[0] > 500 }
-            #if os(tvOS)
-            XCTAssertTrue(nativePoster(in: window) === poster)
-            #endif
         }
         await gate.finish(nil)
     }
@@ -776,11 +718,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         XCTAssertTrue(try condition(), "Continue Watching did not reach the expected artwork. \(context)")
     }
 
-    #if os(tvOS)
-    private func nativePoster(in view: UIView) -> NativePosterButton? {
-        (view as? NativePosterButton) ?? view.subviews.lazy.compactMap { self.nativePoster(in: $0) }.first
-    }
-    #endif
 }
 
 private actor TextlessLookupGate {

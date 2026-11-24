@@ -7,11 +7,7 @@ final class PlaybackFailureInteractionTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
-        #if os(tvOS)
-        app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
     }
 
     override func tearDown() {
@@ -37,11 +33,7 @@ final class PlaybackFailureInteractionTests: XCTestCase {
         XCTAssertTrue(report.label.contains("engine_failure=sourceRefused"))
         XCTAssertFalse(report.label.contains("expired"))
         capture("details")
-        #if os(tvOS)
-        XCUIRemote.shared.press(.menu)
-        #else
         activate(app.buttons["playback-diagnostics-close"])
-        #endif
         XCTAssertTrue(app.buttons["playback-failure-details"].waitForExistence(timeout: 5))
         activate(app.buttons["playback-failure-retry"])
         XCTAssertTrue(app.staticTexts["Retried"].waitForExistence(timeout: 5))
@@ -119,32 +111,14 @@ final class PlaybackFailureInteractionTests: XCTestCase {
 
     private func activate(_ target: XCUIElement) {
         XCTAssertTrue(target.waitForExistence(timeout: 5), app.debugDescription)
-        #if os(tvOS)
-        for _ in 0..<12 {
-            if hasFocus(target) { break }
-            let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
-            let dx = target.frame.midX - focused.frame.midX
-            let dy = target.frame.midY - focused.frame.midY
-            XCUIRemote.shared.press(abs(dy) > abs(dx) ? (dy > 0 ? .down : .up) : (dx > 0 ? .right : .left))
-        }
-        XCTAssertTrue(hasFocus(target), app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        #else
         for _ in 0..<8 {
             if target.isHittable { break }
             app.swipeUp()
         }
         XCTAssertTrue(target.isHittable, app.debugDescription)
         target.tap()
-        #endif
     }
 
-    #if os(tvOS)
-    private func hasFocus(_ target: XCUIElement) -> Bool {
-        target.hasFocus || target.descendants(matching: .any)
-            .matching(NSPredicate(format: "hasFocus == true")).firstMatch.exists
-    }
-    #endif
 
     private func capture(_ name: String) {
         #if os(iOS)

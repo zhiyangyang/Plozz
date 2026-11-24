@@ -100,11 +100,7 @@ final class DiagnosticRecordingController {
             label.accessibilityIdentifier = "diagnostic-recording-status"
             label.textAlignment = .center
             label.numberOfLines = 2
-            #if os(tvOS)
-            label.font = .systemFont(ofSize: 25, weight: .semibold)
-            #else
             label.font = .systemFont(ofSize: 15, weight: .semibold)
-            #endif
             label.textColor = .white
             label.layer.cornerRadius = 12
             label.clipsToBounds = true

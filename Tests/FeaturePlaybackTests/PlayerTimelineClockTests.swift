@@ -56,11 +56,7 @@ final class PlayerTimelineClockTests: XCTestCase {
         model.controlsVisible = true
         XCTAssertTrue(model.timelineClock.isEnabled, "Rearming auto-hide must not reset the clock.")
         model.controlsVisible = false
-        #if os(tvOS)
-        XCTAssertTrue(model.timelineClock.isEnabled, "The outgoing controls must keep their clock labels.")
-        #else
         XCTAssertFalse(model.timelineClock.isEnabled)
-        #endif
         model.controlsVisible = true
         XCTAssertFalse(model.timelineClock.isEnabled)
     }

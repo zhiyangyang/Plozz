@@ -102,15 +102,7 @@ public struct SkeletonCardView: View {
 
     @ViewBuilder
     private var cardBody: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect && cardStyle == .borderless {
-            nativeCard
-        } else {
-            styledBody
-        }
-        #else
         styledBody
-        #endif
     }
 
     private var surfaceFocused: Bool { isFocused && focusStyle.drawsFocusOutline }
@@ -201,69 +193,6 @@ public struct SkeletonCardView: View {
         )
     }
 
-    #if os(tvOS)
-    // MARK: Native (system focus, "Posters" style)
-
-    /// Mirrors `PosterCardView.nativePosterCard`. The placeholder art is
-    /// a native poster itself, so it keeps the same clearance for focus growth
-    /// and the same corners as the real one.
-    private var nativeCard: some View {
-        VStack(spacing: metrics.nativePosterCaptionSpacing) {
-            nativeArtwork
-                .shimmering(active: !showsProgress)
-                .frame(maxWidth: .infinity)
-            if showsCaption {
-                nativeCaption
-                    .offset(y: isFocused ? metrics.nativePosterCaptionFocusTravel : 0)
-            }
-        }
-        .padding(.horizontal, metrics.borderlessCardSideMargin)
-    }
-
-    @ViewBuilder
-    private var nativeArtwork: some View {
-        let artwork = NativePosterPlaceholder(
-            aspectRatio: borderlessAspectRatio,
-            fallbackWidth: nativeArtworkWidth,
-            fill: palette.fill,
-            focus: focus,
-            showsProgress: showsProgress
-        )
-        if let focus {
-            artwork.focused(focus.focusState)
-        } else {
-            artwork
-        }
-    }
-
-    /// The artwork width a native poster is given: the card's own artwork width.
-    private var nativeArtworkWidth: CGFloat {
-        switch style {
-        case .poster: metrics.posterWidth
-        case .landscape: artworkSize.width
-        }
-    }
-
-    /// `SystemPosterCaption`'s footprint at rest: a line for each font, centred
-    /// pills in them, and the focus travel reserved beneath.
-    private var nativeCaption: some View {
-        let title = UIFont.systemFont(ofSize: metrics.cardTitleFontSize, weight: .semibold)
-        let subtitle = UIFont.systemFont(ofSize: metrics.cardSubtitleFontSize)
-        return VStack(spacing: 2) {
-            nativeCaptionLine(height: ceil(title.lineHeight), fraction: 0.7, pill: (16 * metrics.scale).rounded())
-            nativeCaptionLine(height: ceil(subtitle.lineHeight), fraction: 0.45, pill: (13 * metrics.scale).rounded())
-        }
-        .padding(.bottom, metrics.nativePosterCaptionFocusTravel)
-        .shimmering()
-    }
-
-    private func nativeCaptionLine(height: CGFloat, fraction: CGFloat, pill: CGFloat) -> some View {
-        Capsule(style: .continuous)
-            .fill(palette.fill)
-            .frame(width: (nativeArtworkWidth * fraction).rounded(), height: pill)
-            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
-    }
-    #endif
 
     // MARK: Borderless ("Posters" style)
 

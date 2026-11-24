@@ -174,9 +174,7 @@ public struct LiveTVSourcesView: View {
                 }
             }
         }
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #elseif os(iOS)
+        #if os(iOS)
         .toggleStyle(SettingsSwitchToggleStyle())
         // The embedded pane is one List row; its child groups cannot clear
         // that row's system background or its extra insets.
@@ -476,9 +474,6 @@ private struct LiveTVSourcesContent: View {
     }
 
     private struct LiveTVConfiguredSourceRow: View {
-        #if os(tvOS)
-        @Environment(LiveTVGuidePreparationModel.self) private var guidePreparation: LiveTVGuidePreparationModel?
-        #endif
         let source: LiveTVConfiguredSourceItem
         let model: LiveTVSourceManagementModel
         let imports: LiveTVPrototypeImportModel?
@@ -560,13 +555,6 @@ private struct LiveTVSourcesContent: View {
                     }
                     .buttonStyle(SettingsFocusButtonStyle(size: .contained))
                     .accessibilityIdentifier("live-tv-source-details-\(source.id)")
-                    #if os(tvOS)
-                    if source.isEnabled, let preparation = guidePreparation?.statuses[source.accountID] {
-                        LiveTVGuidePreparationStatus(status: preparation)
-                            .font(SettingsRowMetrics.descriptionFont)
-                            .padding(.horizontal, SettingsRowMetrics.horizontalPadding)
-                    }
-                    #endif
                     if source.isEnabled, let imports {
                         LiveTVSourceErrors(imports: imports, sourceID: source.id, retry: retrySource)
                     }
@@ -939,31 +927,10 @@ private struct LiveTVGuideDaysPicker: View {
     let identifier: String
 
     var body: some View {
-        #if os(tvOS)
-        HStack(spacing: 24) {
-            Label { Text(title) } icon: { Image(systemName: symbol) }
-            Spacer(minLength: 16)
-            Menu {
-                Picker(selection: $selection) {
-                    ForEach(options, id: \.self) { value in
-                        Text("\(value) days").tag(value)
-                    }
-                } label: {
-                    Text(title)
-                }
-            } label: {
-                Text("\(selection) days")
-            }
-            .menuStyle(.button)
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier(identifier)
-        }
-        #else
         VStack(alignment: .leading, spacing: 12) {
             Label { Text(title) } icon: { Image(systemName: symbol) }
             SettingsOptionPicker(options: options, selection: $selection) { value in "\(value) days" }
         }
-        #endif
     }
 }
 
@@ -1331,13 +1298,9 @@ struct LiveTVServerSourceSummary: View {
                     Text("Ready to load").font(.caption)
                 }
                 if let preparation = guidePreparation?.statuses[source.accountID] {
-                    #if os(tvOS)
-                    LiveTVGuidePreparationStatus(status: preparation)
-                    #else
                     if preparation.phase != .loading {
                         LiveTVGuidePreparationStatus(status: preparation)
                     }
-                    #endif
                 } else if status.guidePhase == .loading {
                     ProgressView("Loading guide")
                         .accessibilityIdentifier("live-tv-source-guide-loading-\(source.id)")
@@ -1349,11 +1312,7 @@ struct LiveTVServerSourceSummary: View {
 }
 
 private var liveTVSourceRowInsets: EdgeInsets {
-    #if os(tvOS)
-    let horizontal = SettingsRowMetrics.horizontalPadding
-    #else
     let horizontal: CGFloat = 0
-    #endif
     return .init(top: 8, leading: horizontal, bottom: 8, trailing: horizontal)
 }
 
@@ -1373,15 +1332,9 @@ private struct LiveTVPlaylistSourceRow: View {
             contentInsets: liveTVSourceRowInsets,
             icon: {
                 ProviderSiteIcon(url: source.playlistURL, size: iconSize) {
-                    #if os(tvOS)
-                    Image(systemName: source.importedPlaylistID == nil ? "antenna.radiowaves.left.and.right" : "doc")
-                        .font(.body)
-                        .settingsRowIcon()
-                    #else
                     Image(systemName: source.importedPlaylistID == nil ? "list.bullet.rectangle" : "doc")
                         .font(.system(size: 22))
                         .settingsRowIcon()
-                    #endif
                 }
             },
             secondary: {
@@ -1404,10 +1357,6 @@ private struct LiveTVPlaylistSourceRow: View {
     }
 
     private var iconSize: CGFloat {
-        #if os(tvOS)
-        40
-        #else
         SettingsRowMetrics.iconColumnWidth
-        #endif
     }
 }

@@ -166,15 +166,6 @@ final class IPTVImportPresentationHostedTests: XCTestCase {
         XCTAssertTrue(text.contains("Connecting to your provider"), text)
         XCTAssertTrue(text.contains("Cancel"), text)
         XCTAssertFalse(text.contains("Playlist URL"), text)
-        #if os(tvOS)
-        let focusDeadline = ContinuousClock.now + .seconds(3)
-        while UIFocusSystem(for: window)?.focusedItem == nil, ContinuousClock.now < focusDeadline {
-            window.setNeedsFocusUpdate()
-            window.updateFocusIfNeeded()
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        XCTAssertNotNil(UIFocusSystem(for: window)?.focusedItem, "The remaining Cancel action must receive native focus.")
-        #endif
         await gate.send(.init(stage: .playlist, entries: 382_324))
         text = try await capture(window, name: "iptv-reading")
         XCTAssertTrue(text.contains("Reading your playlist"), text)

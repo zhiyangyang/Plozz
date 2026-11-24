@@ -101,7 +101,7 @@ public struct LoadingMessagesView: View {
 
     /// Politely announce the new message to VoiceOver without interrupting.
     private func announce(_ message: LoadingMessage) {
-        #if os(tvOS) || os(iOS)
+        #if os(iOS)
         AccessibilityNotification.Announcement(message.spokenText).post()
         #endif
     }

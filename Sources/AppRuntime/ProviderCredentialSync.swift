@@ -105,11 +105,7 @@ public final class ProviderCredentialSync {
         didRestore: @escaping () -> Void,
         onProgress: @escaping () -> Void = {},
         enroll: @escaping @Sendable (SiloSyncCredential, Account, String) async throws -> UserSession = { credential, account, deviceID in
-            #if os(tvOS)
-            let platform = "tvos"
-            #else
             let platform = "ios"
-            #endif
             return try await SiloAuthentication(baseURL: account.server.baseURL).enrollDevice(
                 using: credential, serverID: account.server.id, serverName: account.server.name,
                 deviceID: deviceID, platform: platform)

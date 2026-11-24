@@ -291,17 +291,6 @@ public struct MetadataSettingsDetailView: View {
                     )
                     .settingsSearchAnchor("metadata-provider-priority-enabled")
 
-                    #if os(tvOS)
-                    Button(role: .destructive) {
-                        providers.resetToBuildDefaults()
-                    } label: {
-                        Label("Reset to Recommended", systemImage: "arrow.uturn.backward")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(SettingsFormButtonStyle())
-                    .disabled(isReordering)
-                    .padding(.top, 6)
-                    #endif
                 }
             }
         }
@@ -313,19 +302,11 @@ public struct MetadataSettingsDetailView: View {
         comment: "Divider in the metadata-providers list; providers below it are turned off."
     )
 
-    #if os(tvOS)
-    private static let disabledPlaceholder = LocalizedStringResource(
-        "metadataProviders.disabledPlaceholder.tv",
-        defaultValue: "Move a provider here to stop using it.",
-        comment: "Empty-state drop target shown under the Disabled divider on Apple TV."
-    )
-    #else
     private static let disabledPlaceholder = LocalizedStringResource(
         "metadataProviders.disabledPlaceholder",
         defaultValue: "Drag a provider here to turn it off",
         comment: "Empty-state drop target shown under the Disabled divider on iPhone/iPad."
     )
-    #endif
 
 
     private func persist(_ next: MetadataProviderListLogic.Sections) {
@@ -677,13 +658,9 @@ private struct MetadataDiagnosticsCachePanel: View {
             contentPadding: .settingsPanelRowContent
         ) {
             SettingsControlRows(nonTVSpacing: 16) {
-                #if os(tvOS)
-                budgetControls
-                #else
                 HStack(alignment: .top, spacing: 28) {
                     budgetControls
                 }
-                #endif
 
                 Button(role: .destructive) {
                     confirmClear = true
@@ -727,16 +704,12 @@ private struct MetadataDiagnosticsCachePanel: View {
         options: [Int],
         selection: Binding<Int>
     ) -> some View {
-        #if os(tvOS)
-        SettingsStepper(options: options, selection: selection, label: title) { "\($0) MB" }
-        #else
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline.weight(.semibold))
             SettingsStepper(options: options, selection: selection) { "\($0) MB" }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        #endif
     }
 
     private var artworkBudgetBinding: Binding<Int> {

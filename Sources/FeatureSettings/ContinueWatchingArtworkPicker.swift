@@ -14,19 +14,11 @@ struct ContinueWatchingArtworkPicker: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var usesRows: Bool {
-        #if os(tvOS)
-        false
-        #else
         horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize
-        #endif
     }
 
     private var widePreviewHeight: CGFloat {
-        #if os(tvOS)
-        240
-        #else
         200
-        #endif
     }
 
     var body: some View {

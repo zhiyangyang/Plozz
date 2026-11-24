@@ -107,11 +107,7 @@ public struct ProfileLockOfferView: View {
     }
 
     private var avatarSize: CGFloat {
-        #if os(tvOS)
-        190
-        #else
         128
-        #endif
     }
 }
 #endif

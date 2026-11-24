@@ -145,9 +145,6 @@ private struct SubtitlePreviewCaption: View {
                     Text("Preparing HDR preview…")
                 case .ready:
                     Text("HDR10 test scene · Subtitle brightness: \(style.hdrLuminanceScale, format: .percent.precision(.fractionLength(0)))")
-                    #if os(tvOS)
-                    Text("For HDR output, enable Match Dynamic Range or use an HDR video format in Apple TV settings.")
-                    #endif
                 case .failed(let failure):
                     Text(failure.message).foregroundStyle(.red)
                     Text("Turn HDR preview off and on to retry.")

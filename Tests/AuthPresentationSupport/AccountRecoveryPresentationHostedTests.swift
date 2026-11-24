@@ -9,31 +9,6 @@ import XCTest
 
 @MainActor
 final class AccountRecoveryPresentationHostedTests: XCTestCase {
-    #if os(tvOS)
-    func testManagedSignInPhaseOwnsItsOpaqueSurfaceInsteadOfShowingTheExpiredPageBehindIt() async throws {
-        let model = AccountReauthenticationModel(
-            account: .init(
-                id: "account",
-                server: .init(id: "server", name: "Server", baseURL: URL(string: "https://server.example")!, provider: .jellyfin),
-                userID: "user", userName: "Viewer", deviceID: "fixture"
-            ),
-            deviceID: "fixture", store: AccountStore(secureStore: InMemorySecureStore()),
-            isAuthorized: { true }, onComplete: {}
-        )
-        try await verify(
-            ZStack(alignment: .leading) {
-                Color.red.ignoresSafeArea()
-                Text("EXPIRED UNDERLAY").font(.system(size: 48)).padding(120)
-                AccountReauthenticationView(model: model, onCancel: {}) { _ in
-                    Text("Link your account")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            },
-            name: "Opaque account-link phase", palette: .dark,
-            expected: ["Link your account"], notExpected: ["EXPIRED", "UNDERLAY"]
-        )
-    }
-    #endif
 
     func testPlexRecoveryKeepsExplanationAndAllActionsVisibleWithNativePrimaryFocus() async throws {
         #if os(iOS)
@@ -134,15 +109,6 @@ final class AccountRecoveryPresentationHostedTests: XCTestCase {
             previous?.makeKeyAndVisible()
         }
         window.layoutIfNeeded()
-        #if os(tvOS)
-        let focus = try XCTUnwrap(UIFocusSystem.focusSystem(for: window))
-        let focusDeadline = ContinuousClock.now + .seconds(5)
-        while focus.focusedItem == nil, ContinuousClock.now < focusDeadline {
-            focus.requestFocusUpdate(to: host)
-            focus.updateFocusIfNeeded()
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        #endif
         try await Task.sleep(for: .milliseconds(250))
         window.layoutIfNeeded()
         let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
@@ -214,27 +180,5 @@ final class AccountRecoveryPresentationHostedTests: XCTestCase {
             )
             XCTAssertTrue(safeBounds.contains(frame), "\(name) text must remain inside the safe area: \(frame)")
         }
-        #if os(tvOS)
-        if let focusedTitle {
-            let item = try XCTUnwrap(focus.focusedItem)
-            var environment: (any UIFocusEnvironment)? = item
-            var focusedFrame: CGRect?
-            while let current = environment {
-                if let container = current.focusItemContainer {
-                    focusedFrame = container.coordinateSpace.convert(item.frame, to: window)
-                    break
-                }
-                environment = current.parentFocusEnvironment
-            }
-            let frame = try XCTUnwrap(focusedFrame)
-            XCTAssertTrue(observations.contains { observation in
-                guard observation.topCandidates(1).first?.string == focusedTitle else { return false }
-                let rect = observation.boundingBox
-                return frame.contains(CGPoint(
-                    x: rect.midX * window.bounds.width, y: (1 - rect.midY) * window.bounds.height
-                ))
-            }, "Native focus must land on \(focusedTitle), not just a SwiftUI focus binding: \(text)")
-        }
-        #endif
     }
 }

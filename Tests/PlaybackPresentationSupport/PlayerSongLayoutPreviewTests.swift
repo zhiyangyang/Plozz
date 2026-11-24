@@ -82,14 +82,6 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
                 XCTAssertGreaterThan(previous.minY, next.maxY,
                                      "Keep services in popularity order with a separate full-width row for each.")
             }
-            #if os(tvOS)
-            let heading = try XCTUnwrap(observations.first {
-                $0.topCandidates(1).first?.string == "Open song"
-            }?.boundingBox)
-            XCTAssertLessThanOrEqual(heading.height * window.bounds.height,
-                                    UIFont.systemFont(ofSize: 38, weight: .semibold).lineHeight,
-                                    "Use the compact detail-dialog heading rather than a page-sized title.")
-            #endif
         }
     }
 
@@ -102,11 +94,7 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
         XCTAssertEqual(SongServiceLink.links(for: song).map(\.service),
                        [.spotify, .youtubeMusic, .amazonMusic, .deezer, .tidal])
         for size in [DynamicTypeSize.large, .accessibility2] {
-            #if os(tvOS)
-            let width: CGFloat = 740
-            #else
             let width: CGFloat = 320
-            #endif
             let window = UIWindow(windowScene: scene)
             window.overrideUserInterfaceStyle = .dark
             let host = UIHostingController(rootView:
@@ -223,33 +211,6 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
             let linked = try XCTUnwrap(probe.frames["linked"])
             XCTAssertEqual(reference.size, linked.size)
 
-            #if os(tvOS)
-            func focusTarget(in bounds: CGRect) async throws -> any UIFocusItem {
-                let point = CGPoint(x: bounds.midX, y: bounds.midY)
-                func target() -> (any UIFocusItem)? { nativeFocusItems(in: window).first {
-                    NativeFocusRegion.frame(of: $0, in: host.view)?.contains(point) == true
-                } }
-                let deadline = ContinuousClock.now + .seconds(3)
-                while target() == nil, ContinuousClock.now < deadline {
-                    window.layoutIfNeeded()
-                    try await Task.sleep(for: .milliseconds(20))
-                }
-                return try XCTUnwrap(target(), "No native focus item at \(bounds).")
-            }
-            func focus(_ target: any UIFocusItem) async throws {
-                host.target = target
-                host.setNeedsFocusUpdate()
-                host.updateFocusIfNeeded()
-                let deadline = ContinuousClock.now + .seconds(3)
-                while UIFocusSystem.focusSystem(for: window)?.focusedItem !== target,
-                      ContinuousClock.now < deadline {
-                    try await Task.sleep(for: .milliseconds(20))
-                }
-                XCTAssertTrue(UIFocusSystem.focusSystem(for: window)?.focusedItem === target)
-            }
-            let parked = try await focusTarget(in: XCTUnwrap(probe.frames["park"]))
-            try await focus(parked)
-            #endif
             try await Task.sleep(for: .milliseconds(600))
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
@@ -297,26 +258,6 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
                                    "Linked card must retain the panel surface and corners at \(point); appearance=\(appearance).")
                 }
             }
-            #if os(tvOS)
-            try await focus(focusTarget(in: linked))
-            try await Task.sleep(for: .milliseconds(300))
-            let focusedImage = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
-                XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
-            }
-            let focusedAttachment = XCTAttachment(image: focusedImage)
-            focusedAttachment.name = "song-panel-focused-\(appearance)"
-            focusedAttachment.lifetime = .keepAlways
-            add(focusedAttachment)
-            let focusedSource = CIImage(cgImage: try XCTUnwrap(focusedImage.cgImage))
-            let focusDifference = [
-                CGPoint(x: 450, y: 20), CGPoint(x: linked.width / 2, y: -5)
-            ].flatMap { point in
-                let before = pixel(source, linked, point), after = pixel(focusedSource, linked, point)
-                return (0..<3).map { abs(Int(after[$0]) - Int(before[$0])) }
-            }.max() ?? 0
-            XCTAssertGreaterThan(focusDifference, 24, "Native focus must be visible, not just assigned.")
-            try await focus(parked)
-            #endif
         }
     }
 
@@ -698,12 +639,6 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
             model.songRecognition.isAvailable = true
             try await Task.sleep(for: .seconds(2))
             window.layoutIfNeeded()
-            #if os(tvOS)
-            // This fixture mounts PlayerControls without the container that releases entry focus gating.
-            model.controlBar.settled = true
-            try await Task.sleep(for: .milliseconds(100))
-            window.layoutIfNeeded()
-            #endif
             do {
                 let artwork = try XCTUnwrap(probe.bounds[.song])
                 XCTAssertEqual(artwork.width, artwork.height, accuracy: 1)
@@ -733,60 +668,14 @@ final class PlayerSongLayoutPreviewTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
             let infoBounds = probe.bounds[.info]
-            #if os(tvOS)
-            let artwork = try XCTUnwrap(probe.bounds[.song])
-            let point = CGPoint(x: artwork.midX, y: artwork.midY)
-            let items = nativeFocusItems(in: window)
-            let card = try XCTUnwrap(items.first {
-                NativeFocusRegion.frame(of: $0, in: host.view)?.contains(point) == true
-            }, "No native song target at \(point); candidates: \(items.compactMap { NativeFocusRegion.frame(of: $0, in: host.view) })")
-            host.target = card
-            host.setNeedsFocusUpdate()
-            host.updateFocusIfNeeded()
-            let focusDeadline = ContinuousClock.now + .seconds(3)
-            while UIFocusSystem.focusSystem(for: window)?.focusedItem !== card,
-                  ContinuousClock.now < focusDeadline {
-                try await Task.sleep(for: .milliseconds(20))
-            }
-            XCTAssertTrue(UIFocusSystem.focusSystem(for: window)?.focusedItem === card)
-            try await Task.sleep(for: .milliseconds(300))
-            let focusedImage = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
-                XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
-            }
-            let focusedAttachment = XCTAttachment(image: focusedImage)
-            focusedAttachment.name = "separate-focused-\(Int(size.width))x\(Int(size.height))"
-            focusedAttachment.lifetime = .keepAlways
-            add(focusedAttachment)
-            host.target = nil
-            #endif
             model.songRecognition.state = .idle
             try await Task.sleep(for: .milliseconds(400))
             window.layoutIfNeeded()
             XCTAssertEqual(probe.bounds[.info], infoBounds, "Song expiry must not move Info artwork or actions.")
-            #if os(tvOS)
-            let focused = try XCTUnwrap(UIFocusSystem.focusSystem(for: window)?.focusedItem)
-            XCTAssertFalse(focused === card, "An expired song must release native focus.")
-            #endif
         }
         await player.stop()
     }
 
-    #if os(tvOS)
-    private func nativeFocusItems(in window: UIWindow) -> [any UIFocusItem] {
-        var containers: [any UIFocusItemContainer] = [window]
-        var seen = Set<ObjectIdentifier>()
-        var items: [ObjectIdentifier: any UIFocusItem] = [:]
-        while let container = containers.popLast() {
-            guard seen.insert(ObjectIdentifier(container)).inserted else { continue }
-            for item in container.focusItems(in: container.coordinateSpace.convert(window.bounds, from: window)) {
-                if let child = item.focusItemContainer { containers.append(child) }
-                if let view = item as? UIView { containers.append(view) }
-                if item.canBecomeFocused, !(item is UIScrollView) { items[ObjectIdentifier(item)] = item }
-            }
-        }
-        return Array(items.values)
-    }
-    #endif
 }
 
 private struct SongServiceSheetPreview: View {
@@ -906,18 +795,11 @@ private struct SongPreviewPlayer: View {
     var body: some View {
         ZStack {
             VideoSurfaceContainer(engine: engine).ignoresSafeArea()
-            #if os(tvOS)
-            PlayerControls(
-                model: player.controls, player: player, palette: .dark,
-                actions: .init(), onExitToSurface: {}
-            )
-            #else
             PlozziOSPlayerControlsOverlay(
                 viewModel: player, keyboardActions: PlozziOSPlayerKeyboardActions(),
                 hasVersions: false, versionsPresented: false,
                 onShowVersions: {}, onClose: {}
             )
-            #endif
         }
         .background(.black)
         .playerPlatformAppearance()

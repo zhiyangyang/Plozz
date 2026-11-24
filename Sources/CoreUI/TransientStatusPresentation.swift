@@ -52,7 +52,7 @@ public final class TransientStatusPresenter {
             try? await Task.sleep(for: duration)
         },
         announcement: @escaping Announcement = { text in
-            #if os(tvOS) || os(iOS)
+            #if os(iOS)
             // An announcement is spoken at this instant and then gone, so it
             // must be resolved now: there is no later render to re-resolve for,
             // which is what the eager rule normally protects, and
@@ -153,9 +153,6 @@ public struct TransientStatusView: View {
                         if message.isProgress {
                             ProgressView()
                                 .controlSize(.small)
-                                #if os(tvOS)
-                                .scaleEffect(0.5)
-                                #endif
                         } else {
                             Image(systemName: message.icon)
                         }

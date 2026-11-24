@@ -10,11 +10,7 @@ public struct ConnectionCodeView: View {
 
     public init(_ code: String, size: CGFloat? = nil) {
         self.code = code
-        #if os(tvOS)
-        baseSize = size ?? 88
-        #else
         baseSize = size ?? 44
-        #endif
         _size = ScaledMetric(wrappedValue: baseSize, relativeTo: .largeTitle)
     }
 
@@ -64,11 +60,7 @@ public struct SetupCodeComparisonView: View {
             )
             ConnectionCodeView(code)
             if let onResult {
-                #if os(tvOS)
-                let layout = AnyLayout(HStackLayout(spacing: 24))
-                #else
                 let layout = AnyLayout(VStackLayout(spacing: 16))
-                #endif
                 layout {
                     Button("Yes, they match") { onResult(true) }
                         .plozzActionButton()

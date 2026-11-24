@@ -175,17 +175,10 @@ public struct ShareScanStatusRow: View {
         state.name.isEmpty ? Text("Media library") : Text(verbatim: state.name)
     }
 
-    #if os(tvOS)
-    private var barHeight: CGFloat { 8 }
-    private var titleFont: Font { .system(size: 30, weight: .semibold) }
-    private var valueFont: Font { .system(size: 26, weight: .semibold) }
-    private var detailFont: Font { .system(size: 24) }
-    #else
     private var barHeight: CGFloat { 6 }
     private var titleFont: Font { .subheadline.weight(.semibold) }
     private var valueFont: Font { .subheadline.weight(.semibold) }
     private var detailFont: Font { .caption }
-    #endif
 }
 
 // MARK: - Settings card
@@ -217,31 +210,6 @@ public struct ShareScanStatusCard: View {
         if states.isEmpty {
             EmptyView()
         } else {
-            #if os(tvOS)
-            VStack(alignment: .leading, spacing: 22) {
-                Text(headerTitle)
-                    .font(.system(size: 24, weight: .semibold))
-                    .plozzForeground(.secondary)
-                    .textCase(.uppercase)
-
-                VStack(alignment: .leading, spacing: 24) {
-                    ForEach(states) { state in
-                        if state.id != states.first?.id {
-                            Rectangle()
-                                .fill(palette.separator)
-                                .frame(height: 1)
-                        }
-                        ShareScanStatusRow(state: state)
-                    }
-                }
-            }
-            .padding(28)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Same shared focusable read-only surface the library banner and
-            // Settings ▸ About use, so this card can be reached and read with the
-            // remote instead of being a dead patch at the top of the page.
-            .plozzFocusableCard(cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius)
-            #else
             SettingsSectionGroup(headerTitle) {
                 ForEach(states) { state in
                     ShareScanStatusRow(state: state)
@@ -249,7 +217,6 @@ public struct ShareScanStatusCard: View {
             } footer: {
                 Text("Your libraries stay usable while this finishes — titles and artwork keep filling in.")
             }
-            #endif
         }
     }
 
@@ -345,10 +312,6 @@ public struct ShareScanProgressBanner: View {
         return state
     }
 
-    #if os(tvOS)
-    private var rowInset: CGFloat { 28 }
-    #else
     private var rowInset: CGFloat { 16 }
-    #endif
 }
 #endif

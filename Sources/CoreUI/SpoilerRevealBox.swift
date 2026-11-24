@@ -55,11 +55,7 @@ public struct SpoilerRevealBox<Content: View>: View {
     }
 
     public static var defaultBlurRadius: CGFloat {
-        #if os(tvOS)
-        22
-        #else
         14
-        #endif
     }
 
     private var isMasked: Bool { isHidden && !isRevealed }
@@ -123,35 +119,19 @@ private struct SpoilerRevealPrompt: View {
     }
 
     private var fontSize: CGFloat {
-        #if os(tvOS)
-        26
-        #else
         15
-        #endif
     }
 
     private var iconSpacing: CGFloat {
-        #if os(tvOS)
-        12
-        #else
         7
-        #endif
     }
 
     private var horizontalPadding: CGFloat {
-        #if os(tvOS)
-        26
-        #else
         16
-        #endif
     }
 
     private var verticalPadding: CGFloat {
-        #if os(tvOS)
-        14
-        #else
         9
-        #endif
     }
 }
 

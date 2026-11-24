@@ -10,17 +10,6 @@ import UIKit
 /// while the adaptive grids naturally collapse on iPhone.
 enum DetailInformationLayout {
     static let labelSpacing = PlozzTheme.Spacing.xSmall
-    #if os(tvOS)
-    static let cellPadding = PlozzTheme.Spacing.large
-    static let gutter = PlozzTheme.Spacing.large
-    static let focusPadding: CGFloat = 22
-    static let verticalFocusPadding = PlozzTheme.Spacing.small
-    static let factSpacing = verticalFocusPadding * 2 + PlozzTheme.Spacing.small
-    static let factColumnSpacing = focusPadding * 2 + PlozzTheme.Spacing.small
-    static let sectionSpacing = factColumnSpacing
-    static let headingSpacing = PlozzTheme.Spacing.medium
-    static let cornerRadius: CGFloat = 20
-    #else
     static let cellPadding = PlozzTheme.Spacing.medium
     static let gutter = PlozzTheme.Spacing.medium
     static let factSpacing = gutter
@@ -29,7 +18,6 @@ enum DetailInformationLayout {
     static let headingSpacing = PlozzTheme.Spacing.small
     static let cornerRadius: CGFloat = 16
     static let maximumMobileContentWidth: CGFloat = 1120
-    #endif
 }
 
 public struct DetailInformationSections: View {
@@ -110,27 +98,17 @@ public struct DetailInformationSections: View {
                         ForEach(current.facts) { fact in
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(fact.label)
-                                    #if os(tvOS)
-                                    .font(.system(size: 26))
-                                    #else
                                     .font(.subheadline.weight(.semibold))
-                                    #endif
                                     .plozzForeground(.secondary)
                                     .accessibilityAddTraits(.isHeader)
                                 if let values = fact.listValues {
                                     ForEach(values, id: \.self) { value in
                                         Text(value).fixedSize(horizontal: false, vertical: true)
                                             .plozzForeground(.primary)
-                                            #if os(tvOS)
-                                            .focusable()
-                                            #endif
                                     }
                                 } else {
                                     Text(fact.value).fixedSize(horizontal: false, vertical: true)
                                         .plozzForeground(.primary)
-                                        #if os(tvOS)
-                                        .focusable()
-                                        #endif
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -160,11 +138,7 @@ public struct DetailInformationSections: View {
     private static let backgroundBleed: CGFloat = 400
 
     private var maximumContentWidth: CGFloat {
-        #if os(tvOS)
-        .infinity
-        #else
         horizontalSizeClass == .regular ? DetailInformationLayout.maximumMobileContentWidth : .infinity
-        #endif
     }
 
     @ViewBuilder
@@ -232,9 +206,6 @@ public struct DetailInformationSections: View {
                         ratingsSection
                     }
                 }
-                #if os(tvOS)
-                .background(NativeInformationFocusScrollGuard())
-                #endif
             }
             if !informationGroups.isEmpty {
                 DetailSectionLayout(
@@ -265,9 +236,6 @@ public struct DetailInformationSections: View {
 
     private var ratingColumns: Int {
         let count = sortedRatings.count
-        #if os(tvOS)
-        if count == 4, familyGuidanceSummary == nil { return 4 }
-        #endif
         let columns = familyGuidanceSummary != nil ? max(2, count + 1) : (count > 3 ? (count + 1) / 2 : count)
         return max(1, min(4, columns))
     }
@@ -278,11 +246,7 @@ public struct DetailInformationSections: View {
     }
 
     private var ratingMinimumWidth: CGFloat {
-        #if os(tvOS)
-        220
-        #else
         mobileRatingMinimumWidth
-        #endif
     }
 
     private var ratingsContent: some View {
@@ -313,27 +277,15 @@ public struct DetailInformationSections: View {
     }
 
     private var expandsRatingsToAvailableWidth: Bool {
-        #if os(tvOS)
-        true
-        #else
         horizontalSizeClass == .regular || sortedRatings.count > 1 || familyGuidanceSummary != nil
-        #endif
     }
 
     private var maximumRatingsColumnSpan: Int {
-        #if os(tvOS)
-        sortedRatings.count + (familyGuidanceSummary == nil ? 0 : 1) > 1 ? 2 : 1
-        #else
         1
-        #endif
     }
 
     private var maximumGuidanceSpan: Int? {
-        #if os(tvOS)
-        2
-        #else
         nil
-        #endif
     }
 
     var sectionIDs: [String] {
@@ -346,26 +298,16 @@ public struct DetailInformationSections: View {
     }
 
     private var bandTopPadding: CGFloat {
-        #if os(tvOS)
-        44
-        #else
         horizontalSizeClass == .regular ? 32 : 24
-        #endif
     }
 
     private var bandBottomPadding: CGFloat {
-        #if os(tvOS)
-        60
-        #else
         horizontalSizeClass == .regular ? 44 : 32
-        #endif
     }
 
-    #if !os(tvOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ScaledMetric(relativeTo: .body) private var mobileColumnMinimumWidth: CGFloat = 200
     @ScaledMetric(relativeTo: .body) private var mobileRatingMinimumWidth: CGFloat = 160
-    #endif
 
     private func protectedRating<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         SpoilerRevealBox(
@@ -501,38 +443,13 @@ public struct DetailInformationSections: View {
 
     @ViewBuilder
     private var overviewSheet: some View {
-        #if os(tvOS)
-        tvOverviewCard
-        #else
         overviewSheetForms
-        #endif
     }
 
     private var overviewPresentationStyle: PlozzSheetStyle {
         .detailReader
     }
 
-    #if os(tvOS)
-    private var tvOverviewCard: some View {
-        DetailReaderCard {
-            PlozzDialogHeading(Text(item.title))
-
-            if !item.genres.isEmpty {
-                Text(item.genres.prefix(3).joined(separator: ", "))
-                    .font(.system(size: 26))
-                    .plozzForeground(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let overview = nonempty(item.overview) {
-                overviewText(overview)
-                    .font(.system(size: 29))
-                    .foregroundStyle(palette.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-    #endif
 
     private var overviewSheetForms: some View {
         NavigationStack {
@@ -548,12 +465,9 @@ public struct DetailInformationSections: View {
                 .padding(sheetPadding)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            #if !os(tvOS)
             .scrollContentBackground(.hidden)
-            #endif
             .background { SettingsPageBackground() }
             .navigationTitle(item.title)
-            #if !os(tvOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -562,9 +476,7 @@ public struct DetailInformationSections: View {
                         .foregroundStyle(palette.secondaryText)
                 }
             }
-            #endif
         }
-        #if !os(tvOS)
         .presentationCornerRadius(overviewSheetCornerRadius)
         .preferredColorScheme(palette.isLight ? .light : .dark)
         // Elevation edge for dark themes, reusing the Settings sheet treatment:
@@ -576,10 +488,8 @@ public struct DetailInformationSections: View {
                 overviewSheetElevationBorder
             }
         }
-        #endif
     }
 
-    #if !os(tvOS)
     /// Corner radius pinned on the overview sheet so the elevation border traces
     /// the card's rounded edge exactly. Matches the Settings sheet.
     private var overviewSheetCornerRadius: CGFloat { 20 }
@@ -615,7 +525,6 @@ public struct DetailInformationSections: View {
                 .allowsHitTesting(false)
         }
     }
-    #endif
 
     /// Whether the synopsis is actually clipped — the full text wants more height
     /// than the line-limited (visible) copy. Measured, so it's exact at any width
@@ -629,14 +538,10 @@ public struct DetailInformationSections: View {
     /// pointer to tap them); iOS/iPadOS renders them as tappable links.
     @ViewBuilder
     private func overviewText(_ overview: String) -> some View {
-        #if os(tvOS)
-        Text(verbatim: overview.overviewPlainText)
-        #else
         Text(overview.overviewMarkdownWithLegibleLinks(
             textColor: palette.primaryText,
             accent: palette.accent
         ))
-        #endif
     }
 
     private func detailSection<Content: View>(
@@ -934,91 +839,47 @@ public struct DetailInformationSections: View {
     }
 
     private var sectionTitleFont: Font {
-        #if os(tvOS)
-        .system(size: 34, weight: .bold)
-        #else
         .title2.bold()
-        #endif
     }
 
     private var bodyFont: Font {
-        #if os(tvOS)
-        .system(size: 24)
-        #else
         .body
-        #endif
     }
 
     private var aboutTitleFont: Font {
-        #if os(tvOS)
-        .system(size: 28, weight: .semibold)
-        #else
         .title3.weight(.semibold)
-        #endif
     }
 
     private var aboutContentSpacing: CGFloat {
-        #if os(tvOS)
-        12
-        #else
         10
-        #endif
     }
 
     private var aboutLineLimit: Int {
-        #if os(tvOS)
-        return 6
-        #else
         return horizontalSizeClass == .regular ? 6 : 7
-        #endif
     }
 
     private var moreFadeWidth: CGFloat {
-        #if os(tvOS)
-        220
-        #else
         150
-        #endif
     }
 
     private var sheetPadding: CGFloat {
-        #if os(tvOS)
-        60
-        #else
         24
-        #endif
     }
 
     private var factLabelFont: Font {
-        #if os(tvOS)
-        .system(size: 18, weight: .semibold)
-        #else
         .caption.weight(.semibold)
-        #endif
     }
 
     private var factValueFont: Font {
-        #if os(tvOS)
-        .system(size: 23, weight: .medium)
-        #else
         .body.weight(.medium)
-        #endif
     }
 
     private var technicalTitleFont: Font {
-        #if os(tvOS)
-        .system(size: 28, weight: .semibold)
-        #else
         .title3.weight(.semibold)
-        #endif
     }
 
     private var technicalValueFont: Font {
-        #if os(tvOS)
-        .system(size: 20)
-        #else
         .subheadline
-        #endif
     }
 
     private var sectionSpacing: CGFloat {
@@ -1026,12 +887,6 @@ public struct DetailInformationSections: View {
     }
 
     private var informationColumnSpacing: CGFloat {
-        #if os(tvOS)
-        if cardFocusStyle.usesSystemEffect {
-            // Both neighboring native cards can remain enlarged during a focus handoff.
-            return DetailInformationLayout.factColumnSpacing
-        }
-        #endif
         return DetailInformationLayout.gutter
     }
 
@@ -1052,11 +907,7 @@ public struct DetailInformationSections: View {
     }
 
     private var informationColumnMinimumWidth: CGFloat {
-        #if os(tvOS)
-        320
-        #else
         mobileColumnMinimumWidth
-        #endif
     }
 
     private var informationSectionMinimumWidth: CGFloat {
@@ -1064,11 +915,7 @@ public struct DetailInformationSections: View {
     }
 
     private var informationSectionColumns: Int {
-        #if os(tvOS)
-        3
-        #else
         horizontalSizeClass == .regular ? 2 : 1
-        #endif
     }
 }
 
@@ -1081,11 +928,7 @@ private struct DetailInformationGroup: View {
     let onExpand: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    #if os(tvOS)
-    private let minimumFactWidth: CGFloat = 220
-    #else
     @ScaledMetric(relativeTo: .body) private var minimumFactWidth: CGFloat = 160
-    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: DetailInformationLayout.headingSpacing) {
@@ -1114,11 +957,7 @@ private struct DetailInformationGroup: View {
                 Button(action: onExpand) {
                     DetailMoreLabel()
                 }
-                    #if os(tvOS)
-                    .modifier(DetailInformationFocus())
-                    #else
                     .buttonStyle(.plain)
-                    #endif
                     .frame(minHeight: 44, alignment: .leading)
                     .accessibilityIdentifier("detail-\(group.id)-more")
             }
@@ -1192,34 +1031,6 @@ private struct DetailFactLayout: Layout {
     }
 }
 
-#if os(tvOS)
-private struct DetailInformationFocus: ViewModifier {
-    @FocusState private var isFocused: Bool
-    @Environment(\.plozzReduceTransparency) private var reduceTransparency
-
-    private var usesOpaqueFocus: Bool {
-        if #available(tvOS 26.0, *) { reduceTransparency } else { true }
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .buttonStyle(.borderless)
-            .environment(\.settingsRowIsFocused, isFocused && usesOpaqueFocus)
-            .environment(\.settingsRowFocusForeground, .black)
-            .focused($isFocused)
-            .background {
-                // Glass must stay outside text fitting; the gutters reserve its full outset.
-                if isFocused {
-                    Color.clear
-                        .plozzGlassCard(cornerRadius: DetailInformationLayout.cornerRadius, isFocused: true)
-                        .padding(.horizontal, -DetailInformationLayout.focusPadding)
-                        .padding(.vertical, -DetailInformationLayout.verticalFocusPadding)
-                        .allowsHitTesting(false)
-                }
-            }
-    }
-}
-#endif
 
 /// Whole sections occupy readable columns; subsequent sections use the shortest
 /// column without stretching their neighbors or reserving missing content.
@@ -1413,11 +1224,7 @@ private struct WatchProviderLogoRow: View {
     /// screen reader should hear "Starz, Philo, YouTube TV", not twelve images.
     let names: String
 
-    #if os(tvOS)
-    private static let side: CGFloat = 64
-    #else
     private static let side: CGFloat = 46
-    #endif
 
     var body: some View {
         WrappingHStackLayout(spacing: 10, lineSpacing: 10) {
@@ -1515,18 +1322,11 @@ private struct InformationFactCell: View {
 
     @ViewBuilder
     var body: some View {
-        #if os(tvOS)
-        // A stable borderless control preserves remote scrolling and inline expansion
-        // without turning metadata into a permanently filled card.
-        cardButton
-            .accessibilityRemoveTraits(hasMore ? [] : .isButton)
-        #else
         if hasMore {
             cardButton
         } else {
             label
         }
-        #endif
     }
 
     private var cardButton: some View {
@@ -1535,11 +1335,7 @@ private struct InformationFactCell: View {
         } label: {
             label
         }
-        #if os(tvOS)
-        .modifier(DetailInformationFocus())
-        #else
         .buttonStyle(.plain)
-        #endif
         .accessibilityIdentifier(accessibilityID)
     }
 
@@ -1603,11 +1399,7 @@ private struct InformationValuePreview: View {
     }
 
     private var fadeWidth: CGFloat {
-        #if os(tvOS)
-        120
-        #else
         90
-        #endif
     }
 }
 

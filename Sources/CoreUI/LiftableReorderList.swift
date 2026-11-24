@@ -107,132 +107,8 @@ public struct LiftableReorderList<Element: Hashable>: View {
         self.onRename = onRename
         let target = initialElement.flatMap { sections.combined.contains($0) ? $0 : nil }
         self.initialElement = target
-        #if os(tvOS)
-        _liftedElement = State(initialValue: target)
-        _liftedSections = State(initialValue: target == nil ? nil : sections)
-        _pinnedFocusTarget = State(initialValue: target)
-        _focusRestoreTarget = State(initialValue: target)
-        #endif
     }
 
-    #if os(tvOS)
-    public var body: some View {
-        SettingsAdjustmentFocusScope(
-            content: rows,
-            screen: liftedElement,
-            adjustableRow: { liftedElement == nil ? nil : 0 },
-            axis: .vertical
-        ) { direction, _ in
-            stepLiftedRow(up: direction == .up)
-        }
-        .onChange(of: liftedElement != nil || pinnedFocusTarget != nil, initial: true) { _, active in
-            isLifting = active
-        }
-        .task(id: focusRestoreRevision) {
-            guard let target = focusRestoreTarget else { return }
-            await Task.yield()
-            guard !Task.isCancelled else { return }
-            focusedElement = target
-        }
-        .onChange(of: sections) { _, sections in
-            let elements = sections.combined
-            if liftedElement != nil { liftedSections = sections }
-            if let liftedElement, !elements.contains(liftedElement) { self.liftedElement = nil }
-            if let target = pinnedFocusTarget, !elements.contains(target) {
-                pinnedFocusTarget = elements.first
-                if let replacement = elements.first { restoreFocusAfterLayout(to: replacement) }
-            }
-        }
-        .onDisappear {
-            liftedElement = nil
-            liftedSections = nil
-            pinnedFocusTarget = nil
-            focusRestoreTarget = nil
-            isLifting = false
-        }
-    }
-
-    private var rows: some View {
-        let items = allowsHiding
-            ? OrderedVisibilityList.listItems(for: sections)
-            : sections.enabled.map(OrderedVisibilityList.ListItem.element)
-        return VStack(spacing: SettingsRowMetrics.formRowSpacing) {
-            ForEach(items, id: \.self) { item in
-                switch item {
-                case let .element(element):
-                    rowView(
-                        element, isEnabled: sections.enabled.contains(element),
-                        rank: sections.enabled.firstIndex(of: element).map { $0 + 1 }
-                    )
-                case .divider:
-                    ReorderDisabledDivider(title: disabledSectionTitle, isDropTarget: liftedElement != nil)
-                case .disabledPlaceholder:
-                    ReorderDisabledPlaceholder(
-                        message: disabledPlaceholder,
-                        isReordering: liftedElement != nil
-                    )
-                    .disabled(pinnedFocusTarget != nil)
-                }
-            }
-        }
-    }
-
-    private func rowView(_ element: Element, isEnabled: Bool, rank: Int?) -> some View {
-        let lifting = liftedElement != nil
-        let content = row(element)
-        return LiftableRow(
-            title: content.title,
-            subtitle: content.subtitle,
-            detail: content.detail,
-            symbolName: content.symbolName,
-            providerKind: content.providerKind,
-            mediaShareTransport: content.mediaShareTransport,
-            providerMarkInSubtitle: content.providerMarkInSubtitle,
-            isEnabled: isEnabled,
-            isLifted: liftedElement == element,
-            isDimmed: lifting && liftedElement != element,
-            rank: rank,
-            maximumRank: sections.enabled.count,
-            onPrimary: { toggleLift(element) },
-            onFocus: {
-                if pinnedFocusTarget == element { pinnedFocusTarget = nil }
-            }
-        )
-        .focused($focusedElement, equals: element)
-        .disabled(pinnedFocusTarget != nil && pinnedFocusTarget != element)
-        .contextMenu { rowMenu(element) }
-    }
-
-    /// Click handler: lift the focused row, or drop it if it's already lifted.
-    private func toggleLift(_ element: Element) {
-        guard allowsHiding || sections.enabled.count > 1 else { return }
-        liftedSections = liftedElement == element ? nil : sections
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.16)) {
-            liftedElement = (liftedElement == element) ? nil : element
-        }
-    }
-
-    private func stepLiftedRow(up: Bool) {
-        guard let lifted = liftedElement else { return }
-        let current = liftedSections ?? sections
-        let next = OrderedVisibilityList.stepped(
-            lifted, up: up, in: current, keepingEnabled: requiredEnabled
-        )
-        guard next != current else { return }
-        liftedSections = next
-        onMove?(lifted)
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.10)) {
-            onChange(next)
-        }
-    }
-
-    /// Wait one run-loop turn for the reordered `ForEach` frames to settle before
-    /// asking the focus engine to follow the lifted row to its new slot.
-    private func restoreFocusAfterLayout(to element: Element) {
-        focusRestoreTarget = element
-        focusRestoreRevision &+= 1
-    }
-    #else
     @ScaledMetric(relativeTo: .body) private var mobileRowHeight: CGFloat = 54
 
     private func height(for item: OrderedVisibilityList.ListItem<Element>) -> CGFloat {
@@ -352,16 +228,11 @@ public struct LiftableReorderList<Element: Hashable>: View {
                 .plozzForeground(.secondary)
         }
     }
-    #endif
 
     @ViewBuilder
     private func rowMenu(_ element: Element) -> some View {
         if let onRename {
             Button("Rename", systemImage: "pencil") {
-                #if os(tvOS)
-                liftedElement = nil
-                liftedSections = nil
-                #endif
                 onRename(element)
             }
         }
@@ -384,18 +255,7 @@ public struct LiftableReorderList<Element: Hashable>: View {
             .disabled(edit(.moveToBottom, for: element) == nil)
         if let onRemove {
             Button(removeTitle, systemImage: "minus.circle", role: .destructive) {
-                #if os(tvOS)
-                liftedElement = nil
-                let index = sections.enabled.firstIndex(of: element) ?? 0
-                let remaining = sections.enabled.filter { $0 != element }
-                pinnedFocusTarget = remaining.isEmpty ? nil : remaining[min(index, remaining.count - 1)]
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) { onRemove(element) }
-                if let pinnedFocusTarget { restoreFocusAfterLayout(to: pinnedFocusTarget) }
-                #else
                 onRemove(element)
-                #endif
             }
         }
     }
@@ -409,23 +269,10 @@ public struct LiftableReorderList<Element: Hashable>: View {
         if action == .moveUp || action == .moveDown || action == .moveToTop || action == .moveToBottom {
             onMove?(element)
         }
-        #if os(tvOS)
-        liftedElement = nil
-        if action == .hide, edit.focusTarget != element {
-            // Keep the dismissed menu's old row out of the focus order until
-            // its replacement is focused, rather than chasing it at the bottom.
-            pinnedFocusTarget = edit.focusTarget
-        }
-        var transaction = Transaction()
-        transaction.disablesAnimations = action == .hide
-        withTransaction(transaction) { onChange(edit.sections) }
-        restoreFocusAfterLayout(to: edit.focusTarget)
-        #else
         onChange(edit.sections)
         if action == .moveUp || action == .moveDown || action == .moveToTop || action == .moveToBottom {
             TouchFeedback.shared.emit(.selection)
         }
-        #endif
     }
 }
 

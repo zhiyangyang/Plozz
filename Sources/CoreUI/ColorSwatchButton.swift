@@ -25,11 +25,7 @@ public struct ColorSwatchButton: View {
     }
 
     private var diameter: CGFloat {
-        #if os(tvOS)
-        42
-        #else
         44
-        #endif
     }
 
     public var body: some View {
@@ -55,63 +51,18 @@ public struct ColorSwatchButton: View {
                 }
                 .contentShape(Circle())
         }
-        #if os(tvOS)
-        .plozzCardFocusButtonStyle(
-            CircularSelectionButtonStyle(diameter: diameter), cornerRadius: diameter / 2,
-            contentSuppliesProjection: true
-        )
-        .plozzCircularFocusStyle()
-        #else
         .buttonStyle(.plain)
-        #endif
         .accessibilityLabel(Text(title))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private var borderColor: Color {
-        #if os(tvOS)
-        palette.cardBorder
-        #else
         isSelected ? palette.accent : palette.cardBorder
-        #endif
     }
 
     private var borderWidth: CGFloat {
-        #if os(tvOS)
-        1
-        #else
         isSelected ? 3 : 1
-        #endif
     }
 }
 
-#if os(tvOS)
-public struct CircularSelectionButtonStyle: ButtonStyle {
-    private let diameter: CGFloat
-
-    public init(diameter: CGFloat) { self.diameter = diameter }
-
-    public func makeBody(configuration: Configuration) -> some View {
-        TileBody(configuration: configuration, diameter: diameter)
-    }
-
-    private struct TileBody: View {
-        let configuration: ButtonStyle.Configuration
-        let diameter: CGFloat
-        @Environment(\.isFocused) private var isFocused
-        @Environment(\.plozzCardFocusStyle) private var focusStyle
-
-        var body: some View {
-            configuration.label
-                .plozzFocusHalo(
-                    cornerRadius: diameter / 2,
-                    focusScale: PlozzTheme.Metrics.mediumFocusedCardScale,
-                    isFocused: isFocused
-                )
-                .scaleEffect(configuration.isPressed && !focusStyle.usesSystemEffect ? 0.96 : 1)
-                .animation(focusStyle.usesSystemEffect ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
-        }
-    }
-}
-#endif
 #endif

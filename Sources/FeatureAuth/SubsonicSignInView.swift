@@ -103,9 +103,6 @@ public struct SubsonicSignInView: View {
         .background { SettingsPageBackground() }
         .settingsSignInFields()
         .onDisappear { model.cancel() }
-        #if os(tvOS)
-        .onExitCommand(perform: cancel)
-        #endif
     }
 
     private func cancel() { model.cancel(); onCancel() }

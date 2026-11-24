@@ -1,10 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
 import CoreModels
-#if os(tvOS)
-import CoreNetworking
-import UIKit
-#endif
 
 // MARK: - Environment plumbing
 //
@@ -262,9 +258,6 @@ public struct SeasonWatchStateMenu<MenuLabel: View>: View {
             } primaryAction: {
                 action()
             }
-            #if os(tvOS)
-            .menuStyle(.button)
-            #endif
         }
     }
 }
@@ -297,22 +290,7 @@ public struct MediaItemContextMenu: ViewModifier {
     public func body(content: Content) -> some View {
         let actions = availableActions()
         if !actions.isEmpty {
-            #if os(tvOS)
-            if nativeControl {
-                content
-                    .environment(\.nativeMediaItemMenu, NativeMediaItemMenu(
-                        item: item, actions: actions, context: context,
-                        handlerIdentity: handler.map(ObjectIdentifier.init),
-                        navigator: navigator, perform: perform,
-                        onPresentationChanged: onNativePresentationChanged
-                    ))
-                    .mediaItemMenuNavigation(target: $pendingNavigationTarget)
-            } else {
-                swiftUIMenu(content: content, actions: actions)
-            }
-            #else
             swiftUIMenu(content: content, actions: actions)
-            #endif
         } else {
             content
         }
@@ -374,188 +352,6 @@ public struct MediaItemContextMenu: ViewModifier {
     }
 }
 
-#if os(tvOS)
-struct NativeMediaItemMenu {
-    let item: MediaItem
-    let actions: [MediaItemAction]
-    var context: MediaItemActionContext = .none
-    var handlerIdentity: ObjectIdentifier?
-    var navigator: MediaItemNavigator?
-    let perform: (MediaItemAction) -> Void
-    var onPresentationChanged: ((Bool) -> Void)? = nil
-}
-
-private struct NativeMediaItemMenuKey: EnvironmentKey {
-    static var defaultValue: NativeMediaItemMenu? { nil }
-}
-
-extension EnvironmentValues {
-    var nativeMediaItemMenu: NativeMediaItemMenu? {
-        get { self[NativeMediaItemMenuKey.self] }
-        set { self[NativeMediaItemMenuKey.self] = newValue }
-    }
-}
-
-@MainActor
-final class NativeMediaItemMenuCoordinator: NSObject, UIContextMenuInteractionDelegate {
-    private var configuration: NativeMediaItemMenu?
-    private var locale: Locale?
-    private var generation = 0
-    private weak var button: UIButton?
-    private(set) var menu: UIMenu?
-    private(set) var interaction: UIContextMenuInteraction?
-    private var isPresented = false
-    private var presentationRevision = 0
-    var onPresentationChanged: ((Bool) -> Void)?
-
-    func dismantle() {
-        generation += 1
-        presentationRevision += 1
-        // SwiftUI is invalidating the owning graph; callbacks must not write its State.
-        configuration = nil
-        onPresentationChanged = nil
-        button = nil
-        locale = nil
-        menu = nil
-        isPresented = false
-        let interaction = self.interaction
-        self.interaction = nil
-        interaction?.dismissMenu()
-        if let interaction { interaction.view?.removeInteraction(interaction) }
-    }
-
-    func update(_ configuration: NativeMediaItemMenu?, locale: Locale, button: UIButton, interactionView: UIView) {
-        let siblingsMatch = (self.configuration?.context.orderedSiblings ?? []).elementsEqual(
-            configuration?.context.orderedSiblings ?? []
-        ) { $0.id == $1.id && $0.sourceAccountID == $1.sourceAccountID }
-        let scopeChanged = self.button !== button
-            || (interaction != nil && interaction?.view !== interactionView)
-            || self.configuration?.item.id != configuration?.item.id
-            || self.configuration?.item.sourceAccountID != configuration?.item.sourceAccountID
-            || !siblingsMatch
-            || self.configuration?.context.precedingContainerIDs != configuration?.context.precedingContainerIDs
-            || self.configuration?.handlerIdentity != configuration?.handlerIdentity
-            || self.configuration?.navigator != configuration?.navigator
-        let changed = scopeChanged || self.configuration?.actions != configuration?.actions || self.locale != locale
-        if scopeChanged {
-            presentationRevision += 1
-            notifyPresentationChanged(false)
-        }
-        if let interaction, self.button !== button || interaction.view !== interactionView {
-            interaction.dismissMenu()
-            interaction.view?.removeInteraction(interaction)
-            self.interaction = nil
-            isPresented = false
-        }
-        self.button = button
-        self.configuration = configuration
-        self.locale = locale
-        guard changed else { return }
-        generation += 1
-        guard let configuration else {
-            interaction?.dismissMenu()
-            if let interaction { interaction.view?.removeInteraction(interaction) }
-            interaction = nil
-            menu = nil
-            isPresented = false
-            return
-        }
-        if interaction == nil {
-            let interaction = UIContextMenuInteraction(delegate: self)
-            interactionView.addInteraction(interaction)
-            self.interaction = interaction
-        }
-        let generation = generation
-        func makeAction(_ action: MediaItemAction) -> UIAction {
-            UIAction(
-                title: NativePosterText.localized(action.title).resolve(locale: locale),
-                image: UIImage(systemName: action.systemImage),
-                attributes: action.isDestructive ? .destructive : []
-            ) { [weak self] _ in
-                guard let self else { return }
-                guard self.generation == generation else {
-                    PlozzLog.app.debug("Ignoring an obsolete media menu action after its context changed")
-                    return
-                }
-                self.configuration?.perform(action)
-            }
-        }
-        var children: [UIMenuElement] = configuration.actions.filter { !$0.isSetApartInMenu }.map(makeAction)
-        let separated = configuration.actions.filter(\.isSetApartInMenu)
-        if !separated.isEmpty {
-            children.append(UIMenu(options: .displayInline, children: separated.map(makeAction)))
-        }
-        let menu = UIMenu(children: children)
-        self.menu = menu
-        if isPresented {
-            if scopeChanged {
-                interaction?.dismissMenu()
-            } else {
-                interaction?.updateVisibleMenu { _ in menu }
-            }
-        }
-    }
-
-    func contextMenuInteraction(
-        _ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint
-    ) -> UIContextMenuConfiguration? {
-        guard let menu, let button, button.isEnabled, button.window != nil else { return nil }
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in menu }
-    }
-
-    func contextMenuInteraction(
-        _ interaction: UIContextMenuInteraction, configuration: UIContextMenuConfiguration,
-        highlightPreviewForItemWithIdentifier identifier: any NSCopying
-    ) -> UITargetedPreview? {
-        cardPreview()
-    }
-
-    func contextMenuInteraction(
-        _ interaction: UIContextMenuInteraction, configuration: UIContextMenuConfiguration,
-        dismissalPreviewForItemWithIdentifier identifier: any NSCopying
-    ) -> UITargetedPreview? {
-        cardPreview()
-    }
-
-    func contextMenuInteraction(
-        _ interaction: UIContextMenuInteraction, willDisplayMenuFor configuration: UIContextMenuConfiguration,
-        animator: (any UIContextMenuInteractionAnimating)?
-    ) {
-        isPresented = true
-        presentationRevision += 1
-        notifyPresentationChanged(true)
-    }
-
-    func contextMenuInteraction(
-        _ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration,
-        animator: (any UIContextMenuInteractionAnimating)?
-    ) {
-        isPresented = false
-        let revision = presentationRevision
-        let complete: @MainActor () -> Void = { [weak self] in
-            guard let self, self.presentationRevision == revision else { return }
-            self.notifyPresentationChanged(false)
-        }
-        if let animator {
-            animator.addCompletion(complete)
-        } else {
-            complete()
-        }
-    }
-
-    private func notifyPresentationChanged(_ presented: Bool) {
-        onPresentationChanged?(presented)
-        configuration?.onPresentationChanged?(presented)
-    }
-
-    private func cardPreview() -> UITargetedPreview? {
-        guard let view = interaction?.view, view.window != nil else { return nil }
-        let parameters = UIPreviewParameters()
-        parameters.backgroundColor = .clear
-        return UITargetedPreview(view: view, parameters: parameters)
-    }
-}
-#endif
 
 extension MediaItem {
     /// The destination a navigation action leads to, or `nil` when this item

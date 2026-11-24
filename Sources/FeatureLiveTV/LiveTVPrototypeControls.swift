@@ -93,9 +93,6 @@ struct PrototypeBrowseToolbar: View {
         .lineLimit(1)
         .buttonStyle(PrototypeButtonStyle(padded: false, surface: .control))
         .focusEffectDisabled()
-        #if os(tvOS)
-        .focusSection()
-        #endif
         .onChange(of: focused) { _, target in
             if target != nil { active = true }
         }
@@ -110,9 +107,6 @@ struct PrototypeBrowseToolbar: View {
         }
         .padding(.horizontal, compact ? 12 : Self.labelPadding)
         .frame(minHeight: Self.controlHeight)
-        #if os(tvOS)
-        .frame(maxWidth: compact ? .infinity : 280)
-        #endif
     }
 
     // Touch controls are a size down from the TV's: the guide wants the room.
@@ -174,30 +168,17 @@ struct PrototypeBrowseSourceMenu: View {
             .accessibilityIdentifier("live-tv-add-source")
         } label: {
             HStack(spacing: 6) {
-                #if os(tvOS)
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                #endif
                 sourceLabel
                     #if os(iOS)
                     .font(.headline)
                     #endif
                     .lineLimit(1)
                     .truncationMode(.tail)
-                #if os(tvOS)
-                Spacer(minLength: 0)
-                #endif
                 Image(systemName: "chevron.down").font(.caption.weight(.semibold))
             }
-            #if os(tvOS)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            #else
             .frame(maxWidth: sizeClass == .compact ? 160 : 220)
             .fixedSize(horizontal: false, vertical: true)
-            #endif
         }
-        #if os(tvOS)
-        .menuStyle(.button)
-        #endif
         .menuOrder(.fixed)
         .accessibilityLabel("Source")
         .accessibilityValue(sourceLabel)
@@ -407,13 +388,7 @@ struct PrototypeSheetPresentation<SheetContent: View>: ViewModifier {
     @ViewBuilder let sheetContent: (PrototypeSheet) -> SheetContent
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        content
-            .plozzFullScreenCover(item: binding(forManagement: true), onDismiss: onDismiss, content: sheetContent)
-            .plozzSheet(item: binding(forManagement: false), onDismiss: onDismiss, content: sheetContent)
-        #else
         content.plozzSheet(item: $selection, onDismiss: onDismiss, content: sheetContent)
-        #endif
     }
 
     private func binding(forManagement management: Bool) -> Binding<PrototypeSheet?> {
@@ -459,19 +434,11 @@ struct PrototypeSheetContent: View {
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        #if os(tvOS)
-        if case .multiviewFavorites = destination {
-            LiveTVMultiviewFavoritesView(model: model, open: openMultiview, isPortrait: isPortrait)
-        } else {
-            navigationContent
-        }
-        #else
         if case .diagnostics(let report) = destination {
             PlaybackDiagnosticDetailsSheet(report: report)
         } else {
             navigationContent
         }
-        #endif
     }
 
     private var navigationContent: some View {
@@ -632,9 +599,7 @@ private struct PrototypeFilterForm: View {
                 Text("\(model.visibleChannels.count) matching channels")
             }
         }
-        #if os(tvOS)
-        .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-        #elseif os(iOS)
+        #if os(iOS)
         .toggleStyle(SettingsSwitchToggleStyle())
         #endif
     }

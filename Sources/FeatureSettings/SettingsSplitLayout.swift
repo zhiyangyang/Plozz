@@ -6,11 +6,7 @@ import CoreUI
 /// tunable in one place) across every feature form.
 enum SettingsMetrics {
     /// Legacy split panes and workspace forms share the same control-group spacing.
-    #if os(tvOS)
-    static let sectionSpacing = SettingsFormMetrics.controlSpacing
-    #else
     static let sectionSpacing: CGFloat = 80
-    #endif
 }
 
 /// One row in a Settings master/detail split. The left list shows the row's
@@ -238,10 +234,6 @@ struct SettingsSplitLayout: View {
     /// Only the newest asynchronous restore may close the gate. A transient
     /// wrong-row focus can schedule a replacement while the first task is yielded.
     @State private var focusRestoreGeneration = 0
-    #if os(tvOS)
-    @Environment(\.resetFocus) private var resetFocus
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
 
     init(
         title: LocalizedStringResource,
@@ -283,15 +275,7 @@ struct SettingsSplitLayout: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        if inWorkspace {
-            SettingsFormLayout(title: Text(title), rows: rows)
-        } else {
-            legacyBody
-        }
-        #else
         legacyBody
-        #endif
     }
 
     private var legacyBody: some View {
@@ -393,9 +377,6 @@ struct SettingsSplitLayout: View {
                     // A focus update already in flight may report the first row
                     // once. It is now disabled, so ask the engine to resolve again
                     // against the sole eligible saved row.
-                    #if os(tvOS)
-                    resetFocus(in: masterScope)
-                    #endif
                 }
                 return
             }
@@ -417,27 +398,7 @@ struct SettingsSplitLayout: View {
             isRestoringExternalFocus = false
             return
         }
-        #if os(tvOS)
-        focusRestoreGeneration &+= 1
-        let generation = focusRestoreGeneration
-        isRestoringExternalFocus = true
-        Task { @MainActor in
-            await Task.yield()
-            guard generation == focusRestoreGeneration else { return }
-            resetFocus(in: masterScope)
-            // Keep every sibling ineligible across UIKit's delayed relocation,
-            // then reassert once using the same proven focus timing as
-            // NowPlayingView. This is bounded: after 250ms the list always unlocks.
-            try? await Task.sleep(for: .milliseconds(60))
-            guard generation == focusRestoreGeneration else { return }
-            resetFocus(in: masterScope)
-            try? await Task.sleep(for: .milliseconds(190))
-            guard generation == focusRestoreGeneration else { return }
-            isRestoringExternalFocus = false
-        }
-        #else
         isRestoringExternalFocus = false
-        #endif
     }
 
     private func masterRow(_ row: SettingsSplitRow) -> some View {
@@ -650,22 +611,12 @@ struct SettingsDetailGroup<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
                 .settingsSectionHeader()
-                #if os(tvOS)
-                .padding(.horizontal, SettingsFormMetrics.headingInset)
-                #endif
             if let description {
                 Text(description)
                     .settingsSectionDescription()
                     .fixedSize(horizontal: false, vertical: true)
-                    #if os(tvOS)
-                    .padding(.horizontal, SettingsFormMetrics.headingInset)
-                    #endif
             }
-            #if os(tvOS)
-            SettingsControlGroup(illustrated: illustrated, content: content)
-            #else
             content().padding(.top, 4)
-            #endif
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

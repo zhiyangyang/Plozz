@@ -1,24 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-#if os(tvOS)
-public struct PlozzDialogHeading: View {
-    private let title: Text
-    @Environment(\.themePalette) private var palette
-
-    public init(_ title: Text) {
-        self.title = title
-    }
-
-    public var body: some View {
-        title
-            .font(.system(size: 38, weight: .semibold))
-            .foregroundStyle(palette.primaryText)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityAddTraits(.isHeader)
-    }
-}
-#endif
 
 private struct DialogBackgroundOwnedKey: EnvironmentKey {
     static let defaultValue = false
@@ -65,23 +47,6 @@ private struct PlozzDialogContent<Content: View>: View {
     #endif
 
     var body: some View {
-        #if os(tvOS)
-        ZStack {
-            if style == .standard {
-                PlozzDialogBackdrop()
-                content
-                    .environment(\.plozzDialogBackgroundOwned, true)
-                    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                    .plozzSurface(.overlay, cornerRadius: 32)
-                    .padding(32)
-            } else {
-                content.environment(\.plozzDialogBackgroundOwned, false)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .presentationBackground(.clear)
-        .onExitCommand { dismiss() }
-        #else
         content
             #if os(iOS)
             .plozzOpaqueNavigationChrome()
@@ -109,7 +74,6 @@ private struct PlozzDialogContent<Content: View>: View {
                     Color.clear
                 }
             }
-        #endif
     }
 }
 
@@ -162,16 +126,9 @@ public extension View {
         style: PlozzSheetStyle = .standard,
         @ViewBuilder content: @escaping () -> SheetContent
     ) -> some View {
-        #if os(tvOS)
-        fullScreenCover(isPresented: isPresented, onDismiss: onDismiss) {
-            PlozzDialogContent(content: content(), style: style)
-                .environment(\.settingsPageContext, nil)
-        }
-        #else
         sheet(isPresented: isPresented, onDismiss: onDismiss) {
             PlozzDialogContent(content: content(), style: style)
         }
-        #endif
     }
 
     func plozzSheet<Item: Identifiable, SheetContent: View>(
@@ -179,16 +136,9 @@ public extension View {
         style: PlozzSheetStyle = .standard,
         @ViewBuilder content: @escaping (Item) -> SheetContent
     ) -> some View {
-        #if os(tvOS)
-        fullScreenCover(item: item, onDismiss: onDismiss) { item in
-            PlozzDialogContent(content: content(item), style: style)
-                .environment(\.settingsPageContext, nil)
-        }
-        #else
         sheet(item: item, onDismiss: onDismiss) { item in
             PlozzDialogContent(content: content(item), style: style)
         }
-        #endif
     }
 
     /// A themed sheet on iOS and the caller's ordinary native sheet on tvOS.
@@ -219,7 +169,7 @@ public extension View {
         #endif
     }
 
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     /// Full-screen flows own their own page background, even when opened from a sheet.
     func plozzFullScreenCover<CoverContent: View>(
         isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil,
@@ -229,9 +179,6 @@ public extension View {
             content().environment(\.plozzDialogBackgroundOwned, false)
                 #if os(iOS)
                 .plozzOpaqueNavigationChrome()
-                #endif
-                #if os(tvOS)
-                .environment(\.settingsPageContext, nil)
                 #endif
         }
     }
@@ -244,9 +191,6 @@ public extension View {
             content(item).environment(\.plozzDialogBackgroundOwned, false)
                 #if os(iOS)
                 .plozzOpaqueNavigationChrome()
-                #endif
-                #if os(tvOS)
-                .environment(\.settingsPageContext, nil)
                 #endif
         }
     }

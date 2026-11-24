@@ -608,15 +608,7 @@ struct DisplaySettleObserver: ViewModifier {
     let onSettle: () -> Void
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        content.onReceive(
-            NotificationCenter.default.publisher(for: .AVDisplayManagerModeSwitchEnd)
-        ) { _ in
-            onSettle()
-        }
-        #else
         content
-        #endif
     }
 }
 

@@ -29,49 +29,6 @@ public struct CardAppearanceControls: View {
 
     @ViewBuilder
     private var controls: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: SettingsMetrics.sectionSpacing) {
-            SettingsDetailGroup(title: "Labels", illustrated: true) {
-                CardLabelControls(settings: $cards.captions, style: cards.style, visibility: visibility)
-                    .settingsSearchAnchor("card-labels")
-            }
-            SettingsDetailGroup(title: "Watch indicators", illustrated: true) {
-                CompactWatchIndicatorPicker(selection: $watchIndicator.indicator, swatchHeight: 150)
-                    .settingsSearchAnchor(
-                        "watch-indicators", fallbackFor: watchIndicator.indicator == .hidden ? ["watch-indicator-color"] : []
-                    )
-                if watchIndicator.indicator != .hidden {
-                    WatchIndicatorColorPicker(selection: $watchIndicator.color)
-                        .settingsSearchAnchor("watch-indicator-color")
-                }
-                episodeCountToggle
-                if watchIndicator.showsUnwatchedEpisodeCount { episodeCountStyleMenu }
-                progressBarsToggle
-            }
-            SettingsDetailGroup(
-                title: LocalizedStringResource(
-                    "settings.cards.focus",
-                    defaultValue: "Focus",
-                    comment: "Section header in tvOS Settings > Appearance > Cards, above the picker that chooses what a media card does when the remote's focus lands on it. Not camera focus and not a concentration/Focus mode — this is the on-screen selection highlight."
-                ),
-                illustrated: true
-            ) {
-                CompactCardFocusStylePicker(selection: $cards.focusStyle, swatchHeight: 150)
-                    .settingsSearchAnchor("card-focus")
-            }
-            SettingsDetailGroup(title: "Style", illustrated: true) {
-                CompactCardStylePicker(selection: $cards.style, swatchHeight: 150)
-                    .settingsSearchAnchor("card-style")
-            }
-            if let density {
-                @Bindable var density = density
-                SettingsDetailGroup(title: "Display Size", illustrated: true) {
-                    CompactDisplaySizePicker(selection: $density.density)
-                        .settingsSearchAnchor("display-size")
-                }
-            }
-        }
-        #else
         List {
             SettingsSectionGroup("Labels") {
                 CardLabelControls(settings: $cards.captions, style: cards.style, visibility: visibility)
@@ -119,7 +76,6 @@ public struct CardAppearanceControls: View {
         }
         .settingsPageSurface()
         .navigationTitle("Cards")
-        #endif
     }
 
     private var episodeCountToggle: some View {
@@ -148,18 +104,10 @@ public struct CardAppearanceControls: View {
                     .accessibilityIdentifier("episode-count-style-\(style.rawValue)")
             }
         } label: { Text(title) }
-        #if os(tvOS)
-        return SettingsMenuRow(title: title, value: Text(watchIndicator.episodeCountStyle.displayName)) {
-            picker.pickerStyle(.inline)
-        }
-        .accessibilityIdentifier("episode-count-style")
-        .settingsSearchAnchor("episode-count-style")
-        #else
         return picker
             .pickerStyle(.menu)
             .accessibilityIdentifier("episode-count-style")
             .settingsSearchAnchor("episode-count-style")
-        #endif
     }
 }
 
@@ -179,11 +127,7 @@ struct CardLabelControls: View {
     }
 
     private var spacing: CGFloat {
-        #if os(tvOS)
-        SettingsFormMetrics.illustratedGroupSpacing
-        #else
         20
-        #endif
     }
 }
 
@@ -272,11 +216,7 @@ private struct CardCaptionPicker: View {
     }
 
     private var swatchHeight: CGFloat {
-        #if os(tvOS)
-        150
-        #else
         112
-        #endif
     }
 
     private var previewVisibility: [Bool] {
@@ -347,23 +287,12 @@ public struct CardCaptionSettingsLink: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsPageLink {
-            destination
-        } label: {
-            SettingsDisclosureLabel { Text("Customize labels") }
-                .settingsFormRowLayout()
-        }
-        .buttonStyle(SettingsFormButtonStyle())
-        .accessibilityIdentifier(identifier)
-        #else
         Button { isPresented = true } label: {
             SettingsDisclosureLabel { Text("Customize labels") }
         }
         .settingsActionRow()
         .navigationDestination(isPresented: $isPresented) { destination }
         .accessibilityIdentifier(identifier)
-        #endif
     }
 
     private var destination: some View {

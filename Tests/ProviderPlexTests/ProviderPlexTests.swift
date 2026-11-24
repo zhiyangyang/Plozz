@@ -2647,10 +2647,7 @@ final class PlexAuthClientTests: XCTestCase {
         XCTAssertEqual(headers["X-Plex-Version"], AppVersionIdentity.current.marketingVersion)
         XCTAssertEqual(headers["X-Plex-Client-Identifier"], "device")
         XCTAssertEqual(headers["X-Plex-Device-Name"], DeviceDisplayName.current(fallback: profile.device))
-        #if os(tvOS)
-        XCTAssertEqual(headers["X-Plex-Platform"], "tvOS")
-        XCTAssertEqual(headers["X-Plex-Device"], "Apple TV")
-        #elseif os(iOS)
+        #if os(iOS)
         XCTAssertEqual(headers["X-Plex-Platform"], "iOS")
         XCTAssertTrue(["iPhone", "iPad"].contains(profile.device))
         #endif

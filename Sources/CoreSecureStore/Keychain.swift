@@ -78,11 +78,6 @@ public struct KeychainStore: SecureStore {
             // match the synced items. Enables iCloud Keychain propagation.
             query[kSecAttrSynchronizable as String] = kCFBooleanTrue
         }
-        #if os(tvOS)
-        if userIndependent {
-            query[kSecUseUserIndependentKeychain as String] = kCFBooleanTrue
-        }
-        #endif
         return query
     }
 
@@ -241,11 +236,6 @@ public struct KeychainStore: SecureStore {
             if synchronizable {
                 query[kSecAttrSynchronizable as String] = kCFBooleanTrue
             }
-            #if os(tvOS)
-            if useUserIndependent {
-                query[kSecUseUserIndependentKeychain as String] = kCFBooleanTrue
-            }
-            #endif
             return query
         }
         let status = SecItemDelete(serviceQuery(useUserIndependent: userIndependent) as CFDictionary)
@@ -267,11 +257,7 @@ public struct KeychainStore: SecureStore {
         _ event: LiveTVSourceDiagnostics.Event, key: String? = nil, status: OSStatus, shared: Bool
     ) {
         guard service == LiveTVSourcesStore.baseKey else { return }
-        #if os(tvOS)
-        let sharedPartition = shared
-        #else
         let sharedPartition = false
-        #endif
         var identities: [LiveTVSourceDiagnostics.Identity: String] = [:]
         identities[.storageKey] = key
         LiveTVSourceDiagnostics.shared.record(

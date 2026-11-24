@@ -76,11 +76,7 @@ final class AppLanguagePresentationTests: XCTestCase {
             .first { $0.activationState == .foregroundActive })
         let previous = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
-        #if os(tvOS)
-        window.frame = CGRect(x: 0, y: 0, width: 1280, height: 720)
-        #else
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
-        #endif
         var observedLocale: Locale?
         var observedDirection: LayoutDirection?
         let controller = UIHostingController(rootView:

@@ -70,9 +70,6 @@ public struct ProfileSummaryGrid: View {
                 .frame(width: itemWidth)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("setup-summary-profile-\(profile.id)")
-                #if os(tvOS)
-                .focusable(focusableProfiles)
-                #endif
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

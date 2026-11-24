@@ -45,11 +45,7 @@ struct PlozzStartupLogoContent: View {
                     }
             }
         }
-        #if os(tvOS)
-        .frame(width: 192, height: 192)
-        #else
         .frame(width: 128, height: 128)
-        #endif
         .accessibilityHidden(true)
         .allowsHitTesting(false)
         .onChange(of: reduceMotion, initial: true) { _, reduceMotion in

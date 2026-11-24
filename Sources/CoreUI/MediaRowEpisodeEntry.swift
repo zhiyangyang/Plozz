@@ -87,11 +87,7 @@ struct EpisodeRowEntryPlaceholder: View {
     @Environment(\.plozzAppTextScale) private var appTextScale
     private let metrics = PlozzMetrics.standard
     private var textScale: CGFloat {
-        #if os(tvOS)
-        PlozzTypography.scale(local: detailSettings?.settings.textSize.scale ?? 1, app: appTextScale)
-        #else
         1
-        #endif
     }
 
     var body: some View {
@@ -148,22 +144,7 @@ struct EpisodeRowEntryPlaceholder: View {
 
     @ViewBuilder
     private var artwork: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect, let nativeFocus {
-            NativeTVPoster(
-                image: nil, treatment: .original,
-                aspectRatio: EpisodeColumnCard.artworkSize.width / EpisodeColumnCard.artworkSize.height,
-                fallbackWidth: EpisodeColumnCard.artworkSize.width,
-                title: nil, subtitle: nil, overlay: EmptyView(), focus: nativeFocus, action: onSelect
-            )
-            .focused(nativeFocus.focusState)
-            .frame(width: EpisodeColumnCard.artworkSize.width, height: EpisodeColumnCard.artworkSize.height)
-        } else {
-            customArtwork
-        }
-        #else
         customArtwork
-        #endif
     }
 
     private var customArtwork: some View {

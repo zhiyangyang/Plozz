@@ -6,7 +6,7 @@ import Foundation
 @MainActor
 enum PlaybackAudioOutputReader {
     static func read() -> PlaybackDiagnostics.AudioOutput? {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         return facts(renderingMode: session.renderingMode, ports: session.currentRoute.outputs.map(\.portType))
         #else
@@ -14,7 +14,7 @@ enum PlaybackAudioOutputReader {
         #endif
     }
 
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     static func facts(
         renderingMode: AVAudioSession.RenderingMode, ports: [AVAudioSession.Port]
     ) -> PlaybackDiagnostics.AudioOutput? {

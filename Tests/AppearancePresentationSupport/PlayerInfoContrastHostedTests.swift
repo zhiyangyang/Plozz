@@ -53,11 +53,7 @@ final class PlayerInfoContrastHostedTests: XCTestCase {
                         y: probe.frame.maxY - metrics.contentPadding - 36,
                         width: 150, height: 36
                     )
-                    #if os(tvOS)
-                    let lightBackground = false
-                    #else
                     let lightBackground = palette.isLight && (effects.flat || effects.opaque)
-                    #endif
                     XCTAssertGreaterThan(try contrastingPixels(
                         image, in: badgeRect, lightBackground: lightBackground
                     ), 60, "\(name): Dolby and 5.1 must contrast with the playback surface.")
@@ -66,72 +62,6 @@ final class PlayerInfoContrastHostedTests: XCTestCase {
         }
     }
 
-    #if os(tvOS)
-    func testNativePlayerHostingPreservesReadableBadges() async throws {
-        let window = try await makeWindow()
-        let previous = window.windowScene?.windows.first(where: \.isKeyWindow)
-        defer {
-            window.isHidden = true
-            window.rootViewController = nil
-            previous?.makeKeyAndVisible()
-        }
-        for system in [ColorScheme.light, .dark] {
-            for theme in AppTheme.pickerOrder {
-                let palette = ThemePalette.palette(for: theme, systemColorScheme: system)
-                let model = makeModel()
-                let engine = NativeVideoEngine()
-                let probe = ContrastProbe()
-                let name = "Native-app-\(theme.rawValue)-device-\(system)"
-                window.overrideUserInterfaceStyle = system == .light ? .light : .dark
-                window.rootViewController = UIHostingController(rootView:
-                    CustomPlayerContainer(
-                        engine: engine, model: model, subtitleModel: LiveSubtitleModel(),
-                        actions: PlayerActions(), scrubPreview: nil, authenticatedHTTPResolver: nil,
-                        themePalette: ThemePaletteBox(
-                            makeControls: { model, actions, exit in
-                                AnyView(PlayerControls(
-                                    model: model, palette: palette, actions: actions, onExitToSurface: exit
-                                ).background(ContrastPaletteProbe(probe: probe)))
-                            },
-                            makeSkipButton: { _, _, _, _ in AnyView(EmptyView()) },
-                            makeUpNextCard: { _, _, _, _ in AnyView(EmptyView()) }
-                        )
-                    )
-                    .environment(\.themePalette, palette)
-                    .environment(\.colorScheme, palette.isLight ? .light : .dark)
-                    .environment(\.plozzReducePanelGlass, true)
-                    .ignoresSafeArea()
-                )
-                window.makeKeyAndVisible()
-                window.layoutIfNeeded()
-                try await Task.sleep(for: .milliseconds(300))
-                model.controlsVisible = true
-                model.controlBar.entry = .info
-                model.controlBar.focusArmed = false
-                model.controlBar.settled = false
-                model.controlBarVisible = true
-                try await Task.sleep(for: .milliseconds(650))
-                model.controlBar.settled = true
-                let image = try await capture(window)
-                attach(image, name: name)
-                let card = try XCTUnwrap(model.subtitleLayout.frame(for: .card), name)
-                let metrics = PlayerCardMetrics.tv
-                let badgeRect = CGRect(
-                    x: card.minX + metrics.contentPadding + metrics.contentHeight * 16 / 9 + metrics.columnSpacing,
-                    y: card.maxY - metrics.contentPadding - 36,
-                    width: 150, height: 36
-                )
-                XCTAssertGreaterThan(try contrastingPixels(image, in: badgeRect, lightBackground: false), 60,
-                                     "\(name): the real native-hosted Info badges must remain readable.")
-                XCTAssertEqual(probe.palette, palette, "Info must not change the surrounding browsing palette.")
-                XCTAssertEqual(probe.scheme, palette.isLight ? .light : .dark,
-                               "Info must not override the surrounding appearance.")
-                window.rootViewController = nil
-                engine.stop()
-            }
-        }
-    }
-    #endif
 
     func testSharedBadgeRowStillRespectsBrowsingThemes() throws {
         for system in [ColorScheme.light, .dark] {

@@ -101,11 +101,7 @@ final class PlayerContinueWatchingPresentationTests: XCTestCase {
             window.rootViewController = nil
             previous?.makeKeyAndVisible()
         }
-        #if os(tvOS)
-        let sizes = [CGSize(width: 1920, height: 1080)]
-        #else
         let sizes = [CGSize(width: 1024, height: 768), .init(width: 844, height: 390), .init(width: 568, height: 320)]
-        #endif
         for size in sizes {
             let metrics = PlayerCardMetrics.resolved(forWidth: size.width, height: size.height)
             let borderless = PlayerMediaArtworkLayout(
@@ -218,17 +214,9 @@ final class PlayerContinueWatchingPresentationTests: XCTestCase {
         var urls: [URL] = []
         defer { for url in urls { cache.removeCachedResponse(for: URLRequest(url: url)) } }
         let items = try await makeItems(cache: cache, urls: &urls)
-        #if os(tvOS)
-        let sizes = [CGSize(width: 1920, height: 1080)]
-        #else
         let sizes = [CGSize(width: 1024, height: 768), .init(width: 844, height: 390), .init(width: 390, height: 844)]
-        #endif
         for size in sizes {
-            #if os(tvOS)
-            let metrics = PlayerCardMetrics.tv
-            #else
             let metrics = PlayerCardMetrics.resolved(forWidth: size.width, height: size.height)
-            #endif
             let model = ContinueWatchingPreviewModel()
             let controls = PlayerControlsModel()
             controls.infoCard.artworkItem = items[0]
@@ -278,11 +266,7 @@ final class PlayerContinueWatchingPresentationTests: XCTestCase {
                     model.captions = CardCaptionSettings(showsLabels: labels)
                     for details in ContinueWatchingPlaybackDetails.allCases {
                         model.details = details
-                        #if os(tvOS)
-                        let surfaces = [CardStyle.framed, .borderless]
-                        #else
                         let surfaces = [CardStyle.framed]
-                        #endif
                         for surface in surfaces {
                             model.cardStyle = surface
                             model.label = "\(style.rawValue) | labels \(labels ? "on" : "off") | \(details.rawValue) | \(surface.rawValue)"
@@ -294,30 +278,6 @@ final class PlayerContinueWatchingPresentationTests: XCTestCase {
                     }
                 }
             }
-            #if os(tvOS)
-            model.presentation.artworkStyle = .portraitPosters
-            model.captions = .init(showsLabels: false)
-            model.details = .detailed
-            model.cardStyle = .framed
-            model.label = "Portrait | detailed | focused | native glass"
-            model.target = .continueWatching(items[1].stablePresentationID)
-            let focusDeadline = ContinuousClock.now + .seconds(5)
-            while model.observedFocus != model.target, ContinuousClock.now < focusDeadline {
-                try await Task.sleep(for: .milliseconds(20))
-            }
-            XCTAssertEqual(model.observedFocus, model.target)
-            let focused = try XCTUnwrap(UIFocusSystem.focusSystem(for: window)?.focusedItem)
-            XCTAssertGreaterThanOrEqual(focused.frame.height, metrics.cardHeight - 1)
-            XCTAssertLessThanOrEqual(focused.frame.height, metrics.cardHeight * 1.10 + 1)
-            XCTAssertEqual(model.stageFrame, reference)
-            try await Task.sleep(for: .milliseconds(250))
-            capture(window, name: "cw-1920-poster-focused")
-            model.reducedTransparency = true
-            model.label = "Portrait | detailed | reduced transparency"
-            try await Task.sleep(for: .milliseconds(250))
-            XCTAssertEqual(model.stageFrame, reference)
-            capture(window, name: "cw-1920-poster-reduced")
-            #endif
         }
     }
 

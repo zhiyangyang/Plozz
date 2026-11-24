@@ -191,33 +191,17 @@ public final class PlayerViewModel {
     /// enabled we cover the exit unconditionally — with the tighter frame-rate
     /// hold, so an SDR title still returns to Home promptly.
     var exitVeilKind: DisplayTransitionKind? {
-        #if os(tvOS)
-        let isDynamicRangeExit = effectiveDynamicRange.bestAvailable?.isHDR
-            ?? effectiveDynamicRange.isAwaitingEngineProbe
-        if isDynamicRangeExit, playbackSettings.fadeOnDynamicRangeChange { return .dynamicRange }
-        if playbackSettings.fadeOnFrameRateChange { return .frameRate }
         return nil
-        #else
-        return nil
-        #endif
     }
 
     /// Whether the enter-path dynamic-range veil is allowed for this profile.
     /// tvOS only, for the same reason as ``exitVeilKind``.
     var fadesOnDynamicRangeChange: Bool {
-        #if os(tvOS)
-        playbackSettings.fadeOnDynamicRangeChange
-        #else
         false
-        #endif
     }
 
     var fadesOnFrameRateChange: Bool {
-        #if os(tvOS)
-        playbackSettings.fadeOnFrameRateChange
-        #else
         false
-        #endif
     }
 
     /// Shared, observable transport state for the custom player overlay. The
@@ -2233,11 +2217,6 @@ public final class PlayerViewModel {
             engineHandoff.armPlaybackWatchdog(startPosition: startPosition)
         }
         let loadStart = Date()
-        #if os(tvOS)
-        engine.setFrameSubtitleSelection { [weak self] tracks in
-            self?.subtitleController.frameSubtitleCandidate(tracks, request: request)
-        }
-        #endif
         engine.setBackgroundAudioEnabled(playbackSettings.backgroundAudio)
         let titles = Self.titleLines(for: request.item)
         nowPlaying?.begin(
@@ -2521,14 +2500,7 @@ public final class PlayerViewModel {
     }
 
     public func didBecomeInactive() {
-        #if os(tvOS)
-        // Control Center and Siri do not mean the viewer paused or left playback.
-        // An explicit pause also disarms the engine's audio-interruption resume.
-        progressReporter.emitCheckpoint(includingPaused: true)
-        foregroundReload.captureBeforeInactivity()
-        #else
         suspendForBackground()
-        #endif
     }
 
     /// Handles the app leaving the foreground (TV Home button, sleep, or app

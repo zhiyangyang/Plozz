@@ -23,11 +23,7 @@ final class ContentRefreshReturnInteractionTests: XCTestCase {
     }
 
     private func exercise(series: Bool, navigation: Bool = false) throws {
-        #if os(tvOS)
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
         app.launchArguments = ["--content-refresh-return-fixture"]
         if series { app.launchArguments.append("--refresh-series") }
         app.launch()
@@ -38,20 +34,12 @@ final class ContentRefreshReturnInteractionTests: XCTestCase {
         let before = play.label
         capture(app, name: "refresh-before-\(series ? "series" : "movie")")
         if navigation {
-            #if os(tvOS)
-            select(play)
-            #else
             select(app.buttons["refresh-cover"])
-            #endif
             XCTAssertTrue(app.buttons["refresh-return"].waitForExistence(timeout: 10))
             awaitReturnDelay()
             select(app.buttons["refresh-return"])
         } else {
-            #if os(tvOS)
-            XCUIRemote.shared.press(.home)
-            #else
             XCUIDevice.shared.press(.home)
-            #endif
             XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10))
             // The fixture uses a one-second threshold, not a synthetic notification.
             awaitReturnDelay()
@@ -71,14 +59,7 @@ final class ContentRefreshReturnInteractionTests: XCTestCase {
     }
 
     private func select(_ button: XCUIElement) {
-        #if os(tvOS)
-        for _ in 0..<5 where !button.hasFocus { XCUIRemote.shared.press(.up) }
-        for _ in 0..<5 where !button.hasFocus { XCUIRemote.shared.press(.right) }
-        XCTAssertTrue(button.hasFocus)
-        XCUIRemote.shared.press(.select)
-        #else
         button.tap()
-        #endif
     }
 
     private func awaitReturnDelay() {

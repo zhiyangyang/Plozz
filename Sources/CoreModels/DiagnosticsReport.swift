@@ -111,9 +111,7 @@ public struct DiagnosticsReport {
     }
 
     private static var platformName: String {  // l10n:content — developer-facing diagnostic (GitHub bug-report template)
-        #if os(tvOS)
-        "tvOS"
-        #elseif os(iOS)
+        #if os(iOS)
         "iOS"
         #else
         "Apple OS"

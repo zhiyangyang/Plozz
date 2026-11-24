@@ -62,9 +62,7 @@ public struct CrashReportContext: Sendable {
 
     static func currentSystemVersion() -> String {  // l10n:content — crash-report tag metadata, never displayed to users
         let v = ProcessInfo.processInfo.operatingSystemVersion
-        #if os(tvOS)
-        let platform = "tvOS"
-        #elseif os(iOS)
+        #if os(iOS)
         let platform = "iOS"
         #else
         let platform = "Apple OS"

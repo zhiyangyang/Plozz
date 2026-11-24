@@ -73,16 +73,10 @@ public struct HeroCollectionPickerView: View {
                         account.provider.session.userID, account.plexHomeUserID ?? ""
                     ])
                 }
-                #if os(tvOS)
-                if !showsSelectionSummary && onSelect == nil { HomeContentPickerDoneButton() }
-                #endif
             } else {
                 if playlists { Text("No available playlist sources.") }
                 else { Text("No available collection sources.") }
                 if !showsSelectionSummary && onSelect == nil {
-                    #if os(tvOS)
-                    HomeContentPickerDoneButton()
-                    #endif
                 } else {
                     Button("Done") {
                         if let detailNavigation {
@@ -224,16 +218,8 @@ private struct HeroCollectionChoice: View {
                 if selected { Image(systemName: "checkmark") }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            #if os(tvOS)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            #endif
         }
-        #if os(tvOS)
-        .buttonStyle(SettingsFocusButtonStyle())
-        #else
         .buttonStyle(.plain)
-        #endif
         .accessibilityIdentifier(focusID)
         .modifier(ViewCustomizationRowFocus(id: focusID))
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -245,16 +231,7 @@ private struct HeroCollectionSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title).font(.headline)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 24)
-        #else
         SettingsSectionGroup(title, content: content)
-        #endif
     }
 }
 #endif

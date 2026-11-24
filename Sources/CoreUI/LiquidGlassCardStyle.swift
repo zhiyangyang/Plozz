@@ -300,31 +300,7 @@ public struct PlozzFocusableCardModifier: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            if informationFocus {
-                Button {} label: { content.padding(focusPadding) }
-                    .modifier(NativeInformationCardStyle(cornerRadius: cornerRadius))
-                    .accessibilityRemoveTraits(.isButton)
-            } else {
-                NativeTVCard(content: content.padding(focusPadding), focus: $focused, isEnabled: true, action: {})
-                    .focused($focused.focusState)
-                    .zIndex(focused ? 1 : 0)
-                    .accessibilityRemoveTraits(.isButton)
-            }
-        } else {
-            content
-                .background { surface }
-                .focusable(true)
-                .focused($focused.focusState)
-                .focusEffectDisabled()
-                .scaleEffect(focused ? PlozzTheme.Metrics.readOnlyFocusedCardScale : 1)
-                .zIndex(focused ? 1 : 0)
-                .animation(.easeOut(duration: 0.18), value: focused)
-        }
-        #else
         content.background { surface }
-        #endif
     }
 
     @ViewBuilder

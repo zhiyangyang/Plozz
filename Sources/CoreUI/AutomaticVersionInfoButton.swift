@@ -16,11 +16,7 @@ public struct AutomaticVersionInfoButton: View {
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
-        #if os(tvOS)
-        .buttonStyle(.bordered)
-        #else
         .buttonStyle(.borderless)
-        #endif
         .help("How automatic selection works")
         .accessibilityIdentifier("automatic-version-information")
         .alert("How automatic selection works", isPresented: $showsInformation) {

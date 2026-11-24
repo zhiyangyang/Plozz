@@ -41,17 +41,6 @@ struct DiscReviewFixture: View {
         let item: MediaItem
         let isHome: Bool
         @State private var trailer = HeroTrailerController()
-        #if os(tvOS)
-        @State private var background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
-
-        var body: some View {
-            DetailHeroView(
-                item: item, spoilerSettings: .default, playTitle: "Play", onPlay: {}, onPlayDisc: { _ in }
-            )
-            .environment(trailer)
-            .environment(background)
-        }
-        #else
         @State private var appModel: PlozziOSAppModel = {
             SyncSetupFeatureFlag().isEnabled = false
             let defaults = UserDefaults(suiteName: "DiscReview.\(UUID().uuidString)")!
@@ -96,7 +85,6 @@ struct DiscReviewFixture: View {
             .environment(sidebar)
             .environment(\.plozzMetrics, .touch(density: .standard))
         }
-        #endif
     }
 
     @MainActor
@@ -109,9 +97,6 @@ struct DiscReviewFixture: View {
 
     private var player: some View {
         ZStack {
-            #if os(tvOS)
-            PlayerView(viewModel: fixture.player)
-            #else
             PlayerView(viewModel: fixture.player, showsSharedControls: false, showsLoadingOverlay: false)
             if fixture.player.phase == .ready, !fixture.player.showBringUpSpinner,
                fixture.engine.discMenu?.presentsMenu != true {
@@ -132,7 +117,6 @@ struct DiscReviewFixture: View {
                 .modifier(PlayerTouchChromePadding())
             }
             PlayerLoadingOverlay(viewModel: fixture.player, discMenuRequested: fixture.opensMenu)
-            #endif
         }
         .onChange(of: fixture.player.phase) { _, phase in
             if phase == .ready, fixture.scenario == "videos" { fixture.player.showsDiscVideos = true }

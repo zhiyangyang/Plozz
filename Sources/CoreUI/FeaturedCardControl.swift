@@ -39,11 +39,6 @@ public struct FeaturedCardControl<Video: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        televisionControl
-            .mediaItemContextMenu(for: item)
-            .onChange(of: focused) { _, value in onFocus(value) }
-        #else
         MediaArtworkZoomButton(id: item.stablePresentationID) { source in
             if let onArtworkSelect { onArtworkSelect(source) }
             else { onSelect() }
@@ -54,22 +49,7 @@ public struct FeaturedCardControl<Video: View>: View {
                 .mediaItemContextMenu(for: item)
         }
         .buttonStyle(.plain)
-        #endif
     }
 
-    #if os(tvOS)
-    @ViewBuilder private var televisionControl: some View {
-        if focusStyle.usesSystemEffect {
-            FeaturedCardArtwork(item: item, size: size, spoilerSettings: spoilers) { video }
-                .nativeButton(focus: $focused, action: onSelect)
-        } else {
-            artwork
-                .plozzFocusHalo(cornerRadius: 20, focusScale: 1.04, isFocused: focused)
-                .focusableCard(isFocused: $focused, cornerRadius: 20, action: onSelect)
-                .accessibilityLabel(Text(verbatim: item.title))
-                .plozzCardFocusTransition(isFocused: focused)
-        }
-    }
-    #endif
 }
 #endif

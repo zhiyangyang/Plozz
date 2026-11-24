@@ -9,11 +9,7 @@ public enum HeroSettingsPage: String, CaseIterable {
     var title: LocalizedStringResource {
         switch self {
         case .titles:
-            #if os(tvOS)
-            "Content sources"
-            #else
             "Hero content sources"
-            #endif
         case .ratings: "Ratings"
         case .trailers: "Trailers & music"
         case .discovery: "Discovery"
@@ -56,15 +52,11 @@ public struct HeroSettingsControls: View {
 
     public var body: some View {
         @Bindable var hero = hero
-        #if os(tvOS)
-        HomeHeroEnabledPicker(settings: $hero.settings)
-        #else
         HeroSettingsGroup(searchTargets: ["hero-enabled"] + enableTargets) {
             Toggle("Show hero", isOn: $hero.settings.isEnabled)
                 .accessibilityIdentifier("hero-enabled")
                 .settingsSearchAnchor("hero-enabled", fallbackFor: enableTargets)
         }
-        #endif
         if showsControls {
             HeroSettingsGroup {
                 HeroLogoSizeControl(size: $hero.settings.logoSize, textSize: $hero.settings.textSize, surface: .home)
@@ -79,11 +71,7 @@ public struct HeroSettingsControls: View {
     }
 
     private var showsControls: Bool {
-        #if os(tvOS)
-        hero.settings.spotlightEnabled
-        #else
         hero.settings.isEnabled
-        #endif
     }
 
     private var enableTargets: [String] {
@@ -100,17 +88,9 @@ private struct HeroTitleControls: View {
         @Bindable var hero = hero
         HeroSettingsGroup(title: "Content", searchTargets: ["hero-content", "hero-items"]) {
             HeroSettingsLink(page: .titles, libraries: libraries, accounts: accounts)
-            #if os(tvOS)
-            SettingsStepper(
-                options: Array(HeroSettings.maxItemsRange), selection: $hero.settings.maxItems,
-                compact: true, label: "Items to show", title: { "\($0)" }
-            )
-            .settingsSearchAnchor("hero-items")
-            #else
             Stepper("Items to show: \(hero.settings.maxItems)",
                     value: $hero.settings.maxItems, in: HeroSettings.maxItemsRange)
                 .settingsSearchAnchor("hero-items")
-            #endif
         }
     }
 }
@@ -127,18 +107,9 @@ private struct HeroAutomaticChangeControls: View {
                     "hero-auto-advance", fallbackFor: hero.settings.autoAdvance ? [] : ["hero-advance-seconds"]
                 )
             if hero.settings.autoAdvance {
-                #if os(tvOS)
-                SettingsStepper(
-                    options: Array(HeroSettings.autoAdvanceRange), selection: $hero.settings.autoAdvanceSeconds,
-                    compact: true, label: "Seconds per item",
-                    verbatimTitle: { Duration.seconds($0).formatted(.units(allowed: [.seconds], width: .narrow)) }
-                )
-                .settingsSearchAnchor("hero-advance-seconds")
-                #else
                 Stepper("Seconds per item: \(hero.settings.autoAdvanceSeconds)",
                         value: $hero.settings.autoAdvanceSeconds, in: HeroSettings.autoAdvanceRange)
                     .settingsSearchAnchor("hero-advance-seconds")
-                #endif
             }
         }
     }
@@ -243,13 +214,7 @@ public struct TrailersAndMusicSettingsView: View {
                 Text($0.displayName).tag($0)
             }
         }
-        #if os(tvOS)
-        return SettingsMenuRow(title: "Trailers", value: Text(background.settings.trailerSources.displayName)) {
-            picker.pickerStyle(.inline)
-        }
-        #else
         return picker.pickerStyle(.menu)
-        #endif
     }
 
     private var detailPicker: some View {
@@ -261,13 +226,7 @@ public struct TrailersAndMusicSettingsView: View {
                 Text($0.displayName).tag($0)
             }
         }
-        #if os(tvOS)
-        return SettingsMenuRow(title: "Detail background", value: Text(background.settings.effectiveDetailMode.displayName)) {
-            picker.pickerStyle(.inline)
-        }
-        #else
         return picker.pickerStyle(.menu)
-        #endif
     }
 }
 
@@ -398,26 +357,9 @@ struct HeroSettingsScreen: View {
         } else if page == .collections {
             HeroCollectionPickerView(selections: $hero.settings.collections, libraries: libraries, accounts: accounts)
         } else {
-            #if os(tvOS)
-            SettingsDetailPages(navigation: childNavigation) {
-                ViewCustomizationList(
-                    title: page.title, initialRowID: initialRowID,
-                    sectionSpacing: SettingsRowMetrics.formSectionSpacing,
-                    hasGroupedContent: true
-                ) {
-                    form
-                        .environment(childNavigation)
-                        .toggleStyle(SettingsSwitchToggleStyle())
-                }
-                .environment(parentNavigation)
-            } detail: {
-                HeroSettingsDestination(libraries: libraries, accounts: accounts)
-            }
-            #else
             ViewCustomizationList(title: page.title, initialRowID: initialRowID) {
                 form
             }
-            #endif
         }
     }
 
@@ -568,12 +510,7 @@ private struct HeroTitleSources: View {
                     }
                 }
             }
-            #if os(tvOS)
-            .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-            .buttonStyle(SettingsFormButtonStyle())
-            #else
             .settingsSearchGroup(["hero-source-\(source.rawValue)"] + dependentTargets(for: source))
-            #endif
         }
         if !hero.allowsDiscovery {
             Text("Discovery is unavailable in Kids profiles. Library content follows the connected server user's restrictions.")
@@ -611,26 +548,10 @@ private struct HeroSettingsGroup<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 12) {
-            if let title {
-                Text(title).settingsSectionHeader()
-                    .padding(.horizontal, SettingsRowMetrics.formGroupInset + SettingsRowMetrics.horizontalPadding)
-            }
-            ViewPreferenceChoiceGroup(rowSize: .contained, content: content)
-                .toggleStyle(SettingsSwitchToggleStyle(flushLeading: false))
-                .buttonStyle(SettingsFormButtonStyle())
-            if let detail {
-                Text(detail).settingsHelperText().fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, SettingsRowMetrics.formGroupInset + SettingsRowMetrics.horizontalPadding)
-            }
-        }
-        #else
         SettingsSectionGroup(title, content: content) {
             if let detail { Text(detail) }
         }
         .settingsSearchGroup(searchTargets)
-        #endif
     }
 }
 #endif

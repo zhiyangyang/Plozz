@@ -57,11 +57,6 @@ struct PrototypeBrowser: View {
     @State private var timeline = PrototypeTimelineScroll()
     @State private var appliedPreparationRevision = 0
     @Environment(LiveTVGuidePreparationModel.self) private var guidePreparation: LiveTVGuidePreparationModel?
-    #if os(tvOS)
-    @State private var nativeScroll = PrototypeGuideScrollController()
-    @ScaledMetric(relativeTo: .subheadline) private var nativeRowHeight = PrototypeLayout.rowHeight
-    @ScaledMetric(relativeTo: .caption) private var nativeSectionFontSize = PrototypeLayout.sectionFontSize
-    #endif
     @FocusState private var focused: PrototypeBrowseFocus?
     @FocusState private var recoveryFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -152,60 +147,6 @@ struct PrototypeBrowser: View {
                             .focusEffectDisabled()
                     }
                 } else {
-                    #if os(tvOS)
-                    let gatesFocus = (railActive && restrictDirectionalEntry)
-                        || isRestoringFocus || requiresContentFocusHandoff
-                    PrototypeNativeGuideList(
-                        rows: model.guideRowIDs,
-                        rowHeight: PrototypeLayout.rowHeight(for: geometry.size.width, scaledHeight: nativeRowHeight)
-                            + PrototypeLayout.rowGap,
-                        sectionHeight: PrototypeLayout.guideSectionLabelHeight(fontSize: nativeSectionFontSize)
-                            + PrototypeLayout.smallGap + PrototypeLayout.sectionLabelGap,
-                        scrollController: nativeScroll,
-                        scrolled: { row, offset in
-                            if scrollID != row { scrollID = row }
-                            let fade = PrototypeScrollFade(before: offset)
-                            if verticalFade != fade { verticalFade = fade }
-                        },
-                        revision: { row in
-                            model.guideEntry(for: row).map { entry in
-                                PrototypeGuideRowRevision(
-                                    entry: entry,
-                                    showsSection: entry.startsSection && entry.section != model.guideChannels.first?.section,
-                                    programs: model.programs(for: row.channelID, from: guideStart, hours: guideHours),
-                                    start: guideStart, hours: guideHours, now: model.now,
-                                    width: geometry.size.width, gatesFocus: gatesFocus,
-                                    returnTarget: gatesFocus && focusReturnTarget?.rowID == row ? focusReturnTarget : nil,
-                                    favorite: model.favoriteIDs.contains(row.channelID),
-                                    playing: model.playingChannelID == row.channelID,
-                                    gapState: imports.gapState(
-                                        for: entry.channel, from: dataRange.start, to: dataRange.end),
-                                    selectionAction: selectionAction,
-                                    selectionMarked: selectedChannelIDs.contains(row.channelID),
-                                    canHide: hideChannel != nil,
-                                    focusPolicy: rowFocusPolicy(for: row))
-                            }
-                        },
-                        horizontalNavigation: useNativeNavigation,
-                        leadingExit: leadingExit
-                    ) { row in
-                        if let entry = model.guideEntry(for: row) {
-                            guideRow(
-                                entry, width: geometry.size.width, returnTarget: focusReturnTarget,
-                                scrollTo: nativeScroll.scrollTo)
-                                .padding(.bottom, PrototypeLayout.rowGap)
-                        }
-                    }
-                    .verticalEdgeFadeMask(
-                        fadeHeight: PrototypeLayout.verticalFade,
-                        topStrength: verticalFade.leading, bottomStrength: 0)
-                    .onChange(of: topRequest) { _, _ in
-                        goToTop(scrollTo: nativeScroll.scrollTo, movesFocus: !railActive)
-                    }
-                    .task(id: isPresented && isRestoringFocus ? restoreFocusRequest : -1) {
-                        await restoreFocus(scrollTo: nativeScroll.scrollTo, width: geometry.size.width)
-                    }
-                    #else
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(spacing: PrototypeLayout.rowGap) {
@@ -243,7 +184,6 @@ struct PrototypeBrowser: View {
                                 scrollTo: { proxy.scrollTo($0, anchor: $1) }, width: geometry.size.width)
                         }
                     }
-                    #endif
                 }
             }
             .onChange(of: geometry.size.width, initial: true) { old, new in
@@ -296,12 +236,6 @@ struct PrototypeBrowser: View {
             #endif
         }
         .clipShape(PrototypeLayout.guideShape)
-        #if os(tvOS)
-        .focusSection()
-        .onExitCommand(perform: openToolbar.map { action in
-            { if !isRestoringFocus { action() } }
-        })
-        #endif
         .onChange(of: confirmedFocus, initial: true) { _, target in
             hasFocus = target != nil
             if let target {
@@ -439,11 +373,7 @@ struct PrototypeBrowser: View {
 
     private func rowFocusPolicy(for row: LiveTVGuideRowID) -> LiveTVGuideRowFocusPolicy {
         let native: Bool
-        #if os(tvOS)
-        native = usesNativeSpatialNavigation || voiceOver
-        #else
         native = true
-        #endif
         return LiveTVGuideRowFocusPolicy(
             entryTarget: .defaultContent(in: model, row: row, from: guideStart, hours: guideHours),
             isActiveRow: selectedRowID == row,
@@ -452,11 +382,6 @@ struct PrototypeBrowser: View {
     }
 
     private func useNativeNavigation() {
-        #if os(tvOS)
-        guard !isRestoringFocus, !usesNativeSpatialNavigation,
-              !DetailTransitionNavigation.isNavigationInputSuppressed else { return }
-        usesNativeSpatialNavigation = true
-        #endif
     }
 
     private func guideRow(
@@ -467,9 +392,6 @@ struct PrototypeBrowser: View {
         return VStack(alignment: .leading, spacing: PrototypeLayout.sectionLabelGap) {
             if entry.startsSection, entry.section != model.guideChannels.first?.section {
                 PrototypeGuideSectionLabel(section: entry.section)
-                    #if os(tvOS)
-                    .padding(.top, PrototypeLayout.smallGap)
-                    #endif
             }
             PrototypeGuideRow(
                 channel: channel, section: entry.section,
@@ -769,11 +691,7 @@ struct PrototypeGuideSectionLabel: View {
             .foregroundStyle(palette.secondaryText)
             .lineLimit(1).minimumScaleFactor(0.8)
             .padding(.horizontal, PrototypeLayout.rowInset)
-            #if os(tvOS)
-            .frame(height: PrototypeLayout.guideSectionLabelHeight(fontSize: fontSize), alignment: .leading)
-            #else
             .frame(minHeight: PrototypeLayout.sectionLabelHeight, alignment: .leading)
-            #endif
             .accessibilityAddTraits(.isHeader)
     }
 }
@@ -930,13 +848,7 @@ struct PrototypeElapsedProgramFill: View {
     @Environment(\.plozzCardFocusStyle) private var focusStyle
 
     var body: some View {
-        #if os(tvOS)
-        PrototypeProgramProgressShading(
-            elapsedWidth: elapsedWidth, dimsRemaining: focused && focusStyle.usesSystemEffect
-        )
-        #else
         PrototypeProgramProgressShading(elapsedWidth: elapsedWidth, dimsRemaining: false)
-        #endif
     }
 }
 
@@ -1083,10 +995,6 @@ struct PrototypeGuideRow: View {
                                         surface: .program,
                                         focusChanged: { focusChanged(programFocus(program.id), $0) }
                                     ))
-                                    #if os(tvOS)
-                                    .frame(width: cellWidth(slot), height: rowHeight)
-                                    .clipShape(RoundedRectangle(cornerRadius: PrototypeLayout.programRadius, style: .continuous))
-                                    #endif
                                     .padding(.vertical, PrototypeLayout.programInset)
                                     .padding(.trailing, min(PrototypeLayout.cellGap, slotWidth(slot) / 4))
                                     .frame(width: slotWidth(slot), height: rowHeight)
@@ -1157,15 +1065,6 @@ struct PrototypeGuideRow: View {
         }
         let windowStart = start.addingTimeInterval(Double(timeline.page - 1) * viewportSeconds)
         var windowEnd = start.addingTimeInterval(Double(timeline.page + 3) * viewportSeconds)
-        #if os(tvOS)
-        if timeline.atLeadingEdge, !railActive, focusPolicy?.usesNativeNavigation == false {
-            // Vertical browsing stays at Now. Keep one offscreen candidate
-            // for the first horizontal move, not two extra screens of menus.
-            // Spatial navigation, VoiceOver and focus handoffs keep their window.
-            let visibleEnd = start.addingTimeInterval(viewportSeconds)
-            windowEnd = slots.first(where: { $0.start >= visibleEnd })?.end ?? visibleEnd
-        }
-        #endif
         var items: [TimelineItem] = []
         var skipped: CGFloat = 0
         for slot in slots {
@@ -1227,11 +1126,6 @@ struct PrototypeGuideRow: View {
             selected: selectedTarget == target,
             surface: .guide, focusChanged: { focusChanged(target, $0) }
         ))
-        #if os(tvOS)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: rowHeight)
-        .clipShape(RoundedRectangle(cornerRadius: PrototypeLayout.rowRadius, style: .continuous))
-        #endif
         .focused(focus, equals: target)
         .zIndex(focus.wrappedValue == target ? 1 : 0)
         .prototypeFocusGate(isFocusDisabled(target))
@@ -1339,11 +1233,6 @@ struct PrototypeGuideStation: View {
             }
         }
         .modifier(PrototypeGuideStationStyle(focusChanged: focusChanged))
-        #if os(tvOS)
-        .menuStyle(.button)
-        .frame(width: width ?? PrototypeLayout.stationColumnWidth, height: height ?? PrototypeLayout.rowHeight)
-        .clipShape(RoundedRectangle(cornerRadius: PrototypeLayout.rowRadius, style: .continuous))
-        #endif
         .accessibilityLabel(Text(channel.name))
         .accessibilityValue(Text("Channel \(channel.number)"))
         .accessibilityHint(Text(selectionAction ?? (selectForPreview == nil ? "Channel actions" : "Play channel")))
@@ -1375,15 +1264,7 @@ struct PrototypeGuideStation: View {
 
     @ViewBuilder
     private var stationLabel: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            PrototypeNativeGuideLabel(content: stationMark, surface: .station, focusChanged: focusChanged)
-        } else {
-            stationMark
-        }
-        #else
         stationMark
-        #endif
     }
 
     private var stationMark: some View {
@@ -1411,11 +1292,7 @@ struct PrototypeGuideStation: View {
     }
 
     private var usesNativeStationBackground: Bool {
-        #if os(tvOS)
-        focusStyle.usesSystemEffect
-        #else
         false
-        #endif
     }
 }
 
@@ -1491,11 +1368,7 @@ struct PrototypeGuideGap: View {
     var body: some View {
         Text(channelName)
             .font(.system(size: fontSize))
-            #if os(tvOS)
-            .foregroundStyle(.primary)
-            #else
             .foregroundStyle(palette.primaryText.opacity(0.8))
-            #endif
             .lineLimit(2)
             .padding(.horizontal, PrototypeLayout.rowInset)
             .frame(maxWidth: .infinity, alignment: .leading)

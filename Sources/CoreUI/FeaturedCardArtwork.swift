@@ -36,19 +36,6 @@ public struct FeaturedCardArtwork<Video: View>: View {
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     @Environment(\.plozzNativeFocusSurface) private var nativeFocusSurface
     @Environment(\.plozzShowsContentRatings) private var showsContentRatings
-    #if os(tvOS)
-    private struct NativeControl {
-        let focus: PlozzCardFocus.Binding
-        let action: () -> Void
-    }
-    private var nativeControl: NativeControl?
-
-    public func nativeButton(focus: PlozzCardFocus.Binding, action: @escaping () -> Void) -> Self {
-        var copy = self
-        copy.nativeControl = NativeControl(focus: focus, action: action)
-        return copy
-    }
-    #endif
 
     public init(
         item: MediaItem, size: CGSize, spoilerSettings: SpoilerSettings = .default,
@@ -81,15 +68,7 @@ public struct FeaturedCardArtwork<Video: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        if let nativeControl {
-            nativeButton(control: nativeControl)
-        } else {
-            standaloneArtwork
-        }
-        #else
         standaloneArtwork
-        #endif
     }
 
     private var standaloneArtwork: some View {
@@ -130,32 +109,6 @@ public struct FeaturedCardArtwork<Video: View>: View {
         MediaArtworkPlaceholder(tint: .white, glyphSize: size.width * 0.12)
     }
 
-    #if os(tvOS)
-    private func nativeButton(control: NativeControl) -> some View {
-        artwork.resolvedBitmap { image, identity in
-            NativeTVPoster(
-                image: image, artworkIdentity: identity,
-                treatment: .original, aspectRatio: size.width / size.height,
-                fallbackWidth: size.width,
-                title: spoilerSettings.shouldHideText(for: item)
-                    ? .localized(spoilerSettings.maskedTitle(for: item)) : .content(item.title),
-                subtitle: accessibilityMetadata,
-                overlay: layers(scrimOutset: 40) {
-                    if let image {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    } else {
-                        placeholder
-                    }
-                },
-                rasterizesOverlay: false,
-                clipsOverlayToArtwork: false,
-                focus: control.focus, action: control.action
-            )
-            .focused(control.focus.focusState)
-            .frame(width: size.width, height: size.height)
-        }
-    }
-    #endif
 
     private func layers<Artwork: View>(
         scrimOutset: CGFloat = 0, @ViewBuilder artwork: () -> Artwork

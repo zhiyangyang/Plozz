@@ -153,26 +153,6 @@ private struct LiveTVGuidePreferences: View {
     @Binding var settings: LiveTVViewSettings
 
     var body: some View {
-        #if os(tvOS)
-        SettingsSectionGroup {
-            Toggle("Auto preview", isOn: Binding(
-                get: { settings.allowsAutomaticPreview },
-                set: { settings.chooseAutoPreview($0) }
-            ))
-            .settingsSearchAnchor(
-                "live-auto-preview", fallbackFor: settings.autoPreview ? [] : ["live-keep-watching"]
-            )
-        } footer: {
-            Text("Preview the focused channel as you browse.")
-        }
-        SettingsSectionGroup {
-            Toggle("Keep watching while browsing", isOn: $settings.keepWatchingWhileBrowsing)
-                .disabled(!settings.autoPreview)
-                .settingsSearchAnchor(settings.autoPreview ? "live-keep-watching" : "live-keep-watching-disabled")
-        } footer: {
-            Text("Keep the watched channel playing instead of previewing other channels.")
-        }
-        #endif
         SettingsSectionGroup {
             Toggle("Preview after watching", isOn: $settings.previewAfterWatching).settingsSearchAnchor("live-preview-after")
             Toggle("Recently watched", isOn: $settings.showsRecentChannels).settingsSearchAnchor("live-recent")
@@ -231,33 +211,10 @@ private struct LiveTVChannelVisibilitySettings: View {
 private struct LiveTVPreferencesPage<Content: View>: View {
     let title: LocalizedStringResource
     @ViewBuilder let content: () -> Content
-    #if os(tvOS)
-    @SettingsPageDismiss private var dismiss
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
 
     var body: some View {
-        #if os(tvOS)
-        ScrollView {
-            VStack(alignment: .leading, spacing: SettingsFormMetrics.sectionSpacing) {
-                SettingsPageHeader(title)
-                    .environment(\.settingsPageBackButton, inWorkspace ? AnyView(
-                        SettingsBackButton { dismiss() }
-                            .accessibilityIdentifier("live-tv-settings-back")
-                    ) : nil)
-                content()
-                    .settingsPageEntryFocus()
-            }
-            .padding(.horizontal, SettingsFormMetrics.pageInset)
-            .padding(.top, SettingsFormMetrics.pageTopInset)
-            .padding(.bottom, SettingsFormMetrics.pageBottomInset)
-        }
-        .scrollClipDisabled()
-        .background { SettingsPageBackground() }
-        #else
         SettingsPageScroll(content: content)
             .navigationTitle(Text(title))
-        #endif
     }
 }
 

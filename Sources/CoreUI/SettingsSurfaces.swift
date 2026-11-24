@@ -6,12 +6,9 @@ public struct SettingsPageBackground: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.gradientBackgroundsEnabled) private var gradientEnabled
     @Environment(\.plozzDialogBackgroundOwned) private var dialogBackgroundOwned
-    #if os(tvOS) || os(iOS)
+    #if os(iOS)
     @Environment(\.settingsGradientCardSurface) private var cardSurface
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    #endif
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
     #endif
 
     public init() {}
@@ -25,7 +22,7 @@ public struct SettingsPageBackground: View {
             Color.clear
         } else if gradientEnabled {
             AmbientGradientBackground(palette: palette)
-                #if os(tvOS) || os(iOS)
+                #if os(iOS)
                 .background {
                     if let cardSurface {
                         NativeGradientViewport(
@@ -47,39 +44,12 @@ public struct SettingsPageBackground: View {
     }
 
     private var inheritsBackground: Bool {
-        #if os(tvOS)
-        dialogBackgroundOwned || inWorkspace
-        #else
         dialogBackgroundOwned
-        #endif
     }
 }
 
-#if os(tvOS)
-private struct SettingsWorkspaceKey: EnvironmentKey {
-    static let defaultValue = false
-}
 
-private struct SettingsPageBackButtonKey: EnvironmentKey {
-    static let defaultValue: AnyView? = nil
-}
-
-public extension EnvironmentValues {
-    var settingsInWorkspace: Bool {
-        get { self[SettingsWorkspaceKey.self] }
-        set { self[SettingsWorkspaceKey.self] = newValue }
-    }
-
-    /// The navigation owner supplies its focus-aware Back control; the page hosts it inside its scroll content.
-    var settingsPageBackButton: AnyView? {
-        get { self[SettingsPageBackButtonKey.self] }
-        set { self[SettingsPageBackButtonKey.self] = newValue }
-    }
-}
-
-#endif
-
-#if os(tvOS) || os(iOS)
+#if os(iOS)
 private struct SettingsGradientCardSurfaceKey: EnvironmentKey {
     static let defaultValue: NativeGradientCardSurface? = nil
 }
@@ -93,28 +63,17 @@ extension EnvironmentValues {
 #endif
 
 public struct SettingsPageBackButton: View {
-    #if os(tvOS)
-    @Environment(\.settingsPageBackButton) private var backButton
-    #endif
 
     public init() {}
 
     public var body: some View {
-        #if os(tvOS)
-        if let backButton {
-            backButton
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
-        }
-        #else
         EmptyView()
-        #endif
     }
 }
 
 private struct SettingsPageBackgroundModifier: ViewModifier {
     var paintsDialogBackground = false
-    #if os(tvOS) || os(iOS)
+    #if os(iOS)
     @State private var cardSurface = NativeGradientCardSurface()
     #endif
     #if os(iOS)
@@ -125,9 +84,7 @@ private struct SettingsPageBackgroundModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background { SettingsPageBackground(paintsDialogBackground: paintsDialogBackground) }
-            #if os(tvOS)
-            .environment(\.settingsGradientCardSurface, cardSurface)
-            #elseif os(iOS)
+            #if os(iOS)
             .environment(
                 \.settingsGradientCardSurface,
                 dialogBackgroundOwned && !paintsDialogBackground ? inheritedSurface : cardSurface

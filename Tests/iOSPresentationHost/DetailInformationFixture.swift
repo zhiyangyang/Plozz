@@ -285,14 +285,6 @@ struct DetailInformationFixture: View {
                 }
                 .id("detail-fixture-top")
             }
-            #if os(tvOS)
-            .onPlayPauseCommand {
-                if ProcessInfo.processInfo.arguments.contains("--detail-layout-scrolling") {
-                    let clipped = ProcessInfo.processInfo.arguments.contains("--detail-layout-guidance-clipped")
-                    scroll.scrollTo(clipped ? "detail-fixture-top" : "detail-fixture-information", anchor: .top)
-                }
-            }
-            #endif
             .task {
                 if layoutCase != nil || Self.example != nil {
                     do {
@@ -328,10 +320,6 @@ struct DetailInformationFixture: View {
     }
 
     private var horizontalInset: CGFloat {
-        #if os(tvOS)
-        80
-        #else
         24
-        #endif
     }
 }

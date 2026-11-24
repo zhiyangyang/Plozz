@@ -7,11 +7,7 @@ public struct DownloadStorageCapacity: Sendable {
 
     public static let device = DownloadStorageCapacity { url, key in
         let values = try url.resourceValues(forKeys: [key])
-        #if os(tvOS)
-        return values.volumeAvailableCapacity.map(Int64.init)
-        #else
         return values.volumeAvailableCapacityForImportantUsage
-        #endif
     }
 
     init(readCapacity: @escaping @Sendable (URL, URLResourceKey) throws -> Int64?) {
@@ -19,10 +15,6 @@ public struct DownloadStorageCapacity: Sendable {
     }
 
     public func availableBytes(at url: URL) throws -> Int64? {
-        #if os(tvOS)
-        return try readCapacity(url, .volumeAvailableCapacityKey)
-        #else
         return try readCapacity(url, .volumeAvailableCapacityForImportantUsageKey)
-        #endif
     }
 }

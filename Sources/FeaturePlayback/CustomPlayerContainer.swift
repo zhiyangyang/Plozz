@@ -245,11 +245,7 @@ struct ThemePaletteBox {
 final class PlayerInputView: UIView {
     var allowsFocus = true
     override var canBecomeFocused: Bool {
-#if os(tvOS)
-        allowsFocus
-#else
         false
-#endif
     }
 }
 
@@ -307,9 +303,6 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
     /// hitches, pan-sample cadence, per-sample handler cost, and thumbnail cache
     /// hit/miss, emitting one `PLZSCRUB` line per scrub for off-device capture.
     private let scrubDiag = ScrubDiagnostics()
-#if os(tvOS)
-    private let remoteTouchInput = RemoteTouchInput()
-#endif
     private var surfacePan: PlayerSurfacePanGestureRecognizer?
     private var selectRecognizer: UIGestureRecognizer?
 
@@ -410,13 +403,6 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
 
     override func viewDidLoad() {
         super.viewDidLoad()
-#if os(tvOS)
-        installGestures()
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(interruptRemoteScan),
-            name: UIApplication.willResignActiveNotification, object: nil
-        )
-#endif
     }
 
     override func viewDidLayoutSubviews() {
@@ -426,20 +412,8 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-#if os(tvOS)
-        // Make sure our input surface owns the focus so the Siri Remote's presses
-        // and indirect-touch pans reach our gesture recognizers.
-        setNeedsFocusUpdate()
-        updateFocusIfNeeded()
-#endif
         startRefreshLoop()
         startSubtitleClock()
-#if os(tvOS)
-        remoteTouchInput.start()
-        if controlBarHost != nil, model.controlsVisible {
-            scheduleAutoHide()
-        }
-#endif
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -460,17 +434,10 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
         // Leaving playback: let the screensaver / Apple TV sleep resume.
         idleSleepGuard.allowSleep()
         #endif
-#if os(tvOS)
-        remoteTouchInput.stop()
-#endif
     }
 
     override var canBecomeFirstResponder: Bool {
-#if os(tvOS)
-        true
-#else
         false
-#endif
     }
 
     func configureScrubPreview(
@@ -1034,24 +1001,7 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
     // MARK: Focus
 
     override var preferredFocusEnvironments: [UIFocusEnvironment] {
-#if os(tvOS)
-        // While the bottom control bar is active, hand focus to it so the Siri
-        // Remote drives its native buttons; the skip button likewise grabs focus
-        // while it's presented; otherwise the input surface owns focus so
-        // pans/presses reach our gesture recognizers.
-        if focusContext == .skipButton, let skipButtonHost {
-            return [skipButtonHost.view]
-        }
-        if focusContext == .upNext, let upNextHost {
-            return [upNextHost.view]
-        }
-        if focusContext == .controlBar, let controlBarHost {
-            return [controlBarHost.view]
-        }
-        return [playerInputView]
-#else
         return super.preferredFocusEnvironments
-#endif
     }
 
     override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
@@ -1120,11 +1070,6 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
         if (gestureRecognizer === selectRecognizer || gestureRecognizer === selectHoldRecognizer),
            press.type == .select, focusContext == .surface {
             var position: RemoteClickInterpreter.Position?
-#if os(tvOS)
-            if press.key == nil {
-                position = remoteTouchInput.pressedPosition(at: press.timestamp)
-            }
-#endif
             surfacePan?.click.selectBegan(position: position)
             if model.isScrubbing { cancelScrubCommit() }
         }

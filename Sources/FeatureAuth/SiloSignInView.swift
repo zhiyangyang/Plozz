@@ -38,12 +38,6 @@ public struct SiloSignInView: View {
         layout
         .tint(palette.accent)
         .defaultFocus($focused, preferredFocus)
-        #if os(tvOS)
-        .onExitCommand {
-            if case .pin = model.phase { model.chooseAnotherProfile() }
-            else { cancel() }
-        }
-        #endif
         .task { if model.phase == .idle { model.start() } }
         .onChange(of: model.phase) { _, _ in focused = preferredFocus }
         .onChange(of: scenePhase) { _, phase in
@@ -54,18 +48,7 @@ public struct SiloSignInView: View {
 
     @ViewBuilder
     private var layout: some View {
-        #if os(tvOS)
-        VStack(spacing: 24) {
-            header
-            content
-                .frame(maxWidth: isPairing ? 1500 : 900, maxHeight: .infinity)
-            cancelButton
-        }
-        .padding(.horizontal, 60)
-        .padding(.top, 60)
-        .padding(.bottom, 40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #elseif os(iOS)
+        #if os(iOS)
         ScrollView {
             VStack(spacing: 28) {
                 header
@@ -99,11 +82,7 @@ public struct SiloSignInView: View {
     private var header: some View {
         VStack(spacing: 14) {
             if !isChoosingProfile {
-                #if os(tvOS)
-                ProviderBrandMark(provider: .silo, size: 80)
-                #else
                 ProviderBrandMark(provider: .silo, size: 72)
-                #endif
             }
             OnboardingHeader(
                 Text(title),
@@ -114,18 +93,10 @@ public struct SiloSignInView: View {
 
     private var cancelButton: some View {
         Button(role: .cancel, action: cancel) {
-            #if os(tvOS)
-            Text("Cancel").frame(minWidth: 200)
-            #else
             Text("Cancel").frame(maxWidth: .infinity).plozzPageActionLabel()
-            #endif
         }
-        #if os(tvOS)
-        .buttonStyle(.bordered)
-        #else
         .plozzPageActionButton(role: .secondary)
         .controlSize(.large)
-        #endif
         .focused($focused, equals: .cancel)
     }
 
@@ -195,13 +166,8 @@ public struct SiloSignInView: View {
                     Text("Continue")
                         .plozzPageActionLabel()
                 }
-                    #if os(tvOS)
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(palette.onAccent)
-                    #else
                     .plozzPageActionButton()
                     .controlSize(.large)
-                    #endif
                     .focused($focused, equals: .confirm)
                     .disabled(model.pin.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button {
@@ -210,12 +176,8 @@ public struct SiloSignInView: View {
                     Text("Choose another profile")
                         .plozzPageActionLabel()
                 }
-                    #if os(tvOS)
-                    .buttonStyle(.bordered)
-                    #else
                     .plozzPageActionButton(role: .secondary)
                     .controlSize(.large)
-                    #endif
                     .focused($focused, equals: .profiles)
             }
         case .expired:
@@ -230,13 +192,8 @@ public struct SiloSignInView: View {
                     Text("Get a new code")
                         .plozzPageActionLabel()
                 }
-                    #if os(tvOS)
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(palette.onAccent)
-                    #else
                     .plozzPageActionButton()
                     .controlSize(.large)
-                    #endif
                     .focused($focused, equals: .retry)
             }
         case let .error(message):
@@ -248,13 +205,8 @@ public struct SiloSignInView: View {
                     Text("Try Again")
                         .plozzPageActionLabel()
                 }
-                    #if os(tvOS)
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(palette.onAccent)
-                    #else
                     .plozzPageActionButton()
                     .controlSize(.large)
-                    #endif
                     .focused($focused, equals: .retry)
             }
         }
@@ -275,29 +227,6 @@ private struct SiloPairingCard: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            #if os(tvOS)
-            HStack(alignment: .top, spacing: 64) {
-                SiloPairingQRCode(url: approvalURL, size: 400)
-                    .frame(maxWidth: .infinity)
-                SiloPairingInstructions(
-                    code: code, verificationURL: verificationURL, expiresAt: expiresAt, lifetime: lifetime
-                ) {
-                    SiloMatchPhrase(match: code)
-                }
-                .padding(.horizontal, 36)
-                .padding(.vertical, 32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background {
-                    RoundedRectangle(cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius)
-                        .fill(palette.cardSurface)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius)
-                                .strokeBorder(palette.cardBorder.opacity(0.45), lineWidth: 1)
-                        }
-                }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            #else
             VStack(spacing: 16) {
                 Button {
                     browserFailed = false
@@ -338,7 +267,6 @@ private struct SiloPairingCard: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            #endif
         }
         .onChange(of: approvalURL) { _, _ in browserFailed = false }
     }
@@ -372,11 +300,7 @@ private struct SiloPairingInstructions<Footer: View>: View {
                     .font(.title3.bold())
                     .fixedSize(horizontal: false, vertical: true)
                 Text(verbatim: Self.displayAddress(verificationURL))
-                    #if os(tvOS)
-                    .font(.system(size: 40, weight: .semibold))
-                    #else
                     .font(.headline)
-                    #endif
                     .fixedSize(horizontal: false, vertical: true)
                     #if os(iOS)
                     .textSelection(.enabled)
@@ -393,11 +317,7 @@ private struct SiloPairingInstructions<Footer: View>: View {
     }
 
     private var codeSize: CGFloat? {
-        #if os(tvOS)
-        64
-        #else
         nil
-        #endif
     }
 
     private static func displayAddress(_ url: URL) -> String {
@@ -430,11 +350,7 @@ private struct SiloProfileChoices: View {
     let select: (SiloProfile) -> Void
     var body: some View {
         PlozzScrollCard {
-            #if os(tvOS)
-            ScrollView { rows.padding(.horizontal, 40).padding(.vertical, 28) }
-            #else
             rows.padding(12)
-            #endif
         }
         .frame(maxWidth: 900)
     }

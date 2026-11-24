@@ -10,9 +10,7 @@ public struct PlaybackDiagnosticDetailsView: View {
     private var supportText: String { // l10n:content — technical support report
         let version = AppVersionIdentity.current
         let os = ProcessInfo.processInfo.operatingSystemVersion
-        #if os(tvOS)
-        let platform = "tvOS"
-        #elseif os(iOS)
+        #if os(iOS)
         let platform = "iOS"
         #else
         let platform = "macOS"
@@ -48,19 +46,13 @@ public struct PlaybackDiagnosticDetailsView: View {
                     Text(reason).font(.callout).foregroundStyle(.secondary)
                 }
                 Text(verbatim: supportText)
-                    #if os(tvOS)
-                    .font(.system(.body, design: .monospaced))
-                    #else
                     .font(.system(.callout, design: .monospaced))
-                    #endif
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(24)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 18))
                     #if os(iOS)
                     .textSelection(.enabled)
-                    #elseif os(tvOS)
-                    .focusable()
                     #endif
                     .accessibilityIdentifier("playback-diagnostic-report")
                 Text("Sharing is optional. This report excludes server addresses, credentials, account names, and media titles.")

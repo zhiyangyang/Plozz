@@ -52,11 +52,7 @@ public enum DownloadStoragePlatform: Sendable {
 
     /// The platform this build actually runs on.
     public static var current: DownloadStoragePlatform {
-        #if os(tvOS)
-        return .caches
-        #else
         return .backupExcludedPersistent
-        #endif
     }
 }
 

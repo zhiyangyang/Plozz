@@ -10,15 +10,11 @@ public struct PlayerTabSettingsControls: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsControlRows { controls }
-        #else
         SettingsSectionGroup("Player tabs") { controls }
             .settingsSearchGroup([
                 "player-tab-chapters", "player-tab-cast", "player-tab-episodes",
                 "player-tab-playlist", "continue-watching-in-player"
             ])
-        #endif
     }
 
     @ViewBuilder private var controls: some View {

@@ -26,11 +26,7 @@ public struct SettingsOptionPicker<Option: Hashable>: View {
     @FocusState private var focusedOption: Option?
 
     private var titleFont: Font {
-        #if os(tvOS)
-        SettingsRowMetrics.titleFont
-        #else
         .headline
-        #endif
     }
 
     /// - Parameters:

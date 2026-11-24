@@ -22,9 +22,6 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
         capture("live-tv-single-source-menu", in: app)
         activate(selected, in: app)
         XCTAssertTrue(selected.waitForNonExistence(timeout: 5))
-        #if os(tvOS)
-        waitForSourceFocus(in: app)
-        #endif
         XCTAssertEqual(source.value as? String, "Sample TV")
         activate(source, in: app)
         let add = sourceMenuItem("live-tv-add-source", in: app)
@@ -40,340 +37,9 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
     }
 
     private func sourceMenuItem(_ name: String, in app: XCUIApplication) -> XCUIElement {
-        #if os(tvOS)
-        app.cells.containing(.other, identifier: name).firstMatch
-        #else
         app.buttons[name]
-        #endif
     }
 
-    #if os(tvOS)
-    func testSidebarSourceMenuFiltersTheGuideAndRestoresRemoteFocus() {
-        let app = launch(multipleSources: true)
-        defer { app.terminate() }
-        let source = app.buttons["live-tv-source"]
-        let search = app.buttons["live-tv-search"]
-        let allCategories = app.buttons["live-tv-sidebar-category-all"]
-        XCTAssertTrue(allCategories.waitForExistence(timeout: 15), app.debugDescription)
-        XCTAssertTrue(source.isHittable)
-        XCTAssertLessThan(source.frame.maxY, search.frame.minY)
-        XCTAssertEqual(source.value as? String, "All")
-        focus(source, in: app)
-        capture("live-tv-tv-source-sidebar", in: app)
-        XCUIRemote.shared.press(.select)
-        XCTAssertTrue(sourceMenuItem("Local TV", in: app).waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(sourceMenuItem("Paused TV", in: app).exists)
-        capture("live-tv-tv-source-menu", in: app)
-        activate(sourceMenuItem("Local TV", in: app), in: app)
-        waitForSourceFocus(in: app)
-        XCTAssertEqual(source.value as? String, "Local TV")
-        XCTAssertTrue(channel("Local Sport", in: app).waitForExistence(timeout: 5))
-        XCTAssertFalse(channel("Arena One", in: app).exists)
-        XCTAssertFalse(app.buttons["live-tv-sidebar-category-News"].exists)
-        capture("live-tv-tv-source-local", in: app)
-
-        activate(app.buttons["live-tv-sidebar-category-Music"], in: app)
-        XCTAssertTrue(channel("Local Music", in: app).waitForExistence(timeout: 5))
-        activate(source, in: app)
-        XCTAssertTrue(sourceMenuItem("Sample TV", in: app).waitForExistence(timeout: 5))
-        activate(sourceMenuItem("Sample TV", in: app), in: app)
-        waitForSourceFocus(in: app)
-        XCTAssertTrue(allCategories.isSelected, "An unavailable category must reset for the new provider.")
-        XCTAssertTrue(channel("Daily News", in: app).waitForExistence(timeout: 5))
-
-        let sports = app.buttons["live-tv-sidebar-category-Sports"]
-        activate(sports, in: app)
-        activate(source, in: app)
-        XCTAssertTrue(sourceMenuItem("Local TV", in: app).waitForExistence(timeout: 5))
-        activate(sourceMenuItem("Local TV", in: app), in: app)
-        waitForSourceFocus(in: app)
-        XCTAssertTrue(sports.isSelected, "A category shared by both providers must be retained.")
-        XCTAssertTrue(channel("Local Sport", in: app).waitForExistence(timeout: 5))
-        XCTAssertFalse(channel("Local Music", in: app).exists)
-        activate(source, in: app)
-        XCTAssertTrue(sourceMenuItem("All", in: app).waitForExistence(timeout: 5))
-        activate(sourceMenuItem("All", in: app), in: app)
-        waitForSourceFocus(in: app)
-        XCTAssertTrue(channel("Arena One", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(channel("Local Sport", in: app).exists)
-
-        activate(source, in: app)
-        XCTAssertTrue(sourceMenuItem("Local TV", in: app).waitForExistence(timeout: 5))
-        XCUIRemote.shared.press(.menu)
-        waitForSourceFocus(in: app)
-        XCTAssertEqual(source.value as? String, "All")
-        XCUIRemote.shared.press(.down)
-        XCTAssertTrue(search.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        let sidebarGuideX = channel("Arena One", in: app).frame.minX
-        XCUIRemote.shared.press(.right)
-        XCTAssertTrue(app.buttons["live-tv-multiview-favorites"].wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        XCUIRemote.shared.press(.right)
-        let manage = app.buttons["live-tv-manage-channels"]
-        XCTAssertTrue(manage.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        XCUIRemote.shared.press(.right)
-        let guideFocus = NSPredicate { _, _ in
-            self.containsFocus(self.channel("Arena One", in: app))
-                || self.containsFocus(app.buttons["Matchday Live"].firstMatch)
-        }
-        XCTAssertEqual(XCTWaiter.wait(
-            for: [XCTNSPredicateExpectation(predicate: guideFocus, object: nil)], timeout: 5
-        ), .completed, app.debugDescription)
-        XCTAssertTrue(source.waitForNonExistence(timeout: 5))
-        XCTAssertFalse(sports.exists, "Guide focus must collapse the entire category pane.")
-        XCTAssertGreaterThan(sidebarGuideX - channel("Arena One", in: app).frame.minX, 300)
-        capture("live-tv-tv-source-guide-focus", in: app)
-        if containsFocus(app.buttons["Matchday Live"].firstMatch) { XCUIRemote.shared.press(.left) }
-        XCUIRemote.shared.press(.left)
-        XCTAssertTrue(manage.wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                      "Returning from the guide must restore the last focused sidebar action.")
-        XCTAssertTrue(source.isHittable)
-        XCTAssertTrue(sports.isSelected)
-        XCTAssertEqual(source.value as? String, "All")
-        activate(source, in: app)
-        XCTAssertTrue(sourceMenuItem("Local TV", in: app).waitForExistence(timeout: 5))
-        XCUIRemote.shared.press(.menu)
-        waitForSourceFocus(in: app)
-    }
-
-    func testSidebarSourceMenuOpensExistingAddSourceChoices() {
-        let app = launch(multipleSources: true, managedSourceSetup: true)
-        defer { app.terminate() }
-        XCTAssertTrue(app.buttons["live-tv-sidebar-category-all"].waitForExistence(timeout: 15))
-        activate(app.buttons["live-tv-source"], in: app)
-        let add = sourceMenuItem("live-tv-add-source", in: app)
-        XCTAssertTrue(add.waitForExistence(timeout: 5), app.debugDescription)
-        activate(add, in: app)
-        let playlist = app.buttons["live-tv-add-playlist"]
-        XCTAssertTrue(playlist.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(app.buttons["live-tv-add-server"].exists)
-        XCTAssertFalse(app.buttons["live-tv-import-playlist"].exists)
-        capture("live-tv-tv-add-source", in: app)
-        activate(playlist, in: app)
-        XCTAssertTrue(app.staticTexts["category-source-setup-request"].wait(
-            for: \.label, toEqual: "playlist", timeout: 5
-        ), app.debugDescription)
-    }
-
-    private func waitForSourceFocus(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let focused = NSPredicate { _, _ in self.containsFocus(app.buttons["live-tv-source"]) }
-        XCTAssertEqual(XCTWaiter.wait(
-            for: [XCTNSPredicateExpectation(predicate: focused, object: nil)], timeout: 5
-        ), .completed, app.debugDescription, file: file, line: line)
-    }
-
-    func testPinnedNavigationWaitsForCategoryEntryAndStillAcceptsBack() {
-        assertPinnedNavigationCategoryEntry()
-    }
-
-    func testPinnedNavigationCategoryEntryInRightToLeftLayout() {
-        assertPinnedNavigationCategoryEntry(rightToLeft: true)
-    }
-
-    func testDeepCategoryReturnsFromNativeGuideWithoutMoving() {
-        assertDeepCategoryGuideReturn()
-    }
-
-    func testDeepCategoryReturnsFromNativeGuideWithoutMovingInRightToLeftLayout() {
-        assertDeepCategoryGuideReturn(rightToLeft: true)
-    }
-
-    func testSidebarIconActionsNavigateBesideSearch() {
-        assertSidebarIconActions()
-    }
-
-    func testSidebarIconActionsNavigateBesideSearchInRightToLeftLayout() {
-        assertSidebarIconActions(rightToLeft: true)
-    }
-
-    private func assertSidebarIconActions(rightToLeft: Bool = false) {
-        continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        app.launchArguments = [
-            "--navigation-fixture", "--navigation-live-tv", "--navigation-short", "--navigation-guide",
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
-        ]
-        if rightToLeft { app.launchArguments.append("--rtl") }
-        app.launch()
-        defer { app.terminate() }
-        let leading: XCUIRemote.Button = rightToLeft ? .right : .left
-        let trailing: XCUIRemote.Button = rightToLeft ? .left : .right
-        let category = app.buttons["live-tv-sidebar-category-all"]
-        XCTAssertTrue(category.wait(for: \.hasFocus, toEqual: true, timeout: 15))
-        let search = app.buttons["live-tv-search"]
-        let multiview = app.buttons["live-tv-multiview-favorites"]
-        let manage = app.buttons["live-tv-manage-channels"]
-        XCTAssertEqual(multiview.label, "Multiviews")
-        XCTAssertEqual(manage.label, "Manage channels")
-        for action in [multiview, manage] {
-            XCTAssertEqual(action.frame.midY, search.frame.midY, accuracy: 1)
-            XCTAssertEqual(action.frame.width, action.frame.height, accuracy: 1)
-            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
-        }
-        if rightToLeft {
-            XCTAssertLessThan(manage.frame.maxX, multiview.frame.minX)
-            XCTAssertLessThan(multiview.frame.maxX, search.frame.minX)
-        } else {
-            XCTAssertGreaterThan(manage.frame.minX, multiview.frame.maxX)
-            XCTAssertGreaterThan(multiview.frame.minX, search.frame.maxX)
-        }
-        focus(search, in: app)
-        for action in [multiview, manage] {
-            XCUIRemote.shared.press(trailing)
-            XCTAssertTrue(action.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-            let unexpectedExit = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                !category.exists || !action.hasFocus
-            }, object: nil)
-            unexpectedExit.isInverted = true
-            XCTAssertEqual(XCTWaiter.wait(for: [unexpectedExit], timeout: 0.6), .completed,
-                           "Focus must stay on the icon after the move; categories must remain open.")
-            XCTAssertFalse(search.frame.intersects(multiview.frame))
-            XCTAssertFalse(multiview.frame.intersects(manage.frame))
-        }
-        for action in [multiview, search] {
-            XCUIRemote.shared.press(leading)
-            XCTAssertTrue(action.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        }
-        assertPinnedNavigationRoundTrip(in: app, from: search, opening: leading, returning: trailing)
-        for action in [multiview, manage] {
-            XCUIRemote.shared.press(trailing)
-            XCTAssertTrue(action.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        }
-        XCUIRemote.shared.press(.down)
-        XCTAssertTrue(category.wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                      "One Down from Manage channels must enter the category list.")
-        capture("live-tv-sidebar-icon-actions", in: app)
-    }
-
-    private func assertDeepCategoryGuideReturn(rightToLeft: Bool = false) {
-        continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        app.launchArguments = [
-            "--navigation-fixture", "--navigation-live-tv", "--navigation-short", "--navigation-guide",
-            "--category-scroll-content", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
-        ]
-        if rightToLeft { app.launchArguments.append("--rtl") }
-        app.launch()
-        defer { app.terminate() }
-        let leading: XCUIRemote.Button = rightToLeft ? .right : .left
-        let trailing: XCUIRemote.Button = rightToLeft ? .left : .right
-        XCTAssertTrue(app.buttons["live-tv-sidebar-category-all"].wait(for: \.hasFocus, toEqual: true, timeout: 15))
-        assertPinnedNavigationRoundTrip(
-            in: app, from: app.buttons["live-tv-sidebar-category-all"], opening: leading, returning: trailing
-        )
-        for index in 1...20 {
-            XCUIRemote.shared.press(.down)
-            let category = app.buttons["live-tv-sidebar-category-Category \(String(format: "%02d", index))"]
-            XCTAssertTrue(category.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        }
-        let category = app.buttons["live-tv-sidebar-category-Category 20"]
-        let stations = app.buttons.matching(NSPredicate(
-            format: "identifier BEGINSWITH %@ AND NOT identifier BEGINSWITH %@",
-            "live-tv-channel-", "live-tv-channel-content-"
-        ))
-        let guideControls = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "live-tv-channel-"))
-        for _ in 0..<3 {
-            let before = category.frame
-            XCUIRemote.shared.press(trailing)
-            XCTAssertTrue(category.waitForNonExistence(timeout: 5))
-            let guideFocused = NSPredicate { _, _ in
-                guideControls.allElementsBoundByIndex.contains { self.containsFocus($0) }
-            }
-            XCTAssertEqual(XCTWaiter.wait(for: [
-                XCTNSPredicateExpectation(predicate: guideFocused, object: nil)
-            ], timeout: 5), .completed, app.debugDescription)
-            if !stations.allElementsBoundByIndex.contains(where: { containsFocus($0) }) {
-                XCUIRemote.shared.press(leading)
-            }
-            XCUIRemote.shared.press(leading)
-            XCTAssertTrue(category.wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                          "One leading-edge press must leave the native guide and focus the remembered deep category.")
-            XCTAssertEqual(category.frame.minY, before.minY, accuracy: 1)
-            XCTAssertFalse(app.buttons["Navigation"].isEnabled)
-            assertPinnedNavigationRoundTrip(in: app, from: category, opening: leading, returning: trailing)
-        }
-        XCUIRemote.shared.press(.down)
-        XCTAssertTrue(app.buttons["live-tv-sidebar-category-Category 21"].wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                      "The completed handoff must not steal ordinary category navigation.")
-        capture("deep-category-native-guide-return", in: app)
-    }
-
-    private func assertPinnedNavigationRoundTrip(
-        in app: XCUIApplication, from control: XCUIElement,
-        opening: XCUIRemote.Button, returning: XCUIRemote.Button
-    ) {
-        let before = control.frame
-        XCUIRemote.shared.press(opening)
-        func assertNavigationFocus(_ title: String) {
-            let focused = NSPredicate { _, _ in
-                app.buttons.allElementsBoundByIndex.contains { $0.label.hasPrefix(title) && $0.hasFocus }
-            }
-            XCTAssertEqual(XCTWaiter.wait(for: [
-                XCTNSPredicateExpectation(predicate: focused, object: nil)
-            ], timeout: 5), .completed, app.debugDescription)
-        }
-        assertNavigationFocus("Live TV")
-        XCUIRemote.shared.press(.up)
-        assertNavigationFocus("Library 1")
-        XCUIRemote.shared.press(.down)
-        assertNavigationFocus("Live TV")
-        XCUIRemote.shared.press(returning)
-        XCTAssertTrue(control.wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        XCTAssertEqual(control.frame.minY, before.minY, accuracy: 1)
-    }
-
-    private func assertPinnedNavigationCategoryEntry(rightToLeft: Bool = false) {
-        continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        app.launchArguments = [
-            "--navigation-fixture", "--navigation-live-tv", "--navigation-short", "--navigation-guide",
-            "--category-search-guide-first", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
-        ]
-        if rightToLeft {
-            app.launchArguments.append("--rtl")
-        }
-        app.launch()
-        defer { app.terminate() }
-        let categories = app.buttons["live-tv-sidebar-category-all"]
-        let navigation = app.buttons["Navigation"]
-        let leading: XCUIRemote.Button = rightToLeft ? .right : .left
-        let trailing: XCUIRemote.Button = rightToLeft ? .left : .right
-        XCTAssertTrue(channel("Arena One", in: app).waitForExistence(timeout: 15))
-
-        for iteration in 0..<3 {
-            let guide = NSPredicate { _, _ in
-                self.containsFocus(self.channel("Arena One", in: app))
-                    || self.containsFocus(app.buttons["Matchday Live"].firstMatch)
-            }
-            XCTAssertEqual(XCTWaiter.wait(
-                for: [XCTNSPredicateExpectation(predicate: guide, object: nil)], timeout: 5
-            ), .completed, app.debugDescription)
-            XCTAssertTrue(categories.waitForNonExistence(timeout: 5),
-                          "Begin each handoff with the category pane collapsed.")
-            // Move from programme content to the channel's leading control first.
-            if containsFocus(app.buttons["Matchday Live"].firstMatch) {
-                XCUIRemote.shared.press(leading)
-            }
-            if iteration == 1 {
-                XCUIRemote.shared.press(leading, forDuration: 0.4)
-            } else {
-                XCUIRemote.shared.press(leading)
-            }
-            XCTAssertTrue(categories.wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                          "One leading-edge press must reveal and focus categories, without another press. \(app.debugDescription)")
-            XCTAssertFalse(navigation.isEnabled, "Opening categories must not expand pinned navigation.")
-            capture("pinned-navigation-stays-collapsed-at-categories", in: app)
-            assertPinnedNavigationRoundTrip(
-                in: app, from: categories, opening: iteration == 1 ? .menu : leading, returning: trailing
-            )
-            XCUIRemote.shared.press(trailing)
-        }
-        XCUIRemote.shared.press(.menu)
-        XCTAssertTrue(app.buttons["live-tv-search"].wait(for: \.hasFocus, toEqual: true, timeout: 5))
-        XCUIRemote.shared.press(.menu)
-        XCTAssertTrue(navigation.wait(for: \.isEnabled, toEqual: true, timeout: 5),
-                      "Back must retain the guide-to-controls-to-navigation path.")
-    }
-    #endif
 
     #if os(iOS)
     func testToolbarSearchSpansCategoriesAndRestoresThePreviousCategory() {
@@ -1299,22 +965,9 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
         XCTAssertFalse(app.buttons["live-tv-search-category-Entertainment"].exists)
         XCTAssertTrue(channel("Arena One", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(channel("Sports Report", in: app).exists)
-        #if os(tvOS)
-        focus(category, in: app)
-        XCUIRemote.shared.press(.down)
-        let firstRowFocused = NSPredicate { _, _ in
-            self.containsFocus(self.channel("Arena One", in: app))
-                || self.containsFocus(app.buttons["Matchday Live"].firstMatch)
-        }
-        XCTAssertEqual(XCTWaiter.wait(
-            for: [XCTNSPredicateExpectation(predicate: firstRowFocused, object: nil)], timeout: 5
-        ), .completed, app.debugDescription)
-        focus(category, in: app)
-        #else
         field.typeText("\n")
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertGreaterThanOrEqual(category.frame.minX, app.frame.minX + 12)
-        #endif
         capture("category-search-results", in: app)
         activate(category, in: app)
         XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
@@ -1323,14 +976,6 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
         XCTAssertFalse(channel("Arena One", in: app).exists)
         XCTAssertFalse(channel("Sports Report", in: app).exists)
         XCTAssertFalse(app.otherElements["category-search-playback"].exists)
-        #if os(tvOS)
-        let guideFocused = NSPredicate { _, _ in
-            self.containsFocus(world) || self.containsFocus(app.buttons["World Sports"].firstMatch)
-        }
-        XCTAssertEqual(XCTWaiter.wait(
-            for: [XCTNSPredicateExpectation(predicate: guideFocused, object: nil)], timeout: 5
-        ), .completed, app.debugDescription)
-        #endif
         capture("category-search-selected-guide", in: app)
     }
 
@@ -1346,19 +991,11 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
         let field = searchField(in: app)
         field.typeText("sports")
         XCTAssertTrue(app.buttons["live-tv-search-category-Sports"].waitForExistence(timeout: 5))
-        #if os(tvOS)
-        XCUIRemote.shared.press(.menu)
-        #else
         field.typeText("\n")
         app.navigationBars.buttons["Close"].tap()
-        #endif
         XCTAssertTrue(field.waitForNonExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(channel("Daily News", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["live-tv-search-category-Sports"].exists)
-        #if os(tvOS)
-        XCTAssertTrue(app.buttons["live-tv-search"].wait(for: \.hasFocus, toEqual: true, timeout: 5),
-                      "Back must close Search and restore its sidebar control, not enter the guide.")
-        #endif
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             XCTAssertFalse(app.navigationBars.buttons["live-tv-profile"].exists)
@@ -1373,11 +1010,7 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
         scrollContent: Bool = false, disabledSource: Bool = false
     ) -> XCUIApplication {
         continueAfterFailure = false
-        #if os(tvOS)
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
         app.launchArguments = ["--category-search-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launchArguments.append("--category-preview-\(orientation)")
         if guideFirst { app.launchArguments.append("--category-search-guide-first") }
@@ -1396,17 +1029,7 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
 
     private func launchSearch(guideFirst: Bool = false) -> XCUIApplication {
         let app = launch(guideFirst: guideFirst)
-        #if os(tvOS)
-        let search = app.buttons["live-tv-search"]
-        XCTAssertTrue(channel("Arena One", in: app).waitForExistence(timeout: 15), app.debugDescription)
-        if guideFirst {
-            let categories = app.buttons["live-tv-sidebar-category-all"]
-            for _ in 0..<3 where !containsFocus(categories) { XCUIRemote.shared.press(.left) }
-            XCTAssertTrue(containsFocus(categories), app.debugDescription)
-        }
-        #else
         let search = app.navigationBars.buttons["Search"]
-        #endif
         XCTAssertTrue(search.waitForExistence(timeout: 15), app.debugDescription)
         activate(search, in: app)
         XCTAssertTrue(searchField(in: app).waitForExistence(timeout: 5), app.debugDescription)
@@ -1522,35 +1145,9 @@ final class LiveTVCategorySearchInteractionTests: XCTestCase {
     }
 
     private func activate(_ target: XCUIElement, in app: XCUIApplication) {
-        #if os(tvOS)
-        focus(target, in: app)
-        XCUIRemote.shared.press(.select)
-        #else
         target.tap()
-        #endif
     }
 
-    #if os(tvOS)
-    private func containsFocus(_ target: XCUIElement) -> Bool {
-        target.exists && (target.hasFocus || target.descendants(matching: .any)
-            .matching(NSPredicate(format: "hasFocus == true")).firstMatch.exists)
-    }
-
-    private func focus(_ target: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<20 {
-            if containsFocus(target) { return }
-            let current = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
-            if target.frame.midY > current.frame.maxY {
-                XCUIRemote.shared.press(.down)
-            } else if target.frame.midY < current.frame.minY {
-                XCUIRemote.shared.press(.up)
-            } else {
-                XCUIRemote.shared.press(target.frame.midX < current.frame.midX ? .left : .right)
-            }
-        }
-        XCTFail("Could not focus \(target.identifier)\n\(app.debugDescription)")
-    }
-    #endif
 
     private func capture(_ name: String, in app: XCUIApplication) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

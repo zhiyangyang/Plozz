@@ -101,44 +101,6 @@ struct CardCaptionCustomizationContent: View {
     }
 
     var body: some View {
-        #if os(tvOS)
-        ViewCustomizationList(
-            title: title, initialRowID: initialRowID,
-            focusedHelp: { id in
-                if id == "episode-descriptions-on-focus" {
-                    return ViewCustomizationHelp(
-                        detail: settings.episodeDescriptionsOnFocus
-                            ? "Only the focused episode shows its description."
-                            : "Every episode shows its description.",
-                        illustration: .pageCaptions(preview(editing: .episodes), style: style)
-                    )
-                }
-                let view = views.first { "card-label-view-\($0.rawValue)" == id } ?? selectedPage.firstControl
-                return ViewCustomizationHelp(
-                    detail: settings.cardLabelHelp(in: view),
-                    illustration: .pageCaptions(preview(editing: view), style: style)
-                )
-            },
-            pinsFocusedHelp: false,
-            inlineHelpAfterSection: scope.pages.count > 1 ? 1 : 0
-        ) {
-            if scope.pages.count > 1 {
-                Section {
-                    SettingsMenuRow(title: "Page", value: Text(selectedPage.title)) {
-                        Picker("Page", selection: $selectedPage) {
-                            ForEach(scope.pages, id: \.self) { page in
-                                Text(page.title).tag(page)
-                            }
-                        }
-                    }
-                    .accessibilityIdentifier("card-label-page")
-                    .modifier(ViewCustomizationRowFocus(id: "card-label-page"))
-                }
-            }
-            defaultSection
-            overrideSection
-        }
-        #else
         ViewCustomizationList(title: title, initialRowID: "") {
             if scope.pages.count > 1 {
                 SettingsSectionGroup {
@@ -159,7 +121,6 @@ struct CardCaptionCustomizationContent: View {
             overrideSection
         }
         .onChange(of: selectedPage) { _, page in previewView = page.firstControl }
-        #endif
     }
 
     @ViewBuilder
@@ -167,23 +128,7 @@ struct CardCaptionCustomizationContent: View {
         let defaultViews = views.filter { !$0.isRowOverride }
         let controls = ForEach(defaultViews, id: \.self) { view in
             labelControl(view)
-            #if os(tvOS)
-            if view == .episodes {
-                ViewCustomizationRow(
-                    id: "episode-descriptions-on-focus", title: "Only show descriptions on focus",
-                    value: settings.episodeDescriptionsOnFocus ? "On" : "Off"
-                ) {
-                    settings.episodeDescriptionsOnFocus.toggle()
-                }
-                .disabled(!settings.showsLabels(in: .episodes))
-            }
-            #endif
         }
-        #if os(tvOS)
-        Section {
-            controls
-        }
-        #else
         SettingsSectionGroup {
             controls
         } footer: {
@@ -198,7 +143,6 @@ struct CardCaptionCustomizationContent: View {
             }
         }
         .settingsSearchGroup(defaultViews.map { "card-label-view-\($0.rawValue)" })
-        #endif
     }
 
     @ViewBuilder
@@ -213,20 +157,10 @@ struct CardCaptionCustomizationContent: View {
                     Text(note)
                 }
             }
-            #if os(tvOS)
-            Section {
-                controls
-            } header: {
-                Text("Overrides", comment: "Card label settings that override the selected page's Default choice.")
-            } footer: {
-                footer
-            }
-            #else
             SettingsSectionGroup(
                 "Overrides", content: { controls }, footer: { footer }
             )
             .settingsSearchGroup(overrideViews.map { "card-label-view-\($0.rawValue)" })
-            #endif
         }
     }
 
@@ -245,12 +179,7 @@ struct CardCaptionCustomizationContent: View {
     }
 
     private func preview(editing view: CardCaptionView) -> CardLabelScopePreview.Snapshot {
-        #if os(tvOS)
-        let showcase = selectedPage == .recommended
-            || (selectedPage == .home && (hero?.effectiveSettings.followsFocus ?? HeroSettings.default.followsFocus))
-        #else
         let showcase = false
-        #endif
         return CardLabelScopePreview.snapshot(
             page: selectedPage, editing: views.contains(view) ? view : selectedPage.firstControl,
             settings: settings, isShowcase: showcase,
@@ -294,11 +223,7 @@ extension CardCaptionView {
 extension CardCaptionSettings {
     func cardLabelMixedExplanation(in view: CardCaptionView) -> LocalizedStringResource? {
         guard customization(in: view) == .mixed else { return nil }
-        #if os(tvOS)
-        return "Mixed hides labels in Showcase and on series artwork; other cards keep their labels."
-        #else
         return "Mixed hides labels on series artwork; other cards keep their labels."
-        #endif
     }
 
     func cardLabelHelp(in view: CardCaptionView) -> LocalizedStringResource {
@@ -374,9 +299,6 @@ struct CardLabelScopePreview: View {
         .accessibilityIdentifier("card-label-preview-\(preview.page.rawValue)")
     }
 
-    #if os(tvOS)
-    static let illustrationWidth: CGFloat = 420
-    #endif
 
     static func snapshot(
         page: CardCaptionSettingsPage, editing view: CardCaptionView, settings: CardCaptionSettings,
@@ -417,11 +339,7 @@ private struct CardLabelPreviewRow: View {
     #endif
 
     private var viewportWidth: CGFloat {
-        #if os(tvOS)
-        1920
-        #else
         sizeClass == .regular ? 1024 : 390
-        #endif
     }
 
     var body: some View {
@@ -524,12 +442,7 @@ struct SettingsIllustrationCardGeometry {
         if row.isContinueWatching && !landscape {
             size.height = size.width / playbackDetails.cardAspectRatio
         }
-        #if os(tvOS)
-        let isEpisode = row.view == .episodes
-        if isEpisode { size = EpisodeColumnCard.artworkSize }
-        #else
         let isEpisode = false
-        #endif
         let scale = Self.width / viewportWidth
         let inset = style == .framed ? metrics.cardInset * scale : 0
         let spacing = Self.visibleGap(metrics: metrics, style: style) * scale

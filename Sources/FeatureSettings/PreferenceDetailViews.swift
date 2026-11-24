@@ -23,9 +23,6 @@ struct AppearanceDetailView: View {
     @Bindable var spoilers: SpoilerSettingsModel
     var section: AppearanceSettingsSection = .appearance
     var searchPageID: String? = nil
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
     @Environment(MusicPlayerSettingsModel.self) private var musicPlayer
     /// App-wide card presentation — scale + style — that applies across every row
     /// and grid in the app (not just Home), so it lives in Appearance rather than
@@ -43,22 +40,7 @@ struct AppearanceDetailView: View {
     var body: some View {
         @Bindable var settingsNavigation = settingsNavigation
         Group {
-            #if os(tvOS)
-            if let searchPageID, let row = allRows.first(where: { $0.id == searchPageID }) {
-                SettingsFormRowPage(row: row, showsBack: false)
-            } else if section == .artwork || section == .navigation,
-               let row = allRows.first(where: { $0.id == (section == .artwork ? "artwork" : "navigation") }) {
-                SettingsFormRowPage(row: row, route: section == .artwork ? .artwork : .navigationLayout)
-            } else {
-                SettingsSplitLayout(
-                    title: section == .screensNavigation ? "Screens & Navigation" : "Appearance",
-                    rows: rows,
-                    selection: $settingsNavigation.appearanceRowID
-                )
-            }
-            #else
             SettingsSplitLayout(title: "Appearance", rows: allRows, selection: $settingsNavigation.appearanceRowID)
-            #endif
         }
             // Circadian's day/night preview animates a model flag; make sure it
             // never keeps running once you leave Appearance or turn Circadian off.
@@ -84,18 +66,6 @@ struct AppearanceDetailView: View {
                     .destination(.detailPage)
             ] + availableRows.filter { $0.id == "music-player" }.map { $0.page() }
         }
-        #if os(tvOS)
-        if inWorkspace {
-            return ["theme", "cards", "artwork", "night-shift"].flatMap { id in
-                availableRows.filter { $0.id == id }.map { row in
-                    switch id {
-                    case "artwork": row.destination(.artwork)
-                    default: row.page()
-                    }
-                }
-            }
-        }
-        #endif
         return availableRows
     }
 
@@ -142,11 +112,7 @@ struct AppearanceDetailView: View {
                             continueWatchingLayout: librariesScope.homeVisibility.continueWatchingLayout
                         )
                         if canManageProviders {
-                            #if os(tvOS)
-                            SettingsControlGroup { metadataProviderLink }
-                            #else
                             metadataProviderLink
-                            #endif
                         }
                     }
                 }.groupedContent(),
@@ -190,11 +156,7 @@ struct AppearanceDetailView: View {
     @ViewBuilder private var themeAndTransparency: some View {
         @Bindable var transparency = transparency
         VStack(alignment: .leading, spacing: SettingsMetrics.sectionSpacing) {
-            #if os(tvOS)
-            SettingsControlGroup(illustrated: true) { themeControls }
-            #else
             themeControls
-            #endif
             SettingsDetailGroup(title: "Liquid Glass") {
                 DescribedSegmentedPicker(
                     options: TransparencyPreference.allCases,
@@ -235,15 +197,7 @@ struct AppearanceDetailView: View {
 
         var body: some View {
             VStack(alignment: .leading, spacing: SettingsMetrics.sectionSpacing) {
-                #if os(tvOS)
-                SettingsControlGroup(illustrated: true) {
-                    CompactNavigationPicker(selection: $navigation.style)
-                        .settingsSearchAnchor("navigation-layout")
-                    Toggle("Prevent Accidental Exit", isOn: $navigation.preventsAccidentalExit).settingsSearchAnchor("prevent-exit")
-                }
-                #else
                 CompactNavigationPicker(selection: $navigation.style)
-                #endif
 
                 SettingsDetailGroup(
                     title: "Hide or Reorder Navigation"
@@ -325,11 +279,7 @@ struct SpoilerRowsBuilder {
     }
 
     private var title: LocalizedStringResource {
-        #if os(tvOS)
-        "Spoiler Protection"
-        #else
         "Spoilers"
-        #endif
     }
 }
 /// Detail-page presentation and the shared trailer/music preferences.
@@ -429,11 +379,7 @@ enum PlaybackSettingsSection {
 struct PlaybackDetailView: View {
     @Environment(\.locale) private var locale
     @Environment(SettingsSearchRequest.self) private var searchRequest: SettingsSearchRequest?
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #else
     @State private var showsSkipMarkerSettings = false
-    #endif
     @Bindable var playback: PlaybackSettingsModel
     /// The profile base subtitle mode/language now lives in `SubtitleBehavior`
     /// (behaviour half of the retired `CaptionSettings`).
@@ -584,11 +530,9 @@ struct PlaybackDetailView: View {
 
     var body: some View {
         SettingsSplitLayout(title: section == .subtitles ? "Subtitles" : "Playback", rows: rows)
-            #if !os(tvOS)
             .navigationDestination(isPresented: $showsSkipMarkerSettings) {
                 SkipMarkerSettingsView(model: playback)
             }
-            #endif
     }
 
     // MARK: - Split sections
@@ -599,33 +543,9 @@ struct PlaybackDetailView: View {
                 id: "version-selection", title: "Version selection",
                 description: "Ask each time, let Plozz choose, or use the server's first version."
             ) {
-                #if os(tvOS)
-                SettingsMenuRow(
-                    title: "Version selection",
-                    value: Text(playback.settings.versionSelectionMode?.title ?? "Choose on first play")
-                ) {
-                    Picker("Version selection", selection: $playback.settings.versionSelectionMode) {
-                        if playback.settings.versionSelectionMode == nil {
-                            Text("Choose on first play")
-                                .tag(Optional<PlaybackVersionSelectionMode>.none)
-                                .disabled(true)
-                        }
-                        ForEach(PlaybackVersionSelectionMode.allCases, id: \.self) { mode in
-                            Text(mode.title).tag(Optional(mode))
-                        }
-                    }
-                }
-                .accessibilityIdentifier("playback-version-selection")
-                .settingsSearchAnchor("version-selection")
-                #else
                 PlaybackVersionPreferencePicker(model: playback)
-                #endif
             }.labeledControl().descriptionAccessory {
-                #if os(tvOS)
-                return AnyView(AutomaticVersionInfoButton())
-                #else
                 return nil
-                #endif
             },
             SettingsSplitRow(
                 id: "remember-series-version", title: "Remember series version choices",
@@ -639,45 +559,6 @@ struct PlaybackDetailView: View {
     }
 
     private var rows: [SettingsSplitRow] {
-        #if os(tvOS)
-        if inWorkspace {
-            if section == .subtitles { return subtitleRows }
-            return [
-                SettingsSplitRow(id: "audio", title: "Audio") {
-                    SettingsConnectedControlGroups {
-                        ForEach(audioRows) { row in
-                            VStack(alignment: .leading, spacing: SettingsFormMetrics.relatedControlSpacing) {
-                                row.detail()
-                                if let description = row.description {
-                                    description.settingsHelperText().fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                    }
-                }.groupedContent(),
-                SettingsSplitRow(id: "autoplay-up-next", title: "Autoplay & Up Next") {
-                    SettingsConnectedControlGroups {
-                        ForEach(upNextRows) { $0.detail() }
-                    }
-                }.groupedContent()
-            ] + zoomRows + playerTabRows + versionSelectionRows + videoUpscalingRows + readAheadRows + skipIntroRows + [
-                SettingsSplitRow(id: "seeking", title: "Seeking") {
-                    SettingsControlRows {
-                        ForEach(skipIntervalRows) { $0.detail() }
-                        ForEach(resumeRows) { $0.detail() }
-                        ForEach(scrubbingRows) { row in
-                            VStack(alignment: .leading, spacing: SettingsFormMetrics.relatedControlSpacing) {
-                                row.detail()
-                                if let description = row.description {
-                                    description.settingsHelperText().fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                    }
-                }
-            ] + controlsAutoHideRows + displayFadeRows + discRows + advancedRows
-        }
-        #endif
         return subtitleRows
             + audioRows
             + zoomRows
@@ -839,11 +720,7 @@ struct PlaybackDetailView: View {
                 .settingsSearchAnchor("subtitle-remember")
         })
 
-        #if os(tvOS)
-        rows.insert(contentsOf: subtitleStyleRows, at: 1)
-        #else
         rows.append(contentsOf: subtitleStyleRows)
-        #endif
         return rows
     }
 
@@ -940,12 +817,7 @@ struct PlaybackDetailView: View {
                 id: "skip-intros-mode",
                 title: "Skip intros, credits & more"
             ) {
-                #if os(tvOS)
-                SkipMarkerSettingsControl(model: playback)
-                    .settingsSearchAnchor("skip-intros")
-                #else
                 SkipMarkerSettingsControl(model: playback, onOpenSettings: { showsSkipMarkerSettings = true })
-                #endif
             }.labeledControl()
         ]
     }
@@ -1032,11 +904,7 @@ struct PlaybackDetailView: View {
     }
 
     private var resumeRewindLabel: LocalizedStringResource? {
-        #if os(tvOS)
-        inWorkspace ? "Rewind on resume" : nil
-        #else
         nil
-        #endif
     }
 
     private var scrubbingRows: [SettingsSplitRow] {

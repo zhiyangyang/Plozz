@@ -7,9 +7,6 @@ import CoreNetworking
 #if canImport(UIKit)
 import UIKit
 #endif
-#if os(tvOS)
-import AVKit
-#endif
 
 /// `AVPlayer`-backed implementation of `VideoEngine`.
 ///
@@ -167,9 +164,6 @@ public final class NativeVideoEngine: VideoEngine {
     /// surface instead of forcing the SwiftUI layer to rebuild it.
     @ObservationIgnored private var videoOutputView: PlayerLayerView?
     #endif
-    #if os(tvOS)
-    @ObservationIgnored private let displayCriteria = NativeDisplayCriteriaController()
-    #endif
 
     public init(
         style: SubtitleStyle = .default,
@@ -248,9 +242,6 @@ public final class NativeVideoEngine: VideoEngine {
         // Tear down any previous player (e.g. a failed direct-play attempt being
         // retried under a transcode) without reporting a stop.
         teardownPlayer()
-        #if os(tvOS)
-        displayCriteria.invalidatePendingLoad()
-        #endif
 
         self.request = request
         do {
@@ -527,35 +518,8 @@ public final class NativeVideoEngine: VideoEngine {
     /// metadata actually present in the stream.
     private func configureDynamicRange(for request: PlaybackRequest, item: AVPlayerItem) {
         item.appliesPerFrameHDRDisplayMetadata = true
-        #if os(tvOS)
-        displayCriteria.configure(
-            asset: item.asset,
-            fallback: nativeBootstrapDisplayCriteria(metadata: request.sourceMetadata))
-        #endif
     }
 
-    #if os(tvOS)
-    /// The bound surface identifies the display. A detached or not-yet-loaded
-    /// native surface must not clear another engine's display request.
-    private func applyDisplayCriteria() {
-        let window = videoOutputView?.window
-        displayCriteria.attach(to: window.flatMap { Self.windowHasDisplayManager($0) ? $0 : nil })
-    }
-
-    /// Clears any forced display mode so the TV isn't stranded in HDR/DoVi after
-    /// playback stops.
-    private func clearDisplayCriteria() {
-        displayCriteria.stop()
-    }
-
-    /// Safety net: the `avDisplayManager` accessor comes from AVKit's
-    /// `UIWindow (AVAdditions)` category. If that framework somehow isn't linked,
-    /// the selector is unrecognized and calling it would crash — so verify it's
-    /// present first and degrade to a no-op (no display switch) instead.
-    private static func windowHasDisplayManager(_ window: UIWindow) -> Bool {
-        window.responds(to: Selector(("avDisplayManager")))
-    }
-    #endif
 
     // MARK: - Asset construction
 
@@ -717,11 +681,6 @@ public final class NativeVideoEngine: VideoEngine {
     private func resolveInjectableSubtitles(
         for request: PlaybackRequest
     ) async -> [InjectableSubtitle] {
-        #if os(tvOS)
-        // Track menus already use the provider tracks. Resolve sidecars only
-        // when the owned overlay selects them, never by repackaging the video.
-        return []
-        #else
         guard !request.isManifestStream else { return [] }
         var result: [InjectableSubtitle] = []
         for track in request.subtitleTracks where track.kind == .subtitle {
@@ -746,7 +705,6 @@ public final class NativeVideoEngine: VideoEngine {
             )
         }
         return result
-        #endif
     }
 
     public func play() {
@@ -833,9 +791,6 @@ public final class NativeVideoEngine: VideoEngine {
         routeChangeObserver = nil
         #endif
         teardownPlayer()
-        #if os(tvOS)
-        clearDisplayCriteria()
-        #endif
         #if canImport(UIKit)
         videoOutputView?.player = nil
         videoOutputView = nil
@@ -1543,13 +1498,6 @@ public final class NativeVideoEngine: VideoEngine {
         view.backgroundColor = .black
         view.playerLayer.videoGravity = .resizeAspect
         view.player = player
-        #if os(tvOS)
-        // Re-apply the pending display switch once the surface has a window
-        // (the criteria may have been computed in load() before attachment).
-        view.onWindowChange = { [weak self] _ in
-            self?.applyDisplayCriteria()
-        }
-        #endif
         videoOutputView = view
         #if os(iOS)
         Task { @MainActor [weak self, weak view] in
@@ -1816,15 +1764,6 @@ final class PlayerLayerView: UIView {
         get { playerLayer.player }
         set { playerLayer.player = newValue }
     }
-    #if os(tvOS)
-    /// Invoked when the view moves to (or away from) a window, so the engine can
-    /// drive that window's `AVDisplayManager` for the Dolby Vision / HDR switch.
-    var onWindowChange: ((UIWindow?) -> Void)?
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        onWindowChange?(window)
-    }
-    #endif
 }
 #endif
 #endif

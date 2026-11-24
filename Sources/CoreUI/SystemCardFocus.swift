@@ -42,11 +42,7 @@ public struct PlozzCardFocus: DynamicProperty {
 
     public var wrappedValue: Bool {
         get {
-            #if os(tvOS)
-            usesNativeFocus ? observation.isFocused : focused
-            #else
             focused
-            #endif
         }
         nonmutating set {
             if newValue {
@@ -59,11 +55,7 @@ public struct PlozzCardFocus: DynamicProperty {
     }
 
     private var usesNativeFocus: Bool {
-        #if os(tvOS)
-        style.usesSystemEffect
-        #else
         false
-        #endif
     }
 
     struct Request: Equatable {
@@ -151,145 +143,16 @@ private struct CardFocusButtonStyle<Style: ButtonStyle>: ViewModifier {
     @Environment(\.plozzNativeInformationFocus) private var informationFocus
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        if style.usesSystemEffect {
-            if informationFocus {
-                content.modifier(NativeInformationCardStyle(cornerRadius: cornerRadius))
-            } else {
-                content.buttonStyle(NativeTVCardButtonStyle())
-            }
-        } else {
-            content.buttonStyle(fallback).focusEffectDisabled()
-        }
-        #else
         content.buttonStyle(fallback)
-        #endif
     }
 }
 
-#if os(tvOS)
-struct NativeInformationFocusScrollGuard: UIViewRepresentable {
-    @Environment(\.plozzCardFocusStyle) private var style
-
-    func makeUIView(context: Context) -> GuardView {
-        let view = GuardView()
-        view.isUserInteractionEnabled = false
-        return view
-    }
-
-    func updateUIView(_ view: GuardView, context: Context) {
-        view.isEnabled = style.usesSystemEffect
-        if !view.isEnabled { view.restore() }
-    }
-
-    static func dismantleUIView(_ view: GuardView, coordinator: ()) {
-        view.stop()
-    }
-
-    final class GuardView: UIView {
-        var isEnabled = true
-        private weak var heldScroll: UIScrollView?
-        private var wasScrollEnabled: Bool?
-        private var generation = 0
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            stop()
-            if window != nil {
-                NotificationCenter.default.addObserver(
-                    self, selector: #selector(focusDidUpdate(_:)),
-                    name: UIFocusSystem.didUpdateNotification, object: nil
-                )
-            }
-        }
-
-        @objc private func focusDidUpdate(_ notification: Notification) {
-            guard isEnabled,
-                  let context = notification.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey]
-                    as? UIFocusUpdateContext,
-                  NativeFocusRegion.contains(context.previouslyFocusedItem, in: self),
-                  NativeFocusRegion.contains(context.nextFocusedItem, in: self),
-                  let coordinator = notification.userInfo?[UIFocusSystem.animationCoordinatorUserInfoKey]
-                    as? UIFocusAnimationCoordinator,
-                  let scroll = enclosingScrollView,
-                  let target = NativeFocusRegion.frame(of: context.nextFocusedItem, in: scroll) else {
-                restore()
-                return
-            }
-            let visible = scroll.bounds.inset(by: scroll.adjustedContentInset)
-            let liftedTarget = target.insetBy(dx: 0, dy: -DetailInformationLayout.focusPadding)
-            guard liftedTarget.minY >= visible.minY, liftedTarget.maxY <= visible.maxY else {
-                restore()
-                return
-            }
-            if heldScroll !== scroll {
-                restore()
-                heldScroll = scroll
-                wasScrollEnabled = scroll.isScrollEnabled
-            }
-            generation &+= 1
-            let transition = generation
-            // Suppress only this focus reveal, before UIKit schedules it. Restore
-            // at completion so the next search can still discover offscreen items.
-            scroll.isScrollEnabled = false
-            coordinator.addCoordinatedAnimations({}) { [weak self] in
-                guard let self, generation == transition else { return }
-                restore()
-            }
-        }
-
-        private var enclosingScrollView: UIScrollView? {
-            var ancestor = superview
-            while let view = ancestor {
-                if let scroll = view as? UIScrollView { return scroll }
-                ancestor = view.superview
-            }
-            return nil
-        }
-
-        func restore() {
-            generation &+= 1
-            if let wasScrollEnabled { heldScroll?.isScrollEnabled = wasScrollEnabled }
-            heldScroll = nil
-            wasScrollEnabled = nil
-        }
-
-        func stop() {
-            NotificationCenter.default.removeObserver(self)
-            restore()
-        }
-    }
-}
-
-struct NativeInformationCardStyle: ViewModifier {
-    let cornerRadius: CGFloat
-    @FocusState private var isFocused: Bool
-
-    private var usesOpaqueFocus: Bool {
-        if #available(tvOS 26.0, *) { false } else { true }
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .buttonStyle(.card)
-            .buttonBorderShape(.roundedRectangle(radius: cornerRadius))
-            .environment(\.settingsRowIsFocused, isFocused && usesOpaqueFocus)
-            .environment(\.settingsRowFocusForeground, .black)
-            .focused($isFocused)
-            .zIndex(isFocused ? 1 : 0)
-    }
-}
-#endif
 
 private struct NativeMediaButtonStyle: ViewModifier {
     @Environment(\.plozzCardStyle) private var cardStyle
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        content.buttonStyle(NativeTVCardButtonStyle())
-        #else
         content
-        #endif
     }
 }
 
@@ -298,15 +161,7 @@ private struct CardArtworkClip<S: Shape>: ViewModifier {
     @Environment(\.plozzNativeArtworkSurface) private var nativeArtworkSurface
 
     func body(content: Content) -> some View {
-        #if os(tvOS)
-        if nativeArtworkSurface {
-            content
-        } else {
-            content.clipShape(shape)
-        }
-        #else
         content.clipShape(shape)
-        #endif
     }
 }
 
@@ -334,93 +189,3 @@ private struct RestingCardShadow: ViewModifier {
         }
     }
 }
-
-#if os(tvOS)
-import TVUIKit
-import UIKit
-
-/// Geometry only: retain Z until ancestor perspective is applied when capturing
-/// a native focused image for the separate detail-page transition.
-enum NativeFocusProjection {
-    @MainActor
-    static func artworkFrame(of view: UIView, in window: UIWindow) -> CGRect? {
-        var bounds: CGRect?
-        if let media = view as? TVMediaItemContentView, media.superview?.isFocused == true {
-            bounds = media.focusedFrameGuide.layoutFrame
-        } else if let image = view as? UIImageView, image.adjustsImageWhenAncestorFocused {
-            var ancestor: UIView? = image
-            while let current = ancestor {
-                if current.isFocused {
-                    // UIImageView's native focus rendering need not change its
-                    // layer transform. The public guide describes the painted image.
-                    bounds = image.focusedFrameGuide.layoutFrame
-                    break
-                }
-                ancestor = current.superview
-            }
-        }
-        return frame(of: view.layer, in: window.layer, bounds: bounds)
-    }
-
-    static func frame(
-        of layer: CALayer, in ancestor: CALayer, bounds: CGRect? = nil, usePresentation: Bool = true
-    ) -> CGRect? {
-        let bounds = bounds ?? (usePresentation ? layer.presentation() ?? layer : layer).bounds
-        guard !bounds.isEmpty else { return nil }
-        var points = [
-            Point(x: bounds.minX, y: bounds.minY), Point(x: bounds.maxX, y: bounds.minY),
-            Point(x: bounds.minX, y: bounds.maxY), Point(x: bounds.maxX, y: bounds.maxY)
-        ]
-        var current: CALayer? = layer
-        while let node = current, node !== ancestor {
-            guard let parent = node.superlayer else { return nil }
-            let state = usePresentation ? node.presentation() ?? node : node
-            let parentState = usePresentation ? parent.presentation() ?? parent : parent
-            let anchor = CGPoint(
-                x: state.bounds.minX + state.bounds.width * state.anchorPoint.x,
-                y: state.bounds.minY + state.bounds.height * state.anchorPoint.y
-            )
-            for index in points.indices {
-                points[index].translate(x: -anchor.x, y: -anchor.y, z: -state.anchorPointZ)
-                points[index].apply(state.transform)
-                points[index].translate(x: state.position.x, y: state.position.y, z: state.zPosition + state.anchorPointZ)
-                if !CATransform3DIsIdentity(parentState.sublayerTransform) {
-                    let center = CGPoint(x: parentState.bounds.midX, y: parentState.bounds.midY)
-                    points[index].translate(x: -center.x, y: -center.y)
-                    points[index].apply(parentState.sublayerTransform)
-                    points[index].translate(x: center.x, y: center.y)
-                }
-            }
-            current = parent
-        }
-        guard current === ancestor, points.allSatisfy({ $0.w.isFinite && abs($0.w) > 0.000001 }) else { return nil }
-        let projected = points.map { CGPoint(x: $0.x / $0.w, y: $0.y / $0.w) }
-        guard projected.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
-              let minX = projected.map(\.x).min(), let maxX = projected.map(\.x).max(),
-              let minY = projected.map(\.y).min(), let maxY = projected.map(\.y).max() else { return nil }
-        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-    }
-
-    private struct Point {
-        var x: CGFloat
-        var y: CGFloat
-        var z: CGFloat = 0
-        var w: CGFloat = 1
-
-        mutating func translate(x: CGFloat, y: CGFloat, z: CGFloat = 0) {
-            self.x += x * w
-            self.y += y * w
-            self.z += z * w
-        }
-
-        mutating func apply(_ transform: CATransform3D) {
-            self = Point(
-                x: x * transform.m11 + y * transform.m21 + z * transform.m31 + w * transform.m41,
-                y: x * transform.m12 + y * transform.m22 + z * transform.m32 + w * transform.m42,
-                z: x * transform.m13 + y * transform.m23 + z * transform.m33 + w * transform.m43,
-                w: x * transform.m14 + y * transform.m24 + z * transform.m34 + w * transform.m44
-            )
-        }
-    }
-}
-#endif

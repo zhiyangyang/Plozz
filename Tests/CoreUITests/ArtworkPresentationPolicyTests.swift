@@ -270,9 +270,6 @@ final class ArtworkPresentationPolicyTests: XCTestCase {
         let item = MediaItem(id: "detail", title: "Detail", kind: .movie)
         XCTAssertTrue(MediaArtworkSource(item: item, placement: .detailBackdrop, policy: cards).policy.prefersOnlineArtwork)
         XCTAssertFalse(MediaArtworkSource(item: item, placement: .poster, policy: cards).policy.prefersOnlineArtwork)
-        #if os(tvOS)
-        XCTAssertTrue(DetailBackdropArtworkSource(item: item, policy: cards).settings.preferOnlineArtwork)
-        #endif
     }
 
     func testContinueWatchingRowScopeDoesNotDependOnItsParentPage() {
@@ -411,14 +408,6 @@ final class ArtworkPresentationPolicyTests: XCTestCase {
             MediaArtworkSource(item: item, placement: .detailBackdrop, policy: policy.forArea(.playback)).references.first,
             .remote(selected)
         )
-        #if os(tvOS)
-        let detail = DetailBackdropArtworkSource(item: item, policy: policy)
-        let recommended = DetailBackdropArtworkSource(item: item, policy: .init())
-        XCTAssertEqual(detail.references.first, .remote(selected))
-        XCTAssertEqual(recommended.references.first, alternate)
-        XCTAssertNotEqual(detail.key, recommended.key)
-        XCTAssertNotEqual(detail.previewKey, recommended.previewKey)
-        #endif
     }
 
     #if canImport(UIKit)

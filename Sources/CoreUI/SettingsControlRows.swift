@@ -51,28 +51,9 @@ public struct SettingsControlRows<Content: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 0) {
-            Group(subviews: content) { rows in
-                ForEach(rows) { row in
-                    row
-                    if row.id != rows.last?.id {
-                        PlozzDivider()
-                            .padding(.leading, dividerLeadingInset ?? textInset)
-                            .padding(.trailing, textInset)
-                            .padding(.vertical, SettingsFormMetrics.dividerFocusClearance)
-                            .accessibilityHidden(true)
-                            .allowsHitTesting(false)
-                    }
-                }
-            }
-        }
-        .environment(\.settingsRowsHaveDividers, true)
-        #else
         VStack(alignment: .leading, spacing: nonTVSpacing) {
             content
         }
-        #endif
     }
 }
 #endif

@@ -233,11 +233,11 @@ extension MediaCapabilities {
         caps.supportsDolbyVision = hevc
         #endif
 
-        #if canImport(AVFoundation) && (os(iOS) || os(tvOS) || os(macOS) || os(visionOS))
+        #if canImport(AVFoundation) && (os(iOS) || os(macOS) || os(visionOS))
         caps.isHDRPlaybackEligible = AVPlayer.eligibleForHDRPlayback
         #endif
 
-        #if canImport(AVFoundation) && (os(iOS) || os(tvOS) || os(watchOS) || os(visionOS))
+        #if canImport(AVFoundation) && (os(iOS) || os(watchOS) || os(visionOS))
         let channels = detectedMaxOutputChannels()
         caps.maxOutputChannels = channels
         // Best-effort: a >2-channel route implies a spatial-capable receiver, the
@@ -249,7 +249,7 @@ extension MediaCapabilities {
         return caps
     }
 
-    #if canImport(AVFoundation) && (os(iOS) || os(tvOS) || os(watchOS) || os(visionOS))
+    #if canImport(AVFoundation) && (os(iOS) || os(watchOS) || os(visionOS))
     /// Best-effort maximum output channel count from the active audio session.
     private static func detectedMaxOutputChannels() -> Int {
         let session = AVAudioSession.sharedInstance()

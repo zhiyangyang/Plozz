@@ -9,13 +9,9 @@ import XCTest
 @MainActor
 final class ICloudOnboardingHostedTests: XCTestCase {
     func testChoicesRenderInBothThemesAndPrimaryReceivesTVFocus() async throws {
-        #if os(tvOS)
-        let sizes: [(CGFloat, CGFloat, DynamicTypeSize)] = [(1920, 1080, .large)]
-        #else
         let sizes: [(CGFloat, CGFloat, DynamicTypeSize)] = [
             (393, 852, .large), (393, 852, .accessibility1), (1024, 1366, .large)
         ]
-        #endif
         for scheme in [ColorScheme.dark, .light] {
             for (width, height, typeSize) in sizes {
                 try await render(width: width, height: height, typeSize: typeSize, scheme: scheme)
@@ -68,11 +64,6 @@ final class ICloudOnboardingHostedTests: XCTestCase {
         case .slow: "Set up manually"
         default: nil
         }
-        #if os(tvOS)
-        if expectedFocus != nil {
-            try await waitUntil { UIFocusSystem(for: window)?.focusedItem != nil }
-        }
-        #endif
         func spinners(in view: UIView) -> [UIActivityIndicatorView] {
             (view as? UIActivityIndicatorView).map { [$0] } ?? view.subviews.flatMap(spinners)
         }
@@ -132,49 +123,12 @@ final class ICloudOnboardingHostedTests: XCTestCase {
             XCTAssertTrue(text.contains(label), "Missing \(label): \(text)")
         }
         XCTAssertTrue(choices.isEmpty, "Rendering/default focus must never accept iCloud for the user.")
-        #if os(tvOS)
-        guard let expectedFocus else { return }
-        let button = try XCTUnwrap(observations.first {
-            $0.topCandidates(1).first?.string == expectedFocus
-        })
-        func frame(_ observation: VNRecognizedTextObservation) -> CGRect {
-            CGRect(x: observation.boundingBox.minX * window.bounds.width,
-                   y: (1 - observation.boundingBox.maxY) * window.bounds.height,
-                   width: observation.boundingBox.width * window.bounds.width,
-                   height: observation.boundingBox.height * window.bounds.height)
-        }
-        let focused = try XCTUnwrap(UIFocusSystem(for: window)?.focusedItem)
-        var environment = focused.parentFocusEnvironment
-        let focusedView = focused as? UIView
-        var focusedFrame = focusedView.map { $0.convert($0.bounds, to: window) }
-        while focusedFrame == nil, let current = environment {
-            if let container = current.focusItemContainer {
-                focusedFrame = container.coordinateSpace.convert(focused.frame, to: window)
-                break
-            }
-            environment = current.parentFocusEnvironment
-        }
-        let nativeFrame = try XCTUnwrap(focusedFrame)
-        // SwiftUI's virtual focus frame can exclude part of a centered glass label.
-        // Each action owns a separate row; overlap must identify only the intended action.
-        XCTAssertTrue(nativeFrame.intersects(frame(button)), "\(expectedFocus) must receive initial focus.")
-        for observation in observations {
-            guard let label = observation.topCandidates(1).first?.string,
-                  ["Retry", "Set up manually", "Enable iCloud Sync", "Not now"].contains(label),
-                  label != expectedFocus else { continue }
-            XCTAssertFalse(nativeFrame.intersects(frame(observation)), "\(label) must not receive initial focus.")
-        }
-        #endif
     }
 
     func testRestorationShowsManualSetupOnlyWhenSlowOrUnavailable() async throws {
-        #if os(tvOS)
-        let sizes: [(CGFloat, CGFloat, DynamicTypeSize)] = [(1920, 1080, .large)]
-        #else
         let sizes: [(CGFloat, CGFloat, DynamicTypeSize)] = [
             (393, 852, .large), (393, 852, .accessibility1), (1024, 1366, .large)
         ]
-        #endif
         for phase in [InitialSetupRestorationPhase.checking, .restoring, .slow, .unavailable, .stopping] {
             for scheme in [ColorScheme.dark, .light] {
                 for (width, height, typeSize) in sizes {
@@ -186,11 +140,7 @@ final class ICloudOnboardingHostedTests: XCTestCase {
     }
 
     func testAllActualRestorationActivitiesRender() async throws {
-        #if os(tvOS)
-        let size: (CGFloat, CGFloat) = (1920, 1080)
-        #else
         let size: (CGFloat, CGFloat) = (393, 852)
-        #endif
         for activity in [InitialSetupRestorationActivity.checkingICloud, .profilesAndSettings, .servers,
                          .liveTVSources, .signingInToServers] {
             try await render(width: size.0, height: size.1, typeSize: .large, scheme: .dark,

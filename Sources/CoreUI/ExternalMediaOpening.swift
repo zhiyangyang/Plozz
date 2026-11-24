@@ -13,11 +13,7 @@ public final class ExternalMediaOpening {
     private let openURL: @MainActor (URL) async -> Bool
 
     public init(openURL: @escaping @MainActor (URL) async -> Bool = { url in
-        #if os(tvOS)
-        await UIApplication.shared.open(url, options: [.universalLinksOnly: true])
-        #else
         await UIApplication.shared.open(url)
-        #endif
     }) {
         self.openURL = openURL
     }

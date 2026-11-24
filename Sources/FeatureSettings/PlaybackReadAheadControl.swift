@@ -15,20 +15,6 @@ public struct PlaybackReadAheadControl: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsDescribedControl {
-            SettingsMenuRow(title: "Video buffer", value: Text(selection.title)) {
-                Picker("Video buffer", selection: $selection) {
-                    ForEach(PlaybackReadAhead.allCases, id: \.self) {
-                        Text($0.title).tag($0)
-                    }
-                }
-            }
-            .accessibilityIdentifier("playback-read-ahead")
-        } description: {
-            PlaybackReadAheadHelp()
-        }
-        #else
         SettingsSectionGroup {
             Picker("Video buffer", selection: $selection) {
                 ForEach(PlaybackReadAhead.allCases, id: \.self) {
@@ -39,7 +25,6 @@ public struct PlaybackReadAheadControl: View {
         } footer: {
             PlaybackReadAheadHelp()
         }
-        #endif
     }
 }
 
@@ -62,20 +47,6 @@ public struct LivePlaybackBufferControl: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsDescribedControl {
-            SettingsMenuRow(title: "Live TV buffer", value: Text(selection.title)) {
-                Picker("Live TV buffer", selection: $selection) {
-                    ForEach(LivePlaybackBuffer.allCases, id: \.self) {
-                        Text($0.title).tag($0)
-                    }
-                }
-            }
-            .accessibilityIdentifier("live-playback-buffer")
-        } description: {
-            help
-        }
-        #else
         SettingsSectionGroup {
             Picker("Live TV buffer", selection: $selection) {
                 ForEach(LivePlaybackBuffer.allCases, id: \.self) {
@@ -86,7 +57,6 @@ public struct LivePlaybackBufferControl: View {
         } footer: {
             help
         }
-        #endif
     }
 
     private var help: some View {

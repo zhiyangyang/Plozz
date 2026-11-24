@@ -13,35 +13,18 @@ struct HomeEditorPage<HeaderActions: View, Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: pageSpacing) {
-                #if os(tvOS)
-                if showsHeader { SettingsPageHeader(title, trailing: headerActions) }
-                #endif
                 content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            #if os(tvOS)
-            .padding(.horizontal, SettingsFormMetrics.pageInset)
-            .padding(.top, SettingsFormMetrics.pageTopInset)
-            .padding(.bottom, SettingsFormMetrics.pageBottomInset)
-            #endif
         }
         .navigationTitle(title)
         #if os(iOS)
         .settingsPageSurface()
         #endif
-        #if os(tvOS)
-        .scrollClipDisabled()
-        .toggleStyle(SettingsSwitchToggleStyle())
-        .toolbar(.hidden, for: .tabBar)
-        #endif
     }
 
     private var pageSpacing: CGFloat {
-        #if os(tvOS)
-        SettingsFormMetrics.navigationRowSpacing
-        #else
         12
-        #endif
     }
 }
 
@@ -112,17 +95,9 @@ struct HomeEditorSaveAction: ViewModifier {
 struct HomeEditorLink<Destination: View, Label: View>: View {
     @ViewBuilder let destination: () -> Destination
     @ViewBuilder let label: () -> Label
-    #if !os(tvOS)
     @State private var isPresented = false
-    #endif
 
     var body: some View {
-        #if os(tvOS)
-        SettingsPageLink(destination: destination) {
-            label().padding(16)
-        }
-            .buttonStyle(SettingsFocusButtonStyle(size: .navigation))
-        #else
         Button { isPresented = true } label: {
             label().padding(14)
                 .settingsGroupSurface(cornerRadius: 12)
@@ -130,7 +105,6 @@ struct HomeEditorLink<Destination: View, Label: View>: View {
         }
             .buttonStyle(.plain)
             .navigationDestination(isPresented: $isPresented, destination: destination)
-        #endif
     }
 }
 
@@ -266,15 +240,6 @@ struct HomeRowNameEditor: View {
             isEnabled: trimmedName != (visibility.visibility.homeRowName(for: choice.id) ?? ""),
             identifier: "home-section-name-save", action: save
         ))
-        #elseif os(tvOS)
-        SettingsSectionGroup {
-            HomeEditorAutosavingNameInput(
-                "Row name", name: name, prompt: choice.homeEditorTitle,
-                identifier: "home-section-name"
-            ) { value in
-                visibility.setHomeRowName(value, for: choice.id)
-            }
-        }
         #else
         SettingsSectionGroup {
             SettingsInputRow("Row name") { nameField }
@@ -337,9 +302,6 @@ struct HomeSectionSettingsView: View {
     @Environment(\.themePalette) private var palette
     @Environment(CardStyleSettingsModel.self) private var cards
     @Environment(LibraryPresentationSettingsModel.self) private var libraryPresentation: LibraryPresentationSettingsModel?
-    #if os(tvOS)
-    @Environment(HeroSettingsModel.self) private var hero
-    #endif
     @SettingsPageDismiss private var dismiss
     @State private var failed = false
 
@@ -374,18 +336,10 @@ struct HomeSectionSettingsView: View {
                 ), playbackDetails: visibility.continueWatchingPlaybackDetails,
                    captions: cards.captions, isShowcase: previewsShowcase)
                 .settingsSearchAnchor("continue-artwork-layout")
-                #if os(tvOS)
-                SettingsControlGroup { presentationControls }
-                #else
                 SettingsSectionGroup { presentationControls }
-                #endif
                 Text("Appearance also applies on Recommended.")
                     .settingsHelperText()
-                #if os(tvOS)
-                SettingsControlGroup { behaviorControls }
-                #else
                 SettingsSectionGroup { behaviorControls }
-                #endif
             }
             if !previewsShowcase, visibility.visibility.dismissedEmptyHomeRows.contains(choice.id) {
                 Button("Show empty message") {
@@ -451,11 +405,7 @@ struct HomeSectionSettingsView: View {
     }
 
     private var previewsShowcase: Bool {
-        #if os(tvOS)
-        hero.settings.followsFocus
-        #else
         false
-        #endif
     }
 }
 
@@ -490,12 +440,6 @@ struct ContinueWatchingActionControl: View {
                 ) {
                     visibility.setContinueWatchingAction(selection == .play ? .openDetails : .play)
                 }
-                #if os(tvOS)
-                Text("Play/Pause always starts playback.")
-                    .settingsHelperText()
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("continue-watching-remote-help")
-                #endif
             }
             #endif
         }
@@ -609,9 +553,6 @@ public struct HomeHeroSettingsView: View {
     let visibility: HomeLibraryVisibilityModel
     let initialPage: HeroSettingsPage?
     @Environment(HeroSettingsModel.self) private var hero
-    #if os(tvOS)
-    @State private var navigation = SettingsDetailNavigation()
-    #endif
 
     public init(
         libraries: [AggregatedLibrary], accounts: [ResolvedAccount], visibility: HomeLibraryVisibilityModel,
@@ -625,11 +566,7 @@ public struct HomeHeroSettingsView: View {
 
     private var resolvedPage: HeroSettingsPage? {
         guard let initialPage else { return nil }
-        #if os(tvOS)
-        guard hero.settings.spotlightEnabled else { return nil }
-        #else
         guard hero.settings.isEnabled else { return nil }
-        #endif
         switch initialPage {
         case .libraries where !hero.effectiveSettings.isEnabled(.randomFromLibrary): return .titles
         case .collections where !hero.effectiveSettings.isEnabled(.collection): return .titles
@@ -649,15 +586,7 @@ public struct HomeHeroSettingsView: View {
         if let resolvedPage {
             HeroSettingsScreen(page: resolvedPage, libraries: availableLibraries, accounts: accounts)
         } else {
-        #if os(tvOS)
-        SettingsDetailPages(navigation: navigation) {
-            page
-        } detail: {
-            HeroSettingsDestination(libraries: availableLibraries, accounts: accounts)
-        }
-        #else
         page
-        #endif
         }
     }
 
@@ -672,54 +601,6 @@ public struct HomeHeroSettingsView: View {
     }
 }
 
-#if os(tvOS)
-struct HomeRowStyleSettingsView: View {
-    let libraries: [AggregatedLibrary]
-    let accounts: [ResolvedAccount]
-    @Environment(HeroSettingsModel.self) private var hero
-    @State private var navigation = SettingsDetailNavigation()
-
-    var body: some View {
-        @Bindable var hero = hero
-        SettingsDetailPages(navigation: navigation) {
-            HomeEditorPage(title: Text("Row style"), showsHeader: true) {
-                HomeRowStylePicker(
-                    immersive: $hero.settings.immersiveRows,
-                    logoSize: hero.settings.showcaseLogoSize,
-                    textSize: hero.settings.showcaseTextSize
-                )
-                if hero.settings.immersiveRows {
-                    SettingsControlGroup {
-                        HeroLogoSizeControl(
-                            size: $hero.settings.showcaseLogoSize,
-                            textSize: $hero.settings.showcaseTextSize, surface: .showcase
-                        )
-                    }
-                    HeroRatingControls(isShowcase: true)
-                    if hero.settings.style == .followsFocus {
-                        if hero.allowsDiscovery {
-                            SettingsControlGroup {
-                                Toggle("Discovery row", isOn: $hero.settings.showsDiscoverRow)
-                                    .settingsSearchAnchor(
-                                        "showcase-discovery-row",
-                                        fallbackFor: hero.settings.showsDiscoverRow ? [] : SettingsSearchCatalog.targets(on: .heroDiscovery)
-                                    )
-                                if hero.settings.showsDiscoverRow {
-                                    HeroSettingsLink(page: .discovery, libraries: libraries, accounts: accounts)
-                                }
-                            }
-                        } else {
-                            Text("Discovery is unavailable in Kids profiles.").settingsHelperText()
-                        }
-                    }
-                }
-            }
-        } detail: {
-            HeroSettingsDestination(libraries: libraries, accounts: accounts)
-        }
-    }
-}
-#endif
 
 struct HomeCatalogStatus: View {
     let inventory: HomeSectionCatalogModel
@@ -839,14 +720,9 @@ struct HomeRowPresetPicker: View {
                 .padding(.vertical, 6)
             #endif
         }
-        #if os(tvOS)
-        .menuStyle(.button)
-        .plozzActionButton(role: .secondary)
-        #else
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
         .frame(minHeight: 44)
-        #endif
         .accessibilityLabel(Text("Preset"))
         .accessibilityValue(currentTitle)
         .accessibilityIdentifier("home-row-preset")

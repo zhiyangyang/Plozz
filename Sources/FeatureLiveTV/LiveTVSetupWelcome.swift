@@ -240,14 +240,7 @@ private struct LiveTVSetupChoice: View {
             .padding(PlozzTheme.Spacing.large)
             #endif
         }
-        #if os(tvOS)
-        .plozzCardButton(
-            cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius,
-            focusedScale: PlozzTheme.Metrics.readOnlyFocusedCardScale
-        )
-        #else
         .buttonStyle(SettingsCardButtonStyle())
-        #endif
         .accessibilityLabel(actionTitle)
         .accessibilityHint(detail)
     }

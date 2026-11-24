@@ -221,12 +221,7 @@ private struct HomeContentSelectionSummary: View {
                             .labelStyle(.iconOnly)
                             .settingsControlTarget()
                     }
-                    #if os(tvOS)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    #else
                     .buttonStyle(.borderless)
-                    #endif
                     .accessibilityLabel(Text("Remove \(source.localizedTitle.map(Text.init) ?? Text(verbatim: source.title))"))
                     .accessibilityIdentifier("home-content-remove-\(source.home?.rawValue ?? "server")")
                     .disabled(!allowsEmpty && selections.count == 1)
@@ -242,9 +237,6 @@ struct HomeContentPickerDoneButton: View {
 
     var body: some View {
         Button("Done") { dismiss() }
-            #if os(tvOS)
-            .buttonStyle(.bordered)
-            #endif
             .accessibilityIdentifier("home-content-done")
     }
 }

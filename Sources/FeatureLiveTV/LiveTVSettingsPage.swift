@@ -43,11 +43,7 @@ struct LiveTVSetupField: View {
     }
 
     private var minimumHeight: CGFloat {
-        #if os(tvOS)
-        64
-        #else
         44
-        #endif
     }
 }
 
@@ -56,14 +52,6 @@ struct LiveTVGuideAddressEditor: View {
     let remove: () -> Void
 
     var body: some View {
-        #if os(tvOS)
-        HStack(alignment: .bottom, spacing: 24) {
-            addressField
-                .frame(maxWidth: .infinity)
-            removeButton
-                .frame(width: 320)
-        }
-        #else
         HStack(alignment: .bottom, spacing: 8) {
             addressField
             Button("Remove guide", systemImage: "minus.circle", role: .destructive, action: remove)
@@ -72,7 +60,6 @@ struct LiveTVGuideAddressEditor: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("live-tv-remove-guide")
         }
-        #endif
     }
 
     private var addressField: some View {
@@ -132,38 +119,11 @@ struct LiveTVSettingsPage<Content: View>: View {
     let title: LocalizedStringResource
     var sourceName: String? = nil
     @ViewBuilder let content: () -> Content
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    @SettingsPageDismiss private var dismiss
-    #endif
 
     var body: some View {
-        #if os(tvOS)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Group {
-                    if let sourceName { SettingsPageHeader(verbatim: sourceName) }
-                    else { SettingsPageHeader(title) }
-                }
-                .environment(\.settingsPageBackButton, inWorkspace ? AnyView(
-                    SettingsBackButton { dismiss() }
-                        .accessibilityIdentifier("live-tv-settings-back")
-                ) : nil)
-                content()
-                    .settingsPageEntryFocus()
-            }
-            .frame(maxWidth: PlozzTheme.Metrics.settingsContentMaxWidth, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.horizontal, inWorkspace ? 28 : PlozzTheme.Metrics.screenPadding)
-            .padding(.vertical, 24)
-        }
-        .scrollClipDisabled()
-        .background { SettingsPageBackground() }
-        #else
         SettingsPageScroll {
             content()
         }
         .navigationTitle(sourceName.map { Text(verbatim: $0) } ?? Text(title))
-        #endif
     }
 }

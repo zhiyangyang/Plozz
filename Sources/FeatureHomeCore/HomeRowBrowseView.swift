@@ -16,10 +16,6 @@ public struct HomeRowBrowseView<Card: View>: View {
     @Environment(\.plozzNavigationContentInset) private var navigationInset
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var moreRequest = 0
-    #if os(tvOS)
-    @Namespace private var entryFocusScope
-    @State private var hasResolvedEntryFocus = false
-    #endif
     private struct LoadKey: Equatable {
         let query: HomeRowBrowseQuery
         let snapshot: [MediaItem]?
@@ -39,31 +35,10 @@ public struct HomeRowBrowseView<Card: View>: View {
     public var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                #if os(tvOS)
-                HStack {
-                    heading
-                        .layoutPriority(1)
-                    Spacer(minLength: PlozzTheme.Spacing.large)
-                    BrowseQueryControls {
-                        filterControl
-                        sortControl.fixedSize(horizontal: true, vertical: false)
-                    }
-                    .disabled(awaitsGridEntry)
-                }
-                .lineLimit(1)
-                .focusSection()
-                #endif
                 if model.query == model.appliedQuery {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: gridSpacing) {
                         ForEach(model.items, id: \.stablePresentationID) { item in
                             card(item)
-                                #if os(tvOS)
-                                .disabled(!hasResolvedEntryFocus && item.stablePresentationID != model.items.first?.stablePresentationID)
-                                .prefersDefaultFocus(
-                                    !hasResolvedEntryFocus && item.stablePresentationID == model.items.first?.stablePresentationID,
-                                    in: entryFocusScope
-                                )
-                                #endif
                                 .onAppear {
                                     if item.stablePresentationID == model.items.last?.stablePresentationID,
                                        model.hasMore, !model.isLoading, model.error == nil {
@@ -73,11 +48,6 @@ public struct HomeRowBrowseView<Card: View>: View {
                         }
                     }
                     .transition(.opacity)
-                    #if os(tvOS)
-                    .background {
-                        NativeFocusRegionObserver(isEnabled: !hasResolvedEntryFocus) { hasResolvedEntryFocus = true }
-                    }
-                    #endif
                 }
                 if let error = model.error {
                     VStack(alignment: .leading, spacing: 12) {
@@ -100,9 +70,6 @@ public struct HomeRowBrowseView<Card: View>: View {
                     .transition(.opacity)
                 } else if model.hasMore {
                     Button("Load more") { moreRequest += 1 }
-                        #if os(tvOS)
-                        .disabled(awaitsGridEntry)
-                        #endif
                         .onAppear { moreRequest += 1 }
                 } else if model.items.isEmpty {
                     Text("No titles to show")
@@ -132,14 +99,6 @@ public struct HomeRowBrowseView<Card: View>: View {
             }
         }
         .onChange(of: model.scopeIsCurrent) { _, current in if !current { model.invalidate() } }
-        #if os(tvOS)
-        .focusScope(entryFocusScope)
-        .background {
-            NativeFocusRegionObserver(isEnabled: !hasResolvedEntryFocus && !awaitsGridEntry) {
-                hasResolvedEntryFocus = true
-            }
-        }
-        #endif
         #if os(iOS)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -152,18 +111,9 @@ public struct HomeRowBrowseView<Card: View>: View {
         #endif
     }
 
-    #if os(tvOS)
-    private var awaitsGridEntry: Bool {
-        !hasResolvedEntryFocus && model.error == nil && (model.isLoading || model.hasMore || !model.items.isEmpty)
-    }
-    #endif
 
     private var horizontalPadding: CGFloat {
-        #if os(tvOS)
-        PlozzTheme.Metrics.screenPadding
-        #else
         20
-        #endif
     }
 
     /// The personal build aligns the See All wall's visible artwork with Home's

@@ -1,9 +1,6 @@
 import CoreModels
 import CoreNetworking
 import SwiftUI
-#if os(tvOS)
-import UIKit
-#endif
 
 private struct FamilyGuidanceProviderKey: EnvironmentKey {
     static let defaultValue: (any FamilyGuidanceLoading)? = nil
@@ -42,15 +39,9 @@ struct FamilyGuidanceTile: View {
                         focusedScale: PlozzTheme.Metrics.readOnlyFocusedCardScale)
         .accessibilityIdentifier("family-guidance-tile")
         .accessibilityHint("Open family guidance")
-        #if os(tvOS)
-        .plozzSheet(isPresented: $isPresented, style: .floatingCard) {
-            FamilyGuidanceSheet(item: item, summary: summary, authorizationID: provider?.contextID)
-        }
-        #else
         .plozzSheet(isPresented: $isPresented) {
             FamilyGuidanceSheet(item: item, summary: summary, authorizationID: provider?.contextID)
         }
-        #endif
     }
 
     private var horizontalContent: some View {
@@ -85,19 +76,11 @@ struct FamilyGuidanceTile: View {
     }
 
     private var expandedContentWidth: CGFloat {
-        #if os(tvOS)
-        320
-        #else
         expandedMinimumWidth
-        #endif
     }
 
     private var compactIconSize: CGFloat {
-        #if os(tvOS)
-        32
-        #else
         horizontalSizeClass == .compact ? 24 : 28
-        #endif
     }
 
     @ViewBuilder
@@ -119,25 +102,13 @@ struct FamilyGuidanceTile: View {
     }
 
     private var ageSize: CGFloat {
-        #if os(tvOS)
-        38
-        #else
         scaledAgeSize
-        #endif
     }
     private var sourceFont: Font {
-        #if os(tvOS)
-        .system(size: 18, weight: .semibold)
-        #else
         .caption.weight(.semibold)
-        #endif
     }
     private var summaryFont: Font {
-        #if os(tvOS)
-        .system(size: 22)
-        #else
         .subheadline
-        #endif
     }
 }
 
@@ -154,18 +125,6 @@ struct FamilyGuidanceSheet: View {
     var body: some View {
         Group {
             if provider?.contextID == authorizationID {
-                #if os(tvOS)
-                ZStack {
-                    PlozzDialogBackdrop()
-                    TVFamilyGuidanceDialog(
-                        title: item.title, summary: displayedSummary, state: state,
-                        retry: { attempt += 1 }, close: { dismiss() }
-                    )
-                    .plozzSurface(.overlay, cornerRadius: 28)
-                }
-                .environment(\.colorScheme, palette.isLight ? .light : .dark)
-                .onExitCommand { dismiss() }
-                #else
                 NavigationStack {
                     FamilyGuidanceMobileOverview(
                         title: item.title, summary: displayedSummary, state: state, retry: { attempt += 1 }
@@ -188,7 +147,6 @@ struct FamilyGuidanceSheet: View {
                         }
                     }
                 }
-                #endif
             }
         }
         .foregroundStyle(palette.primaryText)
@@ -255,97 +213,6 @@ private extension LoadState where Value == FamilyGuidanceAvailability {
     }
 }
 
-#if os(tvOS)
-struct TVFamilyGuidanceDialog: View {
-    let title: String // l10n:content — media title supplied by the provider
-    let summary: FamilyGuidanceSummary
-    let state: LoadState<FamilyGuidanceAvailability>
-    let retry: () -> Void
-    let close: () -> Void
-    @State private var selection: FamilyGuidancePage = .overview
-    @FocusState private var focusedPage: FamilyGuidancePage?
-    @State private var readerFocused = false
-    // Keep the return target exclusive until the menu actually regains focus.
-    @State private var returnsToSelection = false
-    @Environment(\.themePalette) private var palette
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            HStack {
-                Text("Family guidance").font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(palette.secondaryText)
-                Spacer()
-                Button("Done", action: close)
-                    .buttonStyle(PlozzPanelHeaderButtonStyle())
-                    .focusEffectDisabled()
-            }
-            .focusSection()
-            FamilyGuidanceHeader(title: title, summary: summary)
-            Divider()
-            HStack(alignment: .top, spacing: 28) {
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(pages, id: \.self) { page in
-                            Button {
-                                selection = page
-                            } label: {
-                                FamilyGuidanceMenuLabel(page: page, guidance: state.guidance)
-                                    .padding(.horizontal, 18)
-                                    .padding(.vertical, 16)
-                                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-                            }
-                            .plozzCardButton(cornerRadius: 14, focusedScale: PlozzTheme.Metrics.readOnlyFocusedCardScale)
-                            .focused($focusedPage, equals: page)
-                            .disabled(returnsToSelection && page != selection)
-                            .accessibilityIdentifier(page.identifier)
-                        }
-                    }
-                    .padding(24)
-                }
-                .frame(width: 380)
-                .focusSection()
-                FamilyGuidanceDetailContent(
-                    page: selection, summary: summary, state: state, retry: retry,
-                    onReaderFocus: {
-                        readerFocused = $0
-                        if $0 { returnsToSelection = true }
-                    }
-                )
-                .id(selection)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.horizontal, 28)
-                .padding(.top, 28)
-                .padding(.bottom, 20)
-                .background(palette.raised.fill, in: RoundedRectangle(cornerRadius: 20))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(palette.primaryText.opacity(readerFocused ? 0.45 : 0), lineWidth: 1)
-                        .allowsHitTesting(false)
-                }
-                .focusSection()
-            }
-        }
-        .padding(.horizontal, 40)
-        .padding(.top, 40)
-        .padding(.bottom, 24)
-        .frame(width: 1480, height: 920)
-        .defaultFocus($focusedPage, .overview, priority: .userInitiated)
-        .onChange(of: focusedPage) { _, page in
-            if let page {
-                selection = page
-                returnsToSelection = false
-            }
-        }
-        .onChange(of: pages) { _, current in
-            if !current.contains(selection) { selection = .overview }
-        }
-    }
-
-    private var pages: [FamilyGuidancePage] {
-        FamilyGuidancePage.pages(summary: summary, guidance: state.guidance)
-    }
-}
-#else
 private struct FamilyGuidanceMobileOverview: View {
     let title: String // l10n:content — media title supplied by the provider
     let summary: FamilyGuidanceSummary
@@ -373,7 +240,6 @@ private struct FamilyGuidanceMobileOverview: View {
         .background { SettingsPageBackground() }
     }
 }
-#endif
 
 private extension FamilyGuidancePage {
     var identifier: String {
@@ -414,20 +280,6 @@ struct FamilyGuidanceHeader: View {
     #endif
 
     var body: some View {
-        #if os(tvOS)
-        Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 4) {
-            GridRow(alignment: .center) {
-                FamilyGuidanceAge(age: summary.recommendedAge, size: ageSize)
-                FamilyGuidanceHeaderIdentity(title: title)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            GridRow(alignment: .firstTextBaseline) {
-                ageCaption
-                synopsis
-            }
-        }
-        .accessibilityIdentifier("family-guidance-header")
-        #else
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 FamilyGuidanceAge(age: summary.recommendedAge, size: ageSize)
@@ -440,7 +292,6 @@ struct FamilyGuidanceHeader: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityIdentifier("family-guidance-header")
-        #endif
     }
 
     private var ageCaption: some View {
@@ -459,18 +310,10 @@ struct FamilyGuidanceHeader: View {
     }
 
     private var ageSize: CGFloat {
-        #if os(tvOS)
-        92
-        #else
         scaledAgeSize
-        #endif
     }
     private var summaryFont: Font {
-        #if os(tvOS)
-        .system(size: 24)
-        #else
         .body
-        #endif
     }
 }
 
@@ -488,19 +331,11 @@ private struct FamilyGuidanceHeaderIdentity: View {
     }
 
     private var titleFont: Font {
-        #if os(tvOS)
-        .system(size: 30, weight: .semibold)
-        #else
         .headline
-        #endif
     }
 
     private var brandFont: Font {
-        #if os(tvOS)
-        .system(size: 18, weight: .semibold)
-        #else
         .subheadline.weight(.semibold)
-        #endif
     }
 }
 
@@ -529,9 +364,6 @@ private struct FamilyGuidanceMenuLabel: View {
         HStack(spacing: 14) {
             FamilyGuidancePageLabel(page: page, guidance: guidance, isMenu: true)
                 .font(labelFont)
-                #if os(tvOS)
-                .lineLimit(2)
-                #endif
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let topic = page.topic(in: guidance) {
                 FamilyGuidanceIntensity(value: topic.rating)
@@ -540,11 +372,7 @@ private struct FamilyGuidanceMenuLabel: View {
     }
 
     private var labelFont: Font {
-        #if os(tvOS)
-        .system(size: 22, weight: .medium)
-        #else
         .body.weight(.medium)
-        #endif
     }
 }
 
@@ -553,18 +381,11 @@ private struct FamilyGuidanceDetailContent: View {
     let summary: FamilyGuidanceSummary
     let state: LoadState<FamilyGuidanceAvailability>
     let retry: () -> Void
-    #if os(tvOS)
-    let onReaderFocus: @MainActor (Bool) -> Void
-    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             FamilyGuidancePageLabel(page: page, guidance: state.guidance)
-                #if os(tvOS)
-                .font(.system(size: 28, weight: .semibold))
-                #else
                 .font(.title2.bold())
-                #endif
             if page == .reviews {
                 FamilyGuidanceReviewScores(summary: summary, guidance: state.guidance)
                 if let overview = state.guidance?.qualityOverview { text(overview) }
@@ -598,13 +419,7 @@ private struct FamilyGuidanceDetailContent: View {
 
     @ViewBuilder
     private func text(_ value: String) -> some View {
-        #if os(tvOS)
-        TVFamilyGuidanceReader(text: value, onFocus: onReaderFocus)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityIdentifier("family-guidance-reader")
-        #else
         Text(value).fixedSize(horizontal: false, vertical: true)
-        #endif
     }
 }
 
@@ -701,100 +516,6 @@ private struct FamilyGuidanceStars: View {
     }
 }
 
-#if os(tvOS)
-struct TVFamilyGuidanceReader: UIViewRepresentable {
-    let text: String
-    let onFocus: @MainActor (Bool) -> Void
-    @Environment(\.themePalette) private var palette
-
-    @MainActor
-    final class Coordinator {
-        var onFocus: @MainActor (Bool) -> Void
-        init(onFocus: @escaping @MainActor (Bool) -> Void) { self.onFocus = onFocus }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(onFocus: onFocus) }
-
-    func makeUIView(context: Context) -> Reader {
-        let view = Reader()
-        view.onFocus = { [weak coordinator = context.coordinator] in coordinator?.onFocus($0) }
-        view.backgroundColor = .clear
-        // The enclosing card owns rounding; keep the scrolling text viewport rectangular.
-        view.layer.cornerRadius = 0
-        view.isSelectable = true
-        view.isScrollEnabled = true
-        view.isUserInteractionEnabled = context.environment.isEnabled
-        view.textContainerInset = UIEdgeInsets(top: 0, left: 0, bottom: 8, right: 8)
-        view.textContainer.lineFragmentPadding = 0
-        view.accessibilityIdentifier = "family-guidance-reader"
-        return view
-    }
-
-    func updateUIView(_ view: Reader, context: Context) {
-        context.coordinator.onFocus = onFocus
-        let style = NSMutableParagraphStyle()
-        style.paragraphSpacing = 16
-        let content = NSAttributedString(string: text, attributes: [
-            .font: UIFont.systemFont(ofSize: 26),
-            .foregroundColor: UIColor(palette.primaryText),
-            .paragraphStyle: style
-        ])
-        if view.attributedText?.isEqual(to: content) != true { view.attributedText = content }
-        view.isUserInteractionEnabled = context.environment.isEnabled
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: Reader, context: Context) -> CGSize? {
-        guard let width = proposal.width, let height = proposal.height,
-              width.isFinite, height.isFinite else { return nil }
-        return CGSize(width: width, height: height)
-    }
-
-    final class Reader: UITextView {
-        var onFocus: (@MainActor (Bool) -> Void)?
-        private var ownsFocus = false
-        override var canBecomeFocused: Bool { true }
-
-        private var isAtTop: Bool {
-            contentOffset.y <= -adjustedContentInset.top + 1 / traitCollection.displayScale
-        }
-
-        override func shouldUpdateFocus(in context: UIFocusUpdateContext) -> Bool {
-            let leavingReader = context.previouslyFocusedItem.map { $0 === self || self.contains($0) } == true
-                && context.nextFocusedItem.map { $0 === self || self.contains($0) } != true
-            let scrollsUp = context.focusHeading.contains(.up) && !isAtTop
-            if leavingReader && (scrollsUp || context.focusHeading.contains(.down)) {
-                return false
-            }
-            return super.shouldUpdateFocus(in: context)
-        }
-
-        // UITextView handles remote swipes; physical arrows need bounded page scrolling.
-        override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-            let vertical = presses.filter {
-                $0.type == .downArrow || ($0.type == .upArrow && !isAtTop)
-            }
-            guard ownsFocus, let press = vertical.first else {
-                super.pressesBegan(presses, with: event)
-                return
-            }
-            let minimumY = -adjustedContentInset.top
-            let maximumY = max(minimumY, contentSize.height - bounds.height + adjustedContentInset.bottom)
-            let direction: CGFloat = press.type == .downArrow ? 1 : -1
-            let nextY = min(maximumY, max(minimumY, contentOffset.y + direction * bounds.height * 0.75))
-            setContentOffset(CGPoint(x: contentOffset.x, y: nextY), animated: true)
-            let remaining = presses.subtracting(vertical)
-            if !remaining.isEmpty { super.pressesBegan(remaining, with: event) }
-        }
-
-        override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
-            super.didUpdateFocus(in: context, with: coordinator)
-            // UITextView can focus a paragraph item rather than a UIView.
-            ownsFocus = context.nextFocusedItem.map { $0 === self || self.contains($0) } ?? false
-            onFocus?(ownsFocus)
-        }
-    }
-}
-#endif
 
 private struct FamilyGuidanceBrand: View {
     let compact: Bool

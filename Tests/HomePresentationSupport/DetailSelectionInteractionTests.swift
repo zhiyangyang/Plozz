@@ -45,22 +45,14 @@ final class DetailSelectionInteractionTests: XCTestCase {
     }
 
     private func launch(_ flags: [String]) -> XCUIApplication {
-        #if os(tvOS)
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
         app.launchArguments = ["--detail-selection-fixture"] + flags
         app.launch()
         return app
     }
 
     private func openMore(_ app: XCUIApplication) {
-        #if os(tvOS)
-        select(app.buttons["detail-hero-more"], in: app)
-        #else
         select(app.buttons["More actions"], in: app)
-        #endif
     }
 
     private func handoff(_ app: XCUIApplication, expected: String) {
@@ -79,27 +71,11 @@ final class DetailSelectionInteractionTests: XCTestCase {
 
     private func select(_ button: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(button.waitForExistence(timeout: 10), app.debugDescription)
-        #if os(tvOS)
-        for _ in 0..<20 where !button.hasFocus {
-            let focused = app.buttons.matching(NSPredicate(format: "hasFocus == true")).firstMatch
-            guard focused.exists else { XCUIRemote.shared.press(.up); continue }
-            let dx = button.frame.midX - focused.frame.midX
-            let dy = button.frame.midY - focused.frame.midY
-            XCUIRemote.shared.press(abs(dy) > 40 ? (dy > 0 ? .down : .up) : (dx > 0 ? .right : .left))
-        }
-        XCTAssertTrue(button.hasFocus, app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        #else
         button.tap()
-        #endif
     }
 
     private func backgroundAndReturn(_ app: XCUIApplication) {
-        #if os(tvOS)
-        XCUIRemote.shared.press(.home)
-        #else
         XCUIDevice.shared.press(.home)
-        #endif
         XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10))
         let start = ContinuousClock.now
         waitUntil { start.duration(to: .now) >= .seconds(2) }

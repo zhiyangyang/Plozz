@@ -61,27 +61,15 @@ public struct PersonDetailView: View {
     /// iOS surface in this app uses for the same jobs, and they scale with the
     /// user's chosen text size for free.
     private var nameFont: Font {
-        #if os(tvOS)
-        .system(size: metrics.sectionHeaderFontSize * 1.6, weight: .bold)
-        #else
         .largeTitle.bold()
-        #endif
     }
 
     private var roleFont: Font {
-        #if os(tvOS)
-        .system(size: metrics.sectionHeaderFontSize * 0.8)
-        #else
         .title3
-        #endif
     }
 
     private var bodyFont: Font {
-        #if os(tvOS)
-        .system(size: metrics.sectionHeaderFontSize * 0.72)
-        #else
         .body
-        #endif
     }
 
     /// Where a rail's content starts. The skeleton uses this too — a placeholder
@@ -96,15 +84,11 @@ public struct PersonDetailView: View {
     /// inset instead. Everywhere else that leaves the headshot, the headings and
     /// the posters all running into the screen's edge, so the page supplies one.
     private var pageInset: CGFloat {
-        #if os(tvOS)
-        return PlozzTheme.Metrics.screenPadding
-        #else
         // The same 22/36 every other iOS page in this app insets by. Stepped on
         // the size class rather than interpolated on width, deliberately: the
         // point of this number is that a person page lines up with Home and with
         // a title's detail page, and those step here.
         return horizontalSizeClass == .compact ? 22 : 36
-        #endif
     }
 
     /// Whether the header has to stack rather than sit side by side.
@@ -113,11 +97,7 @@ public struct PersonDetailView: View {
     /// text column stops being a gutter: on a phone the name wrapped onto two
     /// lines and the biography was reduced to three words and a "MORE".
     private var stacksHeader: Bool {
-        #if os(tvOS)
-        return false
-        #else
         return availableWidth > 0 && availableWidth < 500
-        #endif
     }
 
     /// Across a room this is 220; on a phone that is most of the screen.
@@ -584,11 +564,7 @@ private extension View {
     /// for iOS.
     @ViewBuilder
     func personFocusSection() -> some View {
-        #if os(tvOS)
-        focusSection()
-        #else
         self
-        #endif
     }
 }
 #endif

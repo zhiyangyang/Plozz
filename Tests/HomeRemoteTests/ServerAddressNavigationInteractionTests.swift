@@ -8,11 +8,7 @@ final class ServerAddressNavigationInteractionTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
-        #if os(tvOS)
-        app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        #else
         app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.PresentationHost")
-        #endif
     }
 
     override func tearDown() {
@@ -34,18 +30,10 @@ final class ServerAddressNavigationInteractionTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["https://media.example.test"].exists)
         XCTAssertTrue(app.staticTexts["Jellyfin"].exists)
         XCTAssertFalse(app.buttons["Alice"].exists)
-        #if os(tvOS)
-        XCTAssertTrue(app.buttons["closeServerAddresses"].hasFocus, app.debugDescription)
-        #else
         app.buttons["Copy address"].firstMatch.tap()
         XCTAssertTrue(app.buttons["Copied"].exists)
-        #endif
         capture("single-sign-in-editor")
-        #if os(tvOS)
-        XCUIRemote.shared.press(.menu)
-        #else
         app.buttons["closeServerAddresses"].tap()
-        #endif
         XCTAssertTrue(app.buttons["manageServerAddresses"].waitForExistence(timeout: 5))
     }
 
@@ -80,20 +68,11 @@ final class ServerAddressNavigationInteractionTests: XCTestCase {
         activate(app.buttons["Remove"].firstMatch)
         let dialog = app.sheets["Remove this address?"]
         XCTAssertTrue(dialog.waitForExistence(timeout: 5), app.debugDescription)
-        #if os(tvOS)
-        let cancel = dialog.buttons["Cancel"].firstMatch
-        waitForFocus(cancel)
-        activate(cancel)
-        #else
         let dismissRegion = app.otherElements["PopoverDismissRegion"]
         XCTAssertTrue(dismissRegion.waitForExistence(timeout: 5), app.debugDescription)
         dismissRegion.tap()
-        #endif
         XCTAssertTrue(dialog.waitForNonExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(alternate.exists)
-        #if os(tvOS)
-        waitForFocus(app.buttons["Remove"].firstMatch)
-        #endif
         activate(app.buttons["Remove"].firstMatch)
         XCTAssertTrue(dialog.waitForExistence(timeout: 5), app.debugDescription)
         activate(dialog.buttons["Remove"].firstMatch, movingRight: true)
@@ -199,24 +178,9 @@ final class ServerAddressNavigationInteractionTests: XCTestCase {
     }
 
     private func activate(_ target: XCUIElement, movingRight: Bool = false) {
-        #if os(tvOS)
-        for _ in 0..<8 {
-            if target.hasFocus { break }
-            XCUIRemote.shared.press(movingRight ? .right : .down)
-        }
-        XCTAssertTrue(target.hasFocus, app.debugDescription)
-        XCUIRemote.shared.press(.select)
-        #else
         target.tap()
-        #endif
     }
 
-    #if os(tvOS)
-    private func waitForFocus(_ target: XCUIElement) {
-        let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasFocus == true"), object: target)
-        XCTAssertEqual(XCTWaiter.wait(for: [focused], timeout: 5), .completed, app.debugDescription)
-    }
-    #endif
 
     private func capture(_ name: String) {
         // Let native sheet and focus animations finish before retaining visual evidence.

@@ -38,20 +38,12 @@ public extension View {
 public enum PlozzMediaChrome {
     /// Foreground for text, glyphs and a progress bar's filled portion.
     public static func foreground(isFocused: Bool) -> Color {
-        #if os(tvOS)
-        isFocused ? .white : restForeground
-        #else
         .white
-        #endif
     }
 
     /// The unfilled portion of a progress bar behind ``foreground(isFocused:)``.
     public static func track(isFocused: Bool) -> Color {
-        #if os(tvOS)
-        isFocused ? focusedTrack : restTrack
-        #else
         focusedTrack
-        #endif
     }
 
     // The FOREGROUND is opaque on purpose. A translucent glyph or bar fill

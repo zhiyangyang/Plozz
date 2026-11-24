@@ -23,23 +23,10 @@ public struct SyncEraseDataView: View {
     public var body: some View {
         let presentation = status.make()
         Group {
-            #if os(tvOS)
-            ViewThatFits(in: .vertical) {
-                reviewContent(isRecovering: presentation.isRecovering)
-                    .fixedSize(horizontal: false, vertical: true)
-                ScrollView {
-                    reviewContent(isRecovering: presentation.isRecovering)
-                }
-            }
-            .frame(width: 1164)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("cloud-sync-erase-dialog")
-            #else
             ScrollView {
                 reviewContent(isRecovering: presentation.isRecovering)
             }
             .accessibilityIdentifier("cloud-sync-erase-review")
-            #endif
         }
         .alert("Erase sync data?", isPresented: $confirmsErase) {
             Button("Cancel", role: .cancel) {}
@@ -81,15 +68,9 @@ public struct SyncEraseDataView: View {
                         .foregroundStyle(.orange)
                 }
                 .font(.callout)
-                #if os(tvOS)
-                Text("To also erase iCloud Keychain server logins, use Plozz on iPhone or iPad.")
-                    .font(.footnote)
-                    .plozzForeground(.secondary)
-                #else
                 Text("Also removes Plozz's server logins from iCloud Keychain.")
                     .font(.footnote)
                     .plozzForeground(.secondary)
-                #endif
             }
             VStack(alignment: .leading, spacing: 16) {
                 Button("Erase Sync Data…", role: .destructive) { confirmsErase = true }
@@ -99,27 +80,12 @@ public struct SyncEraseDataView: View {
                     .accessibilityIdentifier("cloud-sync-erase-cancel")
             }
         }
-        #if os(tvOS)
-        .buttonStyle(.automatic)
-        #else
         .buttonStyle(.bordered)
-        #endif
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(32)
     }
 
     private func scopeRow(_ title: LocalizedStringResource, detail: LocalizedStringResource) -> some View {
-        #if os(tvOS)
-        HStack(alignment: .top, spacing: 24) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .frame(width: 220, alignment: .leading)
-            Text(detail)
-                .font(.callout)
-                .plozzForeground(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        #else
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.subheadline.weight(.semibold))
             Text(detail)
@@ -127,6 +93,5 @@ public struct SyncEraseDataView: View {
                 .plozzForeground(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        #endif
     }
 }

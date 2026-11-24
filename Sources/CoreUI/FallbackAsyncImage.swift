@@ -6,24 +6,6 @@ import Observation
 import UIKit
 #endif
 
-#if os(tvOS)
-@MainActor @Observable
-final class ArtworkResolutionState {
-    var image: UIImage?
-    var isResolved = false
-}
-
-private struct ArtworkResolutionStateKey: EnvironmentKey {
-    static let defaultValue: ArtworkResolutionState? = nil
-}
-
-extension EnvironmentValues {
-    var artworkResolutionState: ArtworkResolutionState? {
-        get { self[ArtworkResolutionStateKey.self] }
-        set { self[ArtworkResolutionStateKey.self] = newValue }
-    }
-}
-#endif
 
 /// Loads the first artwork URL that succeeds from an ordered list of candidates,
 /// advancing to the next whenever one fails (or is missing). When every
@@ -551,10 +533,6 @@ private struct FilteredArtworkImage<Content: View, Placeholder: View>: View {
     let placeholder: () -> Placeholder
 
     @State private var image: UIImage?
-    #if os(tvOS)
-    @Environment(\.artworkResolutionState) private var artworkResolution
-    @Environment(\.detailEntranceSession) private var detailEntrance
-    #endif
     @State private var resolved: Bool
     /// Whether `image` is the cheap pass, and so still owes a full-quality swap.
     @State private var isPreviewQuality = false
@@ -741,16 +719,6 @@ private struct FilteredArtworkImage<Content: View, Placeholder: View>: View {
                 }
             }
         }
-        #if os(tvOS)
-        .onChange(of: image, initial: true) { _, value in
-            guard case .image = content else { return }
-            artworkResolution?.image = value
-        }
-        .onChange(of: resolved, initial: true) { _, value in
-            guard case .image = content else { return }
-            artworkResolution?.isResolved = value
-        }
-        #endif
         .onChange(of: ReportIdentity(
             image: image.map(ObjectIdentifier.init), reference: displayedReference,
             preview: isPreviewQuality, itemID: reportedHeroID, reporter: heroArtworkReporter?.identity
@@ -870,14 +838,6 @@ private struct FilteredArtworkImage<Content: View, Placeholder: View>: View {
             image = nil
             resolved = false
         }
-        #if os(tvOS)
-        if image == nil, variant == .heroBackdrop,
-           let task = detailEntrance?.backdropTask(matching: key),
-           let firstPaint = await task.value {
-            await adoptFirstPaint(firstPaint, for: key)
-            return
-        }
-        #endif
         guard !Task.isCancelled else { return }
         if prefersLandscape {
             for attempt in 0..<ArtworkResolveRetry.maxAttempts {

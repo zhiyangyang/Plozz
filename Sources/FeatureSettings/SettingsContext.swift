@@ -204,37 +204,10 @@ extension SettingsRoute {
 @MainActor
 @Observable
 public final class SettingsNavigationModel {
-    #if os(tvOS)
-    let pages = SettingsPageNavigation<SettingsRoute>()
-    var searchQuery = ""
-    private(set) var isSearching = false
-
-    func beginSearch() {
-        select(.search)
-        isSearching = true
-    }
-
-    func endSearch() {
-        searchQuery = ""
-        isSearching = false
-        select(.search)
-        returnToSidebar()
-    }
-
-    var path: [SettingsRoute] {
-        get { pages.routes }
-        set { pages.routes = newValue }
-    }
-    #else
     var path: [SettingsRoute] = []
-    #endif
     var section: SettingsRoute = .playback
     var isCategoryOpen: Bool {
-        #if os(tvOS)
-        !pages.pages.isEmpty
-        #else
         !path.isEmpty
-        #endif
     }
     var focusInDetail = false
     var restoringSidebar = true
@@ -260,18 +233,8 @@ public final class SettingsNavigationModel {
     }
 
     public func openHomeCustomization() {
-        #if os(tvOS)
-        searchQuery = ""
-        isSearching = false
-        #endif
         resetPages()
-        #if os(tvOS)
-        select(.screensNavigation)
-        pages.push(.customizeHome)
-        enterDetail()
-        #else
         reveal(.customizeHome)
-        #endif
     }
 
     private func reveal(_ route: SettingsRoute) {
@@ -290,11 +253,7 @@ public final class SettingsNavigationModel {
         enteringDetail = true
         detailFocusRequest += 1
         if !isCategoryOpen {
-            #if os(tvOS)
-            pages.push(section, sourceID: sourceID)
-            #else
             path = [section]
-            #endif
         }
     }
 
@@ -304,50 +263,28 @@ public final class SettingsNavigationModel {
     }
 
     func restoreCategoryFocus() {
-        #if os(tvOS)
-        let categoryAlreadyFocused = !focusInDetail && !enteringDetail && !restoringSidebar
-        #endif
         enteringDetail = false
         focusInDetail = false
-        #if os(tvOS)
-        if pages.returnSourceID != nil {
-            // A fading parent can regain native focus before the transition finishes.
-            restoringSidebar = !categoryAlreadyFocused
-            return
-        }
-        #endif
         restoringSidebar = true
         sidebarFocusRequest += 1
     }
 
     func resetForProfile() {
         resetPages()
-        #if os(tvOS)
-        searchQuery = ""
-        isSearching = false
-        #endif
         section = .playback
         appearanceRowID = nil
         returnToSidebar()
     }
 
     private func resetPages() {
-        #if os(tvOS)
-        pages.reset()
-        #else
         path.removeAll()
-        #endif
     }
 }
 
 extension View {
     @ViewBuilder
     func settingsWorkspaceEntry(_ isEntry: Bool = true) -> some View {
-        #if os(tvOS)
-        settingsPageEntryFocus(enabled: isEntry)
-        #else
         self
-        #endif
     }
 }
 
@@ -410,11 +347,7 @@ struct SettingsPanel<Content: View>: View {
                     }
                     if let subtitle {
                         Text(subtitle)
-                            #if os(tvOS)
-                            .font(SettingsRowMetrics.helperFont)
-                            #else
                             .font(.footnote)
-                            #endif
                             .plozzForeground(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -423,11 +356,7 @@ struct SettingsPanel<Content: View>: View {
             content
             if let footer {
                 Text(footer)
-                    #if os(tvOS)
-                    .font(SettingsRowMetrics.helperFont)
-                    #else
                     .font(.footnote)
-                    #endif
                     .plozzForeground(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

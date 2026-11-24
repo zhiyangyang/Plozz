@@ -47,9 +47,6 @@ struct LiveTVBoundedSourceRows<Content: View>: View {
                 ) {
                     LiveTVMeasuredSourceRows(rows: rows, heights: $heights)
                 }
-                #if os(tvOS)
-                .focusSection()
-                #endif
                 .accessibilityIdentifier("live-tv-sources-list")
             } else {
                 LiveTVMeasuredSourceRows(rows: rows, heights: $heights)

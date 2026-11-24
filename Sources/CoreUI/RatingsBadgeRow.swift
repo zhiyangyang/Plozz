@@ -76,12 +76,7 @@ public struct FamilyGuidanceAgeBadge: View {
     }
 
     private var iconToAgeSpacing: CGFloat {
-        #if os(tvOS)
-        // Compensate the artwork's trailing inset without resizing the mark.
-        -textScale
-        #else
         MetadataBadgeSpacing.iconToValue * badgeScale
-        #endif
     }
 
     private var iconSize: CGFloat {
@@ -384,39 +379,23 @@ struct RatingValue: View {
 
     private var iconSize: CGFloat {
         if compact { return 24 }
-        #if os(tvOS)
-        return 32
-        #else
         return horizontalSizeClass == .compact ? 24 : 28
-        #endif
     }
 
     private var iconRowHeight: CGFloat { iconSize * 1.5 }
 
     private var valueFont: Font {
-        #if os(tvOS)
-        return .system(size: compact ? 24 : 28, weight: .semibold)
-        #else
         return .title2.weight(.semibold)
-        #endif
     }
 
     private var subtitleFontSize: CGFloat {
-        #if os(tvOS)
-        return 18
-        #else
         return horizontalSizeClass == .compact ? 12 : 14
-        #endif
     }
 
     private var subtitleRowHeight: CGFloat { subtitleFontSize * 1.4 }
 
     private var subtitleHeight: CGFloat? {
-        #if os(tvOS)
-        compact ? nil : subtitleRowHeight
-        #else
         nil
-        #endif
     }
 
     private var subtitleFont: Font {

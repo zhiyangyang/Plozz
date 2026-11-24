@@ -5,35 +5,14 @@ import SwiftUI
 
 public struct SkipMarkerSettingsControl: View {
     @Bindable private var model: PlaybackSettingsModel
-    #if os(tvOS)
-    public init(model: PlaybackSettingsModel) {
-        self.model = model
-    }
-    #else
     private let onOpenSettings: () -> Void
 
     public init(model: PlaybackSettingsModel, onOpenSettings: @escaping () -> Void) {
         self.model = model
         self.onOpenSettings = onOpenSettings
     }
-    #endif
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsControlRows {
-            SkipMarkerEnableControl(model: model)
-            if model.settings.skipMarkersEnabled {
-                SettingsPageLink {
-                    SkipMarkerSettingsView(model: model)
-                } label: {
-                    SettingsDisclosureLabel { Text("Customize") }
-                        .settingsFormRowLayout()
-                }
-                .buttonStyle(SettingsFormButtonStyle())
-                .accessibilityIdentifier("skip-marker-settings")
-            }
-        }
-        #else
         SettingsSectionGroup {
             SkipMarkerEnableControl(model: model)
             if model.settings.skipMarkersEnabled {
@@ -44,7 +23,6 @@ public struct SkipMarkerSettingsControl: View {
                 .accessibilityIdentifier("skip-marker-settings")
             }
         }
-        #endif
     }
 }
 
@@ -81,20 +59,11 @@ public struct SkipMarkerSettingsView: View {
 
     public var body: some View {
         if !model.settings.skipMarkersEnabled {
-            #if os(tvOS)
-            SettingsFormLayout(
-                title: Text("Intros, credits & more"),
-                rows: [SettingsSplitRow(id: "skip-enable", title: "Enable") {
-                    SkipMarkerEnableControl(model: model)
-                }], showsBack: true
-            )
-            #else
             List {
                 SettingsSectionGroup { SkipMarkerEnableControl(model: model) }
             }
             .settingsPageSurface()
             .navigationTitle("Intros, credits & more")
-            #endif
         } else if let initialKind, let initialCategory, model.settings.skipContentCategories.contains(initialCategory) {
             SkipMarkerContentSettingsView(model: model, kind: initialKind)
         } else {
@@ -103,9 +72,6 @@ public struct SkipMarkerSettingsView: View {
     }
 
     private var content: some View {
-        #if os(tvOS)
-        SettingsFormLayout(title: Text("Intros, credits & more"), rows: rows, showsBack: true)
-        #else
         List {
             SettingsSectionGroup {
                 SkipMarkerRuleControls(model: model, scope: .defaultBehavior)
@@ -136,40 +102,8 @@ public struct SkipMarkerSettingsView: View {
         .navigationDestination(item: $selectedKind) { kind in
             SkipMarkerContentSettingsView(model: model, kind: kind)
         }
-        #endif
     }
 
-    #if os(tvOS)
-    private var rows: [SettingsSplitRow] {
-        [
-            SettingsSplitRow(id: "skip-default", title: "Default behavior") {
-                SkipMarkerRuleControls(model: model, scope: .defaultBehavior)
-            }.labeledControl(),
-            SettingsSplitRow(id: "skip-content", title: "Enable for") {
-                SettingsControlRows {
-                    SkipMarkerContentControls(model: model)
-                }
-            },
-            SettingsSplitRow(id: "skip-kinds", title: "Markers") {
-                SettingsControlRows {
-                    ForEach(MediaSegment.Kind.skippable, id: \.self) { kind in
-                        SettingsPageLink {
-                            SkipMarkerContentSettingsView(model: model, kind: kind)
-                        } label: {
-                            SettingsDisclosureLabel { Text(kind.settingsTitle) }
-                                .settingsFormRowLayout()
-                        }
-                        .buttonStyle(SettingsFormButtonStyle())
-                        .accessibilityIdentifier("skip-marker-\(kind.rawValue)")
-                    }
-                }
-            }.labeledControl(),
-            SettingsSplitRow(id: "skip-community", title: "Use community markers") {
-                SkipMarkerCommunityControl(model: model)
-            }.labeledControl()
-        ]
-    }
-    #endif
 }
 
 public struct SkipMarkerContentSettingsView: View {
@@ -183,17 +117,6 @@ public struct SkipMarkerContentSettingsView: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsFormLayout(
-            title: Text(kind.settingsTitle),
-            rows: categories.map { category in
-                SettingsSplitRow(id: "skip-\(category.rawValue)", title: category.displayName) {
-                    controls(for: category)
-                }.labeledControl()
-            },
-            showsBack: true
-        )
-        #else
         List {
             ForEach(categories, id: \.self) { category in
                 SettingsSectionGroup {
@@ -207,7 +130,6 @@ public struct SkipMarkerContentSettingsView: View {
         }
         .settingsPageSurface()
         .navigationTitle(Text(kind.settingsTitle))
-        #endif
     }
 
     private func controls(for category: ContentCategory) -> some View {
@@ -397,13 +319,6 @@ struct SkipMarkerRuleControls: View {
 
     var body: some View {
         SettingsControlRows(nonTVSpacing: 12) {
-            #if os(tvOS)
-            SettingsMenuRow(title: title, value: selectionSummary) {
-                SkipBehaviorMenuContent(behaviors: behaviors, selection: behavior)
-            }
-            .accessibilityIdentifier("skip-behavior-\(identifier)")
-            .settingsSearchAnchor(searchID, fallbackFor: behavior.wrappedValue == .delayed ? [] : [delaySearchID])
-            #else
             Menu {
                 SkipBehaviorMenuContent(behaviors: behaviors, selection: behavior)
             } label: {
@@ -414,18 +329,7 @@ struct SkipMarkerRuleControls: View {
             .accessibilityValue(selectionSummary)
             .accessibilityIdentifier("skip-behavior-\(identifier)")
             .settingsSearchAnchor(searchID, fallbackFor: behavior.wrappedValue == .delayed ? [] : [delaySearchID])
-            #endif
             if behavior.wrappedValue == .delayed {
-                #if os(tvOS)
-                SettingsStepper(
-                    options: PlaybackSettings.skipAutomaticDelayOptions.filter { $0 > 0 },
-                    selection: delay, label: "Skip after",
-                    textTitle: { seconds in
-                        Text(Duration.seconds(seconds), format: .units(allowed: [.seconds], width: .wide).locale(locale))
-                    }
-                )
-                .accessibilityIdentifier("skip-delay-\(identifier)").settingsSearchAnchor(delaySearchID)
-                #else
                 Stepper(value: delay, in: 1...30) {
                     LabeledContent {
                         Text(Duration.seconds(delay.wrappedValue), format: .units(allowed: [.seconds], width: .wide))
@@ -434,7 +338,6 @@ struct SkipMarkerRuleControls: View {
                     }
                 }
                 .accessibilityIdentifier("skip-delay-\(identifier)").settingsSearchAnchor(delaySearchID)
-                #endif
             }
         }
     }

@@ -79,13 +79,8 @@ public struct ProfileSeerrSetupView: View {
                         .plozzPageActionButton(role: .secondary)
                     }
                 }
-                #if os(tvOS)
-                .frame(maxWidth: 840)
-                .padding(.horizontal, 48)
-                #else
                 .frame(maxWidth: 720)
                 .padding(.horizontal, 24)
-                #endif
                 .padding(.vertical, 32)
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }

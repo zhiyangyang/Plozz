@@ -22,13 +22,8 @@ final class YouTubeTrailerOpeningTests: XCTestCase {
             return url.scheme == "https"
         }
         await opener.open(trailer)
-        #if os(tvOS)
-        XCTAssertEqual(requests, [trailer.youTubeTrailerAppURL!])
-        XCTAssertTrue(opener.failed)
-        #else
         XCTAssertEqual(requests, [trailer.youTubeTrailerAppURL!, trailer.youTubeTrailerWatchURL!])
         XCTAssertFalse(opener.failed)
-        #endif
     }
 
     func testFailedHandoffIsVisibleAndRetryCanSucceed() async {

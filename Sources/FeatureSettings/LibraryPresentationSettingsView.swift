@@ -56,24 +56,9 @@ public struct LibraryPresentationSettingsView: View {
                 }
                 .accessibilityIdentifier("library-navigation-settings")
             }
-            #if os(tvOS)
-            SettingsFormGroup(title: Text("Page appearance"), hasGroupedContent: true) {
-                SettingsConnectedControlGroups {
-                    VStack(alignment: .leading, spacing: SettingsFormMetrics.relatedControlSpacing) {
-                        Text("Recommended Page").font(.headline)
-                        HeroLogoSizeControl(
-                            size: $model.settings.logoSize, textSize: $model.settings.textSize,
-                            surface: .showcase, showsLibraryPreview: true
-                        )
-                    }
-                    CardCaptionSettingsLink(cards: cards, scope: .libraries, visibility: visibility)
-                }
-            }
-            #else
             SettingsSectionGroup("Page appearance") {
                 CardCaptionSettingsLink(cards: cards, scope: .libraries, visibility: visibility)
             }
-            #endif
             Text("Libraries")
                 .font(.headline)
                 .padding(.top)

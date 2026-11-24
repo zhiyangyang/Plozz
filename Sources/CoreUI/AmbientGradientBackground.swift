@@ -13,9 +13,6 @@ public struct AmbientGradientBackground: View {
     var tint: [Color]?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.artworkGradientTintSaturation) private var tintSaturation
-    #if os(tvOS)
-    @Environment(\.ambientBackdropModel) private var ambient
-    #endif
 
     public init(palette: ThemePalette, tint: [Color]? = nil) {
         self.palette = palette
@@ -23,27 +20,12 @@ public struct AmbientGradientBackground: View {
     }
 
     private var restoresPaletteWithoutAnimation: Bool {
-        #if os(tvOS)
-        reduceMotion || DetailTransitionNavigation.isRestoringSourcePage
-        #else
         reduceMotion
-        #endif
     }
 
     public var body: some View {
         let colors = Self.meshColors(tint: tint, palette: palette, tintSaturation: tintSaturation)
         surface(colors: colors)
-            #if os(tvOS)
-            .background {
-                if let ambient {
-                    NativeGradientViewport(
-                        surface: ambient.cardSurface,
-                        style: .init(colors: colors, palette: palette),
-                        reduceMotion: restoresPaletteWithoutAnimation
-                    )
-                }
-            }
-            #endif
             .animation(restoresPaletteWithoutAnimation ? nil : .easeInOut(duration: 0.8), value: colors)
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -135,9 +117,6 @@ struct AmbientArtworkKey: Hashable, Sendable {
 @MainActor @Observable
 final class AmbientBackdropModel {
     private(set) var colors: [Color]?
-    #if os(tvOS)
-    @ObservationIgnored let cardSurface = NativeGradientCardSurface()
-    #endif
     @ObservationIgnored private var owner: UUID?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var cache: [AmbientArtworkKey: [Color]] = [:]

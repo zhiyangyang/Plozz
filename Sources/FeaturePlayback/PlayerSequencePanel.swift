@@ -150,58 +150,10 @@ struct PlayerSequencePanel: View {
         } else if browser.episodes.isEmpty {
             emptyRow("No episodes available")
         } else {
-            #if os(tvOS)
-            nativeEpisodeRow(browser)
-            #else
             episodeRow(browser)
-            #endif
         }
     }
 
-    #if os(tvOS)
-    private func nativeEpisodeRow(_ browser: PlayerEpisodeBrowser) -> some View {
-        var elements = browser.episodes.map(NativeEpisodeElement.episode)
-        if let error = browser.previousLoadError { elements.insert(.previousError(error), at: 0) }
-        if let error = browser.nextLoadError { elements.append(.nextError(error)) }
-        return PlayerEpisodeNativeRow(
-            items: elements, initialID: browser.initialEntryID,
-            layout: layout, spoilerSettings: player.spoilerSettings, focus: $focus
-        ) { visible in
-            if let id = browser.episodes.first?.id, visible.contains(.episode(id)) {
-                previousEpisodeLoadID = id
-            }
-            if let id = browser.episodes.last?.id, visible.contains(.episode(id)) {
-                nextEpisodeLoadID = id
-            }
-        } onFocus: { id in
-            nativeEpisodeFocusID = id
-        } onSelect: { element in
-            switch element {
-            case .episode(let entry):
-                player.playEpisode(entry.item)
-            case .previousError:
-                Task { await browser.retryPrevious() }
-            case .nextError:
-                Task { await browser.retryNext() }
-            }
-        }
-        .frame(height: layout.rowHeight)
-        .focused($focus, equals: nativeEpisodeFocusTarget(browser))
-        .task(id: previousEpisodeLoadID) {
-            guard previousEpisodeLoadID != nil else { return }
-            await browser.loadPrevious()
-        }
-        .task(id: nextEpisodeLoadID) {
-            guard nextEpisodeLoadID != nil else { return }
-            await browser.loadNext()
-        }
-    }
-
-    private func nativeEpisodeFocusTarget(_ browser: PlayerEpisodeBrowser) -> PlayerControls.FocusSlot? {
-        return (nativeEpisodeFocusID ?? browser.initialEntryID ?? browser.episodes.first?.id)
-            .map(PlayerControls.FocusSlot.episodeItem)
-    }
-    #endif
 
     private func emptyRow(_ title: LocalizedStringKey) -> some View {
         Text(title)

@@ -62,9 +62,6 @@ final class DialogPresentationHostedTests: XCTestCase {
                         try await waitUntil { host.presentedViewController != nil && probe.sheetOwnsBackground == true }
                         let controller = try XCTUnwrap(host.presentedViewController)
                         try await waitForPresentation(controller)
-                        #if os(tvOS)
-                        XCTAssertNotNil(UIFocusSystem.focusSystem(for: window)?.focusedItem)
-                        #endif
                         let frame = panelFrame(controller, in: window, probe: probe)
                         let theme = palette.isLight ? "light" : (palette == .pureBlack ? "black" : "dark")
                         let image = snapshot(window, name: "profile-dialog-\(theme)-gradient-\(gradient)-reduced-\(reduced)")
@@ -80,30 +77,6 @@ final class DialogPresentationHostedTests: XCTestCase {
         }
     }
 
-    #if os(tvOS)
-    func testFloatingCardsKeepTheirOwnSurfaceAndDimming() async throws {
-        try await withFixture(palette: .pureBlack, gradient: true) { window, host, probe in
-            probe.showFloating = true
-            try await waitUntil { host.presentedViewController != nil && probe.sheetOwnsBackground == false }
-            try await waitForPresentation(try XCTUnwrap(host.presentedViewController))
-            let image = snapshot(window, name: "shared-dialog-floating")
-            try assertSurface(image, frame: probe.contentFrame, palette: .pureBlack, gradient: true)
-            let background = try rgba(XCTUnwrap(image.cgImage))
-            let reference = ImageRenderer(content: PlozzDialogBackdrop()
-                .background(Color.purple)
-                .frame(width: window.bounds.width, height: window.bounds.height)
-                .environment(\.themePalette, .pureBlack))
-            let expected = try rgba(XCTUnwrap(reference.cgImage))
-            for channel in 0..<3 {
-                XCTAssertEqual(Double(background[channel]), Double(expected[channel]), accuracy: 5,
-                               "An existing floating card must be dimmed once, not wrapped in another dialog.")
-            }
-            XCTAssertEqual(background[3], 255)
-            probe.showFloating = false
-            try await waitUntil { host.presentedViewController == nil && probe.dismissals == 1 }
-        }
-    }
-    #endif
 
     func testBooleanSheetAndNestedCoverKeepTheirOwnBackgroundScope() async throws {
         try await withFixture(palette: .pureBlack, gradient: true) { window, host, probe in
@@ -220,11 +193,7 @@ final class DialogPresentationHostedTests: XCTestCase {
     private func panelFrame(
         _ controller: UIViewController, in window: UIWindow, probe: DialogPresentationProbe
     ) -> CGRect {
-        #if os(tvOS)
-        probe.contentFrame
-        #else
         controller.view.convert(controller.view.bounds, to: window)
-        #endif
     }
 
     private func snapshot(_ window: UIWindow, name: String) -> UIImage {

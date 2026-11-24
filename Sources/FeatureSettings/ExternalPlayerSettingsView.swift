@@ -12,9 +12,6 @@ public struct PlaybackAdvancedSettingsView: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsSplitLayout(title: "Advanced", rows: Self.rows(model: model))
-        #else
         List {
             SettingsSectionGroup {
                 Button { showsExternalPlayer = true } label: {
@@ -29,7 +26,6 @@ public struct PlaybackAdvancedSettingsView: View {
         .navigationDestination(isPresented: $showsExternalPlayer) {
             ExternalPlayerSettingsView(model: model)
         }
-        #endif
     }
 
     static func rows(model: ExternalPlayerSettingsModel = .shared) -> [SettingsSplitRow] {
@@ -51,11 +47,7 @@ struct ExternalPlayerSettingsRows {
     ) -> [SettingsSplitRow] {
         [
                     SettingsSplitRow(id: "default-player", title: "Default player") {
-                        #if os(tvOS)
-                        ExternalPlayerConfiguration(model: model, installedPlayers: installedPlayers)
-                        #else
                         ExternalPlayerChoices(model: model)
-                        #endif
                     }.groupedContent(),
                     SettingsSplitRow(id: "external-player-help", title: "About external playback") {
                         ExternalPlayerHelp()
@@ -84,9 +76,6 @@ public struct ExternalPlayerSettingsView: View {
     }
 
     private var root: some View {
-        #if os(tvOS)
-        SettingsSplitLayout(title: "External player", rows: ExternalPlayerSettingsRows.external(model: model))
-        #else
         List {
             SettingsSectionGroup("Default player") {
                 ExternalPlayerChoices(model: model)
@@ -121,58 +110,21 @@ public struct ExternalPlayerSettingsView: View {
         .navigationDestination(isPresented: $showsCustomPlayer) {
             customContent
         }
-        #endif
     }
 
     private var customContent: some View {
-        #if os(tvOS)
-        SettingsFormLayout(
-            title: Text("Custom player"),
-            rows: [SettingsSplitRow(id: "custom-player", title: "Custom player") {
-                CustomExternalPlayerControls(model: model)
-            }], showsBack: true
-        )
-        #else
         List {
             SettingsSectionGroup { CustomExternalPlayerControls(model: model) }
         }
         .settingsPageSurface()
         .navigationTitle("Custom player")
-        #endif
     }
 }
 
-#if os(tvOS)
-private struct ExternalPlayerConfiguration: View {
-    @Bindable var model: ExternalPlayerSettingsModel
-    let installedPlayers: Set<ExternalPlayer>?
-    @FocusState private var focusedPlayer: ExternalPlayer?
-
-    private var previewPlayer: ExternalPlayer { focusedPlayer ?? model.settings.player }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: SettingsFormMetrics.sectionSpacing) {
-            SettingsControlGroup {
-                ExternalPlayerChoices(model: model, installedPlayers: installedPlayers, focus: $focusedPlayer)
-            }
-            if previewPlayer != .builtIn {
-                SettingsFormGroup(title: Text("\(previewPlayer.name) limitations")) {
-                    ExternalPlayerSupportSummary(player: previewPlayer)
-                }
-                .accessibilityIdentifier("external-player-support-section")
-            }
-        }
-    }
-}
-#endif
 
 private struct ExternalPlayerChoices: View {
     @Environment(\.scenePhase) private var scenePhase
     @Bindable var model: ExternalPlayerSettingsModel
-    #if os(tvOS)
-    let installedPlayers: Set<ExternalPlayer>?
-    let focus: FocusState<ExternalPlayer?>.Binding
-    #endif
     @State private var installed: Set<ExternalPlayer> = [.builtIn]
 
     private var choices: [ExternalPlayer] {
@@ -186,21 +138,6 @@ private struct ExternalPlayerChoices: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Applies to everyone on this device.")
                 .settingsHelperText()
-            #if os(tvOS)
-            SettingsControlRows {
-                ForEach(choices, id: \.self) { player in
-                    SettingsCheckableRow(
-                        title: title(player),
-                        isChecked: model.settings.player == player
-                    ) {
-                        model.settings.player = player
-                    }
-                    .disabled(!isAvailable(player))
-                    .focused(focus, equals: player)
-                    .accessibilityIdentifier("external-player-\(player.rawValue)")
-                }
-            }
-            #else
             SettingsControlMenu {
                 ForEach(choices, id: \.self) { player in
                     Button {
@@ -221,7 +158,6 @@ private struct ExternalPlayerChoices: View {
             .accessibilityLabel("Default player")
             .accessibilityValue(title(model.settings.player))
             .accessibilityIdentifier("external-player-selection").settingsSearchAnchor("external-player")
-            #endif
             if let error = model.error { Text(error.message).settingsHelperText() }
         }
         .task { refreshInstalledPlayers() }
@@ -231,9 +167,6 @@ private struct ExternalPlayerChoices: View {
     }
 
     private func isAvailable(_ player: ExternalPlayer) -> Bool {
-        #if os(tvOS)
-        if let installedPlayers { return player == .custom || installedPlayers.contains(player) }
-        #endif
         return player == .custom || installed.contains(player)
     }
 
@@ -256,23 +189,12 @@ private struct ExternalPlayerSupportSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            #if os(tvOS)
-            if player == .nativePlayer || player == .infuse {
-                Text("Live TV and non-WebDAV network shares play in Plozz.")
-                Text("Some WebDAV passwords, extra login headers and pinned certificates also require Plozz.")
-            } else if player == .vlc {
-                Text("Live TV, SMB, NFS, SFTP, FTPS and unsupported share logins play in Plozz.")
-            } else if player == .custom {
-                Text("Live TV, non-WebDAV network shares and links needing passwords play in Plozz.")
-            }
-            #else
             Text("Live TV and downloads play in Plozz.")
             if player == .custom {
                 Text("Non-WebDAV network shares and links needing passwords also play in Plozz.")
             } else {
                 Text("Some network shares stay in Plozz when background streaming is unavailable.")
             }
-            #endif
             if player == .vlc || player == .custom {
                 Text("Watch progress isn't returned to Plozz.")
             }

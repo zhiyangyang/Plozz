@@ -66,21 +66,7 @@ struct SkipSegmentButton: View {
         }
         .buttonStyle(SkipButtonStyle(focused: focused))
         .focused($focused)
-        #if os(tvOS)
         button
-            .onExitCommand { onDismiss() }
-        // Play/Pause works while the button holds focus: toggle playback in place
-        // (the ring freezes because it tracks playback position) without leaving
-        // the affordance. Matches Brandon's ask — pause without losing the button.
-            .onPlayPauseCommand { onPlayPause() }
-            .onMoveCommand { direction in
-                // An upward swipe dismisses the affordance, matching the player's
-                // other Up gestures (which surface the transport / leave the button).
-                if direction == .up { onDismiss() }
-            }
-        #else
-        button
-        #endif
     }
 
     /// The countdown ring's remaining fraction. In Auto (delay) it depletes over

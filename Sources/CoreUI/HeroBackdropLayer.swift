@@ -4,202 +4,11 @@ import CoreModels
 import CoreNetworking
 import MetadataKit
 
-#if os(tvOS)
-@MainActor
-struct DetailBackdropArtworkSource {
-    let references: [ArtworkReference]
-    let settings: MetadataProviderSettings
-    let fallback: (@Sendable () async -> URL?)?
-    let key: String
-    let previewKey: String
-
-    init(item: MediaItem, policy: ArtworkPresentationPolicy) {
-        let policy = policy.forArea(.details).forPlacement(.detailBackdrop)
-        self.init(
-            references: policy.references(for: item, placement: .detailBackdrop),
-            pinIdentity: "detail:\(item.stablePresentationID)",
-            policy: policy,
-            fallback: MediaArtworkSource.heroFallback(for: item, placement: .detailBackdrop),
-            lookupIdentity: MetadataQuery(item).seriesScoped.enrichmentCacheKey
-        )
-    }
-
-    init(
-        references: [ArtworkReference], pinIdentity: String,
-        policy: ArtworkPresentationPolicy, fallback: (@Sendable () async -> URL?)?,
-        lookupIdentity: String? = nil
-    ) {
-        self.references = references
-        self.settings = policy.metadataSettings
-        self.fallback = fallback
-        key = ArtworkResolveKey.make(
-            references: references, variant: .heroBackdrop, maxAspectRatio: 3,
-            pinIdentity: pinIdentity,
-            providerPolicyIdentity: policy.identity,
-            prefersLandscape: true, lookupIdentity: lookupIdentity
-        )
-        previewKey = ArtworkResolveKey.make(
-            references: references, variant: .heroPreview, maxAspectRatio: 3,
-            pinIdentity: pinIdentity,
-            providerPolicyIdentity: policy.identity,
-            prefersLandscape: true, lookupIdentity: lookupIdentity
-        )
-    }
-}
-
-@MainActor
-final class DetailBackdropArtworkRequest {
-    let key: String
-    let task: Task<FirstPaintArtwork?, Never>
-    private let warmup: DetailBackdropWarmup?
-
-    init?(item: MediaItem, policy: ArtworkPresentationPolicy) {
-        let source = DetailBackdropArtworkSource(item: item, policy: policy)
-        guard !source.references.isEmpty else { return nil }
-        key = source.key
-        let warmup = DetailBackdropFocusPrewarmer.claim(matching: key)
-        self.warmup = warmup
-        let fallback = warmup?.fallback ?? source.fallback
-        task = Task {
-            await ArtworkFirstPaintResolver.resolve(
-                references: source.references, variant: .heroPreview, maxAspectRatio: 3,
-                prefersLandscape: true,
-                asyncOnlineURL: fallback,
-                prefersOnlineArtwork: source.settings.preferOnlineArtwork
-            )
-        }
-    }
-
-    func cancel() {
-        task.cancel()
-        warmup?.cancel()
-    }
-
-    deinit { task.cancel() }
-}
-
-@MainActor
-private final class DetailBackdropURLLookup {
-    private let resolve: @Sendable () async -> URL?
-    private var task: Task<URL?, Never>?
-
-    init(resolve: @escaping @Sendable () async -> URL?) { self.resolve = resolve }
-
-    func value() async -> URL? {
-        if let task { return await task.value }
-        let resolve = resolve
-        let task = Task(priority: .utility) { await resolve() }
-        self.task = task
-        return await task.value
-    }
-
-    func cancel() { task?.cancel() }
-}
-
-@MainActor
-fileprivate final class DetailBackdropWarmup {
-    let source: DetailBackdropArtworkSource
-    let task: Task<FirstPaintArtwork?, Never>
-    let fallback: (@Sendable () async -> URL?)?
-    private let lookup: DetailBackdropURLLookup?
-    var isClaimed = false
-
-    init(source: DetailBackdropArtworkSource) {
-        self.source = source
-        let lookup = source.fallback.map { DetailBackdropURLLookup(resolve: $0) }
-        self.lookup = lookup
-        let fallback: (@Sendable () async -> URL?)? = lookup.map { lookup in
-            { await lookup.value() }
-        }
-        self.fallback = fallback
-        task = Task(priority: .utility) {
-            await ArtworkFirstPaintResolver.resolve(
-                references: source.references, variant: .heroPreview, maxAspectRatio: 3,
-                prefersLandscape: true,
-                asyncOnlineURL: fallback,
-                prefersOnlineArtwork: source.settings.preferOnlineArtwork,
-                background: true
-            )
-        }
-    }
-
-    func cancel() {
-        task.cancel()
-        lookup?.cancel()
-    }
-}
-
-@MainActor
-enum DetailBackdropFocusPrewarmer {
-    private static var current: DetailBackdropWarmup?
-
-    static func warm(_ source: DetailBackdropArtworkSource) async {
-        guard !source.references.isEmpty,
-              ArtworkSeedMemo.prepared(for: source.key, variant: .heroBackdrop) == nil,
-              ArtworkSeedMemo.prepared(for: source.previewKey, variant: .heroPreview) == nil else { return }
-        current?.cancel()
-        let warmup = DetailBackdropWarmup(source: source)
-        current = warmup
-        await withTaskCancellationHandler {
-            let result = await warmup.task.value
-            if !Task.isCancelled, !warmup.isClaimed, let result {
-                ArtworkSeedMemo.store(result, for: source.previewKey)
-            }
-            if current === warmup { current = nil }
-        } onCancel: {
-            Task { @MainActor in
-                if !warmup.isClaimed { warmup.cancel() }
-                if current === warmup { current = nil }
-            }
-        }
-    }
-
-    fileprivate static func claim(matching key: String) -> DetailBackdropWarmup? {
-        guard let current, current.source.key == key else { return nil }
-        current.isClaimed = true
-        self.current = nil
-        return current
-    }
-}
-
-private struct DetailBackdropFocusWarmup: ViewModifier {
-    let item: MediaItem?
-    let isFocused: Bool
-    @Environment(\.plozzArtworkPolicy) private var artworkPolicy
-
-    func body(content: Content) -> some View {
-        let source = isFocused ? item.flatMap { item in
-            item.kind == .movie || item.kind == .series
-                ? DetailBackdropArtworkSource(item: item, policy: artworkPolicy) : nil
-        } : nil
-        content.task(id: source?.key) {
-            guard let source else { return }
-            do {
-                try await Task.sleep(for: .milliseconds(80))
-                await DetailBackdropFocusPrewarmer.warm(source)
-            } catch is CancellationError {
-                // Moving past a title must not start an artwork lookup.
-            } catch {
-                PlozzLog.app.error("Detail artwork focus warmup failed: \(String(describing: error))")
-            }
-        }
-    }
-}
-
-private enum DetailBackdropCompositing {
-    static let usesCachedScrim =
-        ProcessInfo.processInfo.environment["PLZDETAIL_CACHED_SCRIM"] != "0"
-}
-#endif
 
 public extension View {
     @ViewBuilder
     func preloadDetailBackdropOnFocus(for item: MediaItem?, isFocused: Bool) -> some View {
-        #if os(tvOS)
-        modifier(DetailBackdropFocusWarmup(item: item, isFocused: isFocused))
-        #else
         self
-        #endif
     }
 }
 
@@ -221,11 +30,6 @@ public extension View {
 /// same as the detail hero's original backdrop.
 public struct HeroBackdropLayer<Video: View>: View {
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
-    #if os(tvOS)
-    @Environment(\.detailEntranceSession) private var detailEntrance
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var artworkResolution = ArtworkResolutionState()
-    #endif
     /// Ordered candidate backdrop URLs (first that loads and is wide enough wins).
     private let references: [ArtworkReference]
     /// Last-resort async art lookup (e.g. TMDb fanart) when none of `urls` load.
@@ -339,17 +143,6 @@ public struct HeroBackdropLayer<Video: View>: View {
             placeholder: { ambientPlaceholder }
         )
         .reportingHeroArtwork(id: pinIdentity)
-        #if os(tvOS)
-        .environment(\.artworkResolutionState, artworkResolution)
-        .onChange(of: artworkResolution.image, initial: true) { _, image in
-            if stillImageOpacity > 0, let image { detailEntrance?.resolvedDestinationArtwork(image) }
-        }
-        .onChange(of: artworkResolution.isResolved, initial: true) { _, resolved in
-            if stillImageOpacity > 0, resolved, artworkResolution.image == nil {
-                detailEntrance?.destinationArtworkUnavailable()
-            }
-        }
-        #endif
         .opacity(stillImageOpacity)
         .frame(height: height)
         .frame(maxWidth: .infinity)
@@ -372,22 +165,8 @@ public struct HeroBackdropLayer<Video: View>: View {
     /// style, and reveal the shading before the foreground without moving it.
     private var scrim: some View {
         scrimContent
-            #if os(tvOS)
-            .opacity(isScrimVisible ? 1 : 0)
-            .animation(
-                reduceMotion ? nil : detailEntrance.map {
-                    DetailEntranceMotion.reveal(duration: $0.timing.reveal)
-                },
-                value: isScrimVisible
-            )
-            #endif
     }
 
-    #if os(tvOS)
-    private var isScrimVisible: Bool {
-        reduceMotion || (detailEntrance?.isBackdropShadingVisible ?? true)
-    }
-    #endif
 
     @ViewBuilder
     private var scrimContent: some View {
@@ -400,11 +179,7 @@ public struct HeroBackdropLayer<Video: View>: View {
 
     private var usesCachedScrim: Bool {
         if let prefersCachedScrim { return prefersCachedScrim }
-        #if os(tvOS)
-        return DetailBackdropCompositing.usesCachedScrim
-        #else
         return false
-        #endif
     }
 
     private var analyticScrim: some View {

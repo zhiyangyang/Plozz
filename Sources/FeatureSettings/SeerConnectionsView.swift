@@ -259,10 +259,6 @@ struct SeerAccountPage<Content: View>: View {
         NavigationStack {
             SeerSettingsPage {
                 VStack(alignment: .leading, spacing: 24) {
-                    #if os(tvOS)
-                    SettingsPageHeader(title)
-                        .environment(\.settingsPageBackButton, AnyView(SettingsBackButton { dismiss() }))
-                    #endif
                     content
                 }
             }
@@ -345,11 +341,7 @@ private final class SeerDestinationController: UIViewController {
             transition.animate(alongsideTransition: nil) { [weak self] _ in self?.update() }
             return
         }
-        #if os(tvOS)
-        let style: UIAlertController.Style = .alert
-        #else
         let style: UIAlertController.Style = .actionSheet
-        #endif
         let connections = seer.profileConnections.connections
         let servers = Set(connections.map(\.baseURL))
         let alert = UIAlertController(

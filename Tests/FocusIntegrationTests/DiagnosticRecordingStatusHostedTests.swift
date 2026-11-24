@@ -1,4 +1,4 @@
-#if (os(tvOS) || os(iOS)) && DEBUG
+#if os(iOS) && DEBUG
 @testable import CoreUI
 import SwiftUI
 import UIKit
@@ -84,17 +84,6 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
             previous?.makeKeyAndVisible()
         }
         controller.attach(to: window)
-        #if os(tvOS)
-        let focusSystem = try XCTUnwrap(UIFocusSystem.focusSystem(for: window))
-        let deadline = ContinuousClock.now + .seconds(5)
-        while focusSystem.focusedItem == nil, ContinuousClock.now < deadline {
-            window.layoutIfNeeded()
-            focusSystem.requestFocusUpdate(to: host)
-            focusSystem.updateFocusIfNeeded()
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        let focused = try XCTUnwrap(focusSystem.focusedItem)
-        #endif
         let visible = expectation(description: "Recording indicator acknowledges its installed view")
         var token: Int32 = 0
         XCTAssertEqual(notify_register_dispatch(
@@ -118,9 +107,6 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
             badge.attributedText?.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? UIColor,
             .systemRed
         )
-        #if os(tvOS)
-        XCTAssertTrue(UIFocusSystem.focusSystem(for: window)?.focusedItem === focused)
-        #endif
         XCTAssertTrue(overlay.bounds.contains(badge.convert(badge.bounds, to: overlay)))
         XCTAssertEqual(badge.layer.animation(forKey: "recording-expiry")?.duration, 15)
         let screenshot = try await assertVisibleText("Recording", in: scene)

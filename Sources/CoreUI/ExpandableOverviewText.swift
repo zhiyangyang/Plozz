@@ -131,11 +131,7 @@ public struct ExpandableOverviewText: View {
     public var body: some View {
         preview
             // Avoid the tvOS sheet-relayout watchdog on pages containing media rails.
-            #if os(tvOS)
-            .plozzSheet(isPresented: $isExpanded, style: .floatingCard) { expandedCard }
-            #else
             .plozzSheet(isPresented: $isExpanded) { expandedCard }
-            #endif
             .onChange(of: text) { _, _ in isExpanded = false }
     }
 
@@ -241,13 +237,9 @@ public struct ExpandableOverviewText: View {
 
     private var overviewText: Text {
         if style == .inline {
-            #if os(tvOS)
-            Text(verbatim: text.overviewPlainText)
-            #else
             Text(text.overviewMarkdownWithLegibleLinks(
                 textColor: palette.primaryText, accent: palette.accent
             ))
-            #endif
         } else {
             Text(verbatim: text)
         }
@@ -255,53 +247,6 @@ public struct ExpandableOverviewText: View {
 
     @ViewBuilder
     private var expandedCard: some View {
-        #if os(tvOS)
-        ZStack {
-            PlozzDialogBackdrop()
-
-            ScrollView {
-                cardBody
-            }
-            .scrollIndicators(.automatic)
-            .scrollBounceBehavior(.basedOnSize)
-            // An explicit height between a floor and a cap. `fixedSize` plus a
-            // maxHeight is the wrong pairing here: it forces the scroll view to
-            // its full content height and the cap then clips it, slicing the
-            // heading off the top.
-            .frame(width: Self.expandedWidth, height: min(max(cardHeight, 220), 860))
-            // Measured from a SEPARATE, hidden copy — never from the content
-            // inside the scroll view.
-            //
-            // Measuring in there fed the scroll view's own height back into the
-            // frame that sizes it, and the two never settled: each pass changed
-            // whether the content scrolled, which changed what was measured,
-            // which resized the frame. On device that ran the attribute graph at
-            // 88% CPU for over 100 seconds and locked the UI (a `cpu_resource`
-            // report caught it mid-loop). The hidden copy is pinned to the same
-            // width and left unconstrained vertically, so its height is a pure
-            // function of the text and cannot depend on the frame it computes.
-            .background {
-                cardBody
-                    .frame(width: Self.expandedWidth)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .hidden()
-                    .background {
-                        GeometryReader { geometry in
-                            Color.clear.preference(
-                                key: ExpandableCardHeightKey.self,
-                                value: geometry.size.height
-                            )
-                        }
-                    }
-            }
-            .onPreferenceChange(ExpandableCardHeightKey.self) { cardHeight = $0 }
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .plozzSurface(.overlay, cornerRadius: 32)
-        }
-        // Menu closes the card. Without it the only way out was the system's own
-        // sheet dismissal, which cannot fire while the focus engine is stuck.
-        .onExitCommand { isExpanded = false }
-        #else
         NavigationStack {
             ScrollView {
                 overviewText
@@ -325,7 +270,6 @@ public struct ExpandableOverviewText: View {
             }
         }
 
-        #endif
     }
 
     /// The expanded card's content, shared by the real one and the hidden copy
@@ -400,43 +344,23 @@ public struct ExpandableOverviewText: View {
 
     /// Matched to the About card so the two are the same control.
     private static var cardPadding: CGFloat {
-        #if os(tvOS)
-        22
-        #else
         16
-        #endif
     }
 
     private static var cardCornerRadius: CGFloat {
-        #if os(tvOS)
-        20
-        #else
         16
-        #endif
     }
 
     private static var moreLabelFont: Font {
-        #if os(tvOS)
-        .system(size: 20, weight: .semibold)
-        #else
         .footnote.weight(.semibold)
-        #endif
     }
 
     private static var fadeHeight: CGFloat {
-        #if os(tvOS)
-        34
-        #else
         22
-        #endif
     }
 
     private static var fadeWidth: CGFloat {
-        #if os(tvOS)
-        220
-        #else
         150
-        #endif
     }
 }
 #endif

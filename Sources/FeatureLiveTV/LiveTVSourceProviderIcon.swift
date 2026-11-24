@@ -28,10 +28,6 @@ struct LiveTVSourceProviderIcon: View {
     }
 
     private var size: CGFloat {
-        #if os(tvOS)
-        40
-        #else
         30
-        #endif
     }
 }

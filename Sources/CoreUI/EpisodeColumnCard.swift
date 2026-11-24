@@ -34,9 +34,6 @@ public struct EpisodeColumnCard: View, Equatable {
     private let action: () -> Void
 
     @PlozzCardFocus private var isFocused: Bool
-    #if os(tvOS)
-    @State private var nativeArtwork = ArtworkResolutionState()
-    #endif
     @State private var synopsisVisible = false
     @State private var synopsisAtRest = false
     @State private var isMenuPresented = false
@@ -52,20 +49,12 @@ public struct EpisodeColumnCard: View, Equatable {
 
     private let metrics = PlozzMetrics.standard
     private var descriptionsOnFocus: Bool {
-        #if os(tvOS)
-        captionSettings.episodeDescriptionsOnFocus
-        #else
         true
-        #endif
     }
     private var showsSynopsis: Bool { !descriptionsOnFocus || synopsisVisible }
     private var captionIsFocused: Bool { isFocused || isMenuPresented }
     private var textScale: CGFloat {
-        #if os(tvOS)
-        PlozzTypography.scale(local: detailSettings?.settings.textSize.scale ?? 1, app: appTextScale)
-        #else
         1
-        #endif
     }
 
     public init(
@@ -160,11 +149,7 @@ public struct EpisodeColumnCard: View, Equatable {
     }
 
     private var usesNativeCaptionMotion: Bool {
-        #if os(tvOS)
-        focusStyle.usesSystemEffect
-        #else
         false
-        #endif
     }
 
     private var synopsisTaskID: SynopsisTaskID {
@@ -183,15 +168,7 @@ public struct EpisodeColumnCard: View, Equatable {
 
     @ViewBuilder
     private var cardContent: some View {
-        #if os(tvOS)
-        if focusStyle.usesSystemEffect {
-            nativeEpisodeCard
-        } else {
-            customEpisodeCard
-        }
-        #else
         customEpisodeCard
-        #endif
     }
 
     private var customEpisodeCard: some View {
@@ -251,44 +228,6 @@ public struct EpisodeColumnCard: View, Equatable {
         }
     }
 
-    #if os(tvOS)
-    private var nativeEpisodeCard: some View {
-        let source = EpisodeArtworkSource(
-            item: item, spoilerSettings: spoilerSettings, policy: artworkPolicy.forArea(.episodes)
-        )
-        let treatment: NativePosterImageTreatment = presentation.isUpcoming
-            ? .upcoming(palette.cardSurface)
-            : (presentation.artworkTreatment == .blurred ? .blurred : .original)
-        return NativeTVPoster(
-            image: nativeArtwork.image, treatment: treatment,
-            aspectRatio: Self.artworkSize.width / Self.artworkSize.height,
-            fallbackWidth: Self.artworkSize.width, title: nil, subtitle: nil,
-            overlay: ZStack {
-                if captionsHidden && nativeArtwork.image == nil { neutralPlaceholder }
-                episodeOverlayContent(scrimOutset: 40)
-            },
-            rasterizesOverlay: false,
-            clipsOverlayToArtwork: false,
-            indicators: nativeStatusIndicator,
-            caption: captionsHidden ? nil : AnyView(episodeCaption),
-            captionFocusOffset: reduceMotion ? 0 : metrics.focusCaptionPush,
-            focus: $isFocused, action: action
-        )
-        .focused($isFocused.focusState)
-        .frame(width: Self.artworkSize.width)
-        .background {
-            FallbackAsyncImage(
-                references: source.references, variant: .landscapeCard,
-                artworkPolicy: source.policy,
-                asyncFallbackURL: source.fallbackURL, pinIdentity: source.pinIdentity,
-                content: { _ in Color.clear }, placeholder: { Color.clear }
-            )
-            .environment(\.artworkResolutionState, nativeArtwork)
-            .frame(width: 0, height: 0)
-            .accessibilityHidden(true)
-        }
-    }
-    #endif
 
     private var realArtwork: some View {
         let source = EpisodeArtworkSource(

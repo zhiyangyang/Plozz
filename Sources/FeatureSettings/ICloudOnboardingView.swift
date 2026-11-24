@@ -155,11 +155,6 @@ private struct ICloudRestorationActions: View {
                 .accessibilityIdentifier("icloud-restoration-manual")
         }
         .controlSize(.large)
-        #if os(tvOS)
-        .focusSection()
-        .defaultFocus($focusedAction, hasFailed ? .retry : .proceed)
-        .onAppear { focusedAction = hasFailed ? .retry : .proceed }
-        #endif
     }
 }
 
@@ -213,11 +208,6 @@ private struct ICloudOnboardingChoices: View {
                 .accessibilityIdentifier("icloud-onboarding-decline")
         }
         .controlSize(.large)
-        #if os(tvOS)
-        .focusSection()
-        .defaultFocus($useCloudFocused, true)
-        .onAppear { useCloudFocused = true }
-        #endif
     }
 }
 #endif

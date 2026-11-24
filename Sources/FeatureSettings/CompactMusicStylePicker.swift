@@ -117,11 +117,7 @@ struct MusicPlayerStyleDetail: View {
     }
 
     private var controlSpacing: CGFloat {
-        #if os(tvOS)
-        SettingsFormMetrics.illustratedGroupSpacing
-        #else
         28
-        #endif
     }
 }
 #endif

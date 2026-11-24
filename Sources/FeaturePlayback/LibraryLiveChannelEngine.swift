@@ -38,7 +38,7 @@ public final class LibraryLiveChannelEngine: LiveChannelEngine {
         hasSource && !isLoading && decoderGeneration == generation
             && status == .ready && underlyingEngine.hasPresentedVideoFrame
     }
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     public func previewVideoFrame() -> CVPixelBuffer? {
         hasPresentedVideoFrame ? underlyingEngine.previewVideoFrame() : nil
     }

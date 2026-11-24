@@ -1,4 +1,4 @@
-#if os(tvOS) || os(iOS)
+#if os(iOS)
 import FeatureHomeCore
 import Observation
 import SwiftUI

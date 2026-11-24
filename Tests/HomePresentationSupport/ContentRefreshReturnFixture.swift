@@ -3,12 +3,8 @@ import CoreUI
 import FeatureHomeCore
 import SwiftUI
 import UIKit
-#if os(tvOS)
-import FeatureHome
-#else
 import FeatureAuth
 @testable import AppShelliOS
-#endif
 
 /// Uses production detail views and lifecycle delivery; only server data and
 /// the five-minute waiting period are replaced for bounded interaction tests.
@@ -20,12 +16,8 @@ struct ContentRefreshReturnFixture: View {
     @State private var background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore(
         HeroBackgroundSettings(homeTrailerEnabled: false, detailMode: .off)
     ))
-    #if os(tvOS)
-    @State private var detail: ItemDetailViewModel
-    #else
     @State private var app: PlozziOSAppModel
     @State private var sidebar = PlozziOSSidebarGeometryModel()
-    #endif
 
     init() {
         let provider = RefreshReturnProvider(
@@ -40,12 +32,6 @@ struct ContentRefreshReturnFixture: View {
             seriesDetail: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .reloadSeriesContext),
             episodeDetail: leaf, movieDetail: leaf
         )))
-        #if os(tvOS)
-        _detail = State(initialValue: ItemDetailViewModel(
-            provider: provider, itemID: provider.seed.id, initialItem: provider.seed,
-            sourceAccountID: "refresh-fixture", onlineTrailerResolver: { _ in [] }
-        ))
-        #else
         SyncSetupFeatureFlag().isEnabled = false
         let store = AccountStore(secureStore: InMemorySecureStore())
         let model = PlozziOSAppModel(accountStore: store, profileStore: ProfileStore(defaults: .standard))
@@ -67,7 +53,6 @@ struct ContentRefreshReturnFixture: View {
             disabledOrder: MetadataSourceAttribution.all.map(\.id)
         )
         _app = State(initialValue: model)
-        #endif
     }
 
     var body: some View {
@@ -100,13 +85,9 @@ struct ContentRefreshReturnFixture: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        #if os(tvOS)
-        ItemDetailView(viewModel: detail, onPlay: { _ in covered = true }, onSelectChild: { _ in })
-        #else
         PlozziOSItemDetailView(appModel: app, provider: provider, item: provider.seed)
             .environment(app)
             .environment(sidebar)
-        #endif
     }
 
     private var coverButton: some View {

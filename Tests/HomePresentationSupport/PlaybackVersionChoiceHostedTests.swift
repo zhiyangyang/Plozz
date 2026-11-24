@@ -108,11 +108,7 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
         let previous = scene.windows.first(where: \.isKeyWindow)
         let menu = PlaybackSourceMenuState()
         let window = UIWindow(windowScene: scene)
-        #if os(tvOS)
-        window.frame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        #else
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
-        #endif
         window.rootViewController = UIHostingController(rootView:
             Color.black.ignoresSafeArea()
                 .playbackSourceMenu(
@@ -192,11 +188,7 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
             .first { $0.activationState == .foregroundActive })
         let previous = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
-        #if os(tvOS)
-        window.frame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        #else
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
-        #endif
         defer {
             window.isHidden = true
             window.rootViewController = nil
@@ -252,11 +244,7 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
                     .init(id: "uhd", fileName: "Discovered.Second.mkv", height: 2160)]
         }
         let window = UIWindow(windowScene: scene)
-        #if os(tvOS)
-        window.frame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        #else
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
-        #endif
         window.rootViewController = UIHostingController(rootView:
             Color.black.ignoresSafeArea()
                 .playbackSourceMenu(
@@ -291,29 +279,16 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
     }
 
     func testIntroductionHandsOffToNativeVersionChoicesWithoutStartingPlayback() async throws {
-        #if os(tvOS)
-        let layouts: [(CGFloat, DynamicTypeSize)] = [(1920, .large)]
-        #else
         let layouts: [(CGFloat, DynamicTypeSize)] = [(320, .large), (768, .large), (390, .accessibility2)]
-        #endif
         for (width, typeSize) in layouts {
             try await exercise(width: width, typeSize: typeSize)
         }
     }
 
     func testAutomaticIntroductionStartsPlaybackWithoutShowingVersionChoices() async throws {
-        #if os(tvOS)
-        try await exercise(width: 1920, typeSize: .large, introductionMode: .automatic)
-        #else
         try await exercise(width: 390, typeSize: .large, introductionMode: .automatic)
-        #endif
     }
 
-    #if os(tvOS)
-    func testLongVersionListStaysBoundedWithReducedTransparencyAndLargerText() async throws {
-        try await exercise(width: 1920, typeSize: .accessibility1, versionCount: 12, reduceTransparency: true)
-    }
-    #else
     func testLongVersionCardsStayReadableInLightAppearance() async throws {
         try await exercise(width: 390, typeSize: .large, versionCount: 8, colorScheme: .light)
     }
@@ -352,14 +327,9 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
         }
         XCTAssertTrue(measurements.contains { $0.wrapped < $0.original }, evidence)
     }
-    #endif
 
     func testInternationalReleaseNamesWrapWithoutTruncation() async throws {
-        #if os(tvOS)
-        let layouts: [(CGFloat, DynamicTypeSize)] = [(720, .large), (1_100, .accessibility1)]
-        #else
         let layouts: [(CGFloat, DynamicTypeSize)] = [(320, .accessibility2), (768, .large)]
-        #endif
         let names: [(String, String, LayoutDirection)] = [
             ("Example.Brand.New.Day.Special.Edition.", "en_US", .leftToRight),
             ("Le.Fabuleux.Destin.d’Amélie.Édition.spéciale.", "fr_FR", .leftToRight),
@@ -426,11 +396,7 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
     }
 
     func testServerOrderIntroductionStartsTheFirstServerVersionWithoutShowingChoices() async throws {
-        #if os(tvOS)
-        try await exercise(width: 1920, typeSize: .large, introductionMode: .serverOrder)
-        #else
         try await exercise(width: 390, typeSize: .large, introductionMode: .serverOrder)
-        #endif
     }
 
     private func exercise(
@@ -502,14 +468,8 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
         if introductionMode == .serverOrder {
             try assertIntroductionContrast(in: window)
         }
-        #if os(tvOS)
-        XCTAssertTrue(introduction.contains("Cancel"))
-        XCTAssertNotNil(UIFocusSystem(for: window)?.focusedItem, "An introduction action must own native focus.")
-        try assertCompactCard(in: window, maximumHeight: typeSize.isAccessibilitySize ? 860 : 800)
-        #else
         XCTAssertFalse(introduction.contains("Cancel"), "The leading X replaces the bottom Cancel button.")
         _ = try assertCloseToolbar(in: window)
-        #endif
         let id = try XCTUnwrap(model.prompt?.id)
         if introductionMode != .askEveryTime {
             model.chooseMode(introductionMode, promptID: id)
@@ -527,11 +487,6 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertNil(probe.selected, "Choosing the mode alone must not select a file.")
         XCTAssertFalse(try XCTUnwrap(model.prompt).needsIntroduction)
-        #if os(tvOS)
-        if typeSize == .large, versionCount == 2 {
-            try await assertVersionTypography(in: window)
-        }
-        #endif
         let choices = try await visibleText(in: window, name: "version-choice-\(Int(width))-\(typeSize)")
         for fact in ["Choose a version", "4K", "42 GB", "English", "TrueHD"] {
             XCTAssertTrue(choices.localizedCaseInsensitiveContains(fact), "Missing \(fact): \(choices)")
@@ -545,16 +500,6 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
             choices.contains("+1") || choices.localizedCaseInsensitiveContains("French"),
             "The second language must remain visible, abbreviated on one line or expanded after wrapping: \(choices)"
         )
-        #if os(tvOS)
-        XCTAssertNotNil(UIFocusSystem(for: window)?.focusedItem, "The version picker must receive native focus.")
-        try assertCompactCard(in: window, maximumHeight: versionCount > 2 ? 860 : 600)
-        if versionCount > 2 {
-            let scroll = try XCTUnwrap(scrollViews(in: window).first { $0.contentSize.height > $0.bounds.height + 1 })
-            XCTAssertGreaterThan(scroll.contentOffset.y, 0, "The long list must actually scroll.")
-            let lastFile = try XCTUnwrap(model.prompt?.versions.last?.fileName)
-            XCTAssertTrue(choices.contains(lastFile), "The final version must remain reachable.")
-        }
-        #else
         XCTAssertFalse(choices.contains("Cancel"), "The picker must not retain a second bottom dismissal action.")
         let close = try assertCloseToolbar(in: window)
         if closeInsteadOfSelect {
@@ -566,7 +511,6 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
             XCTAssertFalse(probe.disappeared)
             return
         }
-        #endif
         model.chooseVersion("4k", promptID: id)
         try await waitUntil { probe.selected != nil }
         XCTAssertEqual(probe.selected?.selectedVersionID, "4k")
@@ -652,131 +596,6 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
     }
     #endif
 
-    #if os(tvOS)
-    private func assertVersionTypography(in window: UIWindow) async throws {
-        var previousImage: Data?
-        var settledImage: UIImage?
-        let deadline = ContinuousClock.now + .seconds(5)
-        while ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(250))
-            window.layoutIfNeeded()
-            let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-                XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
-            }
-            let bytes = try XCTUnwrap(image.pngData())
-            if bytes == previousImage {
-                settledImage = image
-                break
-            }
-            previousImage = bytes
-        }
-        _ = try XCTUnwrap(settledImage, "Native focus must settle before measuring badge typography.")
-        // Two identical frames can still precede asynchronous badge content on a
-        // slow CI runner. Measure the picker after it has actually had time to
-        // paint, not merely after focus stopped moving.
-        try await Task.sleep(for: .seconds(1))
-        window.layoutIfNeeded()
-        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-            XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
-        }
-        let attachment = XCTAttachment(image: image)
-        attachment.name = "TV version picker typography"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-
-        let cgImage = try XCTUnwrap(image.cgImage)
-        let inverted = CIImage(cgImage: cgImage).applyingFilter("CIColorInvert")
-        let invertedImage = try XCTUnwrap(CIContext().createCGImage(inverted, from: inverted.extent))
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US"]
-        request.usesLanguageCorrection = false
-        request.minimumTextHeight = 0.001
-        request.customWords = ["4K", "1080P", "HEVC", "SDR", "HDR10"]
-        // HDR10 shares the range typography without the short DV label's OCR ambiguity.
-        let minimumHeights: [String: CGFloat] = [
-            "Choose a version": 20, "4K": 12, "1080P": 12,
-            "HEVC": 12, "English": 12, "SDR": 12, "HDR10": 12
-        ]
-        var heights: [String: CGFloat] = [:]
-        func measure(_ recognitionImage: CGImage, pointHeight: CGFloat) throws -> [VNRecognizedTextObservation] {
-            try VNImageRequestHandler(cgImage: recognitionImage).perform([request])
-            let observations = request.results ?? []
-            for observation in observations {
-                guard let candidate = observation.topCandidates(1).first else { continue }
-                for label in minimumHeights.keys {
-                    guard let range = candidate.string.range(of: label, options: .caseInsensitive),
-                          let box = try candidate.boundingBox(for: range) else { continue }
-                    let height = box.boundingBox.height * pointHeight
-                    heights[label] = min(heights[label] ?? height, height)
-                }
-            }
-            return observations
-        }
-        for recognitionImage in [cgImage, invertedImage] {
-            let observations = try measure(recognitionImage, pointHeight: image.size.height)
-            // Whole-screen OCR downsamples compact labels. Preserve point units in cropped passes.
-            // A merged badge row's box can be taller than the compact glyphs it contains.
-            for observation in observations {
-                let box = observation.boundingBox
-                let region = CGRect(
-                    x: box.minX * CGFloat(cgImage.width),
-                    y: (1 - box.maxY) * CGFloat(cgImage.height),
-                    width: box.width * CGFloat(cgImage.width),
-                    height: box.height * CGFloat(cgImage.height)
-                ).insetBy(dx: -8, dy: -8).intersection(
-                    CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
-                )
-                let crop = try XCTUnwrap(recognitionImage.cropping(to: region))
-                let enlarged = CIImage(cgImage: crop).applyingFilter(
-                    "CILanczosScaleTransform", parameters: [kCIInputScaleKey: 4]
-                )
-                let enlargedImage = try XCTUnwrap(CIContext().createCGImage(enlarged, from: enlarged.extent))
-                _ = try measure(enlargedImage, pointHeight: CGFloat(crop.height) / image.scale)
-            }
-        }
-        for (label, minimum) in minimumHeights where label != "HEVC" {
-            let height = try XCTUnwrap(heights[label], "Missing visible picker text: \(label)")
-            XCTAssertGreaterThanOrEqual(height, minimum, "\(label) must be readable at TV viewing distance.")
-        }
-        if let hevc = heights["HEVC"] {
-            XCTAssertGreaterThanOrEqual(hevc, 12, "HEVC must be readable at TV viewing distance.")
-        }
-        XCTAssertLessThanOrEqual(try XCTUnwrap(heights["Choose a version"]), 40,
-                                "The heading must remain a compact hint, not a large TV title.")
-    }
-
-    private func assertCompactCard(in window: UIWindow, maximumHeight: CGFloat) throws {
-        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-            XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
-        }
-        let cgImage = try XCTUnwrap(image.cgImage)
-        let width = cgImage.width
-        let height = cgImage.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        try pixels.withUnsafeMutableBytes { bytes in
-            let context = try XCTUnwrap(CGContext(
-                data: bytes.baseAddress, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
-            ))
-            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        }
-        func isSurface(x: Int, y: Int) -> Bool {
-            let offset = (y * width + x) * 4
-            return pixels[offset..<offset + 3].contains { $0 > 12 }
-        }
-        let horizontal = (0..<width).filter { isSurface(x: $0, y: height / 2) }
-        let vertical = (0..<height).filter { isSurface(x: width / 2, y: $0) }
-        let left = try XCTUnwrap(horizontal.first), right = try XCTUnwrap(horizontal.last)
-        let top = try XCTUnwrap(vertical.first), bottom = try XCTUnwrap(vertical.last)
-        let scale = image.scale
-        XCTAssertLessThanOrEqual(CGFloat(right - left + 1) / scale, 1_104, "The card, not only its text, must be width-bounded.")
-        XCTAssertLessThanOrEqual(CGFloat(bottom - top + 1) / scale, maximumHeight + 4, "Short content must not fill the screen.")
-        XCTAssertEqual(CGFloat(left + right) / (2 * scale), window.bounds.midX, accuracy: 4)
-        XCTAssertEqual(CGFloat(top + bottom) / (2 * scale), window.bounds.midY, accuracy: 4)
-    }
-    #endif
 
     private func visibleText(in window: UIWindow, name: String, screenshotsOnly: Bool = false) async throws -> String {
         var result = ""

@@ -1357,9 +1357,6 @@ private struct CastCreditsRow: View {
         // ordinary clip is simply correct — leaving it off let posters draw
         // outside the card entirely, under the Back button and past the rounded
         // corner.
-        #if os(tvOS)
-        .scrollClipDisabled()
-        #endif
         .frame(maxWidth: .infinity, alignment: .leading)
         .horizontalEdgeFadeMask(
             fadeWidth: Self.fade,
@@ -1370,12 +1367,8 @@ private struct CastCreditsRow: View {
 
     /// How far a focused poster grows past the row, per edge.
     private var liftOverhang: CGFloat {
-        #if os(tvOS)
-        return (posterHeight * (Self.focusScale - 1) / 2).rounded(.up) + 2
-        #else
         // No focus, no lift, nothing to make room for.
         return 0
-        #endif
     }
 
 

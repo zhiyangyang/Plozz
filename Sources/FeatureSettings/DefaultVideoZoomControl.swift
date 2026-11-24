@@ -33,46 +33,20 @@ public struct DefaultVideoZoomControl: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        SettingsDescribedControl {
-            SettingsControlRows { controls }
-        } description: {
-            help
-        }
-        #else
         SettingsSectionGroup {
             controls
         } footer: {
             help
         }
         .settingsSearchGroup(["default-video-zoom", "custom-video-zoom"])
-        #endif
     }
 
     @ViewBuilder private var controls: some View {
-        #if os(tvOS)
-        SettingsMenuRow(title: "Default zoom", value: Text(mode.wrappedValue.title)) {
-            modePicker
-        }
-        .accessibilityIdentifier("default-video-zoom")
-        .settingsSearchAnchor("default-video-zoom")
-        #else
         modePicker
             .pickerStyle(.menu)
             .accessibilityIdentifier("default-video-zoom")
             .settingsSearchAnchor("default-video-zoom")
-        #endif
         if mode.wrappedValue == .custom {
-            #if os(tvOS)
-            SettingsStepper(
-                options: Array(VideoZoomPreference.customPercentRange), selection: percent,
-                compact: true, label: "Zoom",
-                textTitle: { Text(Double($0) / 100, format: .percent.precision(.fractionLength(0))) }
-            )
-            .environment(\.settingsAdjustmentRepeatSpeed, .fast)
-            .accessibilityIdentifier("custom-video-zoom")
-            .settingsSearchAnchor("custom-video-zoom")
-            #else
             HStack {
                 Text("Zoom")
                 Slider(value: Binding(
@@ -86,7 +60,6 @@ public struct DefaultVideoZoomControl: View {
                 Text(Double(percent.wrappedValue) / 100, format: .percent.precision(.fractionLength(0)))
                     .monospacedDigit()
             }
-            #endif
         }
     }
 

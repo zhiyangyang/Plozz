@@ -33,12 +33,6 @@ final class SubtitlePositionPresentationTests: XCTestCase {
             style.followsSystemStyle = false
             style.fontFamily = .system
             style.positionReference = reference
-            #if os(tvOS)
-            let host = UIHostingController(rootView: NavigationStack {
-                SubtitleStyleSettingsView(style: .constant(style))
-            }.environment(\.themePalette, .dark).environment(\.locale, Locale(identifier: "en_US"))
-                .preferredColorScheme(.dark))
-            #else
             let controls = PlayerControlsModel()
             controls.subtitleStyle = style
             let host = UIHostingController(rootView: NavigationStack {
@@ -47,19 +41,14 @@ final class SubtitlePositionPresentationTests: XCTestCase {
                 ))
             }.environment(\.themePalette, .dark).environment(\.locale, Locale(identifier: "en_US"))
                 .preferredColorScheme(.dark))
-            #endif
             window.rootViewController = host
             window.makeKeyAndVisible()
             try await Task.sleep(for: .seconds(2))
             window.layoutIfNeeded()
 
-            #if os(tvOS)
-            let image = DetailTransitionSnapshot.image(of: window)
-            #else
             let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
                 XCTAssertTrue(window.drawHierarchy(in: window.bounds, afterScreenUpdates: true))
             }
-            #endif
             let attachment = XCTAttachment(image: image)
             attachment.name = title
             attachment.lifetime = .keepAlways

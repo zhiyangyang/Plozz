@@ -15,18 +15,10 @@ public struct SyncDataBreakdown: View {
     public var body: some View {
         let account = provider.make().accountTag
         Group {
-            #if os(tvOS)
-            SettingsPanel(title: "Sync Data on This Device") {
-                SyncDataBreakdownRows(inventory: inventory, failed: failed)
-                Button("Refresh Breakdown") { refresh += 1 }
-                    .plozzActionButton(role: .secondary)
-            }
-            #else
             SettingsSectionGroup("Sync Data on This Device") {
                 SyncDataBreakdownRows(inventory: inventory, failed: failed)
                 Button("Refresh Breakdown") { refresh += 1 }
             }
-            #endif
         }
         .task(id: Request(account: account, refresh: refresh)) {
             inventory = nil

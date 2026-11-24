@@ -112,7 +112,7 @@ public protocol VideoEngine: AnyObject {
     /// A stationary clock in this state isn't a request to pause or restart it.
     var isDrivingPostSeekPlayback: Bool { get }
 
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     /// Borrowed software output for infrequent preview-color analysis, not a second decoder.
     func previewVideoFrame() -> CVPixelBuffer?
     var previewFrameGeneration: UInt64? { get }
@@ -455,7 +455,7 @@ public extension VideoEngine {
     var maximumPlaybackSpeed: Double { 4 }
     var nowPlayingPlayer: AVPlayer? { nil }
     var isDrivingPostSeekPlayback: Bool { false }
-    #if os(iOS) || os(tvOS)
+    #if os(iOS)
     func previewVideoFrame() -> CVPixelBuffer? { nil }
     var previewFrameGeneration: UInt64? { nil }
     #endif

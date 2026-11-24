@@ -22,29 +22,14 @@ public struct HeaderReviewScoreCountPicker: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            #if os(tvOS)
-            SettingsStepper(
-                options: Array(DetailPageSettings.headerRatingCountRange),
-                selection: $settings.maxHeaderRatings,
-                compact: true,
-                label: "Maximum ratings shown",
-                verbatimTitle: { $0.formatted(.number.locale(locale)) }
-            )
-            .accessibilityIdentifier("maximum-ratings-shown")
-            #else
             Picker("Maximum ratings shown", selection: $settings.maxHeaderRatings) {
                 ForEach(Array(DetailPageSettings.headerRatingCountRange), id: \.self) { count in
                     Text(count, format: .number).tag(count)
                 }
             }
             .accessibilityIdentifier("maximum-ratings-shown")
-            #endif
             Text("Shows fewer when fewer ratings are available.")
-                #if os(tvOS)
-                .font(SettingsRowMetrics.helperFont)
-                #else
                 .font(.footnote)
-                #endif
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

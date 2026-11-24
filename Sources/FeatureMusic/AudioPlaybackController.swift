@@ -371,10 +371,7 @@ public final class AudioPlaybackController {
     /// single deliberate skip still feels responsive.
     private static let skipDebounce: Duration = .milliseconds(350)
     private var requiresBufferedRouteTransition: Bool {
-        #if os(tvOS)
-        // Home-theater forwarding is invisible to the app's HDMI route.
-        true
-        #elseif os(iOS)
+        #if os(iOS)
         AVAudioSession.sharedInstance().currentRoute.outputs.contains { $0.portType == .airPlay }
         #else
         false
@@ -1141,15 +1138,6 @@ public final class AudioPlaybackController {
         // top-corner Now Playing banner (a one-shot snapshot taken when audio
         // starts) shows the album art, like Apple Music/Spotify. Bounded so a
         // slow artwork download never holds up the Now Playing card itself.
-        #if canImport(UIKit) && os(tvOS)
-        let policy = artworkPolicy
-        if let image = await bannerArtworkImage(track, policy: policy),
-           !Task.isCancelled, generation == trackTransitionGeneration,
-           artworkPolicy == policy,
-           currentTrack?.id == track.id {
-            currentArtwork = Self.makeArtwork(from: image)
-        }
-        #endif
         guard !Task.isCancelled, generation == trackTransitionGeneration else { return }
         updateNowPlayingInfo()
         #endif

@@ -111,35 +111,6 @@ public struct ProfileActionsSheet: View {
 
     @ViewBuilder
     private var actionsContent: some View {
-        #if os(tvOS)
-        // Content-sized: roomy fixed width, intrinsic height from the header and
-        // action rows. No ScrollView, fixed height, or filler Spacer.
-        VStack(alignment: .leading, spacing: 28) {
-            header
-            ProfileActionsList(
-                profile: profile,
-                syncEnabled: syncEnabled,
-                offersPlexPINReuse: offersPlexPINReuse,
-                hasParentalPIN: hasParentalPIN,
-                restrictedActionsSealed: restrictedActionsSealed,
-                onEditAppearance: onEditAppearance,
-                onEditLock: { setupStep = .lock },
-                onCreateParentalPIN: { setupStep = .parental },
-                onSetLock: onSetLock,
-                onSetKids: onSetKids,
-                onSetParentalPIN: onSetParentalPIN,
-                validatePlexPIN: validatePlexPIN,
-                onDelete: onDelete,
-                isUnlocked: isUnlocked,
-                onUnlock: onUnlock
-            )
-        }
-        .frame(width: 1080, alignment: .topLeading)
-        .padding(48)
-        .background { AppBackground(palette: palette).ignoresSafeArea() }
-        .onExitCommand(perform: onClose)
-        .environment(\.colorScheme, palette.isLight ? .light : .dark)
-        #else
         ZStack {
             AppBackground(palette: palette).ignoresSafeArea()
 
@@ -172,7 +143,6 @@ public struct ProfileActionsSheet: View {
             .scrollClipDisabled()
         }
         .environment(\.colorScheme, palette.isLight ? .light : .dark)
-        #endif
     }
 
     private var header: some View {

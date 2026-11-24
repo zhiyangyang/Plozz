@@ -44,9 +44,6 @@ private struct MyLibrariesContentView: View {
     /// snapshot value here (a copied `Set`) went stale for the same reason — hence
     /// a local revision counter driving live re-reads instead.
     @State private var revision = 0
-    #if os(tvOS)
-    @Environment(\.settingsInWorkspace) private var inWorkspace
-    #endif
 
     private func searchGroup(for target: String) -> ServerAccountGroup? {
         let candidates = allGroups.filter {
@@ -116,19 +113,7 @@ private struct MyLibrariesContentView: View {
     // MARK: - Empty state
 
     @ViewBuilder private var emptyInventoryState: some View {
-        #if os(tvOS)
-        if inWorkspace {
-            FocusableSettingsPanel(
-                footer: "Add a source under Everyone › Sources."
-            ) {
-                Text("No servers yet.").font(.headline)
-            }
-        } else {
-            emptyInventoryPanel
-        }
-        #else
         emptyInventoryPanel
-        #endif
     }
 
     private var emptyInventoryPanel: some View {
@@ -194,13 +179,6 @@ private struct MyLibrariesContentView: View {
                         Text("Libraries")
                             .font(.caption.weight(.semibold))
                             .plozzForeground(.secondary)
-                        #if os(tvOS)
-                        if scope.presentation == .settings, group.providerKind == .mediaShare {
-                            SettingsLibraryUpdateStatus(shareIDs: Set(
-                                group.accounts.filter { scope.isAccountIncludedInActiveProfile($0.id) }.map(\.id)
-                            ))
-                        }
-                        #endif
                         librarySection(for: group)
                     }
 
@@ -547,31 +525,4 @@ private struct MyLibrariesContentView: View {
     }
 }
 
-#if os(tvOS)
-/// Observe scan ticks here, not in the surrounding library list.
-struct SettingsLibraryUpdateStatus: View {
-    let shareIDs: Set<String>
-    @Environment(ShareScanStatusModel.self) private var status: ShareScanStatusModel?
-
-    var body: some View {
-        ForEach(status?.busyStates(forShareIDs: shareIDs) ?? []) { state in
-            if let phase = state.phase {
-                HStack(spacing: SettingsFormMetrics.relatedControlSpacing) {
-                    Text(phase).settingsHelperText()
-                    ShareScanProgressBar(fraction: state.fraction, height: 4)
-                        .frame(maxWidth: 220)
-                    if let fraction = state.fraction {
-                        Text(fraction, format: .percent.precision(.fractionLength(0)))
-                            .settingsHelperText()
-                            .monospacedDigit()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("settings-library-update-\(state.shareID)")
-            }
-        }
-    }
-}
-#endif
 #endif

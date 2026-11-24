@@ -4,12 +4,8 @@ import FeatureHomeCore
 import Observation
 import SwiftUI
 import UIKit
-#if os(tvOS)
-import FeatureHome
-#else
 import FeatureAuth
 @testable import AppShelliOS
-#endif
 
 /// Real detail views and picker actions, with deterministic providers. Mobile
 /// records the actual streaming request, then refuses before starting a decoder.
@@ -26,13 +22,8 @@ struct DetailSelectionFixture: View {
         episodeDetail: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .refreshWatchStateOnly),
         movieDetail: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .refreshWatchStateOnly)
     ))
-    #if os(tvOS)
-    @State private var detail: ItemDetailViewModel
-    private let preferences = VersionPreferenceStore(namespace: UUID().uuidString)
-    #else
     @State private var app: PlozziOSAppModel
     @State private var sidebar = PlozziOSSidebarGeometryModel()
-    #endif
 
     init() {
         let probe = DetailSelectionProbe()
@@ -46,14 +37,6 @@ struct DetailSelectionFixture: View {
         let primary = providers[0]
         var seed = primary.seed
         seed.sources = providers.map { $0.source(for: $0.seed) }
-        #if os(tvOS)
-        _detail = State(initialValue: ItemDetailViewModel(
-            provider: primary, itemID: seed.id, initialItem: seed,
-            sourceAccountID: primary.accountID, onlineTrailerResolver: { _ in [] },
-            initialSources: seed.sources,
-            alternateProviderResolver: { id in providers.first { $0.accountID == id } }
-        ))
-        #else
         SyncSetupFeatureFlag().isEnabled = false
         let store = AccountStore(secureStore: InMemorySecureStore())
         let model = PlozziOSAppModel(accountStore: store, profileStore: ProfileStore(defaults: .standard))
@@ -80,21 +63,13 @@ struct DetailSelectionFixture: View {
             disabledOrder: MetadataSourceAttribution.all.map(\.id)
         )
         _app = State(initialValue: model)
-        #endif
     }
 
     var body: some View {
         NavigationStack {
-            #if os(tvOS)
-            ItemDetailView(viewModel: detail, onPlay: { item in
-                probe.record(account: item.sourceAccountID, item: item.id,
-                             version: item.selectedVersionID, position: item.resumePosition)
-            }, onSelectChild: { _ in }, versionPreferences: preferences)
-            #else
             PlozziOSItemDetailView(appModel: app, provider: providers[0], item: seed)
                 .environment(app)
                 .environment(sidebar)
-            #endif
         }
         .overlay(alignment: .topTrailing) {
             Text(verbatim: probe.receipt).accessibilityIdentifier("selection-receipt")

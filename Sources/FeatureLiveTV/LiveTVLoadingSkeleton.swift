@@ -35,12 +35,6 @@ public struct LiveTVLoadingSkeleton: View {
                         PrototypeLoadingSidebar()
                     } guide: {
                         VStack(spacing: PrototypeLayout.toolbarGuideGap) {
-                            #if os(tvOS)
-                                if layout.sidebarWidth == 0 {
-                                    PrototypeLoadingToolbar().frame(
-                                        height: PrototypeLayout.controlHeight + 2 * PrototypeLayout.controlInset)
-                                }
-                            #endif
                             PrototypeGuideSkeleton()
                         }
                     }
@@ -272,11 +266,7 @@ struct PrototypeGuideSkeletonRows: View {
                     .frame(height: height)
                 }
             }
-            #if os(tvOS)
-            .padding(.top, PrototypeLayout.smallGap)
-            #else
             .padding(.top, PrototypeLayout.sectionLabelGap)
-            #endif
             .frame(width: width, alignment: .topLeading)
         }
         .clipped()

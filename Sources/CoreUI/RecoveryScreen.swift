@@ -35,13 +35,7 @@ public struct RecoveryScreen<Heading: View, Actions: View>: View {
         }
     }
 
-    #if os(tvOS)
-    private static var cardWidth: CGFloat { 960 }
-    private static var cardPadding: CGFloat { 48 }
-    private static var outerPadding: CGFloat { 60 }
-    #else
     private static var cardWidth: CGFloat { 560 }
     private static var cardPadding: CGFloat { 24 }
     private static var outerPadding: CGFloat { 20 }
-    #endif
 }

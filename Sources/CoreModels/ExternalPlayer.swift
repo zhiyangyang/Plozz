@@ -63,11 +63,7 @@ public enum ExternalPlayer: String, Codable, CaseIterable, Sendable {
     }
 
     public static var supported: [Self] {
-        #if os(tvOS)
-        [.builtIn, .nativePlayer, .infuse, .vlc]
-        #else
         [.builtIn, .infuse, .vlc]
-        #endif
     }
 }
 

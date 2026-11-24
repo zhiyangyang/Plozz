@@ -63,13 +63,8 @@ public struct FirstUseChoiceView: View {
                     .foregroundStyle(palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            #if os(tvOS)
-            .padding(56)
-            .frame(maxWidth: 1_100, alignment: .leading)
-            #else
             .padding(24)
             .frame(maxWidth: 700, alignment: .leading)
-            #endif
             .frame(maxWidth: .infinity)
         }
         .defaultScrollAnchor(.center)
@@ -94,11 +89,7 @@ private struct FirstUseChoiceHeading: View {
                 .foregroundStyle(palette.primaryText)
                 .accessibilityHidden(true)
             Text(title)
-                #if os(tvOS)
-                .font(.system(size: titleSize, weight: .bold, design: .rounded))
-                #else
                 .font(.title.bold())
-                #endif
                 .foregroundStyle(palette.primaryText)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .center, spacing: 12) {
@@ -117,12 +108,7 @@ private struct FirstUseChoiceActions: View {
     @FocusState private var focused: String?
 
     var body: some View {
-        #if os(tvOS)
-        let layout = actions.count > 2
-            ? AnyLayout(VStackLayout(spacing: 20)) : AnyLayout(HStackLayout(spacing: 28))
-        #else
         let layout = AnyLayout(VStackLayout(spacing: 16))
-        #endif
         layout {
             ForEach(actions) { action in
                 Button(action: action.perform) {
@@ -133,9 +119,6 @@ private struct FirstUseChoiceActions: View {
                 .accessibilityIdentifier(action.id)
             }
         }
-        #if os(tvOS)
-        .defaultFocus($focused, actions.first?.id, priority: .userInitiated)
-        #endif
     }
 }
 #endif

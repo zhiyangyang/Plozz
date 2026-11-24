@@ -41,20 +41,11 @@ public struct CrashReportingConsentView: View {
     }
 
     private var contentWidth: CGFloat {
-        #if os(tvOS)
-        900
-        #else
         480
-        #endif
     }
 
     private var cardPadding: EdgeInsets {
-        #if os(tvOS)
-        let inset = PlozzTheme.Spacing.xxxLarge
-        return EdgeInsets(top: inset, leading: inset, bottom: inset, trailing: inset)
-        #else
         return .settingsPanelDefault
-        #endif
     }
 }
 
@@ -100,9 +91,6 @@ private struct CrashReportingConsentChoices: View {
             }
         }
         .controlSize(.large)
-        #if os(tvOS)
-        .focusSection()
-        #endif
     }
 
     private var shareButton: some View {
@@ -121,24 +109,13 @@ private struct CrashReportingConsentChoices: View {
 }
 
 private struct CrashReportingConsentFooter: View {
-    #if os(tvOS)
-    @State private var showingRepository = false
-    #endif
     @ScaledMetric(relativeTo: .body) private var iconSize = 20
 
     var body: some View {
         Group {
-            #if os(tvOS)
-            Button {
-                showingRepository = true
-            } label: {
-                repositoryLabel
-            }
-            #else
             Link(destination: AppLinks.repository) {
                 repositoryLabel
             }
-            #endif
         }
         .plozzActionButton(role: .secondary)
         .controlSize(.small)
@@ -146,11 +123,6 @@ private struct CrashReportingConsentFooter: View {
         .modifier(DiagnosticsControlSize())
         #endif
         .accessibilityIdentifier("diagnostics-consent-repository")
-        #if os(tvOS)
-        .plozzSheet(isPresented: $showingRepository) {
-            CrashReportingConsentRepositoryView()
-        }
-        #endif
     }
 
     private var repositoryLabel: some View {
@@ -170,36 +142,4 @@ private struct CrashReportingConsentFooter: View {
     }
 }
 
-#if os(tvOS)
-private struct CrashReportingConsentRepositoryView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    Text(SettingsCopy.automaticDiagnostics)
-                    Text(SettingsCopy.automaticDiagnosticsExclusions)
-                    Text("Sharing is optional and does not change any app features. Sending recent activity logs is a separate action in Settings.")
-                    Text("Scan to open the Plozz GitHub repo.")
-                    SettingsQRCode(string: AppLinks.repository.absoluteString, correctionLevel: .low)
-                        .frame(width: 240, height: 240)
-                        .frame(maxWidth: .infinity)
-                    Text(AppLinks.repository.absoluteString)
-                        .font(.footnote)
-                }
-                .padding(32)
-                .frame(maxWidth: 900)
-                .frame(maxWidth: .infinity)
-            }
-            .navigationTitle("Plozz on GitHub")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
-#endif
 #endif

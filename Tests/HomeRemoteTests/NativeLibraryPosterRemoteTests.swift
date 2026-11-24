@@ -406,24 +406,7 @@ final class NativeLibraryPosterRemoteTests: XCTestCase {
     }
 
     private func existingApp(activate: Bool = true) throws -> XCUIApplication {
-        #if !os(tvOS) || targetEnvironment(simulator)
         throw XCTSkip("Explicit physical-device library comparison only.")
-        #else
-        let environment = ProcessInfo.processInfo.environment
-        guard let device = environment["PLOZZ_LIBRARY_PHYSICAL_DEVICE"], !device.isEmpty,
-              environment["PLOZZ_LIBRARY_TARGET_DEVICE"] == device,
-              environment["PLOZZ_LIBRARY_OPTIMIZED_APP"] == "1" else {
-            throw XCTSkip("Requires a verified, already-running optimized Plozz and explicit physical target.")
-        }
-        continueAfterFailure = false
-        executionTimeAllowance = 180
-        let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz")
-        XCTAssertNotEqual(app.state, .notRunning, "Never cold-launch or install the application from this runner.")
-        // The external driver must verify that runner activation did not replace the app's PID.
-        if activate && app.state != .runningForeground { app.activate() }
-        XCTAssertEqual(app.state, .runningForeground)
-        return app
-        #endif
     }
 
     private func focusedPoster(in app: XCUIApplication, arm: String) throws -> XCUIElement {

@@ -27,18 +27,10 @@ final class HeroTextSizeTests: XCTestCase {
         XCTAssertEqual(HeroTextSize.default.position, 5)
         XCTAssertEqual(HeroTextSize.allSizes.count, 11)
         XCTAssertEqual(HeroTextSize(rawValue: .min).scale, 0.75)
-        #if os(tvOS)
-        XCTAssertEqual(HeroTextSize(rawValue: .max).scale, 1.5)
-        #else
         XCTAssertEqual(HeroTextSize(rawValue: .max).scale, 1.25)
-        #endif
         for (index, size) in HeroTextSize.allSizes.enumerated() {
             XCTAssertEqual(size.position, index)
-            #if os(tvOS)
-            let increment = size.rawValue > 0 ? 0.1 : 0.05
-            #else
             let increment = 0.05
-            #endif
             XCTAssertEqual(size.scale, 1 + Double(size.rawValue) * increment, accuracy: 0.0001)
             XCTAssertEqual(try JSONDecoder().decode(HeroTextSize.self, from: JSONEncoder().encode(size)), size)
         }

@@ -19,9 +19,6 @@ public struct PlayerDiscControlsButton: View {
 
     public var body: some View {
         Group {
-            #if os(tvOS)
-            PlayerControlButton(title, systemImage: "opticaldisc", action: activate)
-            #else
             Button(action: activate) {
                 Image(systemName: "opticaldisc")
                     .font(.title3)
@@ -31,7 +28,6 @@ public struct PlayerDiscControlsButton: View {
             }
             .buttonStyle(PlayerGlassCircleButtonStyle(diameter: 44))
             .accessibilityLabel(Text(title))
-            #endif
         }
         .accessibilityIdentifier("player-control-opticaldisc")
         .contextMenu {

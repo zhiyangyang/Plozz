@@ -10,9 +10,6 @@ public struct BrowseQueryControls<Content: View>: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        HStack(spacing: PlozzTheme.Spacing.medium) { content }
-        #else
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 24) { content.fixedSize() }
             VStack(alignment: .leading, spacing: 4) { content }
@@ -20,7 +17,6 @@ public struct BrowseQueryControls<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .font(.subheadline)
         .tint(palette.primaryText)
-        #endif
     }
 }
 

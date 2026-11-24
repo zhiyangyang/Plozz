@@ -336,18 +336,7 @@ public struct ProfileActionsList: View {
 
     @ViewBuilder
     private var deleteButton: some View {
-        #if os(tvOS)
-        if groupsActions {
-            Button(role: .destructive) { confirmDelete = true } label: {
-                SettingsRowLabel(icon: "trash", title: "Delete Profile")
-            }
-            .buttonStyle(SettingsFocusButtonStyle())
-        } else {
-            nativeDeleteButton
-        }
-        #else
         nativeDeleteButton
-        #endif
     }
 
     private var nativeDeleteButton: some View {
@@ -464,14 +453,7 @@ private struct ProfileActionSection<Content: View>: View {
 
     var body: some View {
         if grouped {
-            #if os(tvOS)
-            VStack(spacing: 14) { content }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(SettingsFormMetrics.pageInset)
-                .settingsGroupSurface(cornerRadius: PlozzTheme.Metrics.mediumCardCornerRadius)
-            #else
             SettingsSectionGroup { content }
-            #endif
         } else {
             VStack(spacing: 14) { content }
         }

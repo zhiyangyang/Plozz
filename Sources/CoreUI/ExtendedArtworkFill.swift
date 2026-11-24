@@ -397,26 +397,6 @@ enum ExtendedArtworkBitmap {
             height: ceil(size.height * scale) / scale
         )
         var reflectionImage = image
-        #if os(tvOS)
-        if minimumReflectionShare > 0 {
-            let geometry = ExtendedArtworkGeometry(
-                slot: rasterSize, artworkAspectRatio: artworkAspectRatio, sideCrop: sideCrop,
-                minimumReflectionShare: minimumReflectionShare
-            )
-            let reflectionSize = CGSize(width: geometry.renderedWidth, height: geometry.pictureHeight)
-            if image.size.width * image.scale > ceil(reflectionSize.width * scale)
-                || image.size.height * image.scale > ceil(reflectionSize.height * scale) {
-                // Filter reflection copies at their displayed resolution, preserving
-                // the original source for the sharp central poster.
-                guard let fitted = autoreleasepool(invoking: {
-                    NativePosterArtworkBitmap.image(
-                        source: image, size: reflectionSize, scale: scale, clipsToArtwork: false
-                    )
-                }) else { return nil }
-                reflectionImage = fitted
-            }
-        }
-        #endif
         let content = Content(
             image: image, reflectionImage: reflectionImage, size: rasterSize,
             artworkAspectRatio: artworkAspectRatio, sideCrop: sideCrop,
@@ -433,17 +413,7 @@ enum ExtendedArtworkBitmap {
         }
         active.scale = scale
         active.isOpaque = true
-        #if os(tvOS)
-        var rendered: UIImage?
-        active.render(rasterizationScale: scale) { _, draw in
-            rendered = NativePosterArtworkBitmap.image(
-                source: nil, size: rasterSize, scale: scale, backgroundColor: .clear,
-                clipsToArtwork: false, drawOverlay: draw
-            )
-        }
-        #else
         let rendered = active.uiImage
-        #endif
         guard let result = rendered else {
             PlozzLog.app.error("Unable to render extended artwork")
             return nil

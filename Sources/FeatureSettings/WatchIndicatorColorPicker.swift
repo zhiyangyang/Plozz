@@ -37,15 +37,9 @@ struct WatchIndicatorColorPicker: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-                #if os(tvOS)
-                .scrollClipDisabled()
-                #endif
                 .onAppear { proxy.scrollTo(selection) }
                 .onChange(of: selection) { _, color in proxy.scrollTo(color) }
             }
-            #if os(tvOS)
-            .focusSection()
-            #endif
         }
         .accessibilityIdentifier("watch-indicator-color")
     }

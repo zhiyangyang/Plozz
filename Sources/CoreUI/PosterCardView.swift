@@ -74,15 +74,9 @@ public struct PosterCardView: View {
     }
 
     @PlozzCardFocus private var isFocused: Bool
-    #if os(tvOS)
-    @State private var detailTransitionSource = DetailTransitionSourceReference()
-    #endif
     /// Source-role hint used by Continue Watching's duplicate-title protection.
     @State private var artworkAlreadyCarriesTitle = false
     @State private var resolvedLogoArtworkIdentity: String?
-    #if os(tvOS)
-    @State private var nativeArtworkDimming = ContinueWatchingCardShape.artworkDim(logo: nil, background: nil)
-    #endif
     /// The source policy whose textless lookup settled or reached its deadline.
     @State private var settledTextlessIdentity: String?
     @Environment(\.plozzReduceTransparency) private var reduceTransparency
@@ -211,11 +205,7 @@ public struct PosterCardView: View {
     private var surfaceFocused: Bool { isFocused && focusStyle.drawsFocusOutline }
 
     private var cardAccessibilityTitle: String? {
-        #if os(tvOS)
-        nativePosterTitle.resolve(locale: locale)
-        #else
         nil
-        #endif
     }
 
     private var cardAccessibilityValue: String? {
@@ -301,44 +291,18 @@ public struct PosterCardView: View {
                 item: item, focus: $isFocused,
                 request: focusRequest, onRequestHandled: onFocusRequestHandled
             ))
-            #if os(tvOS)
-            .coordinateSpace(name: detailTransitionSource.coordinateSpace)
-            .background {
-                PosterFocusReader(focus: $isFocused) { focused in
-                    DetailTransitionSourceAnchor(
-                        reference: detailTransitionSource,
-                        itemKey: item.stablePresentationID,
-                        cornerRadius: transitionArtworkCornerRadius,
-                        isFocused: focused,
-                        cardFocus: $isFocused
-                    )
-                }
-            }
-            #endif
             #if os(iOS)
             .mediaArtworkZoomOrigin(id: item.stablePresentationID)
             #endif
     }
 
     private var usesNativePoster: Bool {
-        #if os(tvOS)
-        focusStyle.usesSystemEffect && cardStyle == .borderless
-        #else
         false
-        #endif
     }
 
     @ViewBuilder
     private var cardBody: some View {
-        #if os(tvOS)
-        if usesNativePoster {
-            nativePosterCard
-        } else {
-            styledCardBody
-        }
-        #else
         styledCardBody
-        #endif
     }
 
     @ViewBuilder
@@ -356,135 +320,6 @@ public struct PosterCardView: View {
         }
     }
 
-    #if os(tvOS)
-    private var nativePosterTitle: NativePosterText {
-        item.posterCaptionTitle(spoilerSettings: spoilerSettings)
-    }
-
-    private var nativeUsesProtectedArtwork: Bool {
-        showsSpoilerSafePoster || (hideThumbnail && spoilerSettings.mode == .placeholder)
-    }
-
-    private var nativePosterTreatment: NativePosterImageTreatment {
-        if usesProgressOnlyPortrait { return .original }
-        if showsSeriesArtwork {
-            return style == .poster ? .extendedPortrait(blurredReflection: !reduceTransparency) : .extended
-        }
-        if PosterCardPresentation.fitsContainerArtwork(for: item.kind) { return .fitted }
-        return hideThumbnail && !nativeUsesProtectedArtwork ? .blurred : .original
-    }
-
-    private var nativePosterReferences: [ArtworkReference] {
-        if usesLogoArtwork { return seriesArtworkReferences }
-        return nativeUsesProtectedArtwork ? placeholderArtworkReferences : artworkReferences
-    }
-
-    private var nativePosterFallback: (@Sendable () async -> URL?)? {
-        if usesLogoArtwork { return seriesArtworkFallback }
-        return nativeUsesProtectedArtwork ? placeholderArtworkFallback : asyncArtworkFallback
-    }
-
-    private var nativePosterCard: some View {
-        VStack(spacing: metrics.nativePosterCaptionSpacing) {
-            FallbackAsyncImage(
-                references: nativeArtworkReady ? nativePosterReferences : [],
-                prefersPrimaryReference: preferredSeriesArtwork != nil || prefersLandscapeKeyArtReference,
-                maxAspectRatio: posterAspectGuard,
-                variant: artworkVariant,
-                previewVariant: style == .poster ? .posterPreview : nil,
-                artworkPolicy: cardArtworkPresentationPolicy,
-                asyncFallbackURL: nativeArtworkReady ? nativePosterFallback : nil,
-                onResolveReference: { reference in
-                    artworkAlreadyCarriesTitle = reference.map(titleBearingArtwork.contains) ?? false
-                    resolvedLogoArtworkIdentity = reference == nil ? nil : seriesSource.identity
-                },
-                // An artless library has empty references both before and after
-                // settling; readiness must still restart its metadata fallback.
-                pinIdentity: (usesLogoArtwork ? seriesSource.pinIdentity : artworkPolicy.pinIdentity(for: item))
-                    + (nativeUsesProtectedArtwork ? "|protected" : "")
-                    + (nativeArtworkReady ? "" : "|pending-textless"),
-                content: { _ in Color.clear },
-                placeholder: { Color.clear }
-            )
-            .resolvedBitmap { image, identity in
-                NativeTVPoster(
-                    image: image,
-                    artworkIdentity: identity,
-                    treatment: nativePosterTreatment,
-                    aspectRatio: borderlessAspectRatio,
-                    fallbackWidth: size.width,
-                    title: nativePosterTitle,
-                    subtitle: cardAccessibilityValue,
-                    overlay: nativePosterOverlay(hasArtwork: image != nil),
-                    indicators: hidesPlaybackStatus ? nil : .media(nativePlaybackIndicators.statusOnly),
-                    artworkBackground: NativePosterArtworkBackground(
-                        dimming: usesLogoArtwork && !suppressesSeriesLogo ? nativeArtworkDimming : 0,
-                        scrim: showsResumeChip ? resumeChipOverlay.artworkScrim
-                            : nativePlaybackIndicators.withoutStatus.artworkScrim
-                    ),
-                    focus: $isFocused,
-                    source: detailTransitionSource,
-                    action: selectCard
-                )
-                .focused($isFocused.focusState)
-                .frame(maxWidth: .infinity)
-            }
-            if showsCaption {
-                PosterFocusReader(focus: $isFocused) { focused in
-                    SystemPosterCaption(
-                        title: nativePosterTitle, subtitle: subtitleText,
-                        reservesSubtitleSpace: reservesSubtitleSpace, isFocused: focused
-                    )
-                }
-                .accessibilityHidden(true)
-            }
-        }
-        .padding(.horizontal, metrics.borderlessCardSideMargin)
-        .task(id: textlessResolutionIdentity) { await prepareTextlessArtwork() }
-    }
-
-    private var nativeArtworkReady: Bool { !usesLogoArtwork || textlessAnswerReady }
-
-    private func nativePosterOverlay(hasArtwork: Bool) -> some View {
-        PosterFocusReader(focus: $isFocused) { focused in
-            nativePosterIndicators(hasArtwork: hasArtwork)
-                .plozzChromeFocused(focused)
-        }
-    }
-
-    private func nativePosterIndicators(hasArtwork: Bool) -> some View {
-        ZStack {
-            if !hasArtwork {
-                if PosterCardPresentation.usesFolderArtwork(for: item.kind) {
-                    folderPlaceholderArtwork
-                } else {
-                    neutralPlaceholder
-                }
-            }
-            if hasArtwork && usesLogoArtwork && !suppressesSeriesLogo {
-                seriesLogo.attachingArtworkDimming { nativeArtworkDimming = $0 }
-            }
-            nativePlaybackIndicators.withoutStatus.withoutScrim
-            if showsResumeChip { resumeChipOverlay.withoutScrim }
-            pendingRemovalOverlay
-        }
-        .overlay(alignment: .topLeading) { statusCue(inset: borderlessBadgeInset) }
-    }
-
-    private var nativePlaybackIndicators: MediaCardPlaybackIndicators {
-        MediaCardPlaybackIndicators(
-            item: item,
-            hidesStatus: hidesPlaybackStatus,
-            showsProgressBar: !showsResumeChip && showsProgressBars,
-            badgeInset: borderlessBadgeInset,
-            progressHeight: metrics.progressBarHeight,
-            progressHorizontalInset: borderlessProgressInset,
-            progressBottomInset: borderlessProgressInset,
-            downloadState: showsResumeChip ? nil : downloadState,
-            artworkCornerRadius: PlozzTheme.Metrics.nativePosterArtworkCornerRadius
-        )
-    }
-    #endif
 
     // MARK: Poster
 
@@ -526,9 +361,7 @@ public struct PosterCardView: View {
                 .overlay {
                     artworkSurface(cornerRadius: metrics.posterArtworkCornerRadius, badgeInset: 8, progressInset: 16)
                 }
-                #if os(tvOS)
-                .recordDetailTransitionArtwork(detailTransitionSource)
-                #elseif os(iOS)
+                #if os(iOS)
                 .mediaArtworkZoomSource(cornerRadius: metrics.posterArtworkCornerRadius)
                 #endif
 
@@ -598,9 +431,7 @@ public struct PosterCardView: View {
                 .overlay {
                     artworkSurface(cornerRadius: metrics.landscapeArtworkCornerRadius, badgeInset: 8, progressInset: 16)
                 }
-                #if os(tvOS)
-                .recordDetailTransitionArtwork(detailTransitionSource)
-                #elseif os(iOS)
+                #if os(iOS)
                 .mediaArtworkZoomSource(cornerRadius: metrics.landscapeArtworkCornerRadius)
                 #endif
 
@@ -661,10 +492,6 @@ public struct PosterCardView: View {
             }
         }
         .padding(.horizontal, metrics.borderlessCardSideMargin)
-        #if os(tvOS)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: nativePosterTitle.resolve(locale: locale)))
-        #endif
         .focusableCard(
             isFocused: $isFocused, cornerRadius: borderlessCornerRadius,
             accessibilityValue: cardAccessibilityValue, action: selectCard)
@@ -706,9 +533,7 @@ public struct PosterCardView: View {
                 cornerRadius: borderlessCornerRadius,
                 isEnabled: MediaArtworkPlaceholder.Symbol(for: item) == .playback
             )
-            #if os(tvOS)
-            .recordDetailTransitionArtwork(detailTransitionSource)
-            #elseif os(iOS)
+            #if os(iOS)
             .mediaArtworkZoomSource(cornerRadius: borderlessCornerRadius)
             #endif
             .plozzFocusHalo(
@@ -1004,9 +829,6 @@ public struct PosterCardView: View {
     }
 
     private func selectCard() {
-        #if os(tvOS)
-        if !playsOnSelect { detailTransitionSource.prepare(for: item) }
-        #endif
         action()
     }
 
@@ -1698,17 +1520,7 @@ public extension View {
         isEnabled: Bool = true,
         action: @escaping () -> Void
     ) -> some View {
-        #if os(tvOS)
         contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .focusable(isEnabled)
-            .focused(isFocused)
-            .focusEffectDisabled()
-            .onTapGesture(perform: action)
-            .disabled(!isEnabled)
-            .accessibilityAddTraits(.isButton)
-        #else
-        contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        #endif
     }
 
     /// Media-card focus with separate native observations and explicit requests.
@@ -1721,77 +1533,12 @@ public extension View {
         accessibilityValue: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        #if os(tvOS)
-        modifier(CardFocusOwner(
-            isFocused: isFocused, cornerRadius: cornerRadius, isEnabled: isEnabled,
-            nativeFocusInContent: nativeFocusInContent,
-            accessibilityLabel: accessibilityLabel, accessibilityValue: accessibilityValue,
-            action: action
-        ))
-        #else
         contentShape(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         )
-        #endif
     }
 }
 
-#if os(tvOS)
-private struct CardFocusOwner: ViewModifier {
-    let isFocused: PlozzCardFocus.Binding
-    let cornerRadius: CGFloat
-    let isEnabled: Bool
-    let nativeFocusInContent: Bool
-    let accessibilityLabel: String?
-    let accessibilityValue: String?
-    let action: () -> Void
-    @Environment(\.plozzCardFocusStyle) private var style
-    @Environment(\.isEnabled) private var parentEnabled
-
-    func body(content: Content) -> some View {
-        if style.usesSystemEffect {
-            if nativeFocusInContent {
-                content.disabled(!isEnabled || !parentEnabled)
-            } else {
-                NativeTVCard(
-                    content: content, focus: isFocused,
-                    isEnabled: isEnabled && parentEnabled, action: action,
-                    accessibilityLabel: accessibilityLabel, accessibilityValue: accessibilityValue
-                )
-                    .focused(isFocused.focusState)
-            }
-        } else {
-            content
-                .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .focusable(isEnabled)
-                .focused(isFocused.focusState)
-                .focusEffectDisabled()
-                .onTapGesture(perform: action)
-                .disabled(!isEnabled)
-                .accessibilityAddTraits(.isButton)
-                .modifier(CardAccessibilityMetadata(
-                    label: accessibilityLabel.map { Text(verbatim: $0) },
-                    value: accessibilityValue.map { Text(verbatim: $0) }
-                ))
-        }
-    }
-}
-
-private struct CardAccessibilityMetadata: ViewModifier {
-    let label: Text?
-    let value: Text?
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if let label {
-            content.accessibilityLabel(label)
-                .accessibilityValue(value ?? Text(verbatim: ""))
-        } else {
-            content
-        }
-    }
-}
-#endif
 
 public extension MediaItem {
     func posterCaptionText(spoilerSettings: SpoilerSettings) -> Text {

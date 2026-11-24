@@ -19,14 +19,6 @@ public struct ArtworkSettingsControls: View {
     }
 
     public var body: some View {
-        #if os(tvOS)
-        VStack(alignment: .leading, spacing: 28) {
-            Text("Choose the posters, backgrounds, and logos you see.")
-                .settingsHelperText()
-            ArtworkPresetPicker(settings: $cards.artwork)
-            SettingsControlGroup { customizationLink }
-        }
-        #else
         Section {
             ArtworkPresetPicker(settings: $cards.artwork)
         } header: {
@@ -40,7 +32,6 @@ public struct ArtworkSettingsControls: View {
             customizationLink
         }
         .padding(.top, 16)
-        #endif
     }
 
     private var customizationLink: some View {
@@ -93,11 +84,7 @@ public struct ArtworkCustomizationView: View {
     }
 
     private var areas: [ArtworkArea] {
-        #if os(tvOS)
-        ArtworkArea.allCases.filter { $0 != .downloads }
-        #else
         ArtworkArea.allCases.filter { $0 != .topShelf && $0 != .music && $0 != .recommendedHero }
-        #endif
     }
 
     public var body: some View {
@@ -139,19 +126,10 @@ public struct ArtworkCustomizationView: View {
         let controls = ForEach(visibleAreas) { area in
             ArtworkAreaChoices(area: area, settings: $cards.artwork)
         }
-        #if os(tvOS)
-        Section {
-            controls
-        } header: {
-            Text(title)
-                .settingsSectionHeader()
-        }
-        #else
         SettingsSectionGroup(title) {
             controls
         }
         .settingsSearchGroup(visibleAreas.map { "artwork-view-\($0.rawValue)" })
-        #endif
     }
 }
 

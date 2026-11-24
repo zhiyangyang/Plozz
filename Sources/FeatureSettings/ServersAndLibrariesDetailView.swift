@@ -22,19 +22,12 @@ struct ServersAndLibrariesDetailView: View {
                     SettingsCopy.sources,
                     subtitle: "Sign-ins are shared by everyone on this Apple TV. Choose what each profile sees under Libraries."
                 )
-                #if os(tvOS)
-                SettingsConnectedControlGroups {
-                    addSourceButton
-                    savedSources
-                }
-                #else
                 SettingsPanel {
                     VStack(spacing: 16) {
                         addSourceButton
                         savedSources
                     }
                 }
-                #endif
             }
             .frame(maxWidth: PlozzTheme.Metrics.settingsContentMaxWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)

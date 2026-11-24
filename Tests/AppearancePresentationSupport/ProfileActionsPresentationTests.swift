@@ -15,21 +15,11 @@ final class ProfileActionsPresentationTests: XCTestCase {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(ProfileSettingsCategory.allCases) { category in
                             Group {
-                                #if os(tvOS)
-                                SettingsRowLabel(
-                                    icon: category.symbol,
-                                    title: Text(verbatim: "Alignment")
-                                        .foregroundStyle(Color(red: 1, green: 0, blue: 0))
-                                )
-                                .environment(\.settingsRowIsFocused, true)
-                                .environment(\.settingsRowFocusForeground, Color(red: 0, green: 1, blue: 0))
-                                #else
                                 Label {
                                     Text(verbatim: "Alignment").background(Color(red: 1, green: 0, blue: 0))
                                 } icon: {
                                     Image(systemName: category.symbol).background(Color(red: 0, green: 1, blue: 0))
                                 }
-                                #endif
                             }
                             .frame(width: 500, height: 100, alignment: .leading)
                         }
@@ -94,15 +84,11 @@ final class ProfileActionsPresentationTests: XCTestCase {
     }
 
     func testProfileActionsKeepDeviceScopeAndAlignedSeparateGroups() async throws {
-        #if os(tvOS)
-        let cases: [(CGSize, DynamicTypeSize)] = [(CGSize(width: 1920, height: 1080), .large)]
-        #else
         let cases: [(CGSize, DynamicTypeSize)] = [
             (CGSize(width: 320, height: 568), .large),
             (CGSize(width: 390, height: 844), .accessibility3),
             (CGSize(width: 768, height: 1024), .large)
         ]
-        #endif
         for (size, textSize) in cases {
             try await withWindow(size: size, content: fixture().environment(\.dynamicTypeSize, textSize)) { window in
                 let labels = try await captureAllText(window, name: "profile-settings-\(Int(size.width))-\(textSize)")
@@ -169,11 +155,7 @@ final class ProfileActionsPresentationTests: XCTestCase {
     }
 
     func testProfileEditorUsesNativeNameInput() async throws {
-        #if os(tvOS)
-        let sizes = [CGSize(width: 1920, height: 1080)]
-        #else
         let sizes = [CGSize(width: 320, height: 568), CGSize(width: 768, height: 1024)]
-        #endif
         for size in sizes {
             for direction in [LayoutDirection.leftToRight, .rightToLeft] {
                 let editor = ProfileEditorView(
@@ -222,24 +204,14 @@ final class ProfileActionsPresentationTests: XCTestCase {
             onDelete: {}, isUnlocked: isUnlocked
         )
         return Group {
-            #if os(tvOS)
-            ScrollView {
-                actions.frame(width: 960).padding(32)
-            }
-            #else
             List {
                 actions
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             }
-            #endif
         }
-        #if os(tvOS)
-        .background { SettingsPageBackground() }
-        #else
         .settingsPageSurface()
-        #endif
     }
 
     private struct RecognizedLabel {
@@ -321,9 +293,6 @@ final class ProfileActionsPresentationTests: XCTestCase {
             previous?.makeKeyAndVisible()
         }
         try await settle(window)
-        #if os(tvOS)
-        XCTAssertNotNil(UIFocusSystem.focusSystem(for: window)?.focusedItem)
-        #endif
         try await exercise(window)
     }
 

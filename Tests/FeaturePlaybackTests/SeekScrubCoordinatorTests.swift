@@ -325,11 +325,7 @@ final class PlayerScrubInputTests: XCTestCase {
         XCTAssertTrue(model.timelineClock.isEnabled)
         tap()
         XCTAssertFalse(model.controlsVisible)
-        #if os(tvOS)
-        XCTAssertTrue(model.timelineClock.isEnabled, "The outgoing clock labels must survive the fade.")
-        #else
         XCTAssertFalse(model.timelineClock.isEnabled)
-        #endif
         XCTAssertTrue(recorder.targets.isEmpty)
         XCTAssertTrue(recognizers.compactMap { $0 as? UITapGestureRecognizer }.allSatisfy {
             $0.allowedTouchTypes.isEmpty
@@ -349,11 +345,7 @@ final class PlayerScrubInputTests: XCTestCase {
         XCTAssertTrue(model.timelineClock.isEnabled)
         XCTAssertTrue(model.controlsVisible)
         controller.handleSurfaceTap()
-        #if os(tvOS)
-        XCTAssertTrue(model.timelineClock.isEnabled, "The third tap only fades the current labels.")
-        #else
         XCTAssertFalse(model.timelineClock.isEnabled)
-        #endif
         XCTAssertFalse(model.controlsVisible)
         controller.handleSurfaceTap()
         XCTAssertTrue(model.controlsVisible)
@@ -854,35 +846,6 @@ final class PlayerScrubInputTests: XCTestCase {
         }
     }
 
-    #if os(tvOS)
-    func testTouchpadEdgeHoldUsesTheSameScanAndCenterHoldDoesNot() throws {
-        let (controller, model, _) = makeInput()
-        defer { controller.viewDidDisappear(false) }
-        let pan = try XCTUnwrap(controller.view.gestureRecognizers?.compactMap {
-            $0 as? PlayerSurfacePanGestureRecognizer
-        }.first)
-        let holds = controller.view.gestureRecognizers?.compactMap { $0 as? UILongPressGestureRecognizer } ?? []
-        XCTAssertEqual(holds.count, 3)
-        XCTAssertTrue(holds.allSatisfy { $0.minimumPressDuration == 0.4 && $0.allowedTouchTypes.isEmpty })
-        let selectHold = try XCTUnwrap(holds.first {
-            $0.allowedPressTypes.contains(NSNumber(value: UIPress.PressType.select.rawValue))
-        })
-        pan.click.selectBegan(position: nil)
-        XCTAssertFalse(controller.gestureRecognizerShouldBegin(selectHold))
-        pan.click.selectBegan(position: .init(x: -0.9, y: 0))
-        XCTAssertTrue(controller.gestureRecognizerShouldBegin(selectHold))
-        let hold = ScrubInputHold()
-        hold.allowedPressTypes = selectHold.allowedPressTypes
-        hold.phase = .began
-        controller.handleSeekHold(hold)
-        XCTAssertEqual(model.skipGesture.scanLevel, -1)
-        XCTAssertTrue(pan.click.suppressesPan)
-        hold.phase = .cancelled
-        controller.handleSeekHold(hold)
-        XCTAssertFalse(model.isScrubbing)
-        XCTAssertEqual(model.skipGesture.scanLevel, 0)
-    }
-    #endif
 
     func testTeardownStopsTheScanTask() async throws {
         let (controller, model, recorder) = makeInput()

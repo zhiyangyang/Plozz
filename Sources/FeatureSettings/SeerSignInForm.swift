@@ -138,9 +138,6 @@ struct SeerSignInForm: View {
             }
         }
         .settingsSignInFields()
-        #if os(tvOS)
-        .defaultFocus($primaryFocused, true)
-        #endif
         .plozzThemedSheet(isPresented: $choosingAccount) {
             SeerAccountPage(title: Text("Choose existing account"), dismissTitle: "Cancel") {
                 SettingsSectionGroup {
@@ -678,9 +675,6 @@ struct SeerSuggestedSetupView: View {
             .accessibilityIdentifier("seerr-manual-setup")
             if let error { Text(error).foregroundStyle(.red) }
         }
-        #if os(tvOS)
-        .defaultFocus($primaryFocused, true)
-        #endif
     }
 
     private var primaryTitle: LocalizedStringResource {
@@ -703,13 +697,6 @@ struct SeerPlexSignInView: View {
     var body: some View {
         VStack(spacing: 24) {
             Text("Sign in with Plex").font(.title2.bold())
-            #if os(tvOS)
-            SettingsQRCode(string: url.absoluteString, centerMark: nil)
-                .frame(width: 260, height: 260)
-                .accessibilityLabel(Text("Scan to sign in with Plex"))
-            Text("Scan with your phone to sign in.")
-                .plozzForeground(.secondary)
-            #else
             Button(action: openPlex) {
                 Text("Open Plex sign-in").frame(maxWidth: .infinity).plozzPageActionLabel()
             }
@@ -717,7 +704,6 @@ struct SeerPlexSignInView: View {
             if browserOpenFailed {
                 Text("Couldn’t open Plex. Try again.").foregroundStyle(.red)
             }
-            #endif
             ProgressView("Waiting for sign-in")
             Button("Cancel", action: onCancel)
                 .plozzPageActionButton(role: .secondary)

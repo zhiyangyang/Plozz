@@ -65,14 +65,10 @@ public struct SpoilerSafeOverviewText: View {
     /// plain label text (no pointer to tap them); iOS/iPadOS renders tappable links.
     @ViewBuilder
     private func overviewText(_ overview: String) -> some View {
-        #if os(tvOS)
-        Text(verbatim: overview.overviewPlainText)
-        #else
         Text(overview.overviewMarkdownWithLegibleLinks(
             textColor: palette.primaryText,
             accent: palette.accent
         ))
-        #endif
     }
 
     private var layoutReservation: String {

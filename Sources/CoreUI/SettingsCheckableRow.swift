@@ -72,20 +72,12 @@ public struct SettingsCheckableRow: View {
     private var iconFrame: CGFloat { prominence == .primary ? 34 : 30 }
     private var titleFont: Font {
         if usesGroupInsets { return .body.weight(.medium) }
-        #if os(tvOS)
-        return SettingsRowMetrics.titleFont
-        #else
         return prominence == .primary ? .headline.weight(.semibold) : .callout.weight(.medium)
-        #endif
     }
     private var minRowHeight: CGFloat { SettingsRowMetrics.minHeight(prominence) }
     private var verticalPadding: CGFloat { SettingsRowMetrics.verticalPadding(prominence) }
     private var ownsGroupInsets: Bool {
-        #if os(tvOS)
-        false
-        #else
         usesGroupInsets
-        #endif
     }
 
     public var body: some View {
