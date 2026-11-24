@@ -7,7 +7,7 @@ import CoreNetworking
 /// Holds an authenticated `JellyfinClient` and maps Jellyfin DTOs onto the
 /// provider-agnostic `CoreModels` types. Feature modules depend only on
 /// `MediaProvider`; this is the single place Jellyfin specifics live.
-public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProviding, SeriesResumeProviding, SeriesIdentityProviding, AuthenticatedHTTPOriginProviding, ServerAddressUpdating {
+public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProviding, SeriesResumeProviding, SeriesIdentityProviding, AuthenticatedHTTPOriginProviding, ServerAddressUpdating, PersonMovieCreditsProviding {
     public var playbackInventoryRequiresEnrichment: Bool { true }
 
     public let kind: ProviderKind
@@ -607,6 +607,20 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
             userID: session.userID,
             personID: personID,
             limit: limit
+        ).map(map(item:))
+    }
+
+    /// Film-only credits for the personal actor page. Omitting Overview and the
+    /// series rows keeps large filmographies small; the poster grid only needs
+    /// year, artwork and the Emby score.
+    public func movieItems(withPerson personID: String, limit: Int) async throws -> [MediaItem] {
+        try await client.itemsWithPerson(
+            userID: session.userID,
+            personID: personID,
+            limit: limit,
+            includeItemTypes: "Movie",
+            fields: "ProviderIds,CommunityRating,ProductionYear,PremiereDate,"
+                + "PrimaryImageAspectRatio"
         ).map(map(item:))
     }
 

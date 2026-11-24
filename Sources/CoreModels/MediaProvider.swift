@@ -11,6 +11,16 @@ import Foundation
 ///  * never log secrets/tokens;
 ///  * map transport errors onto `AppError`;
 ///  * be safe to call from the main actor (network work hops off internally).
+/// An optional, movie-only person-credit lookup.
+///
+/// The full person page can show films and series. The personal actor page is a
+/// filmography wall, so asking the server for movies only keeps the response —
+/// and the list it has to map — smaller. Providers that do not implement this
+/// keep using ``MediaProvider/items(withPerson:limit:)`` and filtering locally.
+public protocol PersonMovieCreditsProviding: Sendable {
+    func movieItems(withPerson personID: String, limit: Int) async throws -> [MediaItem]
+}
+
 public protocol MediaProvider: Sendable {
     var kind: ProviderKind { get }
 

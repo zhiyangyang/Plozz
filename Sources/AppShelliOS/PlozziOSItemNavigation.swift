@@ -3,7 +3,9 @@ import AppRuntime
 import CoreModels
 import CoreUI
 import FeatureHomeCore
+import Foundation
 import MetadataKit
+import Observation
 import SwiftUI
 
 /// Programmatic navigation to an item's detail page.
@@ -191,22 +193,25 @@ private struct PlozziOSPersonPage: View {
 
     var body: some View {
         let person = route.person
-        let viewModel = Self.makeViewModel(
-            appModel: appModel,
-            person: person,
-            sourceAccountID: route.sourceAccountID
-        )
         Group {
             if PlozzCustomization.isCustomBuild {
                 PlozziOSPersonFilmographyGrid(
                     appModel: appModel,
-                    viewModel: viewModel,
+                    model: Self.makeFilmographyModel(
+                        appModel: appModel,
+                        person: person,
+                        sourceAccountID: route.sourceAccountID
+                    ),
                     onSelectItem: { navigatedItem = $0 }
                 )
             } else {
                 PersonDetailView(
                     person: person,
-                    viewModel: viewModel,
+                    viewModel: Self.makeViewModel(
+                        appModel: appModel,
+                        person: person,
+                        sourceAccountID: route.sourceAccountID
+                    ),
                     onSelectItem: { navigatedItem = $0 }
                 )
                 .artworkNavigation { navigatedArtwork = .init(item: $0, source: $1) }
@@ -219,6 +224,31 @@ private struct PlozziOSPersonPage: View {
         .navigationDestination(item: $navigatedItem) { item in
             PlozziOSItemPage(appModel: appModel, item: item)
         }
+    }
+
+    private static func makeFilmographyModel(
+        appModel: PlozziOSAppModel,
+        person: MediaPerson,
+        sourceAccountID: String?
+    ) -> PlozziOSPersonFilmographyModel {
+        let accounts = appModel.accountsProviders.resolvedActiveAccounts
+        let provider = sourceAccountID.flatMap { id in
+            accounts.first(where: { $0.account.id == id })?.provider
+        }
+        let cacheKey = [
+            appModel.profiles.activeProfileID,
+            sourceAccountID ?? "-",
+            person.id,
+            accounts.map(\.account.id).sorted().joined(separator: ","),
+        ].joined(separator: "|")
+        return PlozziOSPersonFilmographyModel(
+            person: person,
+            provider: provider,
+            otherProviders: accounts
+                .filter { $0.account.id != sourceAccountID }
+                .map(\.provider),
+            cacheKey: cacheKey
+        )
     }
 
     private static func makeViewModel(
@@ -269,6 +299,151 @@ private struct PlozziOSPersonPage: View {
     }
 }
 
+@MainActor
+@Observable
+private final class PlozziOSPersonFilmographyModel {
+    private let person: MediaPerson
+    private let provider: (any MediaProvider)?
+    private let otherProviders: [any MediaProvider]
+    private let cacheKey: String
+    private let limit: Int
+    private(set) var state: LoadState<[MediaItem]> = .loading
+    private var started = false
+    private var mergeTask: Task<Void, Never>?
+
+    init(
+        person: MediaPerson,
+        provider: (any MediaProvider)?,
+        otherProviders: [any MediaProvider],
+        cacheKey: String,
+        limit: Int = 40
+    ) {
+        self.person = person
+        self.provider = provider
+        self.otherProviders = otherProviders
+        self.cacheKey = cacheKey
+        self.limit = limit
+    }
+
+    func load() async {
+        guard !started else { return }
+        started = true
+        if let cached = PlozziOSPersonFilmographyCache.shared.movies(for: cacheKey) {
+            state = cached.isEmpty ? .empty : .loaded(cached)
+            startBackgroundMergeIfNeeded()
+            return
+        }
+        await loadPrimary()
+    }
+
+    private func loadPrimary() async {
+        guard let provider else {
+            if otherProviders.isEmpty {
+                state = .empty
+            } else {
+                await mergeOtherProviders()
+            }
+            return
+        }
+        let startedAt = Date()
+        do {
+            let items: [MediaItem]
+            if let filmographyProvider = provider as? any PersonMovieCreditsProviding {
+                items = try await filmographyProvider.movieItems(
+                    withPerson: person.id, limit: limit
+                )
+            } else {
+                items = try await provider.items(withPerson: person.id, limit: limit)
+            }
+            let movies = PlozziOSPersonFilmographyGrid.movieCredits(from: items)
+            state = movies.isEmpty ? .empty : .loaded(movies)
+            PlozziOSPersonFilmographyCache.shared.store(movies, for: cacheKey)
+            PersonDiagnostics.emit(
+                "person.filmography name=\(person.name) movies=\(movies.count) "
+                    + "ms=\(Int(Date().timeIntervalSince(startedAt) * 1000))"
+            )
+            startBackgroundMergeIfNeeded()
+        } catch is CancellationError {
+            return
+        } catch {
+            state = .failed(.unknown(error.localizedDescription))
+            if !otherProviders.isEmpty { await mergeOtherProviders() }
+        }
+    }
+
+    private func startBackgroundMergeIfNeeded() {
+        guard mergeTask == nil, !otherProviders.isEmpty else { return }
+        mergeTask = Task { [weak self] in
+            await self?.mergeOtherProviders()
+            self?.mergeTask = nil
+        }
+    }
+
+    private func mergeOtherProviders() async {
+        var merged = state.value ?? []
+        var seen = Set(merged.map(Self.dedupeKey))
+        let name = person.name
+        let limit = limit
+        await withTaskGroup(of: [MediaItem].self) { group in
+            for provider in otherProviders {
+                group.addTask {
+                    (try? await provider.items(withPersonNamed: name, limit: limit)) ?? []
+                }
+            }
+            for await items in group {
+                for item in PlozziOSPersonFilmographyGrid.movieCredits(from: items) {
+                    let key = Self.dedupeKey(item)
+                    guard seen.insert(key).inserted else { continue }
+                    merged.append(item)
+                }
+            }
+        }
+        guard !Task.isCancelled else { return }
+        state = merged.isEmpty ? .empty : .loaded(merged)
+        PlozziOSPersonFilmographyCache.shared.store(merged, for: cacheKey)
+        PersonDiagnostics.emit(
+            "person.filmography.others name=\(person.name) movies=\(merged.count)"
+        )
+    }
+
+    private static func dedupeKey(_ item: MediaItem) -> String {
+        let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return "\(item.kind.rawValue)|\(title)|\(item.productionYear.map(String.init) ?? "-")"
+    }
+}
+
+@MainActor
+private final class PlozziOSPersonFilmographyCache {
+    static let shared = PlozziOSPersonFilmographyCache()
+
+    private struct Entry {
+        let movies: [MediaItem]
+        let storedAt: Date
+    }
+
+    private let ttl: TimeInterval = 300
+    private let maximumEntries = 24
+    private var entries: [String: Entry] = [:]
+
+    func movies(for key: String) -> [MediaItem]? {
+        guard let entry = entries[key],
+              Date().timeIntervalSince(entry.storedAt) < ttl else {
+            entries[key] = nil
+            return nil
+        }
+        return entry.movies
+    }
+
+    func store(_ movies: [MediaItem], for key: String) {
+        entries[key] = Entry(movies: movies, storedAt: Date())
+        guard entries.count > maximumEntries else { return }
+        while entries.count > maximumEntries,
+              let oldest = entries.min(by: { $0.value.storedAt < $1.value.storedAt })?.key {
+            entries.removeValue(forKey: oldest)
+        }
+    }
+}
+
 /// The personal build's person page is a filmography wall, not a profile.
 ///
 /// The actor's name is the only header, and the page is the same poster grid as
@@ -277,7 +452,7 @@ private struct PlozziOSPersonPage: View {
 /// its headshot, biography and Known for shelves for the canonical app and tvOS.
 struct PlozziOSPersonFilmographyGrid: View {
     let appModel: PlozziOSAppModel
-    @State private var viewModel: PersonDetailViewModel
+    @State private var model: PlozziOSPersonFilmographyModel
     @State private var favoriteStateRevision = 0
     let onSelectItem: (MediaItem) -> Void
 
@@ -287,13 +462,13 @@ struct PlozziOSPersonFilmographyGrid: View {
     @Environment(\.plozzCardStyle) private var cardStyle
     @Environment(\.themePalette) private var palette
 
-    init(
+    fileprivate init(
         appModel: PlozziOSAppModel,
-        viewModel: PersonDetailViewModel,
+        model: PlozziOSPersonFilmographyModel,
         onSelectItem: @escaping (MediaItem) -> Void
     ) {
         self.appModel = appModel
-        _viewModel = State(initialValue: viewModel)
+        _model = State(initialValue: model)
         self.onSelectItem = onSelectItem
     }
 
@@ -302,15 +477,12 @@ struct PlozziOSPersonFilmographyGrid: View {
     }
 
     private var movies: [MediaItem] {
-        Self.movieCredits(from: viewModel.libraryCredits)
+        model.state.value ?? []
     }
 
     private var isLoading: Bool {
-        switch viewModel.state {
-        case .loading: true
-        case .loaded: !viewModel.creditsAreFinal
-        case .unavailable: false
-        }
+        if case .loading = model.state { return true }
+        return false
     }
 
     var body: some View {
@@ -362,7 +534,7 @@ struct PlozziOSPersonFilmographyGrid: View {
         .navigationTitle(Text(verbatim: ""))
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.plozzCardCaptionView, .filmography)
-        .task { await viewModel.load() }
+        .task { await model.load() }
         .onReceive(NotificationCenter.default.publisher(for: .watchlistIntentDidChange)) { _ in
             favoriteStateRevision &+= 1
         }

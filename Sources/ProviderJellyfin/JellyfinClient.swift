@@ -598,22 +598,21 @@ public struct JellyfinClient: Sendable {
     func itemsWithPerson(
         userID: String,
         personID: String,
-        limit: Int
+        limit: Int,
+        includeItemTypes: String = "Movie,Series",
+        fields: String = "Overview,OriginalTitle,ProviderIds,CommunityRating,"
+            + "ProductionYear,PremiereDate,PrimaryImageAspectRatio"
     ) async throws -> [BaseItemDto] {
         let endpoint = Endpoint(
             path: "/Users/\(userID)/Items",
             queryItems: [
                 URLQueryItem(name: "PersonIds", value: personID),
                 URLQueryItem(name: "Recursive", value: "true"),
-                URLQueryItem(name: "IncludeItemTypes", value: "Movie,Series"),
+                URLQueryItem(name: "IncludeItemTypes", value: includeItemTypes),
                 URLQueryItem(name: "SortBy", value: "PremiereDate,SortName"),
                 URLQueryItem(name: "SortOrder", value: "Descending"),
                 URLQueryItem(name: "Limit", value: String(limit)),
-                URLQueryItem(
-                    name: "Fields",
-                    value: "Overview,OriginalTitle,ProviderIds,CommunityRating,"
-                        + "ProductionYear,PremiereDate,PrimaryImageAspectRatio"
-                )
+                URLQueryItem(name: "Fields", value: fields)
             ],
             headers: authHeaders
         )
