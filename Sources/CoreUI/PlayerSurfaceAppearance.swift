@@ -6,7 +6,7 @@ import UIKit
 
 public extension EnvironmentValues {
     var playerUsesNativeGlass: Bool {
-        if #available(iOS 26.0, tvOS 26.0, *) {
+        if #available(iOS 26.0, *) {
             return !plozzReducePanelGlass && !plozzReduceTransparency
         }
         return false
@@ -35,7 +35,7 @@ public extension View {
     }
 }
 
-@available(iOS 26.0, tvOS 26.0, *)
+@available(iOS 26.0, *)
 public struct PlayerNativeGlassSurface<S: Shape>: View {
     private let shape: S
     private let glass: Glass

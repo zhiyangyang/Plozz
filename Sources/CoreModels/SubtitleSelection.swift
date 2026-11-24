@@ -64,7 +64,7 @@ public enum LanguageMatch {
 
     /// The device's current language as a 2-letter code where possible.
     public static var deviceLanguageCode: String? {
-        if #available(tvOS 16, macOS 13, iOS 16, *) {
+        if #available(iOS 16, *) {
             if let code = Locale.current.language.languageCode?.identifier {
                 return normalized(code)
             }

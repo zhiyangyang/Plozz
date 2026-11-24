@@ -568,7 +568,7 @@ public struct PINKeyStyle: PrimitiveButtonStyle {
     public init(width: CGFloat) { self.width = width }
 
     public func makeBody(configuration: Configuration) -> some View {
-        if #available(iOS 26.0, tvOS 26.0, *), !reduceTransparency {
+        if #available(iOS 26.0, *), !reduceTransparency {
             PINNativeKeyBody(configuration: configuration, width: width)
         } else {
             Button(role: configuration.role, action: configuration.trigger) {
@@ -579,7 +579,7 @@ public struct PINKeyStyle: PrimitiveButtonStyle {
     }
 }
 
-@available(iOS 26.0, tvOS 26.0, *)
+@available(iOS 26.0, *)
 private struct PINNativeKeyBody: View {
     let configuration: PrimitiveButtonStyleConfiguration
     let width: CGFloat

@@ -41,7 +41,7 @@ private struct PlayerGlassButtonModifier: ViewModifier {
         Group {
             if reducePanelGlass || reduceTransparency {
                 content.buttonStyle(PlayerFrostedButtonStyle(prominent: prominent))
-            } else if #available(iOS 26.0, tvOS 26.0, *) {
+            } else if #available(iOS 26.0, *) {
                 if prominent {
                     content.buttonStyle(.glassProminent)
                 } else {

@@ -153,7 +153,7 @@ struct ScrubBar: View {
             // preview hugs the bar.
             let thumbnailLift: CGFloat = 34
             Group {
-                if #available(iOS 26.0, tvOS 26.0, *), !reducePanelGlass {
+                if #available(iOS 26.0, *), !reducePanelGlass {
                     content
                         .padding(border)
                         .background {
@@ -401,7 +401,7 @@ public struct PlayerScrubTrackSurface: View {
     }
 
     public var body: some View {
-        if #available(iOS 26.0, tvOS 26.0, *), usesNativeGlass {
+        if #available(iOS 26.0, *), usesNativeGlass {
             #if os(iOS)
             PlayerNativeGlassSurface(Capsule(), glass: .clear)
                 .frame(height: height)
@@ -438,7 +438,7 @@ public struct PlayerGlassCircleSurface: View {
                 .fill(.clear)
                 .plozzFrostedBackground(shape)
                 .plozzFrostedBorder(shape)
-        } else if #available(iOS 26.0, tvOS 26.0, *) {
+        } else if #available(iOS 26.0, *) {
             #if os(iOS)
             PlayerNativeGlassSurface(shape, glass: .clear)
             #else
@@ -578,7 +578,7 @@ struct PlayerTabButtonStyle: ButtonStyle {
                 .fill(.clear)
                 .plozzFrostedBackground(shape, raised: selected)
                 .plozzFrostedBorder(shape)
-        } else if !reduceTransparency, #available(iOS 26.0, tvOS 26.0, *) {
+        } else if !reduceTransparency, #available(iOS 26.0, *) {
             PlayerNativeGlassSurface(shape)
         } else {
             shape.fill(.clear)
@@ -646,7 +646,7 @@ struct PanelGlassBackground: ViewModifier {
                 content
                     .plozzFrostedBackground(shape)
                     .plozzFrostedBorder(shape)
-            } else if #available(iOS 26.0, tvOS 26.0, *) {
+            } else if #available(iOS 26.0, *) {
                 #if os(iOS)
                 content.background { PlayerNativeGlassSurface(shape, glass: mediaGlass ? .clear : .regular) }
                 #else

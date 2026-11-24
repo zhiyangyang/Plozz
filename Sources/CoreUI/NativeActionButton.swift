@@ -48,7 +48,7 @@ private struct NativeActionButtonModifier: ViewModifier {
         case .primary:
             primary(content)
         case .secondary:
-            if #available(iOS 26.0, tvOS 26.0, *) {
+            if #available(iOS 26.0, *) {
                 content.buttonStyle(.glass)
             } else {
                 content.buttonStyle(.bordered)
@@ -65,7 +65,7 @@ private struct NativeActionButtonModifier: ViewModifier {
         #else
         let button = content
         #endif
-        if #available(iOS 26.0, tvOS 26.0, *) {
+        if #available(iOS 26.0, *) {
             if usesPageActionAppearance && !isEnabled {
                 button.buttonStyle(.glass)
             } else {

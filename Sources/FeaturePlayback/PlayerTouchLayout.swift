@@ -202,7 +202,7 @@ public struct PlayerGlassControlGroup<Content: View>: View {
 
     public var body: some View {
         Group {
-            if nativeGlass, #available(iOS 26.0, tvOS 26.0, *) {
+            if nativeGlass, #available(iOS 26.0, *) {
                 #if os(iOS)
                 controls.glassEffect(.clear, in: Capsule())
                 #else
@@ -247,7 +247,7 @@ private struct PlayerTouchTabModifier: ViewModifier {
     @Environment(\.playerUsesNativeGlass) private var nativeGlass
 
     func body(content: Content) -> some View {
-        if nativeGlass, #available(iOS 26.0, tvOS 26.0, *) {
+        if nativeGlass, #available(iOS 26.0, *) {
             content
                 .buttonStyle(PlayerNativeTouchTabStyle())
                 .controlSize(.regular)
@@ -260,7 +260,7 @@ private struct PlayerTouchTabModifier: ViewModifier {
     }
 }
 
-@available(iOS 26.0, tvOS 26.0, *)
+@available(iOS 26.0, *)
 private struct PlayerNativeTouchTabStyle: PrimitiveButtonStyle {
     @Environment(\.playerControlForeground) private var foreground
 

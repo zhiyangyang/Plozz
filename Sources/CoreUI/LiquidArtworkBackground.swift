@@ -103,7 +103,7 @@ public struct LiquidArtworkBackground: View {
     @ViewBuilder
     private var gradientLayer: some View {
         let colors = resolvedColors
-        if #available(tvOS 18.0, *) {
+        if #available(iOS 18.0, *) {
             MeshLiquidLayer(colors: colors, animate: animate && !reduceMotion)
         } else {
             BlobLiquidLayer(colors: colors, animate: animate && !reduceMotion)
@@ -133,9 +133,9 @@ public struct LiquidArtworkBackground: View {
     ]
 }
 
-// MARK: - tvOS 18+ mesh
+// MARK: - iOS 18+ mesh
 
-@available(tvOS 18.0, *)
+@available(iOS 18.0, *)
 private struct MeshLiquidLayer: View {
     var colors: [Color]
     var animate: Bool

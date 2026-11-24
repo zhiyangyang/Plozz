@@ -222,7 +222,7 @@ extension MediaCapabilities {
         #if canImport(VideoToolbox)
         let hevc = VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC)
         caps.supportsHEVC = hevc
-        if #available(tvOS 16.0, iOS 16.0, macOS 13.0, *) {
+        if #available(iOS 16.0, *) {
             caps.supportsAV1 = VTIsHardwareDecodeSupported(kCMVideoCodecType_AV1)
         } else {
             caps.supportsAV1 = false

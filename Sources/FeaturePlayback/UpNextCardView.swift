@@ -313,7 +313,7 @@ struct PlayerOverVideoSurface: View {
                 .fill(.clear)
                 .plozzFrostedBackground(shape, raised: focused)
                 .plozzFrostedBorder(shape, visible: !focused)
-        } else if #available(iOS 26.0, tvOS 26.0, *) {
+        } else if #available(iOS 26.0, *) {
             // Glass at rest as well as on focus — a card over live video is what
             // the material is for, and showing it only on focus is why this read
             // as a flat scrim. Drawn as a background underlay rather than wrapped

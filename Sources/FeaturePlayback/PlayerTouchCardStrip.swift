@@ -17,7 +17,6 @@ import CoreUI
 /// compiles on iOS where it simply never engages. That is exactly right for
 /// touch — the focused treatment never appears, the resting one always does, and
 /// taps drive everything.
-@available(tvOS, unavailable, message: "tvOS drives this from PlayerControls, which owns the focus choreography")
 public struct PlayerTouchCardStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let model: PlayerControlsModel
@@ -278,7 +277,6 @@ public struct PlayerTouchCardStrip: View {
 /// It grows on touch-down and STAYS grown for the whole drag, which is the tvOS
 /// behaviour and also the useful one — a bar that shrinks back the instant you
 /// start moving gives up precision exactly when you asked for it.
-@available(tvOS, unavailable, message: "tvOS has ScrubBar, which this deliberately mirrors")
 public struct PlayerTouchScrubBar: View {
     private let currentSeconds: TimeInterval
     private let duration: TimeInterval
@@ -362,7 +360,6 @@ public struct PlayerTouchScrubBar: View {
     }
 }
 
-@available(tvOS, unavailable)
 struct PlayerTouchScrubTrack: View {
     let width: CGFloat
     let progressFraction: Double
@@ -394,7 +391,6 @@ struct PlayerTouchScrubTrack: View {
     }
 }
 
-@available(tvOS, unavailable)
 struct PlayerTouchProgressFill: View {
     let isActive: Bool
 

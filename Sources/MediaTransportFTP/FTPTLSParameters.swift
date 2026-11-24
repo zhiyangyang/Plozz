@@ -41,7 +41,7 @@ enum FTPTLSParameters {
     }
 
     private static func leafCertificate(of trust: SecTrust) -> SecCertificate? {
-        if #available(tvOS 15.0, iOS 15.0, macOS 12.0, *) {
+        if #available(iOS 15.0, *) {
             guard let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] else {
                 return nil
             }

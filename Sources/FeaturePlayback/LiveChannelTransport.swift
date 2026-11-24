@@ -2212,7 +2212,7 @@ private struct LiveChannelScrubThumbnail: View {
         .frame(width: Self.width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: Self.corner, style: .continuous))
         Group {
-            if #available(iOS 26.0, tvOS 26.0, *), !reduceTransparency {
+            if #available(iOS 26.0, *), !reduceTransparency {
                 content
                     .padding(Self.border)
                     .background {
