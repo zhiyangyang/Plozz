@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# App-hosted tvOS focus tests. Package logic tests do not have an application scene.
+# App-hosted iPad focus tests. Package logic tests do not have an application scene.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export GIT_CONFIG_PARAMETERS="${GIT_CONFIG_PARAMETERS-'safe.bareRepository=all'}"
@@ -17,9 +17,9 @@ if [[ -z "${PLOZZ_SIM_ID:-}" ]]; then
   PLOZZ_SIM_ID="$(xcrun simctl list devices available -j | python3 -c '
 import json,sys
 devices=[d for runtime,items in json.load(sys.stdin)["devices"].items()
-         if "tvOS" in runtime for d in items if d.get("isAvailable")]
+         if "iOS" in runtime for d in items if d.get("isAvailable")]
 devices.sort(key=lambda d: d.get("state") != "Booted")
-if not devices: sys.exit("No available tvOS simulator")
+if not devices: sys.exit("No available iPad simulator")
 print(devices[0]["udid"])
 ')"
 fi
@@ -30,8 +30,8 @@ RESULTS="${PLOZZ_FOCUS_RESULTS:-$PWD/.build/focus-test-results}"
 mkdir -p "$RESULTS"
 RUN_DIR="$(mktemp -d "$RESULTS/Run-XXXXXXXX")"
 BUILD_ARGS=(
-  -project Plozz.xcodeproj -scheme PlozzFocusTests
-  -destination "platform=tvOS Simulator,id=$PLOZZ_SIM_ID"
+  -project Plozz.xcodeproj -scheme PlozziOSPresentationTests
+  -destination "platform=iOS Simulator,id=$PLOZZ_SIM_ID"
   -parallel-testing-enabled NO
   -derivedDataPath "${PLOZZ_FOCUS_DERIVED_DATA:-$PWD/.build/focus-shared-root-derived-data}"
   # Hosted timing assertions exercise optimized code while retaining DEBUG test seams.

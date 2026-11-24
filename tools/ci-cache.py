@@ -25,7 +25,7 @@ BUILD_PARTS = (
     "SourcePackages",
     "source-timestamps.json",
 )
-SOURCE_DIRECTORIES = ("Sources", "Tests", "App", "TopShelf", "Config")
+SOURCE_DIRECTORIES = ("Sources", "Tests", "App", "Config")
 SOURCE_FILES = ("Package.swift", "Package.resolved", "project.yml")
 CONFIG_INPUTS = (
     "Package.swift",
@@ -39,7 +39,7 @@ CONFIG_INPUTS = (
     "tools/run-tests.sh",
     "tools/run-focus-tests.sh",
     "tools/run-bounded.py",
-    "tools/select-ci-tvos-simulator.py",
+    "tools/select-ci-ios-simulator.py",
     "tools/lib/swift-package-storage.sh",
 )
 
@@ -334,9 +334,9 @@ def main() -> None:
         "workspace": str(root),
         "xcode": command("xcodebuild", "-version"),
         "developer": command("xcode-select", "-p"),
-        "sdk": command("xcrun", "--sdk", "appletvsimulator", "--show-sdk-version"),
-        "sdk-build": command("xcrun", "--sdk", "appletvsimulator", "--show-sdk-build-version"),
-        "sdk-path": command("xcrun", "--sdk", "appletvsimulator", "--show-sdk-path"),
+        "sdk": command("xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"),
+        "sdk-build": command("xcrun", "--sdk", "iphonesimulator", "--show-sdk-build-version"),
+        "sdk-path": command("xcrun", "--sdk", "iphonesimulator", "--show-sdk-path"),
         "host-arch": command("uname", "-m"),
         "os-build": command("sw_vers", "-buildVersion"),
         "xcodegen": command("xcodegen", "--version"),

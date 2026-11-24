@@ -8,8 +8,6 @@ let frameEnginePath = URL(fileURLWithPath: #filePath).deletingLastPathComponent(
     .appendingPathComponent(".build/normal-ass/AetherEngine").path
 let localASSEngine = FileManager.default.fileExists(atPath: frameEnginePath + "/.plozz-frame-ass")
     ? frameEnginePath : nil
-let assEngineSettings: [SwiftSetting] = localASSEngine == nil ? [] : [.define("PLOZZ_FRAME_ASS", .when(platforms: [.tvOS]))]
-
 // Experimental Java menus are local-only. Native compilation also rejects
 // this opt-in in Release, including a cached experimental package graph.
 let experimentalDiscJava = ProcessInfo.processInfo.environment["PLOZZ_EXPERIMENTAL_BDJ"] == "1"
@@ -38,8 +36,7 @@ let package = Package(
     // when `.stringsdata` files are being written. See docs/localization.md.
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v18),
-        .tvOS(.v18)
+        .iOS(.v18)
     ],
     products: [
         .library(name: "CoreModels", targets: ["CoreModels"]),
@@ -47,7 +44,6 @@ let package = Package(
         .library(name: "CoreUI", targets: ["CoreUI"]),
         .library(name: "MetadataKit", targets: ["MetadataKit"]),
         .library(name: "FeatureDiscoveryCore", targets: ["FeatureDiscoveryCore"]),
-        .library(name: "FeatureDiscovery", targets: ["FeatureDiscovery"]),
         .library(name: "ProviderJellyfin", targets: ["ProviderJellyfin"]),
         .library(name: "ProviderSilo", targets: ["ProviderSilo"]),
         .library(name: "ProviderSubsonic", targets: ["ProviderSubsonic"]),
@@ -66,11 +62,9 @@ let package = Package(
         .library(name: "FeatureAuthCore", targets: ["FeatureAuthCore"]),
         .library(name: "FeatureAuth", targets: ["FeatureAuth"]),
         .library(name: "FeatureHomeCore", targets: ["FeatureHomeCore"]),
-        .library(name: "FeatureHome", targets: ["FeatureHome"]),
         .library(name: "FeatureSearchCore", targets: ["FeatureSearchCore"]),
         .library(name: "FeaturePlayback", targets: ["FeaturePlayback"]),
         .library(name: "EnginePlozzigen", targets: ["EnginePlozzigen"]),
-        .library(name: "FeatureSearch", targets: ["FeatureSearch"]),
         .library(name: "FeatureLiveTVCore", targets: ["FeatureLiveTVCore"]),
         .library(name: "FeatureLiveTV", targets: ["FeatureLiveTV"]),
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
@@ -79,7 +73,6 @@ let package = Package(
         .library(name: "FeatureSyncSetup", targets: ["FeatureSyncSetup"]),
         .library(name: "FeatureSyncCloud", targets: ["FeatureSyncCloud"]),
         .library(name: "FeatureMusic", targets: ["FeatureMusic"]),
-        .library(name: "TopShelfKit", targets: ["TopShelfKit"]),
         .library(name: "CrashReporting", targets: ["CrashReporting"]),
         .library(name: "MediaDownloads", targets: ["MediaDownloads"]),
         .library(name: "MediaTransportCore", targets: ["MediaTransportCore"]),
@@ -90,7 +83,6 @@ let package = Package(
         .library(name: "TransportNFS", targets: ["TransportNFS"]),
         .library(name: "MediaTransportNFS", targets: ["MediaTransportNFS"]),
         .library(name: "AppRuntime", targets: ["AppRuntime"]),
-        .library(name: "AppShell", targets: ["AppShell"]),
         .library(name: "AppShelliOS", targets: ["AppShelliOS"])
     ],
     dependencies: [
@@ -450,10 +442,6 @@ let package = Package(
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
         .target(
-            name: "FeatureDiscovery",
-            dependencies: ["CoreModels", "CoreUI", "FeatureDiscoveryCore"]
-        ),
-        .target(
             name: "CoreSecureStore",
             dependencies: ["CoreModels"]
         ),
@@ -470,9 +458,6 @@ let package = Package(
             dependencies: [
                 "CoreModels",
                 "CoreNetworking",
-                // For `PersonDetailViewModel`, which lives here rather than in
-                // FeatureHome so BOTH shells can build it: FeatureHome carries
-                // unguarded tvOS-only API and is never compiled for iOS.
                 "CoreUI",
                 "MetadataKit",
                 "RatingsService"
@@ -483,30 +468,13 @@ let package = Package(
             dependencies: ["CoreModels", "CoreUI", "FeatureHomeCore", "MetadataKit"]
         ),
         .target(
-            name: "FeatureHome",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreUI", "FeatureHomeCore", "HeroUI", "MetadataKit", "TopShelfKit", "RatingsService"]
-        ),
-        .target(
             name: "FeaturePlayback",
             dependencies: ["CoreModels", "CoreNetworking", "CoreUI", "TraktService", "MetadataKit"],
-            resources: [.process("Resources")],
-            linkerSettings: [
-                // Force-link AVKit on tvOS so its `UIWindow (AVAdditions)`
-                // category (which adds `avDisplayManager`, used to drive the
-                // Dolby Vision / HDR display-mode switch) is registered at
-                // runtime. Swift's autolink hint for a category-only reference
-                // gets dropped through the SPM static-lib → app link, leaving the
-                // selector unrecognized (instant crash) unless linked explicitly.
-                .linkedFramework("AVKit", .when(platforms: [.tvOS]))
-            ]
+            resources: [.process("Resources")]
         ),
         .target(
             name: "FeatureSearchCore",
             dependencies: ["CoreModels"]
-        ),
-        .target(
-            name: "FeatureSearch",
-            dependencies: ["CoreModels", "CoreUI", "FeatureSearchCore"]
         ),
         .target(
             name: "FeatureLiveTVCore",
@@ -557,17 +525,6 @@ let package = Package(
             name: "FeatureMusic",
             dependencies: ["CoreModels", "CoreUI", "MetadataKit", "CoreNetworking"],
             resources: [.process("iOS/Resources"), .copy("iOS/Mozz-NOTICE.txt")]
-        ),
-
-        // MARK: Top Shelf (shared with the tvOS Top Shelf extension)
-        //
-        // `TopShelfSnapshot` + `TopShelfStore` are Foundation-only and are also
-        // compiled directly into the Top Shelf extension by source path (see
-        // project.yml). `TopShelfPublisher` imports CoreModels and is therefore
-        // app-only — the extension never compiles it.
-        .target(
-            name: "TopShelfKit",
-            dependencies: ["CoreModels"]
         ),
 
         // MARK: Crash reporting (opt-in, off by default)
@@ -844,9 +801,8 @@ let package = Package(
                 "FeaturePlayback",
                 .product(name: "AetherEngine", package: "AetherEngine"),
                 "Libass",
-                .target(name: "DiscNavigation", condition: .when(platforms: [.iOS, .tvOS])),
-            ],
-            swiftSettings: assEngineSettings
+                "DiscNavigation",
+            ]
         ),
 
         .target(
@@ -902,54 +858,6 @@ let package = Package(
         ),
 
         // MARK: App composition root
-        .target(
-            name: "AppShell",
-            dependencies: [
-                "FeatureShareOnboarding",
-                "AppRuntime",
-                "CoreModels",
-                "CoreNetworking",
-                "CoreUI",
-                "EnginePlozzigen",
-                "FeatureDiscovery",
-                "FeatureDiscoveryCore",
-                "FeatureAuth",
-                "FeatureHomeCore",
-                "MediaTransportCore",
-                "MediaTransportHTTP",
-                "MediaTransportSMB",
-                "MediaTransportWebDAV",
-                "MediaTransportSFTP",
-                "MediaTransportNFS",
-                "MediaTransportFTP",
-                "MediaDownloads",
-                "MetadataKit",
-                "ProviderJellyfin",
-                "ProviderSilo",
-                "ProviderPlex",
-                "ProviderShare",
-                "RatingsService",
-                "TraktService",
-                "SeerService",
-                "SimklService",
-                "WetrakrService",
-                "AniListService",
-                "MALService",
-                "LastFmService",
-                "FeatureHome",
-                "FeatureLiveTV",
-                "FeaturePlayback",
-                "FeatureSearch",
-                "FeatureSettings",
-                "FeatureProfiles",
-                "FeatureWatchlistCore",
-                "FeatureMusic",
-                "FeatureSyncSetup",
-                "FeatureSyncCloud",
-                "TopShelfKit",
-                "CrashReporting",
-            ]
-        ),
         .target(
             name: "AppShelliOS",
             dependencies: [
@@ -1047,7 +955,6 @@ let package = Package(
             name: "AppRuntimeTests",
             dependencies: [
                 "AppRuntime", "CoreModels", "FeatureAuthCore", "CrashReporting", "FeatureHomeCore",
-                .target(name: "FeatureHome", condition: .when(platforms: [.tvOS])),
                 "FeatureSyncCloud", "TestSupportPerformance", "TestSupportNetworking"
             ]
         ),
@@ -1056,12 +963,8 @@ let package = Package(
             dependencies: ["MediaDownloads", "CoreModels", "MediaTransportCore"]
         ),
         .testTarget(
-            name: "AppShellTests",
-            dependencies: ["AppRuntime", "AppShell", "CoreModels", "FeatureHomeCore", "FeatureShareOnboarding", "MediaTransportHTTP", "MediaTransportSFTP", "MediaTransportFTP", "MediaTransportNFS", "MediaTransportWebDAV"]
-        ),
-        .testTarget(
             name: "CoreUITests",
-            dependencies: ["CoreUI", "CoreModels", "TopShelfKit", "TestSupportPerformance"]
+            dependencies: ["CoreUI", "CoreModels", "TestSupportPerformance"]
         ),
         .testTarget(
             name: "CoreNetworkingTests",
@@ -1130,17 +1033,6 @@ let package = Package(
         .testTarget(
             name: "FeatureAuthTests",
             dependencies: ["FeatureAuthCore", "CoreModels", "CoreNetworking", "ProviderSilo"]
-        ),
-        .testTarget(
-            name: "FeatureHomeTests",
-            dependencies: [
-                "FeatureHome",
-                "FeatureHomeCore",
-                "HeroUI",
-                "CoreModels",
-                "RatingsService",
-                "TestSupportContentRefresh"
-            ]
         ),
         .testTarget(
             name: "FeatureHomeCoreTests",
@@ -1258,7 +1150,7 @@ let package = Package(
         .testTarget(
             name: "EnginePlozzigenTests",
             dependencies: [
-                .target(name: "DiscNavigation", condition: .when(platforms: [.iOS, .tvOS])),
+                "DiscNavigation",
                 "CoreModels",
                 "EnginePlozzigen",
                 "MediaTransportCore",
@@ -1268,14 +1160,10 @@ let package = Package(
                 "TestSupportPerformance",
                 .product(name: "AetherEngine", package: "AetherEngine"),
             ],
-            resources: [.copy("Fixtures")],
-            swiftSettings: assEngineSettings
+            resources: [.copy("Fixtures")]
         ),
     ],
-    // Pin Swift 5 language mode: bumping tools-version to 6.0 (required for the
-    // tvOS 18 `.tvOS(.v18)` platform) would otherwise default every module to
-    // the Swift 6 language mode and its stricter concurrency migration. The app
-    // target (project.yml) still builds SWIFT_VERSION 5.9; keep the SPM modules
-    // in lockstep so behaviour is unchanged.
+    // Pin Swift 5 language mode so the package stays on the same language mode
+    // as the app target (project.yml sets SWIFT_VERSION 5.9).
     swiftLanguageModes: [.v5]
 )

@@ -292,7 +292,7 @@ class RepositoryCoverageTests(unittest.TestCase):
         names = {
             "PlozziOSAppearanceSettingsView", "TrailersAndMusicSettingsView",
             "PlozziOSMyLibrariesContent", "MyLibrariesContentView",
-            "HomeEditorAutosavingNameInput", "HomeEditorSaveAction", "HomeRowNameEditor",
+            "HomeEditorSaveAction", "HomeRowNameEditor",
             "HomeRowRemoveAction", "NavigationNameEditor", "ServerProviderChoices",
             "CollectionSectionSettingsView", "CardCaptionCustomizationContent",
         }

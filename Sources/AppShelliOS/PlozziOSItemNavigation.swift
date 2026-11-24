@@ -487,7 +487,7 @@ struct PlozziOSPersonFilmographyGrid: View {
 
     var body: some View {
         ScrollView {
-            if isLoading {
+            PlozzReservedPlaceholder(isPending: isLoading) {
                 PlozzPosterGridSkeleton(
                     columns: gridColumns,
                     spacing: gridSpacing,
@@ -496,36 +496,38 @@ struct PlozziOSPersonFilmographyGrid: View {
                 )
                 .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
                 .padding(.bottom, 24)
-            } else if movies.isEmpty {
-                PlozzStateView(
-                    icon: "film",
-                    title: Text("No titles to show")
-                )
-                .frame(maxWidth: .infinity, minHeight: 420)
-            } else {
-                LazyVGrid(columns: gridColumns, spacing: gridSpacing) {
-                    ForEach(movies, id: \.stablePresentationID) { item in
-                        Button {
-                            onSelectItem(item)
-                        } label: {
-                            PlozziOSPosterCard(
-                                item: item,
-                                style: .poster,
-                                reservesSubtitleSpace: true,
-                                isFavorite: isFavorite(item),
-                                rating: PlozziOSLibraryGridView.displayedRating(
-                                    customBuild: PlozzCustomization.isCustomBuild,
-                                    item: item
+            } content: {
+                if movies.isEmpty {
+                    PlozzStateView(
+                        icon: "film",
+                        title: Text("No titles to show")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 420)
+                } else {
+                    LazyVGrid(columns: gridColumns, spacing: gridSpacing) {
+                        ForEach(movies, id: \.stablePresentationID) { item in
+                            Button {
+                                onSelectItem(item)
+                            } label: {
+                                PlozziOSPosterCard(
+                                    item: item,
+                                    style: .poster,
+                                    reservesSubtitleSpace: true,
+                                    isFavorite: isFavorite(item),
+                                    rating: PlozziOSLibraryGridView.displayedRating(
+                                        customBuild: PlozzCustomization.isCustomBuild,
+                                        item: item
+                                    )
                                 )
-                            )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, gridPadding)
+                    .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
+                    .padding(.bottom, 24)
+                    .accessibilityIdentifier("person-filmography-grid")
                 }
-                .padding(.horizontal, gridPadding)
-                .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
-                .padding(.bottom, 24)
-                .accessibilityIdentifier("person-filmography-grid")
             }
         }
         .background { AppBackground(palette: palette) }

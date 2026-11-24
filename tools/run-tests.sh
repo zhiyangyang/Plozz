@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Run Plozz's Swift Package unit tests on a tvOS Simulator — BUILD ONCE, RUN MANY.
+# Run Plozz's Swift Package unit tests on an iOS Simulator — BUILD ONCE, RUN MANY.
 #
 # `swift test` cannot be used on macOS because AetherEngine's FFmpeg xcframeworks
-# are tvOS-only. Instead we drive xcodebuild on a tvOS Simulator destination.
+# are iOS-only. Instead we drive xcodebuild on an iOS Simulator destination.
 #
 # ── Strategy (the speed win) ─────────────────────────────────────────────────
 # The tests themselves execute in <1s; essentially all wall-clock is compile +
@@ -161,13 +161,13 @@ if [[ ${#SCHEMES[@]} -eq 0 ]]; then
   SCHEMES=("${ALL_TESTS[@]}")
 fi
 
-# --- Pick a tvOS simulator ----------------------------------------------------
+# --- Pick an iOS simulator ----------------------------------------------------
 if [[ -z "${PLOZZ_SIM_ID-}" ]]; then
   PLOZZ_SIM_ID=$(xcrun simctl list devices booted -j 2>/dev/null \
     | python3 -c 'import json,sys
 d=json.load(sys.stdin)
 for runtime,devs in d["devices"].items():
-  if "tvOS" not in runtime: continue
+  if "iOS" not in runtime: continue
   for dev in devs:
     if dev.get("state")=="Booted": print(dev["udid"]); sys.exit(0)' || true)
 fi
@@ -176,12 +176,12 @@ if [[ -z "${PLOZZ_SIM_ID-}" ]]; then
     | python3 -c 'import json,sys
 d=json.load(sys.stdin)
 for runtime,devs in d["devices"].items():
-  if "tvOS" not in runtime: continue
+  if "iOS" not in runtime: continue
   for dev in devs:
-    if dev.get("isAvailable") and "Apple TV" in dev["name"]:
+    if dev.get("isAvailable") and "iPad" in dev["name"]:
       print(dev["udid"]); sys.exit(0)')
 fi
-echo "Using tvOS Simulator: $PLOZZ_SIM_ID"
+echo "Using iOS Simulator: $PLOZZ_SIM_ID"
 python3 tools/run-bounded.py "${PLOZZ_SIM_BOOT_TIMEOUT:-300}" "simulator startup" -- \
   xcrun simctl bootstatus "$PLOZZ_SIM_ID" -b
 
@@ -364,7 +364,7 @@ _xcb_build_and_test() {
   fi
   xcodebuild build-for-testing "$@" \
     -resultBundlePath "$result_dir/Build.xcresult" \
-    -destination "platform=tvOS Simulator,id=$PLOZZ_SIM_ID" \
+    -destination "platform=iOS Simulator,id=$PLOZZ_SIM_ID" \
     -parallel-testing-enabled "$PARALLEL" \
     -derivedDataPath "$PLOZZ_DERIVED_DATA" \
     "${PACKAGE_RESOLUTION_ARGS[@]}" "${LEAN_SETTINGS[@]}" \
@@ -379,7 +379,7 @@ _xcb_build_and_test() {
   fi
   touch "$result_dir/executing-tests" || return 1
   xcodebuild test-without-building -xctestrun "${manifests[0]}" \
-    -destination "platform=tvOS Simulator,id=$PLOZZ_SIM_ID" \
+    -destination "platform=iOS Simulator,id=$PLOZZ_SIM_ID" \
     -parallel-testing-enabled "$PARALLEL" \
     -resultBundlePath "$result_dir/Test.xcresult" \
     "${test_args[@]}"

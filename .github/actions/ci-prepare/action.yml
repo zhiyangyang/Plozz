@@ -1,4 +1,4 @@
-name: Prepare isolated tvOS CI lane
+name: Prepare isolated iPad CI lane
 description: Generate the project and restore compatible, lane-private cache snapshots.
 inputs:
   lane:
@@ -36,12 +36,12 @@ runs:
         xcodebuild -version
         xcrun swift --version
 
-    - name: Select matching tvOS simulator
+    - name: Select matching iOS simulator
       if: ${{ inputs.lane != 'app-build' }}
       shell: bash
       run: |
-        sdk_version="$(xcrun --sdk appletvsimulator --show-sdk-version)"
-        simulator="$(python3 tools/select-ci-tvos-simulator.py --sdk-version "$sdk_version")"
+        sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+        simulator="$(python3 tools/select-ci-ios-simulator.py --sdk-version "$sdk_version")"
         printf 'PLOZZ_SIM_ID=%s\n' "$simulator" >> "$GITHUB_ENV"
 
     - name: Install XcodeGen

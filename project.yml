@@ -5,7 +5,6 @@ options:
   developmentLanguage: en
   deploymentTarget:
     iOS: "18.0"
-    tvOS: "18.0"
   createIntermediateGroups: true
 
 settings:
@@ -38,7 +37,7 @@ settings:
     # Empty for local/device builds, which fall back to runtime detection.
     # tools/generate-project.sh bakes the PLOZZ_RELEASE_CHANNEL env var here; the
     # fastlane `beta` and `release` lanes set it. This exists because the runtime
-    # fallback sniffs `Bundle.main.appStoreReceiptURL`, which on tvOS can be nil
+    # fallback sniffs `Bundle.main.appStoreReceiptURL`, which can be nil
     # (a receipt is only written after a purchase) — so a TestFlight build could
     # read as production and silently default crash reporting OFF.
     PLOZZ_RELEASE_CHANNEL: ""
@@ -61,286 +60,6 @@ packages:
     path: .
 
 targets:
-  Plozz:
-    type: application
-    platform: tvOS
-    preBuildScripts:
-      - name: Verify prepared subtitle engine
-        script: '"$SRCROOT/tools/prepare-frame-ass-engine.sh" --verify-only'
-        basedOnDependencyAnalysis: false
-    postBuildScripts:
-      - name: Embed disc runtime
-        script: python3 "$SRCROOT/tools/embed-disc-runtime.py"
-        basedOnDependencyAnalysis: false
-    deploymentTarget: "18.0"
-    sources:
-      - path: App/Plozz
-      - path: App/Privacy/tvOS/PrivacyInfo.xcprivacy
-        buildPhase: resources
-      - path: App/Resources/Assets.xcassets
-      - path: App/Resources/CommunityAssets.xcassets
-      - path: App/Resources/Fonts
-      # The single app-owned String Catalog. SwiftUI/Foundation lookups compiled
-      # into the Swift package modules resolve against `Bundle.main`, so ALL UI
-      # copy — including strings written in FeatureSettings, AppShell, etc. —
-      # is served from this one catalog. Both app targets reference the same
-      # file on purpose so tvOS and iOS can never drift.
-      - path: App/Resources/Localizable.xcstrings
-      # Permission prompts live in Info.plist, which the app catalog cannot
-      # reach — the system reads them from a per-target InfoPlist table. This is
-      # the FIRST copy a new user sees, so it has to be translated too.
-      - path: App/Resources/InfoPlist.xcstrings
-      - path: App/Resources/ReleaseNotes.json
-      - path: App/Resources/LibassNotices.txt
-      - path: App/Resources/LibblurayNotices.txt
-      - path: App/Resources/LibTrueHDNotices.txt
-      - path: App/Resources/LibTrueHDLicense.txt
-      - path: App/Resources/LibTrueHDApacheLicense.txt
-    info:
-      path: App/Resources/Info.plist
-      properties:
-        # Home-screen name. Empty ${PLOZZ_NAME_SUFFIX} → "Plozz" (canonical); an
-        # opt-in per-branch build sets it to " <slug>" so the separate app reads
-        # "Plozz <slug>" and is distinguishable on the Apple TV home screen.
-        CFBundleDisplayName: Plozz${PLOZZ_NAME_SUFFIX}
-        # Marketing version (CFBundleShortVersionString) comes from the shared
-        # MARKETING_VERSION build setting so the app and Top Shelf extension match.
-        CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        # The remote's Guide button reaches the app as this TVServices activity;
-        # without the declaration tvOS sends it to the default guide app.
-        NSUserActivityTypes:
-          - TVUserActivityTypeBrowsingChannelGuide
-        # Expose Siri Remote touch position for first-generation edge clicks.
-        GCSupportedGameControllers:
-          - ProfileName: MicroGamepad
-          - ProfileName: DirectionalGamepad
-        GCSupportsMultipleMicroGamepads: true
-        # Export-compliance answer, baked in so App Store Connect never shows
-        # "Missing Compliance" and external TestFlight distribution isn't blocked.
-        # Plozz only uses standard/exempt encryption (HTTPS/TLS, SMB) and no
-        # custom cryptography, so it qualifies for the exemption (value NO).
-        ITSAppUsesNonExemptEncryption: false
-        # Opt-in crash-reporting DSN, read at runtime by CrashReporting. Resolves
-        # from the PLOZZ_SENTRY_DSN build setting (empty unless baked in), so
-        # builds without a DSN never send anything.
-        PlozzSentryDSN: "$(PLOZZ_SENTRY_DSN)"
-        # Build-time release channel, authoritative over receipt sniffing. Empty
-        # for local builds, which fall back to runtime detection.
-        PlozzReleaseChannel: "$(PLOZZ_RELEASE_CHANNEL)"
-        PlozzReleaseID: "$(PLOZZ_RELEASE_ID)"
-        PlozzReleaseVersion: "$(PLOZZ_RELEASE_VERSION)"
-        PlozzDevelopmentFeature: "$(PLOZZ_DEV_FEATURE)"
-        # Background audio keeps music playing while the user browses other
-        # screens or the tvOS screensaver starts. Required for the music MVP's
-        # background/Now-Playing behaviour (AVAudioSession .playback).
-        # remote-notification lets CloudKit (CKSyncEngine) wake the app to pull
-        # config changes pushed from another device on the same Apple ID.
-        UIBackgroundModes:
-          - audio
-          - remote-notification
-        UIAppFonts:
-          - "Bungee-Regular.ttf"
-          # Atkinson Hyperlegible (SIL OFL) — the default subtitle font. Designed
-          # by the Braille Institute for maximum legibility and character
-          # disambiguation (I/l/1, 0/O), which is exactly what 10-foot captions
-          # need. Latin-only; the renderer cascades to the tvOS system CJK fonts
-          # (Hiragino / PingFang / Apple SD Gothic Neo) for mixed-language lines.
-          # License: App/Resources/Fonts/OFL.txt.
-          - "AtkinsonHyperlegible-Regular.ttf"
-          - "AtkinsonHyperlegible-Italic.ttf"
-          - "AtkinsonHyperlegible-Bold.ttf"
-          - "AtkinsonHyperlegible-BoldItalic.ttf"
-          # Additional subtitle faces, all open-license and bundled like Atkinson.
-          # Lexend (OFL) — tuned for reading speed/comprehension; upright weights
-          # Regular/Medium/SemiBold/Bold (instanced from the variable font), no
-          # italics, so the renderer degrades italics to upright.
-          # License: App/Resources/Fonts/OFL-Lexend.txt.
-          - "Lexend-Regular.ttf"
-          - "Lexend-Medium.ttf"
-          - "Lexend-SemiBold.ttf"
-          - "Lexend-Bold.ttf"
-          # Roboto (OFL) — the neutral, familiar sans used by Android/YouTube
-          # captions; upright Regular/Medium/SemiBold/Bold plus Italic/BoldItalic.
-          # License: App/Resources/Fonts/OFL-Roboto.txt.
-          - "Roboto-Regular.ttf"
-          - "Roboto-Medium.ttf"
-          - "Roboto-SemiBold.ttf"
-          - "Roboto-Italic.ttf"
-          - "Roboto-Bold.ttf"
-          - "Roboto-BoldItalic.ttf"
-          # Fredoka (OFL) — a rounded, chunky, playful display sans; upright
-          # Regular/Medium/SemiBold/Bold (instanced from the variable font), no
-          # italics. License: App/Resources/Fonts/OFL-Fredoka.txt.
-          - "Fredoka-Regular.ttf"
-          - "Fredoka-Medium.ttf"
-          - "Fredoka-SemiBold.ttf"
-          - "Fredoka-Bold.ttf"
-          # OpenDyslexic (OFL) — weighted-bottom letterforms that aid readers with
-          # dyslexia; full Regular/Bold/Italic/BoldItalic set (OTF).
-          # License: App/Resources/Fonts/OFL-OpenDyslexic.txt.
-          - "OpenDyslexic-Regular.otf"
-          - "OpenDyslexic-Italic.otf"
-          - "OpenDyslexic-Bold.otf"
-          - "OpenDyslexic-BoldItalic.otf"
-        # OMDb API key for external ratings enrichment (IMDb/RT/Metacritic).
-        # Substituted from the OMDB_API_KEY build setting (see Config/Secrets.xcconfig
-        # → optional, gitignored Config/Secrets.local.xcconfig). Empty by default,
-        # which disables OMDb enrichment and shows only Jellyfin-native ratings.
-        OMDBAPIKey: "$(OMDB_API_KEY)"
-        # TMDb API Read Access Token (v4 bearer). Powers the canonical-poster
-        # fallback for items whose provider artwork is missing or junk. Substituted
-        # from the TMDB_BEARER_TOKEN build setting (gitignored Config/Secrets.local.xcconfig).
-        # Empty by default, which disables the TMDb fallback.
-        TMDBBearerToken: "$(TMDB_BEARER_TOKEN)"
-        # Optional base URL of a self-hostable TMDb caching proxy that holds ONE
-        # TMDb key server-side (TMDb terms forbid shipping a key in an open-source
-        # client). When set, TMDb-grade movie/western-TV backdrops, logos and
-        # episode stills are served compliantly and scalably for any number of
-        # users. Empty by default: the app then relies on the keyless providers
-        # (AniList/Kitsu/TVmaze/Deezer/MusicBrainz) and the user's own server art.
-        TMDBProxyBaseURL: "$(TMDB_PROXY_BASE_URL)"
-        # TheTVDB v4 API key — the BUNDLED, always-included keyed metadata/artwork
-        # provider (the keyless base's primary keyed layer). Substituted from the
-        # TVDB_API_KEY build setting (gitignored Config/Secrets.local.xcconfig,
-        # symlinked from the canonical secrets file). TheTVDB licenses by parent-
-        # company revenue (free under $50k/yr, FOSS-friendly) — an objective test
-        # with no "commercial-use" gray area — so it ships in every build. Empty by
-        # default (e.g. a contributor without the key), which disables the TVDB tier
-        # and leaves the keyless providers powering enrichment. Attribution required.
-        TVDBAPIKey: "$(TVDB_API_KEY)"
-        # Public client ID for secretless PKCE/device-code OAuth.
-        # Config/Secrets.local.xcconfig supplies the registration-specific value.
-        TraktClientID: "$(TRAKT_CLIENT_ID)"
-        WetrakrClientID: "$(WETRAKR_CLIENT_ID)"
-        # MyAnimeList client ID for anime tracking (device-code OAuth). Substituted
-        # from MAL_CLIENT_ID build setting (gitignored Config/Secrets.local.xcconfig).
-        # Empty by default, which disables MAL sync.
-        MALClientID: "$(MAL_CLIENT_ID)"
-        OMDBAPIKey: "$(OMDB_API_KEY)"
-        TMDBBearerToken: "$(TMDB_BEARER_TOKEN)"
-        # Simkl client ID for watch tracking. Register at simkl.com/apps.
-        # No client secret: Simkl's rules forbid embedding one in code that ships
-        # to a device, and the PIN flow Plozz uses never needs it.
-        SimklClientID: "$(SIMKL_CLIENT_ID)"
-        # AniList client ID/secret for anime tracking (authorization code grant).
-        AniListClientID: "$(ANILIST_CLIENT_ID)"
-        AniListClientSecret: "$(ANILIST_CLIENT_SECRET)"
-        # Last.fm music scrobbling. The API key + shared secret sign every call
-        # on-device (unlike secretless Trakt/Simkl authentication) so the
-        # TV can run the no-typing desktop-auth poll flow. Substituted from
-        # LASTFM_API_KEY / LASTFM_SHARED_SECRET (gitignored
-        # Config/Secrets.local.xcconfig). Empty by default, which disables
-        # scrobbling (Settings shows Last.fm as unavailable). Register at
-        # https://www.last.fm/api/account/create to get these.
-        LastFmAPIKey: "$(LASTFM_API_KEY)"
-        LastFmSharedSecret: "$(LASTFM_SHARED_SECRET)"
-        # Local network access is required for LAN server discovery on tvOS.
-        NSLocalNetworkUsageDescription: "Plozz uses your local network to discover Jellyfin and Emby servers and media shares automatically."
-        NSBonjourServices:
-          - _jellyfin._tcp
-          # SMB file servers (NAS, macOS/Windows file sharing) advertise
-          # themselves as _smb._tcp; used to auto-discover local media shares.
-          - _smb._tcp
-          # Sync & Setup device pairing ("set up from another device"): the TV
-          # advertises this service so a configured phone/tablet can find it and
-          # transfer setup over the local network.
-          - ${PLOZZ_PAIRING_SERVICE_TYPE}
-        # Jellyfin servers are user-controlled and frequently plain HTTP — on the
-        # LAN, behind a reverse proxy, or over Tailscale (the 100.64.0.0/10 CGNAT
-        # range, which is NOT covered by NSAllowsLocalNetworking). Since the user
-        # explicitly enters their own server address, allow arbitrary HTTP loads
-        # so Tailscale IPs (http://100.x.x.x:8096) and MagicDNS names resolve,
-        # as do public-IP IPTV playlists/guides. Do NOT add NSAllowsLocalNetworking
-        # here: when present, iOS/tvOS ignore NSAllowsArbitraryLoads entirely.
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
-        # Deep links that launch the app straight into playback, used by the
-        # Top Shelf extension's cards (e.g. plozz://item/<id>).
-        CFBundleURLTypes:
-          - CFBundleURLName: com.thatcube.Plozz.deeplink
-            CFBundleURLSchemes:
-              - ${PLOZZ_URL_SCHEME}
-              - "$(PRODUCT_BUNDLE_IDENTIFIER).external-player"
-        LSApplicationQueriesSchemes:
-          - nativeplayer
-          - infuse
-          - vlc-x-callback
-    settings:
-      base:
-        # ${PLOZZ_ID_SUFFIX} is EMPTY for a normal (canonical) build → the real
-        # `com.thatcube.Plozz`. An opt-in per-branch build (tools/deploy-*.sh
-        # --branded) sets it to ".<slug>" so that branch installs a SEPARATE app
-        # (`com.thatcube.Plozz.<slug>`) side-by-side, never touching the canonical.
-        # generate-project.sh always exports a default so the token expands cleanly.
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz${PLOZZ_ID_SUFFIX}
-        PRODUCT_NAME: Plozz
-        # Default (empty) OMDb API key so plain builds work with external-ratings
-        # enrichment disabled. A real key is supplied via the gitignored
-        # Config/Secrets.local.xcconfig (see Config/Secrets.xcconfig).
-        OMDB_API_KEY: ""
-        # Default (empty) TMDb proxy base URL. A maintainer-run/self-hosted proxy
-        # URL can be supplied via the gitignored Config/Secrets.local.xcconfig.
-        TMDB_PROXY_BASE_URL: ""
-        # tvOS "Brand Assets" providing the layered app icon and Top Shelf
-        # images (required by App Store Connect for any upload, incl. TestFlight).
-        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
-        # App Group entitlement shared with the Top Shelf extension so both can
-        # exchange the published snapshot.
-        # Canonical uses the full entitlements; a --branded per-branch build swaps
-        # in the stripped variant (empty ${PLOZZ_TV_APP_ENTITLEMENTS} default keeps
-        # canonical). See tools/deploy-tv.sh --branded.
-        CODE_SIGN_ENTITLEMENTS: ${PLOZZ_TV_APP_ENTITLEMENTS}
-        GENERATE_INFOPLIST_FILE: NO
-        # Force-keep the AVKit load command. AVKit is only used via the dynamic
-        # `UIWindow.avDisplayManager` ObjC category (for the Dolby Vision / HDR
-        # display-mode switch), so the linker's default `-dead_strip_dylibs`
-        # otherwise drops it and the selector is unrecognized at runtime (crash).
-        OTHER_LDFLAGS: "-Wl,-needed_framework,AVKit"
-    configFiles:
-      Debug: Config/Secrets.xcconfig
-      Release: Config/Secrets.xcconfig
-    dependencies:
-      - package: Plozz
-        product: AppShell
-      - package: Plozz
-        product: FeatureLiveTV
-      - package: Plozz
-        product: FeaturePlayback
-      - package: Plozz
-        product: EnginePlozzigen
-      - target: PlozzTopShelf
-        embed: true
-
-  PlozzTopShelf:
-    type: com.apple.product-type.tv-app-extension
-    platform: tvOS
-    deploymentTarget: "18.0"
-    sources:
-      - path: TopShelf/ContentProvider.swift
-      - path: TopShelf/PrivacyInfo.xcprivacy
-        buildPhase: resources
-      # The snapshot model + store are compiled into the extension directly so
-      # it stays free of CoreModels and the rest of the app's stack.
-      - path: Sources/TopShelfKit/TopShelfSnapshot.swift
-      - path: Sources/TopShelfKit/TopShelfStore.swift
-      - path: Sources/TopShelfKit/TopShelfContentBuilder.swift
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz${PLOZZ_ID_SUFFIX}.TopShelf
-        PRODUCT_NAME: PlozzTopShelf
-        INFOPLIST_FILE: TopShelf/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: ${PLOZZ_TV_TOPSHELF_ENTITLEMENTS}
-        # tvOS's legacy TVExtensionMain entry point (set by the
-        # com.apple.product-type.tv-app-extension product type) is a no-op stub
-        # in modern tvOS — it returns immediately without instantiating the
-        # principal class, leaving the Top Shelf empty. Modern Top Shelf
-        # extensions must enter through NSExtensionMain (provided by
-        # Foundation), which sets up the ExtensionKit/XPC runtime and
-        # instantiates ContentProvider.
-        LD_ENTRY_POINT: _NSExtensionMain
-
   PlozziOS:
     type: application
     platform: iOS
@@ -355,7 +74,7 @@ targets:
         buildPhase: resources
       - path: App/Resources/CommunityAssets.xcassets
       - path: App/Resources/Fonts
-      # Same shared catalog as the tvOS target — see the note there.
+      # The single app-owned String Catalog shared by the app targets.
       - path: App/Resources/Localizable.xcstrings
       - path: App/Resources/ReleaseNotes.json
       - path: App/Resources/LibassNotices.txt
@@ -428,7 +147,7 @@ targets:
         OMDBAPIKey: "$(OMDB_API_KEY)"
         TMDBBearerToken: "$(TMDB_BEARER_TOKEN)"
         TMDBProxyBaseURL: "$(TMDB_PROXY_BASE_URL)"
-        # TheTVDB v4 API key. This MUST stay in step with the tvOS target: TheTVDB
+        # TheTVDB v4 API key. TheTVDB
         # is the only bundled provider that covers MOVIES (the keyless sources are
         # anime- or TV-only, leaving Wikidata/Wikipedia as a patchy fallback), so
         # omitting it here silently disabled movie posters on iPhone and iPad while
@@ -477,49 +196,6 @@ targets:
         product: FeaturePlayback
       - package: Plozz
         product: EnginePlozzigen
-
-  PlozzFocusHost:
-    type: application
-    platform: tvOS
-    postBuildScripts:
-      - name: Embed disc runtime
-        script: python3 "$SRCROOT/tools/embed-disc-runtime.py"
-        basedOnDependencyAnalysis: false
-    sources:
-      - path: Tests/FocusHost
-      - path: Tests/HomePresentationSupport/UpcomingCaptureFixture.swift
-      - path: Tests/HomePresentationSupport/DetailSelectionFixture.swift
-      - path: Tests/HomePresentationSupport/ContentRefreshReturnFixture.swift
-      - path: Tests/iOSPresentationHost/DetailInformationFixture.swift
-      - path: Tests/DiscoverPresentationSupport/DiscoverBrowseFixture.swift
-      - path: Tests/PlaybackPresentationSupport/PlaybackFailureFixture.swift
-      - path: Tests/PlaybackPresentationSupport/DiscReviewFixture.swift
-      - path: Tests/LiveTVPresentationSupport/IPTVOrganizationFixture.swift
-      - path: Tests/LiveTVPresentationSupport/LiveTVCategorySearchFixture.swift
-      - path: Tests/SubtitlePresentationSupport/Fixtures/live-continuity.mp4
-        buildPhase: resources
-      - path: Tests/AuthPresentationSupport/IPTVSetupFixture.swift
-      - path: Tests/AuthPresentationSupport/ServerAddressNavigationFixture.swift
-      - path: Tests/AuthPresentationSupport/PlexHomeOnboardingFixture.swift
-      - path: Tests/FeatureLiveTVRemoteTests/NavigationRailFixture.swift
-      - path: Tests/FeatureLiveTVRemoteTests/MultiviewFixture.swift
-      - path: Tests/FeatureLiveTVRemoteTests/SourceOnboardingFixture.swift
-      - path: App/Resources/Assets.xcassets
-      - path: App/Resources/CommunityAssets.xcassets
-      - path: App/Resources/Localizable.xcstrings
-      - path: App/Resources/ReleaseNotes.json
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz.FocusHost
-        # Match the bundle suffix used by XCTest hitch collection; validate with the fixture's positive control.
-        EXECUTABLE_NAME: FocusHost
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-    dependencies:
-      # A single package root avoids promoting shared targets to colliding frameworks.
-      - package: Plozz
-        product: AppShell
 
   PlozziOSPresentationHost:
     type: application
@@ -595,7 +271,6 @@ targets:
     platform: iOS
     sources:
       - path: Tests/iOSPresentationTests
-      - path: Tests/AppShellTests/WatchlistCloudApplyTests.swift
       - path: Tests/FocusIntegrationTests/ContentRefreshSurfaceHostedTests.swift
       - path: Tests/PlaybackPresentationSupport/PlayerSongLayoutPreviewTests.swift
       - path: Tests/PlaybackPresentationSupport/PlayerContinueWatchingPresentationTests.swift
@@ -677,67 +352,6 @@ targets:
     dependencies:
       - target: PlozziOSPresentationHost
 
-  PlozzHomeRemoteTests:
-    type: bundle.ui-testing
-    platform: tvOS
-    sources:
-      - path: Tests/HomeRemoteTests
-      - path: Tests/HomePresentationSupport/DetailSelectionInteractionTests.swift
-      - path: Tests/HomePresentationSupport/ContentRefreshReturnInteractionTests.swift
-      - path: Tests/FeatureLiveTVRemoteTests/LiveTVMultiviewRemoteTests.swift
-      - path: Tests/PlaybackPresentationSupport/PlaybackFailureInteractionTests.swift
-      - path: Tests/PlaybackPresentationSupport/DiscReviewScreenshotTests.swift
-      - path: Tests/LiveTVPresentationSupport/IPTVOrganizationInteractionTests.swift
-      - path: Tests/LiveTVPresentationSupport/LiveTVCategorySearchInteractionTests.swift
-      - path: Sources/FeatureHomeCore/LibraryTraversalEvidence.swift
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz.HomeRemoteTests
-        GENERATE_INFOPLIST_FILE: YES
-
-  PlozzFocusTests:
-    type: bundle.unit-test
-    platform: tvOS
-    sources:
-      - path: Tests/PlaybackPresentationSupport/FLACMusicPlaybackHostedTests.swift
-      - path: Tests/FocusIntegrationTests
-      - path: Tests/PlaybackPresentationSupport/PlayerSongLayoutPreviewTests.swift
-      - path: Tests/PlaybackPresentationSupport/PlayerContinueWatchingPresentationTests.swift
-      - path: Tests/CoreModelsTests/ContinueWatchingInPlayerSettingsTests.swift
-      - path: Tests/FeaturePlaybackTests/ContinueWatchingSelectionTests.swift
-      - path: Tests/CoreUITests/DetailInformationPreviewTests.swift
-      - path: Tests/CoreUITests/ChannelLogoArtworkTests.swift
-      - path: Tests/EnginePlozzigenTests/SpatialAudioLayoutPreferenceTests.swift
-      - path: Tests/HomePresentationSupport
-        excludes: ["ContentRefreshReturnFixture.swift", "ContentRefreshReturnInteractionTests.swift", "DetailSelectionFixture.swift", "DetailSelectionInteractionTests.swift"]
-      - path: Tests/TestSupportPerformance
-      - path: Tests/PerformancePresentationSupport
-      - path: Tests/ProviderIPTVTests/IPTVTestHTTPServer.swift
-      - path: Tests/FeatureLiveTVTests/LiveTVGuideFocusTests.swift
-      - path: Tests/FeatureLiveTVTests/LiveTVGuideRowLayoutTests.swift
-      - path: Tests/FeatureLiveTVCoreTests/LiveTVPreviewControllerTests.swift
-      - path: Tests/AppearancePresentationSupport
-      - path: Tests/CoreUITests/DialogSurfaceTests.swift
-      - path: Tests/AuthPresentationSupport
-      - path: Tests/SubtitlePresentationSupport
-        excludes: ["Fixtures"]
-      - path: Tests/SubtitlePresentationSupport/Fixtures
-        type: folder
-        buildPhase: resources
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thatcube.Plozz.FocusTests
-        GENERATE_INFOPLIST_FILE: YES
-        OTHER_LDFLAGS: "$(inherited) -framework AetherEngine"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PlozzFocusHost.app/FocusHost"
-        BUNDLE_LOADER: "$(TEST_HOST)"
-    dependencies:
-      - target: PlozzFocusHost
-      # Resolve package symbols from the host, without duplicating Objective-C classes.
-      - package: Plozz
-        product: AppShell
-        link: false
-
 schemes:
   PlozziOSInteractionTests:
     build:
@@ -759,83 +373,12 @@ schemes:
       targets:
         - PlozziOSPresentationTests
 
-  PlozzHomeFixtureTests:
-    build:
-      targets:
-        PlozzFocusHost: all
-        PlozzHomeRemoteTests: [test]
-    test:
-      config: Debug
-      targets:
-        - PlozzHomeRemoteTests
-  PlozzHomeRemoteTests:
-    build:
-      targets:
-        PlozzHomeRemoteTests: [test]
-    test:
-      config: Debug
-      targets:
-        - PlozzHomeRemoteTests
-
-  PlozzPhysicalHomeRowsTests:
-    build:
-      targets:
-        PlozzHomeRemoteTests: [test]
-    test:
-      config: Release
-      captureScreenshotsAutomatically: false
-      preferredScreenCaptureFormat: screenshots
-      targets:
-        - PlozzHomeRemoteTests
-
-  PlozzFocusTests:
-    build:
-      targets:
-        PlozzFocusHost: all
-        PlozzFocusTests: [test]
-    test:
-      config: Debug
-      targets:
-        - PlozzFocusTests
-
-  Plozz:
-    build:
-      targets:
-        Plozz: all
-      preActions:
-        - script: |
-            # Auto-link local secrets if missing (worktrees don't inherit gitignored files).
-            SECRETS_FILE="${PROJECT_DIR}/Config/Secrets.local.xcconfig"
-            CANONICAL="$HOME/.config/plozz/Secrets.local.xcconfig"
-            if [ ! -e "$SECRETS_FILE" ] && [ -f "$CANONICAL" ]; then
-              ln -s "$CANONICAL" "$SECRETS_FILE"
-            fi
-          name: Link secrets from ~/.config/plozz
-          settingsTarget: Plozz
-    run:
-      config: Debug
-    test:
-      config: Debug
-      # Unit tests live in the Swift package. Run them via the auto-generated
-      # per-module *Tests schemes that Xcode publishes for the local package
-      # (e.g. CoreModelsTests, ProviderJellyfinTests). `tools/run-tests.sh`
-      # wraps `xcodebuild test ... -destination 'platform=tvOS Simulator,...'`
-      # for the full set. `swift test` is unusable on macOS because
-      # AetherEngine's FFmpeg xcframeworks are tvOS-only.
   PlozziOS:
     build:
       targets:
         PlozziOS: all
     run:
       config: Debug
-  Plozz Live TV Prototype:
-    build:
-      targets:
-        Plozz: all
-    run:
-      config: Debug
-      commandLineArguments:
-        --live-tv-prototype: true
   PlozziOS Live TV Prototype:
     build:
       targets:

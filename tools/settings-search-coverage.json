@@ -37,7 +37,6 @@
     "TrailersAndMusicSettingsView",
     "HomeFilteringSettingsView",
     "HomeHeroSettingsView",
-    "HomeHeroEnabledPicker",
     "HomeRowStylePicker",
     "HomeRowStyleSettingsView",
     "HomeRowPresetPicker",
@@ -97,12 +96,10 @@
     "PlozziOSAppearanceSettingsView",
     "PlozziOSTrackerSettingsView",
     "ProfileActionsList",
-    "ProfileDetailView",
     "ProfileEditorView",
     "ProfileNameField",
     "SeerDetailView",
     "ServerUserDetailView",
-    "SettingsView",
     "SkipMarkerCommunityControl",
     "SkipMarkerContentControls",
     "SkipMarkerEnableControl",
@@ -113,8 +110,7 @@
     "StreamingQualityPicker",
     "SubtitleModeControl",
     "SubtitleStylePanel",
-    "TopShelfSettingsView",
-    "TopShelfStylePicker"
+    "ThemeMusicVolumeControl"
   ],
   "directories": [
     "Sources/FeatureSettings/"
@@ -189,7 +185,6 @@
     "Sources/FeatureSettings/HeroCollectionPickerView.swift",
     "Sources/FeatureSettings/HeroLogoSizeControl.swift",
     "Sources/FeatureSettings/HeroSettingsControls.swift",
-    "Sources/FeatureSettings/HomeHeroEnabledPicker.swift",
     "Sources/FeatureSettings/HomeRowStylePicker.swift",
     "Sources/FeatureSettings/HomeRowsSettingsView.swift",
     "Sources/FeatureSettings/HomeSectionSettingsViews.swift",
@@ -205,7 +200,6 @@
     "Sources/FeatureSettings/PlaybackReadAheadControl.swift",
     "Sources/FeatureSettings/PlexLinkedUserDetailView.swift",
     "Sources/FeatureSettings/PreferenceDetailViews.swift",
-    "Sources/FeatureSettings/ProfileDetailView.swift",
     "Sources/FeatureSettings/ProfileLockSetupPage.swift",
     "Sources/FeatureSettings/ProfileSeerrSetupView.swift",
     "Sources/FeatureSettings/SeerDetailView.swift",
@@ -213,11 +207,8 @@
     "Sources/FeatureSettings/ServerUserDetailView.swift",
     "Sources/FeatureSettings/SettingsContext.swift",
     "Sources/FeatureSettings/SettingsSplitLayout.swift",
-    "Sources/FeatureSettings/SettingsView.swift",
     "Sources/FeatureSettings/SkipMarkerSettingsControl.swift",
     "Sources/FeatureSettings/ThemeMusicVolumeControl.swift",
-    "Sources/FeatureSettings/TopShelfSettingsView.swift",
-    "Sources/FeatureSettings/TopShelfStylePicker.swift",
     "Sources/FeatureSettings/WatchIndicatorColorPicker.swift"
   ],
   "input_types": [
@@ -346,7 +337,7 @@
       "controls": {
         "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|StreamingQualityPicker|body|Menu|SettingsMenuLabel(title, value: selection.title)": 1,
         "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|StreamingQualityPicker|body|Picker|Text(title)": 1,
-        "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|StreamingQualityPicker|body|Button|\"Custom\u2026\"": 1
+        "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|StreamingQualityPicker|body|Button|\"Custom…\"": 1
       }
     },
     "ContinueWatchingNextUpControl": {
@@ -436,13 +427,6 @@
         "Sources/FeatureSettings/SettingsSplitLayout.swift|SettingsSplitLayout|masterRow|Button|SettingsMasterRowLabel(row: row, isSelected: selectedRowID == row.id)": 1
       }
     },
-    "SettingsFormRow": {
-      "kind": "presentation",
-      "reason": "Generic row presenter; configured controls are discovered in their declaring components.",
-      "controls": {
-        "Sources/FeatureSettings/SettingsFormLayout.swift|SettingsFormRow|content|SettingsPageLink|SettingsFormLinkLabel(row: row)": 1
-      }
-    },
     "HomeEditorLink": {
       "kind": "presentation",
       "reason": "Generic navigation adapter, not a preference input.",
@@ -473,13 +457,6 @@
         "Sources/FeatureSettings/SettingsSplitLayout.swift|SettingsRevealSection|masterToggle.toggle|Toggle|<dynamic>": 1
       }
     },
-    "SettingsWorkspaceProfileHeader": {
-      "kind": "presentation",
-      "reason": "Profile-switch navigation, not a preference editor.",
-      "controls": {
-        "Sources/FeatureSettings/SettingsWorkspace.swift|SettingsWorkspaceProfileHeader|body|Button|<dynamic>": 1
-      }
-    },
     "PlozziOSProfileIdentityHeader": {
       "kind": "presentation",
       "reason": "Profile-switch navigation, not a preference editor.",
@@ -492,7 +469,7 @@
       "reason": "Contextual release-note reading and acknowledgment; not a root Settings editor.",
       "controls": {
         "Sources/FeatureSettings/ReleaseNotesViews.swift|ReleaseNotesStartupView|body|Button|\"Done\"": 2,
-        "Sources/FeatureSettings/ReleaseNotesViews.swift|ReleaseNotesStartupView|body|Button|\"Don\u2019t Show Again\"": 4,
+        "Sources/FeatureSettings/ReleaseNotesViews.swift|ReleaseNotesStartupView|body|Button|\"Don’t Show Again\"": 4,
         "Sources/FeatureSettings/ReleaseNotesViews.swift|ReleaseNotesStartupView|body|Button|\"Cancel\"": 2
       }
     },
@@ -620,16 +597,6 @@
         "Sources/FeatureSettings/IntegrationsDetailView.swift|MALAuthorizationCodeEntryView|body|Button|\"Cancel\"": 1
       }
     },
-    "SyncTroubleshootingView": {
-      "kind": "presentation",
-      "reason": "Explicit troubleshooting and recovery operations, not preference editing.",
-      "controls": {
-        "Sources/FeatureSettings/SettingsView.swift|SyncTroubleshootingView|body|Button|<dynamic>": 2,
-        "Sources/FeatureSettings/SettingsView.swift|SyncTroubleshootingView|body|Button|SettingsRowLabel( icon: \"arrow.clockwise\", title: \"Reset Sync\", secondary: { Text(\"Replace iCloud data with this Apple TV\u2019s copy.\") .font(.footnote) .settingsRowSecondary() } )": 1,
-        "Sources/FeatureSettings/SettingsView.swift|SyncTroubleshootingView|body|Button|\"Reset\"": 1,
-        "Sources/FeatureSettings/SettingsView.swift|SyncTroubleshootingView|body|Button|\"Cancel\"": 1
-      }
-    },
     "SyncDataBreakdown": {
       "kind": "presentation",
       "reason": "Read-only sync data inspection with transient expansion controls.",
@@ -643,7 +610,7 @@
       "controls": {
         "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|body|Button|\"Cancel\"": 1,
         "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|body|Button|\"Erase Data\"": 1,
-        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|reviewContent|Button|\"Erase Sync Data\u2026\"": 1,
+        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|reviewContent|Button|\"Erase Sync Data…\"": 1,
         "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|reviewContent|Button|\"Cancel\"": 1
       }
     },
@@ -895,7 +862,7 @@
       "reason": "sensitive_connection_field: Setup flow.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/AddServerView.swift|AddServerView|connectionContent|Button|Group { if isValidating { ProgressView(\"Checking server\u2026\") } else { Text(\"Connect\") } } .plozzPageActionLabel()": {
+    "Sources/AppShelliOS/AddServerView.swift|AddServerView|connectionContent|Button|Group { if isValidating { ProgressView(\"Checking server…\") } else { Text(\"Connect\") } } .plozzPageActionLabel()": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -1227,12 +1194,12 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|Button|HStack { Text(\"Metadata Providers (TMDB, TheTVDB\u2026)\") Spacer() Image(systemName: \"chevron.forward\") .font(.footnote) .foregroundStyle(.secondary) }": {
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|Button|HStack { Text(\"Metadata Providers (TMDB, TheTVDB…)\") Spacer() Image(systemName: \"chevron.forward\") .font(.footnote) .foregroundStyle(.secondary) }": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Metadata Providers (TMDB, TheTVDB\u2026)\") }": {
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Metadata Providers (TMDB, TheTVDB…)\") }": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
@@ -1275,7 +1242,7 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSPlaybackSettingsView|body|Toggle|\"P7 FEL \u2192 P8.1 conversion\"": {
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSPlaybackSettingsView|body|Toggle|\"P7 FEL → P8.1 conversion\"": {
       "count": 1,
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
@@ -2771,19 +2738,6 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/HomeEditorAutosavingNameInput.swift|HomeEditorAutosavingNameInput|body|TextField|<dynamic>": {
-      "count": 1,
-      "reason": "Contextual rename field used by Home rows, collection rows and navigation destinations; the indexed editor requires an explicit row selection.",
-      "covered_by": [
-        "home-row-arrangement",
-        "navigation-order"
-      ]
-    },
-    "Sources/FeatureSettings/HomeEditorAutosavingNameInput.swift|HomeEditorAutosavingNameInput|body|Button|\"Retry\"": {
-      "count": 1,
-      "reason": "Retries saving an explicitly selected row or navigation destination's name.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/HomeRowsSettingsView.swift|HomeSectionsSettingsView|editor|Button|\"Reorder\"": {
       "count": 1,
       "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
@@ -3246,7 +3200,7 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/PreferenceDetailViews.swift|PlaybackDetailView|audioRows|Toggle|\"P7 FEL \u2192 P8.1 conversion\"": {
+    "Sources/FeatureSettings/PreferenceDetailViews.swift|PlaybackDetailView|audioRows|Toggle|\"P7 FEL → P8.1 conversion\"": {
       "count": 1,
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
@@ -3278,11 +3232,6 @@
       "covered_by": [
         "resume-rewind"
       ]
-    },
-    "Sources/FeatureSettings/ProfileDetailView.swift|ProfilesSettingsList|body|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
     },
     "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|body|Button|\"Review account\"": {
       "count": 1,
@@ -3554,71 +3503,6 @@
     "Sources/FeatureSettings/ServersAndLibrariesDetailView.swift|ServersAndLibrariesDetailView|addSourceButton|Button|<dynamic>": {
       "count": 1,
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|body|Button|\"Sign Out\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|aboutAndSignOut|Button|Label { Text(verbatim: \"Player marker examples\") } icon: { Image(systemName: \"play.rectangle\") } .frame(maxWidth: .infinity, alignment: .leading) .padding(14)": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|aboutAndSignOut|Button|\"OK\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|developerModeRow|Button|HStack(spacing: 16) { Image(systemName: \"hammer\") .font(.system(size: 22, weight: .regular)) .frame(width: 30, height: 30) Text(\"Turn Off Developer Mode\").font(.callout.weight(.medium)) Spacer() } .foregroundStyle(.orange) .padding(.vertical, 12) .padding(.horizontal, 12) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "developer_control: Hidden tool mode, not a normal indexed preference.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|debugHeroForegroundRow|Button|HStack(spacing: 16) { Image(systemName: \"rectangle.on.rectangle.angled\") .font(.system(size: 22, weight: .regular)) .frame(width: 30, height: 30) Text(\"Hero Foreground (Debug)\").font(.callout.weight(.medium)) Spacer() Text(heroForegroundModeLabel) .font(.callout) .plozzForeground(.secondary) } .foregroundStyle(.orange) .padding(.vertical, 12) .padding(.horizontal, 12) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "debug_override: DEBUG-only renderer override, gated by Developer Mode and adult profile.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|debugResetFirstRunRow|Button|HStack(spacing: 16) { Image(systemName: \"arrow.counterclockwise.circle\") .font(.system(size: 22, weight: .regular)) .frame(width: 30, height: 30) Text(\"Reset to First Run\").font(.callout.weight(.medium)) Spacer() } .foregroundStyle(.orange) .padding(.vertical, 12) .padding(.horizontal, 12) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|signOutAllRow|Button|HStack(spacing: 16) { Image(systemName: \"rectangle.portrait.and.arrow.right\") .font(.system(size: 22, weight: .regular)) .frame(width: 30, height: 30) Text(\"Sign Out of All Accounts\").font(.callout.weight(.medium)) Spacer() } .foregroundStyle(.red) .padding(.vertical, 12) .padding(.horizontal, 12) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "destructive_account_action: Keep confirmation and adult boundary.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|destination|Button|\"Switch Profile\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|syncSetupDetail|Button|\"Sync Now\"": {
-      "count": 1,
-      "reason": "sync_operation: Not opt-in preference.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|pendingServerRow|Button|\"Set Up\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|pendingServerRow|Button|\"Ignore\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SettingsView.swift|SettingsView|setUpAnotherDeviceRow|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
     "Sources/FeatureSettings/SkipMarkerSettingsControl.swift|SkipBehaviorMenuContent|body|Toggle|<dynamic>": {

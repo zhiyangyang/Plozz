@@ -55,35 +55,25 @@ class PrivacyManifestTests(unittest.TestCase):
             "NSPrivacyAccessedAPICategorySystemBootTime": {"35F9.1"},
             "NSPrivacyAccessedAPICategoryUserDefaults": {"CA92.1"},
         }
-        for platform, disk_reasons in (
-            ("tvOS", {"85F4.1"}),
-            ("iOS", {"85F4.1", "E174.1"}),
-        ):
-            with self.subTest(platform=platform):
-                path = ROOT / "App/Privacy" / platform / "PrivacyInfo.xcprivacy"
-                manifest = plistlib.loads(path.read_bytes())
-                entries = manifest["NSPrivacyAccessedAPITypes"]
-                actual = {
-                    entry["NSPrivacyAccessedAPIType"]: set(entry["NSPrivacyAccessedAPITypeReasons"])
-                    for entry in entries
-                }
-                self.assertEqual(len(entries), len(actual), "Do not duplicate API categories")
-                self.assertEqual(
-                    actual, {**shared, "NSPrivacyAccessedAPICategoryDiskSpace": disk_reasons}
-                )
+        path = ROOT / "App/Privacy/iOS/PrivacyInfo.xcprivacy"
+        manifest = plistlib.loads(path.read_bytes())
+        entries = manifest["NSPrivacyAccessedAPITypes"]
+        actual = {
+            entry["NSPrivacyAccessedAPIType"]: set(entry["NSPrivacyAccessedAPITypeReasons"])
+            for entry in entries
+        }
+        self.assertEqual(len(entries), len(actual), "Do not duplicate API categories")
+        self.assertEqual(
+            actual, {**shared, "NSPrivacyAccessedAPICategoryDiskSpace": {"85F4.1", "E174.1"}}
+        )
 
     def test_each_executable_bundles_its_own_manifest(self):
         project = (ROOT / "project.yml").read_text()
         targets = named_blocks(named_blocks(project, 0)["targets"], 2)
-        for target, path in (
-            ("Plozz", "App/Privacy/tvOS/PrivacyInfo.xcprivacy"),
-            ("PlozziOS", "App/Privacy/iOS/PrivacyInfo.xcprivacy"),
-            ("PlozzTopShelf", "TopShelf/PrivacyInfo.xcprivacy"),
-        ):
-            with self.subTest(target=target):
-                self.assertIn(f"- path: {path}\n        buildPhase: resources", targets[target])
-        extension = plistlib.loads((ROOT / "TopShelf/PrivacyInfo.xcprivacy").read_bytes())
-        self.assertEqual(extension["NSPrivacyAccessedAPITypes"], [])
+        self.assertIn(
+            "- path: App/Privacy/iOS/PrivacyInfo.xcprivacy\n        buildPhase: resources",
+            targets["PlozziOS"],
+        )
 
 
 class AttributionTests(unittest.TestCase):
@@ -262,7 +252,7 @@ class WorkflowTests(unittest.TestCase):
 
     def test_cache_hits_do_not_skip_generation_or_sdk_selection(self):
         self.assertLess(PREPARE.index("xcodebuild -version"), PREPARE.index("ci-cache.py keys"))
-        self.assertIn('tools/select-ci-tvos-simulator.py --sdk-version "$sdk_version"', PREPARE)
+        self.assertIn('tools/select-ci-ios-simulator.py --sdk-version "$sdk_version"', PREPARE)
         self.assertIn('PLOZZ_SIM_ID=%s\\n', PREPARE)
         self.assertLess(PREPARE.index("tools/generate-project.sh"), PREPARE.index("ci-cache.py keys"))
         self.assertLess(PREPARE.index("ci-cache.py keys"), PREPARE.index("actions/cache/restore"))
@@ -335,8 +325,8 @@ class WorkflowTests(unittest.TestCase):
             'configure_plozz_package_resolution "$PLOZZ_CLONED_SOURCE_PACKAGES"',
             '"${PACKAGE_RESOLUTION_ARGS[@]}"',
             '-derivedDataPath "$PLOZZ_DERIVED_DATA"',
-            "-scheme Plozz",
-            "'generic/platform=tvOS Simulator'",
+            "-scheme PlozziOS",
+            "'generic/platform=iOS Simulator'",
             "ARCHS=arm64",
             "ONLY_ACTIVE_ARCH=YES",
             "CODE_SIGNING_ALLOWED=NO",
@@ -360,9 +350,9 @@ class WorkflowTests(unittest.TestCase):
     def test_host_and_test_bundle_keep_one_umbrella_product(self):
         source = (ROOT / "project.yml").read_text().split("\ntargets:\n", 1)[1]
         targets = named_blocks(source.split("\nschemes:\n")[0], 2)
-        for target in ("PlozzFocusHost", "PlozzFocusTests"):
-            self.assertEqual(re.findall(r"\bproduct: (\w+)", targets[target]), ["AppShell"])
-        self.assertIn("target: PlozzFocusHost", targets["PlozzFocusTests"])
+        for target in ("PlozziOSPresentationHost", "PlozziOSPresentationTests"):
+            self.assertEqual(re.findall(r"\bproduct: (\w+)", targets[target]), ["AppShelliOS"])
+        self.assertIn("target: PlozziOSPresentationHost", targets["PlozziOSPresentationTests"])
         self.assertNotIn("CoreUI.framework", PREPARE + SAVE)
 
 
@@ -433,7 +423,7 @@ class HostedRunnerTests(unittest.TestCase):
             PLOZZ_FOCUS_BUILD_TIMEOUT="11", PLOZZ_FOCUS_TEST_TIMEOUT="13", **overrides,
         )
         result = subprocess.run(
-            ["bash", "tools/run-focus-tests.sh", "-only-testing:PlozzFocusTests/Fixture"],
+            ["bash", "tools/run-focus-tests.sh", "-only-testing:PlozziOSPresentationTests/Fixture"],
             cwd=self.root, env=env, capture_output=True, text=True, timeout=30,
         )
         calls = [json.loads(line) for line in (self.root / "calls.jsonl").read_text().splitlines()]
@@ -446,7 +436,7 @@ class HostedRunnerTests(unittest.TestCase):
         for flag in ("-project", "-scheme", "-destination", "-derivedDataPath", "-clonedSourcePackagesDirPath"):
             self.assertEqual(calls[0][calls[0].index(flag) + 1], calls[1][calls[1].index(flag) + 1])
         for call in calls:
-            self.assertIn("-only-testing:PlozzFocusTests/Fixture", call)
+            self.assertIn("-only-testing:PlozziOSPresentationTests/Fixture", call)
             self.assertIn("SWIFT_OPTIMIZATION_LEVEL=-O", call)
             self.assertIn("CODE_SIGNING_ALLOWED=NO", call)
             self.assertEqual(call[call.index("-parallel-testing-enabled") + 1], "NO")
@@ -506,7 +496,7 @@ class AggregateTests(unittest.TestCase):
 
     def test_exact_compatibility_check_always_waits_for_every_lane(self):
         block = JOBS["build-and-test"]
-        self.assertIn("    name: Build and test tvOS app\n", block)
+        self.assertIn("    name: Build and test iPad app\n", block)
         self.assertIn("    needs: [guards, app-build, package-tests, hosted-focus]\n", block)
         self.assertIn("    if: ${{ always() }}\n", block)
         self.assertIn("NEEDS_JSON: ${{ toJSON(needs) }}", block)
@@ -632,9 +622,9 @@ class CacheKeyTests(unittest.TestCase):
         values = {
             ("xcodebuild", "-version"): self.toolchain["xcode"],
             ("xcode-select", "-p"): self.toolchain["developer"],
-            ("xcrun", "--sdk", "appletvsimulator", "--show-sdk-version"): self.toolchain["sdk"],
-            ("xcrun", "--sdk", "appletvsimulator", "--show-sdk-build-version"): self.toolchain["sdk-build"],
-            ("xcrun", "--sdk", "appletvsimulator", "--show-sdk-path"): self.toolchain["sdk-path"],
+            ("xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"): self.toolchain["sdk"],
+            ("xcrun", "--sdk", "iphonesimulator", "--show-sdk-build-version"): self.toolchain["sdk-build"],
+            ("xcrun", "--sdk", "iphonesimulator", "--show-sdk-path"): self.toolchain["sdk-path"],
             ("uname", "-m"): self.toolchain["host-arch"],
             ("sw_vers", "-buildVersion"): self.toolchain["os-build"],
             ("xcodegen", "--version"): self.toolchain["xcodegen"],

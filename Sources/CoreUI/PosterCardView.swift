@@ -234,7 +234,7 @@ public struct PosterCardView: View {
         if showsFavoriteBadge {
             var favorites = LocalizedStringResource("Favorites")
             favorites.locale = locale
-            parts.append(String(localized: favorites))
+            parts.append(String(localized: favorites)) // l10n:content — native card accessibility boundary
         }
         if let rating {
             parts.append("\(rating.displayName) \(rating.displayValue)")

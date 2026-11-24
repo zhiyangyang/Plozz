@@ -6,7 +6,7 @@ used to exceed that in a single job. This splits their work without maintaining 
 second list of tests:
 
   package  -- test targets discovered from `swift package dump-package`
-  focus    -- XCTestCase classes compiled into the PlozzFocusTests target, read
+  focus    -- XCTestCase classes compiled into the PlozziOSPresentationTests target, read
               from the paths listed for that target in project.yml
 
 Both modes print one selection per line, in a stable order, and partition the
@@ -49,12 +49,12 @@ def package_test_targets() -> list[str]:
 
 
 def focus_source_paths() -> list[pathlib.Path]:
-    """Paths declared for the PlozzFocusTests target in project.yml."""
+    """Paths declared for the PlozziOSPresentationTests target in project.yml."""
     lines = (ROOT / "project.yml").read_text().splitlines()
     paths: list[pathlib.Path] = []
     inside = False
     for line in lines:
-        if re.match(r"^  PlozzFocusTests:\s*$", line):
+        if re.match(r"^  PlozziOSPresentationTests:\s*$", line):
             inside = True
             continue
         if inside and re.match(r"^  [A-Za-z0-9_]+:\s*$", line):
@@ -64,7 +64,7 @@ def focus_source_paths() -> list[pathlib.Path]:
             if match:
                 paths.append(ROOT / match.group(1))
     if not paths:
-        sys.exit("ci-shards.py: could not read PlozzFocusTests sources from project.yml")
+        sys.exit("ci-shards.py: could not read PlozziOSPresentationTests sources from project.yml")
     return paths
 
 
@@ -121,7 +121,7 @@ def main() -> int:
         select = lambda item: item
     else:
         items = focus_test_classes()
-        select = lambda item: f"-only-testing:PlozzFocusTests/{item}"
+        select = lambda item: f"-only-testing:PlozziOSPresentationTests/{item}"
 
     if args.verify:
         return verify(items, args.count)

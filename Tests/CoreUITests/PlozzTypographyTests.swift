@@ -1,5 +1,6 @@
 import CoreModels
 @testable import CoreUI
+import SwiftUI
 import XCTest
 
 final class PlozzTypographyTests: XCTestCase {

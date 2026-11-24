@@ -33,16 +33,15 @@ run-tests.sh, fastlane or CI builds.
 
 STALE MARKING AND PLATFORM COVERAGE
 -----------------------------------
-A tvOS build cannot see AppShelliOS's iOS-only strings, and vice versa. Letting
-`xcstringstool sync` mark strings stale from a single-platform build would prune
-the other platform's copy. This script therefore builds BOTH platforms by default
-and only allows stale marking when it has the full union. `--platform` narrows the
+`xcstringstool sync` marks strings as stale when a build does not see them. A
+partial build must therefore never prune the catalog: this script only allows
+stale marking when it built the complete iPad app. `--platform ios` narrows the
 build for speed, and in that case stale marking is forced off.
 
 USAGE
-  tools/l10n-sync.py                # build both platforms, sync the catalog
+  tools/l10n-sync.py                # build the iPad app, sync the catalog
   tools/l10n-sync.py --check        # fail if the catalog is out of date (CI)
-  tools/l10n-sync.py --platform tvos    # faster partial run; never prunes
+  tools/l10n-sync.py --platform ios    # faster partial run; never prunes
   tools/l10n-sync.py --no-build     # reuse the last extraction build
 """
 
@@ -96,19 +95,16 @@ PLATFORMS = {
     # COMPILE, and a device destination drags in provisioning. A per-branch app id
     # cannot auto-provision iCloud/Push/Associated Domains, so a device build here
     # would fail on signing long before it emitted a single string.
-    "tvos": ("Plozz", "generic/platform=tvOS Simulator"),
     "ios": ("PlozziOS", "generic/platform=iOS Simulator"),
 }
 
 # `.stringsdata` we must never feed into the APP catalog.
 #
-#   TopShelf*      the Top Shelf extension is a separate bundle AND a separate
-#                  process; its strings belong in its own catalog, not ours.
 #   *Tests         test fixtures are not shipped copy.
 #   AppShortcuts   `ExtractedAppShortcutsMetadata.stringsdata` is an App Intents
 #                  byproduct emitted for every target even when the target has no
 #                  intents (Plozz has none at all).
-EXCLUDED_SOURCE_MARKERS = ("/Tests/", "/TopShelf/", "/Sources/TopShelfKit/")
+EXCLUDED_SOURCE_MARKERS = ("/Tests/",)
 EXCLUDED_FILE_MARKERS = ("ExtractedAppShortcutsMetadata",)
 
 
@@ -323,7 +319,6 @@ ANY_PLACEHOLDER = re.compile(r"%(?:(\d+)\$)?(?:(?:ll)?d|@|f|#@[A-Za-z0-9_]+@)")
 # per-target InfoPlist table. Each app target therefore owns one, and the English
 # in it has to stay identical to the Info.plist it mirrors.
 INFOPLIST_PAIRS = [
-    (Path("App/Resources/InfoPlist.xcstrings"), Path("App/Resources/Info.plist")),
     (Path("App/PlozziOS/InfoPlist.xcstrings"), Path("App/PlozziOS/Info.plist")),
 ]
 
@@ -399,7 +394,7 @@ def language_release_problems(
 ) -> list[str]:
     """Make the release gate equal the languages the OS actually sees.
 
-    `releaseReady` controls only Plozz's picker. iOS/tvOS and App Store inspect
+    `releaseReady` controls only Plozz's picker. iOS and App Store inspect
     bundled `.lproj` directories directly, so a partial language in the catalog
     ships even when the picker hides it. The only safe invariant is exact parity:
     every non-English catalog language is complete, permission-localized, and in
@@ -677,7 +672,7 @@ def main() -> int:
     # Validation reads only the committed catalog, so it needs no toolchain and
     # no extraction. That is what makes it usable on a fresh CI runner, where
     # there is no DerivedData to reuse and a full --check would mean building
-    # both platforms again purely to prove freshness.
+    # the app again purely to prove freshness.
     if args.coverage:
         report_coverage()
         return 0
@@ -705,9 +700,9 @@ def main() -> int:
 def extract_and_sync(args: argparse.Namespace) -> int:
     platform_keys = [args.platform] if args.platform else sorted(PLATFORMS)
     # Stale marking deletes catalog entries the build did not see, so it is only
-    # safe when THIS run demonstrably produced the full tvOS + iOS union.
-    # Deriving it from the argument list alone was a bug: `--platform tvos`
-    # followed by a plain `--no-build` would reuse tvOS-only output and happily
+    # safe when THIS run demonstrably produced the full iPad output.
+    # Deriving it from the argument list alone was a bug: `--platform ios`
+    # followed by a plain `--no-build` would reuse partial output and happily
     # prune every iOS-only string.
     allow_stale = args.platform is None and not args.no_build
 
@@ -719,14 +714,14 @@ def extract_and_sync(args: argparse.Namespace) -> int:
     if args.clean and DERIVED.exists():
         shutil.rmtree(DERIVED)
     if reused:
-        print("▸ Reusing verified ios+tvos extraction: inputs, toolchain, packages and output match.")
+        print("▸ Reusing verified iPad extraction: inputs, toolchain, packages and output match.")
     elif not args.no_build:
         inputs = build_for_extraction(platform_keys, args.quiet, receipt)
 
     files = collect_stringsdata(ARCH)
     if args.no_build and args.platform is None:
         print("▸ --no-build: reusing cached extraction, so stale marking is skipped "
-              "(cannot prove both platforms are represented)")
+              "(cannot prove the complete app is represented)")
     if not files:
         sys.exit("✗ No .stringsdata found. Extraction did not run — check "
                  "defaultLocalization in Package.swift and SWIFT_EMIT_LOC_STRINGS.")

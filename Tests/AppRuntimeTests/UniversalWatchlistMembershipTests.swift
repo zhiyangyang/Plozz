@@ -210,7 +210,8 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
             kind: .movie,
             sourceAccountID: UniversalWatchlistHostDouble.accountID
         )
-        XCTAssertTrue(await host.performUniversalWatchlist(adding: true, item: full))
+        let added = await host.performUniversalWatchlist(adding: true, item: full)
+        XCTAssertTrue(added)
 
         // A library list can carry the provider's own id without any IMDb/TMDb
         // evidence. Identity resolution alone then cannot find the alias; the

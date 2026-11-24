@@ -108,7 +108,7 @@ jobs:
           retention-days: 7
 
   app-build:
-    name: Build tvOS simulator app
+    name: Build iPad simulator app
     needs: guards
     runs-on: xcode-27
     timeout-minutes: 60
@@ -123,15 +123,15 @@ jobs:
         with:
           lane: app-build
 
-      - name: Build (tvOS Simulator)
+      - name: Build (iOS Simulator)
         run: |
           source tools/lib/swift-package-storage.sh
           configure_plozz_package_resolution "$PLOZZ_CLONED_SOURCE_PACKAGES"
           set +e
-          tools/with-apple-build-lease.sh plozz/ci-tvos-build -- xcodebuild build \
+          tools/with-apple-build-lease.sh plozz/ci-ios-build -- xcodebuild build \
             -project Plozz.xcodeproj \
-            -scheme Plozz \
-            -destination 'generic/platform=tvOS Simulator' \
+            -scheme PlozziOS \
+            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$PLOZZ_DERIVED_DATA" \
             "${PACKAGE_RESOLUTION_ARGS[@]}" \
             ARCHS=arm64 \
@@ -214,7 +214,7 @@ jobs:
           retention-days: 7
 
   hosted-focus:
-    name: Hosted focus tests (${{ matrix.shard }}/2)
+    name: Hosted iPad tests (${{ matrix.shard }}/2)
     needs: guards
     runs-on: xcode-27
     # The whole suite used to run in one 240-minute job, which the runner cap
@@ -238,7 +238,7 @@ jobs:
         with:
           lane: hosted-focus
 
-      - name: Run hosted focus shard ${{ matrix.shard }} of 3
+      - name: Run hosted iPad shard ${{ matrix.shard }} of 2
         env:
           PLOZZ_FOCUS_BUILD_TIMEOUT: "5400"
           PLOZZ_FOCUS_TEST_TIMEOUT: "4800"
@@ -270,7 +270,7 @@ jobs:
   # Keep the existing required-check name. Default `needs` handling would skip
   # this job after a failed/cancelled preflight, which must never look green.
   build-and-test:
-    name: Build and test tvOS app
+    name: Build and test iPad app
     needs: [guards, app-build, package-tests, hosted-focus]
     if: ${{ always() }}
     runs-on: ubuntu-latest
@@ -293,5 +293,5 @@ jobs:
                     if result.get("result") != "success"}
           if failed:
               sys.exit(f"CI lanes did not all succeed: {failed}")
-          print("All guards, app compilation, full package tests, and hosted tests passed.")
+          print("All guards, app compilation, full package tests, and hosted iPad tests passed.")
           PY

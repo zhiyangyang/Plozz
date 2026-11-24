@@ -133,8 +133,6 @@
     "Sources/SeerService/SeerService.swift",
     "Sources/SeerService/SeerUser.swift",
     "Sources/SimklService/SimklModels.swift",
-    "Sources/TopShelfKit/TopShelfPosterComposer.swift",
-    "Sources/TopShelfKit/TopShelfSnapshot.swift",
     "Sources/TraktService/TraktModels.swift",
     "Sources/TraktService/TraktScrobbler.swift"
   ],

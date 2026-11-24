@@ -49,12 +49,7 @@ export PLOZZ_ID_SUFFIX="${PLOZZ_ID_SUFFIX:-}"
 export PLOZZ_NAME_SUFFIX="${PLOZZ_NAME_SUFFIX:-}"
 export PLOZZ_PAIRING_SERVICE_TYPE="${PLOZZ_PAIRING_SERVICE_TYPE:-_plozz-pair._tcp}"
 export PLOZZ_URL_SCHEME="${PLOZZ_URL_SCHEME:-plozz}"
-# tvOS entitlements paths — canonical by default. A --branded build overrides
-# these with the stripped variants (User Management + App Group removed) so a
-# fresh per-branch App ID can sign without those special capabilities.
-export PLOZZ_TV_APP_ENTITLEMENTS="${PLOZZ_TV_APP_ENTITLEMENTS:-App/Resources/Plozz.entitlements}"
-export PLOZZ_TV_TOPSHELF_ENTITLEMENTS="${PLOZZ_TV_TOPSHELF_ENTITLEMENTS:-TopShelf/TopShelf.entitlements}"
-# iOS entitlements path — same story as tvOS above. A --branded build overrides it
+# iOS entitlements path — canonical by default. A --branded build overrides it
 # with the stripped variant so a fresh per-branch App ID can sign without the
 # canonical app's Push / iCloud / Associated Domains capabilities.
 export PLOZZ_IOS_APP_ENTITLEMENTS="${PLOZZ_IOS_APP_ENTITLEMENTS:-App/PlozziOS/PlozziOS.entitlements}"
@@ -82,13 +77,11 @@ generation_signature="$(
       "PLOZZ_NAME_SUFFIX=${PLOZZ_NAME_SUFFIX}" \
       "PLOZZ_PAIRING_SERVICE_TYPE=${PLOZZ_PAIRING_SERVICE_TYPE}" \
       "PLOZZ_URL_SCHEME=${PLOZZ_URL_SCHEME}" \
-      "PLOZZ_TV_APP_ENTITLEMENTS=${PLOZZ_TV_APP_ENTITLEMENTS}" \
-      "PLOZZ_TV_TOPSHELF_ENTITLEMENTS=${PLOZZ_TV_TOPSHELF_ENTITLEMENTS}" \
       "PLOZZ_IOS_APP_ENTITLEMENTS=${PLOZZ_IOS_APP_ENTITLEMENTS}"
     # XcodeGen expands directory sources into concrete file references. Git pulls
     # can change that set while leaving this ignored project behind, so paths are
     # part of the signature even though ordinary source-content edits are not.
-    find App Sources Tests TopShelf -type f -print | LC_ALL=C sort
+    find App Sources Tests -type f -print | LC_ALL=C sort
   } | shasum -a 256 | awk '{print $1}'
 )"
 
