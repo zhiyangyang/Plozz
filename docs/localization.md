@@ -86,7 +86,7 @@ Neither failure produces an error message — you just get an empty catalog. Bot
 handled inside `tools/l10n-sync.py`, which is why extraction has exactly one entry
 point.
 
-**Do not** thread `SWIFT_EMIT_LOC_STRINGS` through `deploy-tv.sh`, `deploy-ios.sh`,
+**Do not** thread `SWIFT_EMIT_LOC_STRINGS` through `deploy-ios.sh`,
 `run-tests.sh`, fastlane or CI builds. Shipping builds need only the checked-in
 catalog; extraction metadata is pure build cost there.
 
@@ -247,7 +247,7 @@ when presenting, so its labels follow the active profile's language.
 ```sh
 tools/l10n-guard.sh                         # catch localization regressions
 tools/run-tests.sh FeatureSearchCoreTests   # localization invariants live here
-tools/deploy-tv.sh --build-only             # tvOS compiles
+tools/deploy-ios.sh --ipad --build-only     # iPad compiles
 tools/l10n-sync.py --check                  # catalog matches the source
 ```
 
@@ -386,8 +386,8 @@ translations and no `.lproj` — the system generates them from the base languag
 so this works today, with an untranslated catalog.
 
 ```sh
-tools/deploy-tv.sh --branded --pseudo       # en-XA: accented and lengthened
-tools/deploy-tv.sh --branded --pseudo-rtl   # ar-XB: the above, plus mirrored
+tools/deploy-ios.sh --ipad --branded --pseudo       # en-XA: accented and lengthened
+tools/deploy-ios.sh --ipad --branded --pseudo-rtl   # ar-XB: the above, plus mirrored
 ```
 
 On iPhone/iPad `tools/deploy-ios.sh` installs but doesn't launch, so pass the

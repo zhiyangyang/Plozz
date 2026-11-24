@@ -115,7 +115,7 @@ write:
   `beta`/`release` ownership spans both platform archives, uploads, processing,
   external distribution, and GitHub tagging;
 - `tools/generate-project.sh`;
-- `tools/deploy-tv.sh` and `tools/deploy-ios.sh`;
+- `tools/deploy-ios.sh`;
 - `tools/run-tests.sh` and `tools/test-fast.sh`;
 - `tools/l10n-sync.py`, `tools/l10n-guard.sh`, and
   `tools/l10n-prune-stale-products.sh`;

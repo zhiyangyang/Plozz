@@ -1,5 +1,9 @@
 # Plozz testing: data-driven selection & build-once policy
 
+> **iPad-only fork:** package and hosted tests run on iPad simulators. Any tvOS
+> or Apple TV commands below are historical upstream guidance and no longer
+> apply.
+
 Purpose: run the *right* tests fast during the agentic inner loop, and the full
 sweep only when it matters — speed without sacrificing quality. All target/suite
 knowledge is **derived at runtime** from `swift package dump-package`; nothing in

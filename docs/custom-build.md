@@ -1,8 +1,13 @@
 # Plozz Custom (iPad) — build and upstream-merge notes
 
-This fork carries a small personal customization layer on top of Plozz. The
-feature modules stay linked (`Package.swift` is unchanged) so upstream merges
-stay small; the custom app simply never exposes or activates those features.
+This branch (`slim/emby-ipad`) started from the personal iPad customization and
+is now a hard fork: the Apple TV app, Top Shelf extension, FocusHost, and tvOS
+build targets have been removed. `Package.swift` and `project.yml` are no longer
+upstream-compatible.
+
+The `PlozzCustomization` bundle-ID switches below describe the starting point,
+not the final architecture. They are scheduled for removal as the corresponding
+feature modules are deleted, so there is only one runtime path.
 
 ## Identity
 
@@ -144,29 +149,16 @@ Keep changes confined to these files when possible:
 - `Sources/SeerService/SeerService.swift` — `isConfigured` always false when disabled
 - `Tests/CoreModelsTests/PlozzCustomizationTests.swift` — bundle-ID and flag tests
 
-Do **not** edit the generated `Plozz.xcodeproj`, and do not remove the Seerr or
-Tracker targets from `Package.swift` on this branch. Deleting modules would make
-every upstream merge touch dozens of files.
+Do **not** edit the generated `Plozz.xcodeproj`. The earlier guidance to keep
+Seerr/Tracker targets linked for low-conflict upstream merges no longer applies:
+this branch is a deliberate hard fork and deletes unused modules instead.
 
-## Upstream sync
+## Upstream policy
 
-```bash
-git fetch upstream
-git rebase upstream/main
-tools/generate-project.sh
-```
-
-Recommended cadence: weekly, or before starting any new customization work.
-Enable `git rerere` once to reuse conflict resolutions:
-
-```bash
-git config rerere.enabled true
-```
-
-Conflict hotspots are the seam files above, especially
-`PlozziOSAppModel.swift`, `PlozziOSSettingsView.swift`, and
-`PlozziOSRootView.swift`. Resolve by keeping upstream code and re-applying the
-small `PlozzCustomization` guards.
+This branch no longer rebases wholesale onto `upstream/main`. Playback, engine,
+and provider fixes may be cherry-picked deliberately, with the normal build and
+playback checks. Do not reintroduce tvOS targets or removed feature modules to
+make a patch apply cleanly.
 
 ## Verify after a merge
 

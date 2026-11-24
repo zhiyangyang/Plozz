@@ -1,6 +1,6 @@
 # Contributing to Plozz
 
-Plozz is a free, open source media client for Apple TV, iPhone, and iPad.
+This fork is a free, open source media client for iPad.
 **One PR, one focused change:** make it easy to understand, reproduce, and verify.
 
 ## Development pipeline
@@ -68,7 +68,7 @@ Plex/Jellyfin and every other affected provider, including mixed sources where
 relevant. Use deterministic fixtures and authorized live-server checks when
 server behavior matters. Disclose unavailable combinations and request
 maintainer validation. One server's success does not prove another works;
-a tvOS pass does not establish iPhone/iPad behavior.
+a simulator pass does not establish physical-iPad behavior.
 
 ## Reporting bugs & requesting features
 
@@ -99,10 +99,10 @@ Fix episode detail entry
 
 Refs #177
 
-TestFlight-Issue: 177 [tvOS]
+TestFlight-Issue: 177 [iPadOS]
 ```
 
-Platforms: `tvOS`, `iOS`, or `tvOS,iOS` (`iOS` includes iPad). Partial fixes use
+Platforms: `iPadOS` (this fork). Partial fixes use
 only `Refs`; reopened issues need a new declaration. Never use
 `TestFlight-Fix: #...`: GitHub treats it as an immediate closing reference.
 
@@ -135,7 +135,7 @@ do not replace it. The app-delivery issue rules above still apply.
 ### Requirements
 
 - macOS and [CI's Xcode/SDK](workflows/ci.yml): currently Xcode 27
-  (`xcode-27` runner). Deployment targets are iOS/tvOS 18.0.
+  (`xcode-27` runner). Deployment target is iOS/iPadOS 18.0.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
 
 ### Generate the project and run
@@ -145,7 +145,7 @@ tools/generate-project.sh
 open Plozz.xcodeproj
 ```
 
-Run **Plozz** (tvOS) or **PlozziOS** (iOS/iPadOS) on an installed simulator.
+Run **PlozziOS** on an installed iPad simulator.
 `project.yml` and `Package.swift` are authoritative: use the wrapper, not bare
 XcodeGen; never commit the generated project. Regenerate after source-file moves,
 additions, or removals.
@@ -169,20 +169,18 @@ or clear shared caches to recover a failure.
 ### Unsigned self-build IPAs
 
 ```bash
-tools/build-unsigned-ipa.sh ios   # iPhone and iPad
-tools/build-unsigned-ipa.sh tvos  # Apple TV
+tools/build-unsigned-ipa.sh ios   # iPad
 ```
 
 Stage new source files first: these commands snapshot tracked working-tree files.
-Outputs and provenance stay under `.build/unsigned-ipa/<platform>/run-*`;
+Outputs and provenance stay under `.build/unsigned-ipa/ios/run-*`;
 the commands do not sign, install, upload, or release. Alternatively, run
 [Unsigned IPA](workflows/unsigned-ipa.yml) in your fork with an available
 Xcode 27+ macOS runner; the default `xcode-27` image may be unavailable.
 
-**Unsigned IPAs need signing**, including embedded frameworks and the tvOS
-extension. The separate **Plozz Self-build** app omits private metadata/OAuth
+**Unsigned IPAs need signing**, including embedded frameworks. The separate **Plozz Self-build** app omits private metadata/OAuth
 registrations, crash reporting, iCloud, push, associated domains, shared Top
-Shelf data, and tvOS household-keychain access. Expect fresh sign-in and local
+Shelf data, and Apple TV household-keychain access. Expect fresh sign-in and local
 settings. Playback and license notices remain intact; packaging does not
 establish licensing or patent clearance.
 
@@ -192,12 +190,12 @@ Start with changed behavior; expand for shared-code risk or failures:
 
 ```bash
 tools/run-tests.sh CoreModelsTests ProviderPlexTests  # selected package suites
-tools/run-focus-tests.sh -only-testing:PlozzFocusTests/DetailPrimaryFocusHostedTests
+tools/run-focus-tests.sh -only-testing:PlozziOSPresentationTests/LibraryNavigationTests
 ```
 
 The package runner takes test target names; omitting them runs its full matrix.
-Both examples target tvOS simulators. iOS presentation coverage is separate;
-see the [testing policy](../docs/testing-policy.md) for runners and selection.
+Both examples target iPad simulators. See the [testing policy](../docs/testing-policy.md)
+for runners and selection.
 Do not use desktop `swift test` for this Apple-platform package.
 
 Changes to hero first paint, shared animation, or cross-tab navigation state
@@ -242,13 +240,13 @@ stay thin. Start with the relevant owner:
 | --- | --- |
 | Models, provider contracts, networking | [CoreModels](../Sources/CoreModels/README.md), [CoreNetworking](../Sources/CoreNetworking/README.md) |
 | Shared behavior and runtime composition | `Feature*Core` modules, [AppRuntime](../Sources/AppRuntime), [state management](../docs/state-management.md) |
-| Platform UI and shared components | [AppShell](../Sources/AppShell/README.md) (TV), [AppShelliOS](../Sources/AppShelliOS), [CoreUI](../Sources/CoreUI/README.md) |
+| Platform UI and shared components | [AppShelliOS](../Sources/AppShelliOS), [CoreUI](../Sources/CoreUI/README.md) |
 | Providers | [Jellyfin/Emby](../Sources/ProviderJellyfin/README.md), [Plex](../Sources/ProviderPlex/README.md), [Silo](../Sources/ProviderSilo/README.md), [Subsonic](../Sources/ProviderSubsonic/README.md), [shares](../Sources/ProviderShare) |
-| Home, playback, music, Live TV | [FeatureHome](../Sources/FeatureHome/README.md), [FeaturePlayback](../Sources/FeaturePlayback/README.md), [FeatureMusic](../Sources/FeatureMusic/README.md), [FeatureLiveTV](../Sources/FeatureLiveTV) |
-| Discovery, accounts, profiles | [FeatureDiscovery](../Sources/FeatureDiscovery/README.md), [FeatureAuth](../Sources/FeatureAuth/README.md), [FeatureProfiles](../Sources/FeatureProfiles/README.md) |
-| Search and settings | [FeatureSearch](../Sources/FeatureSearch/README.md), [FeatureSettings](../Sources/FeatureSettings/README.md) |
+| Home, playback, music, Live TV | [FeatureHomeCore](../Sources/FeatureHomeCore), [FeaturePlayback](../Sources/FeaturePlayback/README.md), [FeatureMusic](../Sources/FeatureMusic/README.md), [FeatureLiveTV](../Sources/FeatureLiveTV) |
+| Discovery, accounts, profiles | [FeatureDiscoveryCore](../Sources/FeatureDiscoveryCore), [FeatureAuth](../Sources/FeatureAuth/README.md), [FeatureProfiles](../Sources/FeatureProfiles/README.md) |
+| Search and settings | [FeatureSearchCore](../Sources/FeatureSearchCore), [FeatureSettings](../Sources/FeatureSettings/README.md) |
 | Metadata, ratings, tracking | [MetadataKit](../Sources/MetadataKit/README.md), [RatingsService](../Sources/RatingsService/README.md), [TraktService](../Sources/TraktService/README.md), [WetrakrService](../Sources/WetrakrService/README.md), [CoreTrackerAuth](../Sources/CoreTrackerAuth/README.md) |
-| Downloads and Top Shelf | [MediaDownloads](../Sources/MediaDownloads/README.md), [TopShelfKit](../Sources/TopShelfKit/README.md) |
+| Downloads | [MediaDownloads](../Sources/MediaDownloads/README.md) |
 
 Keep cross-view/platform state in core or runtime modules, not app shells.
 See the [architecture roadmap](../docs/architecture-roadmap.md) for proposed work.

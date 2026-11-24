@@ -1,5 +1,8 @@
 # Simulator performance lab
 
+> **iPad-only fork:** the performance lab targets iPad simulators. Apple TV
+> scenarios and focus-host targets described in older sections were removed.
+
 Use this for the agent-driven optimization loop without installing on an Apple
 TV, iPhone, or iPad. It complements [physical profiling](performance-debugging.md),
 not a replacement for device-specific evidence. No cloud account, real media

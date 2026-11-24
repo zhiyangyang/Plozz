@@ -2,7 +2,11 @@
   <img src="https://raw.githubusercontent.com/brandomoore/brando/main/logos/plozz.svg" alt="Plozz logo" width="96" />
 </p>
 
-# Plozz — media player for Apple TV, iPhone and iPad
+# Plozz — media player for iPad
+
+> **This fork is iPad-only.** The Apple TV app, Top Shelf extension, and tvOS
+> build targets have been removed. The remaining feature set is being trimmed
+> toward an Emby-first iPad player.
 
 **Free and open source. No ads or paywalls.** Enjoy your movies, shows, music
 and live TV in one app built for Apple devices. Connect **Jellyfin, Plex, Emby and Silo**,

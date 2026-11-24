@@ -28,8 +28,9 @@ configuration and credentials out of committed guidance.
 - Preserve profile, account, server-user, and parental-authorization boundaries,
   including after asynchronous work. Reuse the existing settings models and
   profile-scoped stores for preferences.
-- Identify affected platforms and availability gates. Shared Swift source does
-  not automatically mean identical behavior on tvOS and iOS/iPadOS.
+- Identify affected platforms and availability gates. This fork ships the iPad
+  app only; shared Swift source does not automatically mean identical behavior
+  on iPhone and iPad.
 - Follow the existing native controls, focus behavior, accessibility, and
   reduced-effects fallbacks. Finalize UI behavior and source copy with the
   maintainer before starting translation work.

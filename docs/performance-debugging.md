@@ -1,7 +1,7 @@
-# Performance Debugging Playbook (tvOS + iOS/iPadOS)
+# Performance Debugging Playbook (iPadOS)
 
 A field guide for diagnosing **slowness, freezes, blank/no-artwork hangs, memory
-crashes, UI jank, and focus-navigation lag** in Plozz on a real Apple TV. Written
+crashes, UI jank, and focus-navigation lag** in Plozz on a real iPad. Written
 so any agent or contributor can re-run the same process from scratch. It captures
 the methodology, the on-device tooling, how to read an Instruments trace without
 the GUI, and two worked case studies (a memory/CPU storm and a SwiftUI re-render
@@ -462,9 +462,9 @@ Device identifiers (this machine):
 ```bash
 cd <worktree>
 export GIT_CONFIG_PARAMETERS="'safe.bareRepository=all'"
-tools/deploy-tv.sh --build-only
+tools/deploy-ios.sh --ipad --build-only
 # Only when deployment is authorized:
-tools/deploy-tv.sh
+tools/deploy-ios.sh --ipad
 ```
 
 Notes:
@@ -553,12 +553,10 @@ runner. It must not install or restart the app under measurement:
 
 ```sh
 export PLOZZ_HOME_DEVICE_ID='<physical Apple TV UDID>'
-bash tools/run-physical-home-rows-first.sh --build-runner
 PLOZZ_HOME_ROWS_FIRST="$PLOZZ_HOME_DEVICE_ID" \
 PLOZZ_HOME_RELEASE_APP_INSTALLED=1 \
 PLOZZ_HOME_START_ROW='Continue Watching' \
 PLOZZ_HOME_REPEATS=3 \
-bash tools/run-physical-home-rows-first.sh --run-horizontal-only
 ```
 
 Confirm the current Release app process and populated Home content, then post the

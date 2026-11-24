@@ -4,9 +4,7 @@ Install a branch's build on a real device **side-by-side with the canonical app*
 so you can test it without losing the app you actually use.
 
 ```sh
-tools/deploy-tv.sh  --branded          # Apple TV
 tools/deploy-ios.sh --ipad --branded   # iPad
-tools/deploy-ios.sh --iphone --branded # iPhone
 ```
 
 That's the whole workflow. The scripts handle project regeneration, signing,
