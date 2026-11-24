@@ -654,6 +654,19 @@ final class LibraryNavigationTests: XCTestCase {
         ))
     }
 
+    func testPersonFilmographyGridKeepsMoviesOnlyInCreditOrder() {
+        let credits = [
+            MediaItem(id: "movie-1", title: "Movie One", kind: .movie),
+            MediaItem(id: "series", title: "A Series", kind: .series),
+            MediaItem(id: "movie-2", title: "Movie Two", kind: .movie),
+            MediaItem(id: "episode", title: "An Episode", kind: .episode),
+        ]
+        XCTAssertEqual(
+            PlozziOSPersonFilmographyGrid.movieCredits(from: credits).map(\.id),
+            ["movie-1", "movie-2"]
+        )
+    }
+
     func testCustomLibraryRatingUsesOnlyTheCommunityScore() {
         let community = ExternalRating(source: .community, value: 8.7, scale: .outOfTen)
         let imdb = ExternalRating(source: .imdb, value: 9.0, scale: .outOfTen)

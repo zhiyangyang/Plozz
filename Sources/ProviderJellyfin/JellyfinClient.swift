@@ -609,7 +609,11 @@ public struct JellyfinClient: Sendable {
                 URLQueryItem(name: "SortBy", value: "PremiereDate,SortName"),
                 URLQueryItem(name: "SortOrder", value: "Descending"),
                 URLQueryItem(name: "Limit", value: String(limit)),
-                URLQueryItem(name: "Fields", value: "Overview,OriginalTitle,ProviderIds")
+                URLQueryItem(
+                    name: "Fields",
+                    value: "Overview,OriginalTitle,ProviderIds,CommunityRating,"
+                        + "ProductionYear,PremiereDate,PrimaryImageAspectRatio"
+                )
             ],
             headers: authHeaders
         )
@@ -633,7 +637,11 @@ public struct JellyfinClient: Sendable {
                 URLQueryItem(name: "SortBy", value: "PremiereDate,SortName"),
                 URLQueryItem(name: "SortOrder", value: "Descending"),
                 URLQueryItem(name: "Limit", value: String(limit)),
-                URLQueryItem(name: "Fields", value: "Overview,OriginalTitle,ProviderIds")
+                URLQueryItem(
+                    name: "Fields",
+                    value: "Overview,OriginalTitle,ProviderIds,CommunityRating,"
+                        + "ProductionYear,PremiereDate,PrimaryImageAspectRatio"
+                )
             ],
             headers: authHeaders
         )

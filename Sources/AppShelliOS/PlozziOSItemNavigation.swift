@@ -191,51 +191,27 @@ private struct PlozziOSPersonPage: View {
 
     var body: some View {
         let person = route.person
-        let accounts = appModel.accountsProviders.resolvedActiveAccounts
-        PersonDetailView(
-                person: person,
-                viewModel: PersonDetailViewModel(
-                    person: person,
-                    // The person's OWN server, by its own person id.
-                    //
-                    // Load STOPS here without one — the view model returns
-                    // `.unavailable` before it ever fans out — so passing nil
-                    // and relying on the by-name rung, as this briefly did,
-                    // reported "nothing else in your library" for everybody.
-                    // The account travels with the route because a person id
-                    // means nothing to any other server.
-                    //
-                    // `resolveOptional`, never a fallback to the primary
-                    // account: that sent Jellyfin and share person ids to
-                    // Plex and got nothing back. No account means no credits,
-                    // not wrong credits.
-                    provider: route.sourceAccountID.flatMap { id in
-                        accounts.first(where: { $0.account.id == id })?.provider
-                    },
-                    // Every OTHER signed-in server, asked by name, since
-                    // person ids do not cross servers.
-                    otherProviders: accounts
-                        .filter { $0.account.id != route.sourceAccountID }
-                        .map(\.provider),
-                    // Keyless, so it works for every user out of the box, and
-                    // only reached when no server stored a biography.
-                    biographyProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
-                        ? [] : [WikipediaPersonBiographyProvider()],
-                    // The same ladder the in-player Cast card uses — without
-                    // it this page can only answer with what the viewer
-                    // already owns, which is not what "known for" means.
-                    creditsProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
-                        ? [] : PlayerCastCredits.providers,
-                    artworkResolver: PlayerCastCredits.artworkResolver,
-                    // So a credit the viewer owns isn't marked absent — see the
-                    // tvOS person page and `PersonDetailViewModel`.
-                    librarySources: { [identityIndex = appModel.identityIndex] item in
-                        identityIndex.identitySnapshot.sourceRefs(for: item)
-                    }
-                ),
-            onSelectItem: { navigatedItem = $0 }
+        let viewModel = Self.makeViewModel(
+            appModel: appModel,
+            person: person,
+            sourceAccountID: route.sourceAccountID
         )
-        .artworkNavigation { navigatedArtwork = .init(item: $0, source: $1) }
+        Group {
+            if PlozzCustomization.isCustomBuild {
+                PlozziOSPersonFilmographyGrid(
+                    appModel: appModel,
+                    viewModel: viewModel,
+                    onSelectItem: { navigatedItem = $0 }
+                )
+            } else {
+                PersonDetailView(
+                    person: person,
+                    viewModel: viewModel,
+                    onSelectItem: { navigatedItem = $0 }
+                )
+                .artworkNavigation { navigatedArtwork = .init(item: $0, source: $1) }
+            }
+        }
         .navigationDestination(item: $navigatedArtwork) { route in
             PlozziOSItemPage(appModel: appModel, item: route.item)
                 .mediaArtworkZoomDestination(route.source)
@@ -243,6 +219,193 @@ private struct PlozziOSPersonPage: View {
         .navigationDestination(item: $navigatedItem) { item in
             PlozziOSItemPage(appModel: appModel, item: item)
         }
+    }
+
+    private static func makeViewModel(
+        appModel: PlozziOSAppModel,
+        person: MediaPerson,
+        sourceAccountID: String?
+    ) -> PersonDetailViewModel {
+        let accounts = appModel.accountsProviders.resolvedActiveAccounts
+        return PersonDetailViewModel(
+            person: person,
+            // The person's OWN server, by its own person id.
+            //
+            // Load STOPS here without one — the view model returns
+            // `.unavailable` before it ever fans out — so passing nil
+            // and relying on the by-name rung, as this briefly did,
+            // reported "nothing else in your library" for everybody.
+            // The account travels with the route because a person id
+            // means nothing to any other server.
+            //
+            // `resolveOptional`, never a fallback to the primary
+            // account: that sent Jellyfin and share person ids to
+            // Plex and got nothing back. No account means no credits,
+            // not wrong credits.
+            provider: sourceAccountID.flatMap { id in
+                accounts.first(where: { $0.account.id == id })?.provider
+            },
+            // Every OTHER signed-in server, asked by name, since person ids do
+            // not cross servers.
+            otherProviders: accounts
+                .filter { $0.account.id != sourceAccountID }
+                .map(\.provider),
+            // Keyless, so it works for every user out of the box, and only
+            // reached when no server stored a biography.
+            biographyProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
+                ? [] : [WikipediaPersonBiographyProvider()],
+            // The same ladder the in-player Cast card uses — without it this
+            // page can only answer with what the viewer already owns, which is
+            // not what "known for" means.
+            creditsProviders: appModel.isOfflineMode || PlozzCustomization.isCustomBuild
+                ? [] : PlayerCastCredits.providers,
+            artworkResolver: PlayerCastCredits.artworkResolver,
+            // So a credit the viewer owns isn't marked absent — see the tvOS
+            // person page and `PersonDetailViewModel`.
+            librarySources: { [identityIndex = appModel.identityIndex] item in
+                identityIndex.identitySnapshot.sourceRefs(for: item)
+            }
+        )
+    }
+}
+
+/// The personal build's person page is a filmography wall, not a profile.
+///
+/// The actor's name is the only header, and the page is the same poster grid as
+/// a library. Series credits are filtered out because "the films this actor was
+/// in" is the question this page answers; the shared `PersonDetailView` keeps
+/// its headshot, biography and Known for shelves for the canonical app and tvOS.
+struct PlozziOSPersonFilmographyGrid: View {
+    let appModel: PlozziOSAppModel
+    @State private var viewModel: PersonDetailViewModel
+    @State private var favoriteStateRevision = 0
+    let onSelectItem: (MediaItem) -> Void
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.plozzMetrics) private var metrics
+    @Environment(\.plozzCardStyle) private var cardStyle
+    @Environment(\.themePalette) private var palette
+
+    init(
+        appModel: PlozziOSAppModel,
+        viewModel: PersonDetailViewModel,
+        onSelectItem: @escaping (MediaItem) -> Void
+    ) {
+        self.appModel = appModel
+        _viewModel = State(initialValue: viewModel)
+        self.onSelectItem = onSelectItem
+    }
+
+    static func movieCredits(from credits: [MediaItem]) -> [MediaItem] {
+        credits.filter { $0.kind == .movie }
+    }
+
+    private var movies: [MediaItem] {
+        Self.movieCredits(from: viewModel.libraryCredits)
+    }
+
+    private var isLoading: Bool {
+        switch viewModel.state {
+        case .loading: true
+        case .loaded: !viewModel.creditsAreFinal
+        case .unavailable: false
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            if isLoading {
+                PlozzPosterGridSkeleton(
+                    columns: gridColumns,
+                    spacing: gridSpacing,
+                    horizontalPadding: gridPadding,
+                    style: .poster
+                )
+                .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
+                .padding(.bottom, 24)
+            } else if movies.isEmpty {
+                PlozzStateView(
+                    icon: "film",
+                    title: Text("No titles to show")
+                )
+                .frame(maxWidth: .infinity, minHeight: 420)
+            } else {
+                LazyVGrid(columns: gridColumns, spacing: gridSpacing) {
+                    ForEach(movies, id: \.stablePresentationID) { item in
+                        Button {
+                            onSelectItem(item)
+                        } label: {
+                            PlozziOSPosterCard(
+                                item: item,
+                                style: .poster,
+                                reservesSubtitleSpace: true,
+                                isFavorite: isFavorite(item),
+                                rating: PlozziOSLibraryGridView.displayedRating(
+                                    customBuild: PlozzCustomization.isCustomBuild,
+                                    item: item
+                                )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, gridPadding)
+                .padding(.top, PlozziOSMediaRailLayout.posterGridTopPadding)
+                .padding(.bottom, 24)
+                .accessibilityIdentifier("person-filmography-grid")
+            }
+        }
+        .background { AppBackground(palette: palette) }
+        // The wall itself identifies the person; a title would repeat the actor
+        // name above a grid that may hold only one film.
+        .navigationTitle(Text(verbatim: ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .environment(\.plozzCardCaptionView, .filmography)
+        .task { await viewModel.load() }
+        .onReceive(NotificationCenter.default.publisher(for: .watchlistIntentDidChange)) { _ in
+            favoriteStateRevision &+= 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .universalWatchlistDidChange)) { _ in
+            favoriteStateRevision &+= 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .universalWatchlistCacheDidLoad)) { _ in
+            favoriteStateRevision &+= 1
+        }
+    }
+
+    private var gridColumns: [GridItem] {
+        PlozziOSPosterGridStyle.columns(
+            density: appModel.settings.density.density,
+            horizontalSizeClass: horizontalSizeClass,
+            dynamicTypeSize: dynamicTypeSize,
+            isRunningOnMac: metrics.usesDesktopSizing,
+            spacing: gridSpacing
+        )
+    }
+
+    private var gridSpacing: CGFloat {
+        PlozziOSPosterGridStyle.spacing(metrics: metrics, cardStyle: cardStyle)
+    }
+
+    private var gridPadding: CGFloat {
+        PlozziOSPosterGridStyle.gridPadding(
+            horizontalSizeClass: horizontalSizeClass,
+            usesDesktopSizing: metrics.usesDesktopSizing,
+            metrics: metrics,
+            cardStyle: cardStyle
+        )
+    }
+
+    private func isFavorite(_ item: MediaItem) -> Bool {
+        _ = favoriteStateRevision
+        return PlozziOSLibraryGridView.showsFavoriteBadge(
+            customBuild: PlozzCustomization.isCustomBuild,
+            item: item,
+            isWatchlisted: {
+                appModel.mediaItemActionHandler.isWatchlisted($0) || $0.isFavorite
+            }
+        )
     }
 }
 

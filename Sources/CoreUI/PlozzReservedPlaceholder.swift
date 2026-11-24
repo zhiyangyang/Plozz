@@ -218,8 +218,8 @@ public extension View {
 }
 
 /// A full-page poster skeleton that uses the same columns, gutter and page
-/// inset as the real wall, so every content page reserves its final geometry
-/// while loading.
+/// inset as the real wall. It reserves one row by default: a small result set
+/// would otherwise flash two full rows and then collapse to a single card.
 public struct PlozzPosterGridSkeleton: View {
     private let columns: [GridItem]
     private let spacing: CGFloat
@@ -233,7 +233,7 @@ public struct PlozzPosterGridSkeleton: View {
         spacing: CGFloat,
         horizontalPadding: CGFloat = 0,
         style: SkeletonCardView.Style = .poster,
-        rows: Int = 2,
+        rows: Int = 1,
         showsProgress: Bool = false
     ) {
         self.columns = columns

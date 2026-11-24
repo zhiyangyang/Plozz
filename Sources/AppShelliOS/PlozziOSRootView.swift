@@ -2774,8 +2774,7 @@ struct PlozziOSWatchlistLandingView: View {
                             PlozzPosterGridSkeleton(
                                 columns: gridColumns,
                                 spacing: gridSpacing,
-                                horizontalPadding: gridHorizontalPadding ?? 16,
-                                rows: 2
+                                horizontalPadding: gridHorizontalPadding ?? 16
                             )
                         } else {
                             watchlistContent(
@@ -2906,13 +2905,19 @@ struct PlozziOSWatchlistLandingView: View {
                 }
             }
         } else {
+            // The personal build uses the same one-row loading limit as the
+            // shared poster grid skeleton. Twelve placeholders made a page with
+            // two favorites flash two full rows before collapsing.
+            let placeholderCount = PlozzCustomization.isCustomBuild
+                ? min(loadingPlaceholderCount, gridColumns.count)
+                : loadingPlaceholderCount
             LazyVGrid(
                 columns: gridColumns,
                 spacing: gridSpacing
             ) {
                 ForEach(MediaRowView.presentationElements(
                     items: filteredItems,
-                    loadingPlaceholderCount: loadingPlaceholderCount
+                    loadingPlaceholderCount: placeholderCount
                 )) { element in
                     switch element {
                     case .item(let item):

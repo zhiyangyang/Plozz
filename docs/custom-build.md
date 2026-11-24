@@ -120,7 +120,8 @@ Keep changes confined to these files when possible:
 - `Sources/AppShelliOS/PlozziOSRootView.swift` — fixed top navigation and movie-only Favorites
 - `Sources/AppShelliOS/PlozziOSAppModel.swift` / `PlozziOSAppModel+UniversalWatchlist.swift` — tracker scoping and server-favorites-only watchlist reads
 - `Sources/AppShelliOS/PlozziOSHeroViews.swift` — movie favorite heart action
-- `Sources/AppShelliOS/PlozziOSLibraryView.swift` / `PlozziOSPosterCard.swift` — red poster favorite badge
+- `Sources/AppShelliOS/PlozziOSLibraryView.swift` / `PlozziOSPosterCard.swift` — red poster favorite badge and Emby rating
+- `Sources/AppShelliOS/PlozziOSItemNavigation.swift` — actor page as a movies-only, title-less library-style poster grid
 - `Sources/FeatureSettings/LibraryPresentationSettingsView.swift` — hide removed library-tab settings
 - `Sources/FeatureSettings/ArtworkSettingsControls.swift` / `CardAppearanceControls.swift` / `CardCaptionCustomizationContent.swift` — hide artwork/caption categories for removed library pages
 - `Sources/CoreUI/DetailInformationSections.swift` — omit the requested detail blocks
