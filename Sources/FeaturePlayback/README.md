@@ -1957,13 +1957,6 @@ It uses the overlay's bitmap placement, control avoidance and master opacity.
 HDR with custom luminance stays on the ordinary overlay, as do secondary cues
 and live auxiliary players.
 
-Local tvOS builds can also compose the primary ASS directly into the decoded
-picture before it is enqueued. Run `tools/prepare-frame-ass-engine.sh` before
-generating/building; it accepts an optional local Git clone as its source.
-The tvOS app build rechecks the prepared checkout against the pinned revision
-and patch; a mismatch stops the build rather than packaging a different engine. Unprepared
-builds keep the remote dependency and existing rendering paths.
-
 On the ordinary ASS overlay, a rewind can leave later packets cached while the
 reader is still filling the opening lyrics. New overlapping packets behind the
 decode cursor reopen that part of the window without another seek. Reading
@@ -2008,11 +2001,6 @@ byte budget and deadline. A frame is eligible only when every indexed overlap
 is present in the packet store, including multiple layers with identical
 timestamps. An incomplete index or
 missing packet leaves the existing fallback intact.
-
-`FrameASSArtworkTests` can exercise ordinary route and track selection on local
-media by passing `PLOZZ_ASS_PLAYBACK_FILES` as a JSON array of paths accessible
-to the test process. It checks that playback advances while the submitted
-frames own the subtitle; it does not measure displayed subtitle timing.
 
 Rendering uses source time minus the subtitle offset. Paused frames redraw only for changed
 cue data; backward seeks rebuild the retained event set. Track changes, Off,

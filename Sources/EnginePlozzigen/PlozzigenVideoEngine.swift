@@ -635,19 +635,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     public func load(request: PlaybackRequest, startPosition: TimeInterval) async {
         guard let outputGeneration = await beginOutputLoad() else { return }
-        #if PLOZZ_FRAME_ASS
-        resetFrameArtwork()
-        if !request.isManifestStream, !request.isTranscoding, request.burnedInSubtitleTrackID == nil,
-           !request.suppressOrdinaryWatchReporting, request.externalAudioURL == nil,
-           request.discPlayback == .playVideo, !request.usesUnidentifiedDiscTimeline,
-           SourceDynamicRange.providerHint(from: request.sourceMetadata)?.isHDR != true,
-           let select = nextFrameSelection {
-            if case .networkDisc = request.playbackSource {} else {
-                engine.frameASSSelection = { select(Self.selectableSubtitleTracks(from: $0, route: .software)) }
-            }
-        }
-        nextFrameSelection = nil
-        #endif
         allowsFELConversionOverride = Self.supportsFELConversion(for: request)
         allowsVideoUpscalingOverride = Self.supportsVideoUpscalingChanges(for: request)
         #if canImport(DiscNavigation) && canImport(UIKit)
@@ -944,11 +931,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
                 MediaChapter(start: $0.startSeconds, title: $0.name)
             }, duration: engine.duration)
             onChaptersChanged?()
-            #if PLOZZ_FRAME_ASS
-            await engine.prerollResumedFrameASS(at: startPosition)
-            guard !Task.isCancelled, probePublicationGate.accepts(probeGeneration),
-                  outputLoadGeneration == outputGeneration else { return }
-            #endif
             engine.play()
             syncTracks()
         } catch is CancellationError {
@@ -987,10 +969,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     public func loadLive(url: URL, httpHeaders: [String: String]) async {
         guard let outputGeneration = await beginOutputLoad() else { return }
-        #if PLOZZ_FRAME_ASS
-        resetFrameArtwork()
-        nextFrameSelection = nil
-        #endif
         allowsFELConversionOverride = false
         serverRenditionAudio = nil
         chapters = []
@@ -1560,10 +1538,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     private func stopEngine(resetDisplayCriteria: Bool) {
-        #if PLOZZ_FRAME_ASS
-        resetFrameArtwork()
-        nextFrameSelection = nil
-        #endif
         allowsFELConversionOverride = false
         allowsVideoUpscalingOverride = false
         #if canImport(DiscNavigation) && canImport(UIKit)
@@ -1970,42 +1944,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     private weak var artworkSink: (any ScheduledASSArtworkSink)?
     private var scheduledItem: AVPlayerItem?
     private var scheduledOffset = 0.0
-    #if PLOZZ_FRAME_ASS
-    private var nextFrameSelection: (@MainActor ([MediaTrack]) -> Int?)?
-    private var lastFrameOwner: Bool?
-    public func setFrameSubtitleSelection(_ select: @escaping @MainActor ([MediaTrack]) -> Int?) {
-        nextFrameSelection = select
-    }
-
-    private func resetFrameArtwork() {
-        lastFrameOwner = nil
-        engine.frameASSSelection = nil
-        if engine.hasSoftwareASSArtworkProvider { engine.setSoftwareASSArtworkProvider(nil) }
-    }
-
-    public func updateFrameSubtitlePresentation(eligible: Bool, offset: Double) -> Bool {
-        guard engine.frameASSRouteAdmitted, engine.videoRoute == .software else { return false }
-        let enabled = eligible && offset == 0 && !wantsNativeSubtitles && !continuesPlaybackInBackground
-            && engine.sidecarASSHeader == nil && engine.subtitleTracks.contains {
-                $0.id == engine.activeSubtitleTrackIndex && !$0.isExternal && $0.assHeader != nil
-            }
-        if enabled != engine.hasSoftwareASSArtworkProvider {
-            if enabled {
-                let artwork = FrameASSArtwork()
-                engine.setSoftwareASSArtworkProvider { artwork.resolve($0) }
-            } else {
-                engine.setSoftwareASSArtworkProvider(nil)
-            }
-            HandoffDiagnostics.emit("subtitle FRAME provider=\(enabled) track=\(engine.activeSubtitleTrackIndex ?? -1)")
-        }
-        let owns = engine.softwareFrameOwnsPrimarySubtitle
-        if enabled, lastFrameOwner != owns {
-            HandoffDiagnostics.emit("subtitle FRAME sampleOwner=\(owns ? "video" : "overlay") track=\(engine.activeSubtitleTrackIndex ?? -1) offset=\(offset)")
-        }
-        lastFrameOwner = enabled ? owns : nil
-        return owns
-    }
-    #endif
     private var scheduleStart = 0.0
     private var previousScheduledTime: Double?
 
@@ -2033,9 +1971,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     private func renderASS(at presentationTime: Double, offset: Double, style: SubtitleStyle, canSchedule: Bool) {
         applyASSStyle(style)
         guard assDocument != nil, rendersAuthoredASS, !wantsNativeSubtitles else { return }
-        #if PLOZZ_FRAME_ASS
-        if engine.hasSoftwareASSArtworkProvider && engine.softwareFrameOwnsPrimarySubtitle { return }
-        #endif
         let item = canSchedule && artworkSink != nil && engine.softwarePresentationTimebase == nil
             && engine.hasFirstFrameReadyForDisplay && !engine.isSeeking
             && engine.presentationAxisMap.itemSeconds(forSourceSeconds: presentationTime) != nil
