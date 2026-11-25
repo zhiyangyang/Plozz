@@ -70,7 +70,6 @@ let package = Package(
         .library(name: "FeatureProfiles", targets: ["FeatureProfiles"]),
         .library(name: "FeatureWatchlistCore", targets: ["FeatureWatchlistCore"]),
         .library(name: "FeatureMusic", targets: ["FeatureMusic"]),
-        .library(name: "CrashReporting", targets: ["CrashReporting"]),
         .library(name: "MediaDownloads", targets: ["MediaDownloads"]),
         .library(name: "MediaTransportCore", targets: ["MediaTransportCore"]),
         .library(name: "MediaTransportHTTP", targets: ["MediaTransportHTTP"]),
@@ -270,17 +269,6 @@ let package = Package(
         // direct FFmpegBuild/LibDovi declarations; current Plozz targets do not
         // consume those products. AetherEngine owns their version alignment.
 
-        // Sentry's official binary-only package powers the OPT-IN, off-by-default
-        // crash reporter (Settings ▸ Help & Diagnostics ▸ Share Crash Reports).
-        // It preserves the static prebuilt SDK while avoiding the main package's
-        // unused dynamic, ARM64e, no-UI, and Objective-C binary variants.
-        // Nothing is sent unless the user opts in AND a DSN was baked into the
-        // build; see the `CrashReporting` target for the privacy-hardened config.
-        .package(
-            url: "https://github.com/getsentry/sentry-apple-binaries",
-            exact: "9.27.0"
-        ),
-
         // SMBClient — pure-Swift, MIT SMB client over NWConnection. Declared here
         // for the isolated **MediaTransportSMB** adapter and ProviderShare's
         // pre-save discovery/share enumeration. Browsing and scanning consume the
@@ -479,7 +467,7 @@ let package = Package(
         ),
         .target(
             name: "FeatureSettings",
-            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "CrashReporting", "FeatureProfiles", "TraktService", "WetrakrService", "SimklService", "AniListService", "MALService", "LastFmService"]
+            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "FeatureProfiles", "TraktService", "WetrakrService", "SimklService", "AniListService", "MALService", "LastFmService"]
         ),
         .target(
             name: "FeatureProfiles",
@@ -500,25 +488,6 @@ let package = Package(
             name: "FeatureMusic",
             dependencies: ["CoreModels", "CoreUI", "MetadataKit", "CoreNetworking"],
             resources: [.process("iOS/Resources"), .copy("iOS/Mozz-NOTICE.txt")]
-        ),
-
-        // MARK: Crash reporting (opt-in, off by default)
-        //
-        // Wraps Sentry behind a small `CrashReporter` protocol so the rest of the
-        // app never imports Sentry directly and builds without a DSN are a true
-        // no-op. Reports are only ever sent when the user has opted in (Settings ▸
-        // Help & Diagnostics) AND the build shipped with a `PLOZZ_SENTRY_DSN`.
-        // The Sentry config here is privacy-hardened: crash + hang captures only,
-        // all automatic UI/network telemetry disabled, and a hard scrub of PII in
-        // `beforeSend`/`beforeBreadcrumb`. Only typed, non-secret app diagnostics
-        // cross the CoreModels boundary.
-        .target(
-            name: "CrashReporting",
-            dependencies: [
-                "CoreModels",
-                "CoreNetworking",
-                .product(name: "Sentry-Static", package: "sentry-apple-binaries"),
-            ]
         ),
 
         // MARK: Protocol-neutral media transport
@@ -840,7 +809,6 @@ let package = Package(
                 "CoreModels",
                 "CoreNetworking",
                 "CoreUI",
-                "CrashReporting",
                 "EnginePlozzigen",
                 "FeatureAuthCore",
                 "FeatureDiscoveryCore",
@@ -906,17 +874,13 @@ let package = Package(
             dependencies: ["CoreModels", "CoreUI", "TestSupportPerformance"]
         ),
         .testTarget(
-            name: "CrashReportingTests",
-            dependencies: ["CrashReporting"]
-        ),
-        .testTarget(
             name: "FeatureWatchlistCoreTests",
             dependencies: ["FeatureWatchlistCore", "CoreModels"]
         ),
         .testTarget(
             name: "AppRuntimeTests",
             dependencies: [
-                "AppRuntime", "CoreModels", "FeatureAuthCore", "CrashReporting", "FeatureHomeCore",
+                "AppRuntime", "CoreModels", "FeatureAuthCore", "FeatureHomeCore",
                 "TestSupportPerformance", "TestSupportNetworking"
             ]
         ),

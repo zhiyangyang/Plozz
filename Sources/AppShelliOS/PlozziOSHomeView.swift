@@ -869,7 +869,7 @@ struct PlozziOSHomeView: View {
                 if phase != .idle { viewModel.noteHomeNavigationInteraction() }
             }
             .homeResponsivenessDiagnostics(
-                isEnabled: AppReleaseChannel.current.isBeta && appModel.crashReporting.isEnabled
+                isEnabled: AppReleaseChannel.current.isBeta
                     && !appModel.isOfflineMode && homeIsFrontmost && homePageIsVisible
                     && playbackRequest == nil,
                 scope: ObjectIdentifier(viewModel),

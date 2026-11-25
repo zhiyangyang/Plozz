@@ -63,15 +63,6 @@ def harness.sh(command)
 end
 def harness.asc_api_key; { key: "fixture" }; end
 def harness.select_release_xcode; end
-def harness.require_crash_reporting_dsn; end
-def harness.require_sentry_symbols
-  @events << "symbol preflight"
-  raise "symbol preflight failed" if ENV["SCENARIO"] == "symbol_preflight_failure"
-end
-def harness.upload_sentry_symbols
-  @events << "symbols both"
-  raise "symbols failed" if ENV["SCENARIO"] == "symbol_failure"
-end
 def harness.next_build_number; @events << "number"; 39; end
 def harness.marketing_version; "2026.9.17"; end
 def harness.release_notes_entry
@@ -372,9 +363,9 @@ class FastlanePipelineTests(unittest.TestCase):
         result = self.ruby(FASTFILE_HARNESS)
         self.assertIsNone(result["error"], result)
         self.assertEqual(
-            result["events"], ["symbol preflight", "number", "gate", "Plozz", "validate disc Plozz",
+            result["events"], ["number", "gate", "Plozz", "validate disc Plozz",
                                "PlozziOS", "validate disc PlozziOS",
-                               "validate IPAs", "symbols both", "upload both", "tag"]
+                               "validate IPAs", "upload both", "tag"]
         )
         tv, ios = [job["options"] for job in result["jobs"]]
         self.assertEqual(tv["changelog"], "Plozz 2026.9.29 (39)\n\nUpdated\n• Shared\n• TV only")
@@ -526,7 +517,7 @@ puts JSON.generate(commands: harness.instance_variable_get(:@commands).map { |c|
     def test_failure_never_tags_or_blindly_retries(self) -> None:
         for scenario, last_event in (
             ("gate_failure", "gate"), ("archive_failure", "PlozziOS"),
-            ("symbol_failure", "symbols both"), ("upload_failure", "upload both"),
+            ("upload_failure", "upload both"),
         ):
             with self.subTest(scenario=scenario):
                 result = self.ruby(FASTFILE_HARNESS, SCENARIO=scenario)
@@ -547,41 +538,10 @@ puts JSON.generate(commands: harness.instance_variable_get(:@commands).map { |c|
                 result = self.ruby(FASTFILE_HARNESS, SCENARIO=scenario)
                 self.assertEqual(result["error"], message)
                 self.assertEqual(result["events"][-1], last_event)
-                for event in ("PlozziOS", "symbols both", "upload both", "tag"):
+                for event in ("PlozziOS", "upload both", "tag"):
                     self.assertNotIn(event, result["events"])
 
-    def test_symbol_preflight_stops_before_archiving(self) -> None:
-        result = self.ruby(FASTFILE_HARNESS, SCENARIO="symbol_preflight_failure")
-        self.assertEqual(result["events"], ["symbol preflight"])
-        self.assertEqual(result["error"], "symbol preflight failed")
-
-    def test_real_symbol_helpers_are_callable_before_the_build_lane(self) -> None:
-        source = FASTFILE_HARNESS.split("module AppleBuildLease")[0] + r"""
-def harness.sh(command)
-  (@commands ||= []) << command
-  raise "symbol check failed" if ENV["SCENARIO"] == "symbol_preflight_failure"
-  ""
-end
-begin
-  harness.require_sentry_symbols
-  harness.upload_sentry_symbols
-rescue => e
-  error = e.message
-end
-puts JSON.generate(commands: harness.instance_variable_get(:@commands), error: error)
-"""
-        result = self.ruby(source)
-        self.assertIsNone(result["error"])
-        self.assertEqual(result["commands"], [
-            "cd .. && python3 tools/upload-sentry-symbols.py --check",
-            f"cd .. && python3 tools/upload-sentry-symbols.py {ROOT}/build/Plozz-tvOS.xcarchive",
-            f"cd .. && python3 tools/upload-sentry-symbols.py {ROOT}/build/Plozz-iOS.xcarchive",
-        ])
-        failed = self.ruby(source, SCENARIO="symbol_preflight_failure")
-        self.assertEqual(failed["error"], "symbol check failed")
-        self.assertEqual(failed["commands"], result["commands"][:1])
-
-    def test_app_store_symbols_precede_any_apple_changes(self) -> None:
+    def test_app_store_uploads_follow_version_changes(self) -> None:
         source = FASTFILE_HARNESS.replace("begin\n  harness.beta", """
 def harness.sync_app_store_versions(*); @events << "Apple version"; end
 def harness.upload_to_app_store(**); @events << "App Store upload"; end
@@ -590,13 +550,9 @@ begin
   harness.release""")
         result = self.ruby(source)
         self.assertIsNone(result["error"], result)
-        self.assertLess(result["events"].index("symbols both"), result["events"].index("Apple version"))
+        self.assertLess(result["events"].index("number"), result["events"].index("Apple version"))
         self.assertEqual(result["events"].count("App Store upload"), 2)
         self.assertEqual(result["events"][-2:], ["screenshots", "tag"])
-        failed = self.ruby(source, SCENARIO="symbol_failure")
-        self.assertEqual(failed["error"], "symbols failed")
-        self.assertNotIn("Apple version", failed["events"])
-        self.assertNotIn("App Store upload", failed["events"])
 
     def test_package_options_are_private_and_not_xcargs(self) -> None:
         env = {

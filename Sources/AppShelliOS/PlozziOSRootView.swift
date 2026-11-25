@@ -3,7 +3,6 @@ import AppRuntime
 import CoreModels
 import CoreNetworking
 import CoreUI
-import CrashReporting
 import FeatureHomeCore
 import FeatureLiveTV
 import FeatureMusic
@@ -80,26 +79,15 @@ public struct PlozziOSRootView: View {
     #endif
 
     private var rootContent: some View {
-        Group {
-            if needsDiagnosticConsent {
-                CrashReportingConsentView { enabled in
-                    appModel.crashReporting.isEnabled = enabled
-                    appModel.applyCrashReportingPreference()
-                }
-                .environment(\.themePalette, resolvedPalette)
-                .environment(\.colorScheme, resolvedPalette.isLight ? .light : .dark)
-            } else {
-                appContent
-            }
-        }
-        .onOpenURL { url in
-            _ = ExternalPlaybackRuntime.shared.receive(url)
-        }
-        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-            if let url = activity.webpageURL {
+        appContent
+            .onOpenURL { url in
                 _ = ExternalPlaybackRuntime.shared.receive(url)
             }
-        }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL {
+                    _ = ExternalPlaybackRuntime.shared.receive(url)
+                }
+            }
     }
 
     private var themeMusicAuthorization: ThemeMusicPlaybackAuthorization {
@@ -112,10 +100,6 @@ public struct PlozziOSRootView: View {
                 return appModel.accountsProviders.homeAccounts.first { $0.account.id == accountID }?.provider
             }
         )
-    }
-
-    private var needsDiagnosticConsent: Bool {
-        appModel.crashReportingController.isConfigured && appModel.crashReporting.needsConsent
     }
 
     private var appDownloadContent: some View {
@@ -199,7 +183,6 @@ public struct PlozziOSRootView: View {
         .task { appModel.resumeProfileOnboardingIfNeeded() }
         .liveChannelSystemOverlays()
         .onAppear { PlozziOSScreenshotSeed.applyIfRequested(to: appModel) }
-        .background(PlozziOSCrashScreenObserver(controller: appModel.crashReportingController))
     }
 
     private var setupPresentationContent: some View {
@@ -420,18 +403,6 @@ public struct PlozziOSRootView: View {
             }
             .environment(appModel)
             .id(item.stablePresentationID)
-        }
-    }
-
-    private struct PlozziOSCrashScreenObserver: View {
-        let controller: CrashReportingController
-
-        var body: some View {
-            Color.clear
-                .frame(width: 0, height: 0)
-                .onReceive(NotificationCenter.default.publisher(for: MainThreadStallProbe.contextDidChange)) { _ in
-                    controller.setScreen(CrashReportScreen(context: MainThreadStallProbe.context))
-                }
         }
     }
 

@@ -7,8 +7,8 @@ import SwiftUI
 /// **measured and placed**, so an expensive screen can be attributed to a
 /// section instead of guessed at.
 ///
-/// SwiftUI layout is where this app's hangs actually live: the fatal-hang stack
-/// Sentry captured was 100 frames of `StackLayout.sizeThatFits` /
+/// SwiftUI layout is where this app's hangs actually live: a captured fatal-hang
+/// stack was 100 frames of `StackLayout.sizeThatFits` /
 /// `explicitAlignment` recursion with no app frame in it at all. That tells you
 /// layout is the cost but never *which* view — and `_printChanges()` cannot
 /// help, because a single body pass can be followed by an arbitrarily expensive

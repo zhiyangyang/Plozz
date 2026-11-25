@@ -5,7 +5,6 @@ import CoreModels
 import CoreNetworking
 import CoreSecureStore
 import CoreUI
-import CrashReporting
 import EnginePlozzigen
 import FeatureAuthCore
 import FeatureHomeCore
@@ -270,8 +269,6 @@ final class PlozziOSAppModel {
     let wetrakrService: WetrakrService
     let anilistService: AniListService
     let malService: MALService
-    let crashReporting: CrashReportingSettingsModel
-    let crashReportingController: CrashReportingController
     let appLanguage: AppLanguageSettingsModel
     private(set) var requiresLaunchProfileSelection: Bool
     private(set) var settings: PlozziOSSettingsModel
@@ -601,8 +598,6 @@ final class PlozziOSAppModel {
         self.wetrakrService = wetrakrService
         self.anilistService = anilistService
         self.malService = malService
-        self.crashReporting = CrashReportingSettingsModel()
-        self.crashReportingController = CrashReportingController()
         self.requiresLaunchProfileSelection = requiresLaunchProfileSelection
         let initialSettings = PlozziOSSettingsModel(
             namespace: profiles.activeNamespace,
@@ -757,7 +752,6 @@ final class PlozziOSAppModel {
             await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
-        applyCrashReportingPreference()
         if PlozzCustomization.supportsTrackers {
             self.traktService.onConnectionAvailable = { [weak self] in
                 Task { await self?.resumeUniversalWatchlistAuthentication() }
@@ -816,7 +810,6 @@ final class PlozziOSAppModel {
         plexHomeUsers.retryPlexPINRequirement()
         plexHomeUsers.ensurePlexIdentityForActiveProfile()
         await transitionDownloads(to: profiles.activeProfileID).value
-        applyCrashReportingPreference()
         if !enabled {
             accountsProviders.refreshServerNames()
             identityIndex.warmIdentityIndex()
@@ -870,32 +863,9 @@ final class PlozziOSAppModel {
         return appAdmission.enterStandalonePlayback(isAvailable: Self.isStandalonePlaybackAvailable)
     }
 
-    var crashReportContext: CrashReportContext {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
-        let build = info?["CFBundleVersion"] as? String ?? "Unknown"
-        let providers = Set(accounts.map(\.server.provider.displayName)).sorted()
-        return CrashReportContext.make(
-            bundleIdentifier: Bundle.main.bundleIdentifier ?? "com.thatcube.Plozz",
-            version: version,
-            build: build,
-            providers: providers,
-            environment: AppReleaseChannel.current.crashReportEnvironment
-        )
-    }
-
-    func applyCrashReportingPreference() {
-        crashReportingController.setScreen(CrashReportScreen(context: MainThreadStallProbe.context))
-        crashReportingController.apply(
-            enabled: crashReporting.isEnabled && !isOfflineMode,
-            context: crashReportContext
-        )
-    }
-
-    private func reloadAccountsAndCrashContext() {
+    private func reloadAccountsAndHeroCache() {
         heroTrailerCache.removeAll()
         accountsProviders.reloadAccounts()
-        applyCrashReportingPreference()
     }
 
     func provider(for item: MediaItem) -> (any MediaProvider)? {
@@ -1678,7 +1648,7 @@ final class PlozziOSAppModel {
     private func refreshActiveProfileConfiguration(deferPlexIdentity: Bool) {
         refreshActiveProfileSettings()
         transitionDownloads(to: profiles.activeProfileID)
-        reloadAccountsAndCrashContext()
+        reloadAccountsAndHeroCache()
         if !deferPlexIdentity { plexHomeUsers.ensurePlexIdentityForActiveProfile() }
         identityIndex.reset()
         if !isOfflineMode { identityIndex.warmIdentityIndex() }
@@ -2608,7 +2578,7 @@ final class PlozziOSAppModel {
             // it first would mean the PIN only hid a profile that was already
             // open behind it.
             if enforceActiveProfileLock(leaving: outgoingProfile) {
-                reloadAccountsAndCrashContext()
+                reloadAccountsAndHeroCache()
                 return
             }
             settings = PlozziOSSettingsModel(
@@ -2623,7 +2593,7 @@ final class PlozziOSAppModel {
             )
             transitionDownloads(to: profiles.activeProfileID)
         }
-        reloadAccountsAndCrashContext()
+        reloadAccountsAndHeroCache()
         if profiles.activeProfileID != previousActiveProfileID {
             plexHomeUsers.ensurePlexIdentityForActiveProfile()
         }
@@ -2722,7 +2692,7 @@ final class PlozziOSAppModel {
             } ?? false
             accountError = nil
             if addedLiveTV { settings.navigation.showsLiveTV = true }
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             selectNewlyAddedUserIfNeeded(from: addedAccounts)
             for id in guideAccountIDs { guidePreparation.start(accountID: id) }
             identityIndex.warmIdentityIndex()
@@ -2741,7 +2711,7 @@ final class PlozziOSAppModel {
             return true
         } catch {
             PlozzLog.auth.error("Unable to save authenticated accounts")
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             accountError = error.localizedDescription
             return false
         }
@@ -2773,7 +2743,7 @@ final class PlozziOSAppModel {
             for: pendingAdditionalUser.profileID
         )
         watchReconcilers[pendingAdditionalUser.profileID] = nil
-        reloadAccountsAndCrashContext()
+        reloadAccountsAndHeroCache()
         self.pendingAdditionalUser = nil
     }
 
@@ -2945,7 +2915,7 @@ final class PlozziOSAppModel {
             // BEFORE the reload, which is what re-triggers preparation. See
             // `withdrawIdentityQuestions(forAccount:)`.
             profiles.withdrawIdentityQuestions(forAccount: id)
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.reset()
             identityIndex.warmIdentityIndex()
             guard !accountsProviders.accounts.contains(where: { $0.id == id }) else {
@@ -2981,7 +2951,7 @@ final class PlozziOSAppModel {
                 displayName: displayName,
                 libraryConfiguration: libraryConfiguration
             )
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.warmIdentityIndex()
             preparePostShareOnboarding(prepared)
             accountError = nil
@@ -3014,7 +2984,7 @@ final class PlozziOSAppModel {
                 subpath: subpath,
                 libraryConfiguration: libraryConfiguration
             )
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.warmIdentityIndex()
             preparePostShareOnboarding(prepared)
             accountError = nil
@@ -3041,7 +3011,7 @@ final class PlozziOSAppModel {
                 displayName: displayName,
                 libraryConfiguration: libraryConfiguration
             )
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.warmIdentityIndex()
             preparePostShareOnboarding(prepared)
             accountError = nil
@@ -3074,7 +3044,7 @@ final class PlozziOSAppModel {
                 displayName: displayName,
                 libraryConfiguration: libraryConfiguration
             )
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.warmIdentityIndex()
             preparePostShareOnboarding(prepared)
             accountError = nil
@@ -3099,7 +3069,7 @@ final class PlozziOSAppModel {
                 displayName: displayName,
                 libraryConfiguration: libraryConfiguration
             )
-            reloadAccountsAndCrashContext()
+            reloadAccountsAndHeroCache()
             identityIndex.warmIdentityIndex()
             preparePostShareOnboarding(prepared)
             accountError = nil

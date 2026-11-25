@@ -240,8 +240,6 @@ extension SettingsSearchCatalog {
               keywords: "cache storage limit artwork images lookups metadata"),
         .init("lookup-cache-budget", page: .metadataDiagnostics, title: "Lookups limit",
               keywords: "cache storage limit artwork images lookups metadata"),
-        .init("diagnostic-sharing", page: .diagnostics, title: "Share Diagnostics",
-              keywords: "diagnostics privacy logs errors performance troubleshooting"),
         .init("playback-diagnostics-overlay", page: .diagnostics, title: "Playback Diagnostics Overlay",
               keywords: "diagnostics privacy logs errors performance troubleshooting"),
         .init("home-performance-overlay", page: .diagnostics, title: "Home Performance Overlay",

@@ -440,7 +440,7 @@ SCENARIOS = {
         "suite": "diagnostics", "target": "CoreModelsTests",
         "test": "PerformanceDiagnosticsProbeTests/testPerformanceEnabledOperations",
         "file": "Tests/CoreModelsTests/PerformanceDiagnosticsProbeTests.swift",
-        "description": "10,000 recorded operations with fixed in-memory retention; no Sentry upload.",
+        "description": "10,000 recorded operations with fixed in-memory retention; no network upload.",
         "counters": ["attempts", "accepted", "retained", "dropped"],
     },
     "diagnostics-snapshot": {
@@ -657,7 +657,7 @@ SCENARIOS = {
     "home-observed-metadata-diagnostics": {
         "suite": "ui", "test": "HomeMetadataPerformanceTests/testPerformanceObservedHomeMetadataWithDiagnostics",
         "file": "Tests/PerformancePresentationSupport/HomeMetadataPerformanceTests.swift",
-        "description": "The same observed Home publication workload with bounded diagnostics enabled; no Sentry upload.",
+        "description": "The same observed Home publication workload with bounded diagnostics enabled; no network upload.",
         "counters": ["refreshes", "providerRequests", "snapshotSaves", "contentPublications",
                      "stateNotifications", "continueWatchingItems", "metadataPeople",
                      "mainActorSchedulingSamples", "mainActorMaxSchedulingDelayMicroseconds",

@@ -46,10 +46,6 @@ public enum DeveloperInfo {
         // which of the two installed apps you're looking at.
         let isBranded = bundleID != "com.plozz.app"
 
-        let dsn = (bundle.object(forInfoDictionaryKey: "PlozzSentryDSN") as? String) ?? ""
-        let trimmedDSN = dsn.trimmingCharacters(in: .whitespacesAndNewlines)
-        let crashConfigured = !trimmedDSN.isEmpty && !(trimmedDSN.hasPrefix("$(") && trimmedDSN.hasSuffix(")"))
-
         let appGroupAvailable =
             fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil
 
@@ -68,7 +64,6 @@ public enum DeveloperInfo {
             DeveloperInfoItem(id: "build-number", label: "Build #", value: versionIdentity.displayBuild),
             DeveloperInfoItem(id: "channel", label: "Channel", value: channelLabel),
             DeveloperInfoItem(id: "app-group", label: "App Group", value: appGroupAvailable ? "Available" : "Unavailable (Top Shelf off)"),
-            DeveloperInfoItem(id: "crash-endpoint", label: "Crash Endpoint", value: crashConfigured ? "Configured" : "Not configured"),
         ]
         if let release = versionIdentity.releaseVersion {
             items.insert(DeveloperInfoItem(id: "release-version", label: "Release", value: release), at: 3)

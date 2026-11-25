@@ -111,7 +111,7 @@ class AttributionTests(unittest.TestCase):
 
     def test_current_engine_components_replace_retired_stack_credits(self):
         attributions = (ROOT / "Sources/CoreModels/PlozzAttributions.swift").read_text()
-        for current in ("dav1d", "zimg", "WTFPL", "libzvbi", "SMBClient", "Sentry",
+        for current in ("dav1d", "zimg", "WTFPL", "libzvbi", "SMBClient",
                         "Swift Runtime Library Exception", "FreeType License", "libbluray", "OpenJDK", "DejaVu"):
             self.assertIn(current, attributions)
         for retired in ("libavdevice", "libplacebo", "MoltenVK", "GnuTLS", "Nettle",

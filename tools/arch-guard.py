@@ -116,8 +116,6 @@ ALLOWED_FEATURE_EDGES = {
 # (`{"product": ["<name>", "<package>", ...]}`) and in `import <name>` source
 # lines. The owner's `<Owner>Tests` target is implicitly allowed too.
 VENDOR_OWNERS = {
-    "Sentry": {"CrashReporting"},          # imported framework module
-    "Sentry-Static": {"CrashReporting"},   # sentry-apple-binaries product
     "SMBClient": {"ProviderShare", "MediaTransportSMB"},
     "NIOSSH": {"MediaTransportSFTP"},      # package: swift-nio-ssh
     "AetherEngine": {"EnginePlozzigen"},
@@ -943,13 +941,13 @@ def _self_test() -> int:
     cases.append((
         "vendor-leak",
         {"targets": [_target("CoreModels"),
-                     _target("FeatureHome", ["CoreModels"], ["Sentry"])]},
+                     _target("FeatureHome", ["CoreModels"], [])]},
         True,
     ))
     cases.append((
         "vendor-product-leak",
         {"targets": [_target("CoreModels"),
-                     _target("FeatureHome", ["CoreModels"], ["Sentry-Static"])]},
+                     _target("FeatureHome", ["CoreModels"], [])]},
         True,
     ))
     # Rule 5: cycle.

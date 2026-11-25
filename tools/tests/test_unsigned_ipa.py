@@ -60,13 +60,13 @@ class UnsignedIPATests(unittest.TestCase):
             ipa.snapshot(self.root, self.root / "snapshot", ["directory/outside"])
 
     def test_environment_drops_private_and_release_overrides(self):
-        parent = dict(os.environ, PLOZZ_SENTRY_DSN="private", PLOZZ_ENV_FILE="private",
+        parent = dict(os.environ, PLOZZ_ENV_FILE="private",
                       PLOZZ_RELEASE_ID="release/123", PLOZZ_RELEASE_CHANNEL="testflight",
                       PLOZZ_ID_SUFFIX=".official", XCODE_XCCONFIG_FILE="private",
                       TMDB_BEARER_TOKEN="private", GH_TOKEN="private",
                       APPLE_BUILD_LEASE_ID="owned")
         env = ipa.build_environment(parent, self.root, "123")
-        for key in ["PLOZZ_SENTRY_DSN", "PLOZZ_ENV_FILE", "PLOZZ_RELEASE_ID",
+        for key in ["PLOZZ_ENV_FILE", "PLOZZ_RELEASE_ID",
                     "PLOZZ_RELEASE_CHANNEL", "XCODE_XCCONFIG_FILE", "TMDB_BEARER_TOKEN", "GH_TOKEN"]:
             self.assertNotIn(key, env)
         self.assertEqual(env["APPLE_BUILD_LEASE_ID"], "owned")
@@ -210,7 +210,7 @@ class UnsignedIPATests(unittest.TestCase):
                 return " M staged-change\n"
             if args[:2] == ["git", "rev-list"]:
                 return "123\n"
-            self.assertNotIn("PLOZZ_SENTRY_DSN", env)
+            self.assertNotIn("PLOZZ_ENV_FILE", env)
             if args == ["xcodebuild", "-version"]:
                 return "Xcode 27.0\n"
             if args == ["tools/generate-project.sh"]:
@@ -248,7 +248,7 @@ class UnsignedIPATests(unittest.TestCase):
         github_output = self.root / "github-output"
         with patch.object(ipa, "command", side_effect=fake_command), \
                 patch.dict(os.environ, GITHUB_OUTPUT=str(github_output)):
-            ipa.build("ios", repository, dict(os.environ, PLOZZ_SENTRY_DSN="private"), ())
+            ipa.build("ios", repository, dict(os.environ), ())
         evidence, = (repository / ".build/unsigned-ipa/ios").iterdir()
         receipt = ipa.json.loads((evidence / "receipt.json").read_text())
         self.assertFalse(receipt["signed"])

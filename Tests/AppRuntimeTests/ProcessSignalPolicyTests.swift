@@ -1,5 +1,4 @@
 import Darwin
-import CrashReporting
 import XCTest
 @testable import AppRuntime
 
@@ -98,29 +97,4 @@ final class ProcessSignalPolicyTests: XCTestCase {
         }
     }
 
-    @MainActor
-    func testProtectionSurvivesCrashReporterStartStopAndRestart() throws {
-        try withBrokenPipeProtection {
-            // Loopback-only DSN: this test must never upload to the real service.
-            let reporter = SentryCrashReporter(dsn: "https://public@127.0.0.1:1/1")
-            let context = CrashReportContext.make(
-                bundleIdentifier: "com.thatcube.Plozz.tests",
-                version: "1",
-                build: "1",
-                providers: [],
-                environment: "test"
-            )
-            defer { reporter.stop() }
-
-            for _ in 0..<2 {
-                reporter.start(context: context)
-                guard isBrokenPipeIgnored() else { return }
-                XCTAssertEqual(raise(SIGPIPE), 0)
-
-                reporter.stop()
-                guard isBrokenPipeIgnored() else { return }
-                XCTAssertEqual(raise(SIGPIPE), 0)
-            }
-        }
-    }
 }

@@ -218,15 +218,6 @@ public enum PlozzAttributions {
             licenses: [.init("Apache-2.0", family: .apache)]
         ),
         PlozzAttribution(
-            title: "Sentry",
-            detail:
-                "Optional crash reporting and diagnostics use Sentry's Apple SDK "
-                + "9.27.0. Copyright Sentry and contributors. "
-                + "SDK source: https://github.com/getsentry/sentry-cocoa/tree/9.27.0. "
-                + "Binary package: https://github.com/getsentry/sentry-apple-binaries/tree/9.27.0.",
-            licenses: [.init("MIT", family: .mit)]
-        ),
-        PlozzAttribution(
             title: "TMDB",
             detail:
                 "This product uses the TMDB API but is not endorsed or certified by "

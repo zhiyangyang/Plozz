@@ -1,5 +1,5 @@
 {
-  "originHash" : "db1cb98099d503b2ac68585b8903db7c5cf93ea4407d7bab6c86ceaf705e092c",
+  "originHash" : "d58901bb374edc063e79598c7476ae9352a1583315b67180a13ed239e43f3c36",
   "pins" : [
     {
       "identity" : "aetherengine",
@@ -25,15 +25,6 @@
       "state" : {
         "revision" : "caff700968700467c089a3f38c8b4180620518b5",
         "version" : "2.2.0"
-      }
-    },
-    {
-      "identity" : "sentry-apple-binaries",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/getsentry/sentry-apple-binaries",
-      "state" : {
-        "revision" : "df68d074ace80cceade3584d580c66b7d8e5702b",
-        "version" : "9.27.0"
       }
     },
     {

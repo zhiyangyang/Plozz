@@ -864,8 +864,7 @@ private struct PlozziOSSettingsSplitView: View {
         case .diagnostics:
             PlozziOSDiagnosticsSettingsView(
                 appModel: appModel,
-                model: appModel.settings.diagnostics,
-                crashReporting: appModel.crashReporting
+                model: appModel.settings.diagnostics
             )
         case .attributions:
             PlozziOSAttributionsView()
@@ -1226,8 +1225,7 @@ private struct PlozziOSSettingsCompactMenu: View {
                     SettingsPageLink {
                         PlozziOSDiagnosticsSettingsView(
                             appModel: appModel,
-                            model: appModel.settings.diagnostics,
-                            crashReporting: appModel.crashReporting
+                            model: appModel.settings.diagnostics
                         )
                     } label: {
                         Label("Help & Diagnostics", systemImage: "ladybug")
@@ -1603,7 +1601,7 @@ private struct PlozziOSSettingsSearchDestination: View {
             PlozziOSMetadataDiagnosticsView(deps: appModel.makeMetadataSettingsDependencies())
         case .diagnostics:
             PlozziOSDiagnosticsSettingsView(
-                appModel: appModel, model: appModel.settings.diagnostics, crashReporting: appModel.crashReporting
+                appModel: appModel, model: appModel.settings.diagnostics
             )
         case .musicPlayer:
             if let music = appModel.music {

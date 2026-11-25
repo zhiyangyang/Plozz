@@ -268,8 +268,6 @@ struct PresentationHostApp: App {
                     .fixtureNavigationBarAxis()
             } else if ProcessInfo.processInfo.arguments.contains("--search-keyboard-fixture") {
                 SearchKeyboardInteractionFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--diagnostics-sharing-fixture") {
-                DiagnosticsSharingFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--source-settings") {
                 SourceOnboardingFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--poster-zoom-fixture") {

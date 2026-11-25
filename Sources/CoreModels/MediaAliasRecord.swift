@@ -262,7 +262,7 @@ public struct MediaAliasRecord: Codable, Hashable, Identifiable, Sendable {
         // already clean, so reject it using the typed namespace directly rather
         // than rebuilding/normalizing a provider-id dictionary six times. That
         // repeated string filtering showed up as a 2.8–3.6 second main-thread
-        // Sentry hang while a large alias ledger was captured.
+        // Observed hang while a large alias ledger was captured.
         guard strongEvidence.contains(where: {
             LegacyAnimeIdentityRepair.animeNamespaces.contains($0.namespace)
         }),

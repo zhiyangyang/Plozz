@@ -27,12 +27,6 @@ settings:
     # reads the stable Apple version from the release catalog, or an explicitly
     # validated PLOZZ_MARKETING_VERSION override. Never derive it from today's date.
     MARKETING_VERSION: "0.1"
-    # Opt-in crash reporting endpoint (Sentry DSN). Empty by default so the app
-    # is a true no-op unless a real DSN is provided. tools/generate-project.sh
-    # bakes the value of the PLOZZ_SENTRY_DSN env var into the generated project
-    # when set (mirrors the CURRENT_PROJECT_VERSION bake). Kept OUT of git — the
-    # DSN is supplied via the untracked .env.fastlane / environment, never here.
-    PLOZZ_SENTRY_DSN: ""
     # Release channel this binary was built for ("testflight" / "production").
     # Empty for local/device builds, which fall back to runtime detection.
     # tools/generate-project.sh bakes the PLOZZ_RELEASE_CHANNEL env var here; the
@@ -89,7 +83,6 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
-        PlozzSentryDSN: "$(PLOZZ_SENTRY_DSN)"
         PlozzReleaseChannel: "$(PLOZZ_RELEASE_CHANNEL)"
         PlozzReleaseID: "$(PLOZZ_RELEASE_ID)"
         PlozzReleaseVersion: "$(PLOZZ_RELEASE_VERSION)"

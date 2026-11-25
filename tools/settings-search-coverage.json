@@ -24,7 +24,6 @@
     "DetailHeaderRatingsSettingsForm",
     "DetailPageDetailView",
     "ExternalPlayerChoices",
-    "HelpDiagnosticsDetailView",
     "HeroAutomaticChangeControls",
     "HeroCollectionChoice",
     "HeroCollectionListView",
@@ -171,10 +170,7 @@
     "Sources/FeatureSettings/CompactMusicStylePicker.swift",
     "Sources/FeatureSettings/ContinueWatchingArtworkPicker.swift",
     "Sources/FeatureSettings/ContinueWatchingNextUpControl.swift",
-    "Sources/FeatureSettings/CrashReportingConsentView.swift",
-    "Sources/FeatureSettings/DiagnosticsSendButton.swift",
     "Sources/FeatureSettings/ExternalPlayerSettingsView.swift",
-    "Sources/FeatureSettings/HelpDiagnosticsDetailView.swift",
     "Sources/FeatureSettings/HeroCollectionPickerView.swift",
     "Sources/FeatureSettings/HeroLogoSizeControl.swift",
     "Sources/FeatureSettings/HeroSettingsControls.swift",
@@ -194,7 +190,6 @@
     "Sources/FeatureSettings/PlexLinkedUserDetailView.swift",
     "Sources/FeatureSettings/PreferenceDetailViews.swift",
     "Sources/FeatureSettings/ProfileLockSetupPage.swift",
-    "Sources/FeatureSettings/SendDiagnosticsCard.swift",
     "Sources/FeatureSettings/ServerUserDetailView.swift",
     "Sources/FeatureSettings/SettingsContext.swift",
     "Sources/FeatureSettings/SettingsSplitLayout.swift",
@@ -208,7 +203,6 @@
     "CompactWatchIndicatorPicker",
     "ContentRatingToggle",
     "ContinueWatchingNextUpControl",
-    "CrashReportingConsentChoices",
     "DescribedSegmentedPicker",
     "FocusGatedSwitch",
     "HeaderReviewScoreCountPicker",
@@ -275,14 +269,6 @@
       "reason": "Reusable preference input; coverage belongs to each configured call site. Its internal control contract is checked separately.",
       "controls": {
         "Sources/FeatureSettings/ContentRatingToggle.swift|ContentRatingToggle|body|Toggle|<dynamic>": 1
-      }
-    },
-    "CrashReportingConsentChoices": {
-      "kind": "input",
-      "reason": "Reusable preference input; coverage belongs to each configured call site. Its internal control contract is checked separately.",
-      "controls": {
-        "Sources/FeatureSettings/CrashReportingConsentView.swift|CrashReportingConsentChoices|declineButton|Button|\"Don't Share\"": 1,
-        "Sources/FeatureSettings/CrashReportingConsentView.swift|CrashReportingConsentChoices|shareButton|Button|Text(SettingsCopy.shareDiagnostics)": 1
       }
     },
     "LivePlaybackBufferControl": {
@@ -452,41 +438,6 @@
         "Sources/FeatureSettings/ReleaseNotesViews.swift|ReleaseNotesStartupView|body|Button|\"Don’t Show Again\"": 2
       }
     },
-    "RecentActivityFilterChip": {
-      "kind": "presentation",
-      "reason": "Filters a diagnostics activity display without changing persistent settings.",
-      "controls": {
-        "Sources/FeatureSettings/RecentActivityDetailView.swift|RecentActivityFilterChip|body|Button|<dynamic>": 1
-      }
-    },
-    "SendDiagnosticsCard": {
-      "kind": "presentation",
-      "reason": "Explicit diagnostic submission, not a preference; opening search must not send a report.",
-      "controls": {
-        "Sources/FeatureSettings/SendDiagnosticsCard.swift|SendDiagnosticsCard|body|TextField|<dynamic>": 1
-      }
-    },
-    "DiagnosticsSendButton": {
-      "kind": "presentation",
-      "reason": "Explicit diagnostic submission, not a preference; opening search must not send a report.",
-      "controls": {
-        "Sources/FeatureSettings/DiagnosticsSendButton.swift|DiagnosticsSendButton|body|Button|Label { if isSubmitted { Text(\"Submitted\") } else if isConfigured && !sharingEnabled { Text(SettingsCopy.enableDiagnosticSharing) } else { Text(\"Send to Developer\") } } icon: { Image(systemName: isSubmitted ? \"checkmark.circle.fill\" : \"paperplane\") }": 1
-      }
-    },
-    "DiagnosticsInfoButton": {
-      "kind": "presentation",
-      "reason": "Opens explanatory content, not a preference.",
-      "controls": {
-        "Sources/FeatureSettings/DiagnosticsInfoButton.swift|DiagnosticsInfoButton|body|Button|Label(\"About Diagnostic Sharing\", systemImage: \"info\") .labelStyle(.iconOnly) .modifier(DiagnosticsControlLabelSize())": 1
-      }
-    },
-    "DiagnosticsInformationView": {
-      "kind": "presentation",
-      "reason": "Explanatory diagnostic content, not a preference editor.",
-      "controls": {
-        "Sources/FeatureSettings/DiagnosticsInfoButton.swift|DiagnosticsInformationView|body|Button|\"Done\"": 1
-      }
-    },
     "SettingsAboutSection": {
       "kind": "presentation",
       "reason": "About links, acknowledgments and application information; no preference controls.",
@@ -498,11 +449,6 @@
     "PrivacyPolicyLink": {
       "kind": "presentation",
       "reason": "Opens the privacy policy; no persisted preference.",
-      "controls": {}
-    },
-    "CrashReportingConsentFooter": {
-      "kind": "presentation",
-      "reason": "Consent explanation and repository link; the consent choices are independently indexed.",
       "controls": {}
     },
     "HomeCatalogStatus": {
@@ -875,11 +821,6 @@
     "Sources/AppShelliOS/PlozziOSDiagnosticsSettingsView.swift|PlozziOSDiagnosticsSettingsView|body|SettingsPageLink|Label(\"Recent Activity\", systemImage: \"clock.arrow.circlepath\")": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSDiagnosticsSettingsView.swift|PlozziOSDiagnosticsSettingsView|body|TextField|<dynamic>": {
-      "count": 1,
-      "reason": "Optional diagnostic submission text, not a saved preference.",
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSDiagnosticsSettingsView.swift|PlozziOSRecentActivityView|body|Button|\"Refresh\"": {
@@ -2284,13 +2225,6 @@
       "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
       "covered_by": [
         "continue-artwork-layout"
-      ]
-    },
-    "Sources/FeatureSettings/CrashReportingConsentView.swift|CrashReportingConsentPrompt|body|CrashReportingConsentChoices|<dynamic>": {
-      "count": 1,
-      "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
-      "covered_by": [
-        "diagnostic-sharing"
       ]
     },
     "Sources/FeatureSettings/ExternalPlayerSettingsView.swift|CustomExternalPlayerControls|body|Button|Text(\"Save and use custom player\").settingsControlTarget()": {

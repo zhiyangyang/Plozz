@@ -26,7 +26,7 @@ EMPTY_INFO_KEYS = (
     "OMDBAPIKey", "TMDBBearerToken", "TMDBProxyBaseURL", "TVDBAPIKey",
     "TraktClientID", "WetrakrClientID", "MALClientID", "SimklClientID",
     "AniListClientID", "AniListClientSecret", "LastFmAPIKey", "LastFmSharedSecret",
-    "PlozzSentryDSN", "PlozzReleaseChannel", "PlozzReleaseID", "PlozzReleaseVersion",
+    "PlozzReleaseChannel", "PlozzReleaseID", "PlozzReleaseVersion",
 )
 # Info.plist keys that playback depends on at runtime. A re-signer replaces the
 # signature but keeps this plist, so this script is the last chance to reject a

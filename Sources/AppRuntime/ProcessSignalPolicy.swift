@@ -7,8 +7,7 @@ public enum ProcessSignalPolicy {
     /// the app. Some descriptors belong to native dependencies, so per-socket
     /// SO_NOSIGPIPE alone cannot enforce this across the process.
     ///
-    /// Install before Sentry starts: it preserves an existing SIG_IGN, including
-    /// across crash-reporting opt-out/restart. Do not tie this to reporting consent.
+    /// Install once at process start so every native dependency inherits it.
     @discardableResult
     public static func ignoreBrokenPipe() -> Bool {
         var action = sigaction()
