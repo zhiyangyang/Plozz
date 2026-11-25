@@ -74,9 +74,6 @@ private actor RetryApplier: WatchMutationApplying {
         resumes.append(seconds)
     }
 
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {
-        if let failure { throw failure }
-    }
 }
 
 final class WatchAutomaticRetryTests: XCTestCase {

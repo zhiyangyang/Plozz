@@ -2109,22 +2109,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         #endif
     }
 
-    func testTrackersHideUnreleasedWetrakr() throws {
-        #if targetEnvironment(simulator)
-        let app = try launchSettings(style: "tabBar")
-        try focus(section("integrations", in: app), in: app)
-        XCUIRemote.shared.press(.select)
-        XCTAssertTrue(app.buttons["settings-page-trakt"].waitForExistence(timeout: 5), app.debugDescription)
-        for tracker in ["trakt", "simkl", "anilist", "mal", "lastfm"] {
-            XCTAssertTrue(app.buttons["settings-page-\(tracker)"].exists, app.debugDescription)
-        }
-        XCTAssertFalse(app.buttons["settings-page-wetrakr"].exists, app.debugDescription)
-        XCTAssertFalse(app.staticTexts["WeTrakr"].exists, app.debugDescription)
-        #else
-        throw XCTSkip("Simulator-only Settings review.")
-        #endif
-    }
-
     func testPlaybackLiveTVAndTrackerChildPages() throws {
         #if targetEnvironment(simulator)
         let app = try launchSettings(style: "tabBar")

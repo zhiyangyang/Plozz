@@ -28,7 +28,7 @@ public struct NativeWatchlistEntry: Codable, Hashable, Sendable {
     /// Presentation supplied by that owned library copy.
     ///
     /// Separate from `presentation`, which is what the watchlist destination
-    /// itself supplied (Plex Discover, Trakt, and so on). Overloading that field
+    /// itself supplied (Plex Discover and so on). Overloading that field
     /// would make a v1 cache ambiguous: an entry with `ownedSource != nil` may
     /// still carry Discover artwork because older builds persisted only the source
     /// ref. Optional so those files decode and self-upgrade on the next refresh.

@@ -4,7 +4,7 @@ import XCTest
 // MARK: - Test applier
 
 /// Records writes and lets a test fail specific accounts (offline servers) or
-/// Trakt, so we can assert the reconciler retries instead of dropping a watch.
+/// so we can assert the reconciler retries instead of dropping a watch.
 private final class FakeWatchApplier: WatchMutationApplying, @unchecked Sendable {
     struct PlayedWrite: Equatable { let played: Bool; let accountID: String; let itemID: String }
     struct ResumeWrite: Equatable { let seconds: TimeInterval; let accountID: String; let itemID: String }
@@ -13,21 +13,11 @@ private final class FakeWatchApplier: WatchMutationApplying, @unchecked Sendable
     private(set) var playedWrites: [PlayedWrite] = []
     private(set) var playedAttempts: [PlayedWrite] = []
     private(set) var resumeWrites: [ResumeWrite] = []
-    private(set) var traktScrobbles: [TraktScrobbleIntent] = []
-    private(set) var simklScrobbles: [TraktScrobbleIntent] = []
-    private(set) var anilistScrobbles: [TraktScrobbleIntent] = []
-    private(set) var malScrobbles: [TraktScrobbleIntent] = []
-    private(set) var wetrakrWrites: [(Date, String, String)] = []
-    var wetrakrAccountIdentity: String?
-    var wetrakrFails = false
-    var beforeWetrakrCompletion: (@Sendable () async -> Void)?
 
     /// Accounts whose writes currently fail (simulating an offline / asleep server).
     var failingAccounts: Set<String> = []
     var failingResumeAccounts: Set<String> = []
     var failure: AppError = .serverUnreachable
-    /// When true, Trakt mirroring throws (simulating an offline tracker).
-    var traktFails = false
     var targetExpansion: WatchTargetExpansion = .none
 
     func setPlayed(_ played: Bool, on target: WatchMutationTarget) async throws {
@@ -41,34 +31,6 @@ private final class FakeWatchApplier: WatchMutationApplying, @unchecked Sendable
             throw failure
         }
         lock.lock(); resumeWrites.append(.init(seconds: seconds, accountID: target.accountID, itemID: target.itemID)); lock.unlock()
-    }
-
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {
-        if traktFails { throw AppError.serverUnreachable }
-        lock.lock(); traktScrobbles.append(intent); lock.unlock()
-    }
-
-    func scrobbleSimkl(_ intent: TraktScrobbleIntent) async throws {
-        lock.lock(); simklScrobbles.append(intent); lock.unlock()
-    }
-
-    func scrobbleAniList(_ intent: TraktScrobbleIntent) async throws {
-        lock.lock(); anilistScrobbles.append(intent); lock.unlock()
-    }
-
-    func scrobbleMAL(_ intent: TraktScrobbleIntent) async throws {
-        lock.lock(); malScrobbles.append(intent); lock.unlock()
-    }
-
-    func scrobbleWetrakr(
-        _ intent: TraktScrobbleIntent, capturedAt: Date,
-        idempotencyKey: String, expectedAccountIdentity: String
-    ) async throws {
-        lock.lock()
-        wetrakrWrites.append((capturedAt, idempotencyKey, expectedAccountIdentity))
-        lock.unlock()
-        await beforeWetrakrCompletion?()
-        if wetrakrFails { throw AppError.serverUnreachable }
     }
 
     func expandTargets(for mutation: WatchMutation) async -> WatchTargetExpansion {
@@ -88,42 +50,6 @@ private final class WatchOutboxTestClock: @unchecked Sendable {
 }
 
 final class WatchOutboxRetryTests: XCTestCase {
-    func testUnwatchedResetRetriesUntilBothCompletionAndProgressAreCleared() async throws {
-        let clock = WatchOutboxTestClock()
-        let applier = FakeWatchApplier()
-        applier.failingResumeAccounts = ["plex"]
-        let store = InMemoryWatchMutationStore()
-        let reconciler = WatchStateReconciler(store: store, applier: applier, now: { clock.now })
-        let intent = WatchMutation(
-            capturedAt: clock.now, canonicalMediaID: "movie",
-            played: false, clearResume: true,
-            targets: [target("plex", "px"), target("jellyfin", "jf")], kind: .movie
-        )
-        await reconciler.enqueue(intent)
-        await reconciler.drain()
-        let pending = await reconciler.snapshot().pending
-        XCTAssertEqual(pending.first?.targets.map(\.id), ["plex:px"])
-        XCTAssertEqual(Set(applier.playedWrites.map(\.accountID)), ["plex", "jellyfin"])
-        XCTAssertTrue(applier.playedWrites.allSatisfy { !$0.played })
-        XCTAssertEqual(applier.resumeWrites, [.init(seconds: 0, accountID: "jellyfin", itemID: "jf")])
-        let replay = try XCTUnwrap(MediaItemMutation(watchMutation: XCTUnwrap(pending.first)))
-        XCTAssertEqual(replay.scopedItemIDs, ["plex:px", "jellyfin:jf"])
-        XCTAssertEqual(replay.resumePosition, 0)
-        XCTAssertEqual(replay.playedPercentage, 0)
-
-        let restored = WatchStateReconciler(store: store, applier: applier, now: { clock.now })
-        applier.failingResumeAccounts = []
-        clock.advance(30)
-        await restored.drain()
-        let final = await restored.snapshot()
-        XCTAssertTrue(final.pending.isEmpty)
-        XCTAssertEqual(applier.resumeWrites.last, .init(seconds: 0, accountID: "plex", itemID: "px"))
-        XCTAssertTrue(applier.traktScrobbles.isEmpty)
-        XCTAssertTrue(applier.simklScrobbles.isEmpty)
-        XCTAssertTrue(applier.anilistScrobbles.isEmpty)
-        XCTAssertTrue(applier.malScrobbles.isEmpty)
-    }
-
     func testThreeRejectedTargetsDoNotStormDuringTenMinutesOfFrequentDrains() async throws {
         let clock = WatchOutboxTestClock()
         let applier = FakeWatchApplier()
@@ -226,210 +152,15 @@ final class WatchOutboxRetryTests: XCTestCase {
         XCTAssertEqual(final, 0)
     }
 
-    func testFailedServerDoesNotHoldTrackerMirrorsOrSuccessfulTargets() async throws {
-        let clock = WatchOutboxTestClock()
-        let applier = FakeWatchApplier()
-        applier.failingAccounts = ["offline"]
-        let reconciler = WatchStateReconciler(
-            store: InMemoryWatchMutationStore(), applier: applier, now: { clock.now }
-        )
-        var mutation = playedMutation(
-            capturedAt: clock.now, targets: [target("offline", "item"), target("healthy", "copy")]
-        )
-        mutation.trakt = .init(kind: .movie, title: nil, year: nil, seasonNumber: nil,
-                               episodeNumber: nil, providerIDs: ["Tmdb": "1"], progress: 100)
-        mutation.traktPending = true
-        await reconciler.enqueue(mutation)
-        await reconciler.drain()
-        for _ in 0..<50 { await reconciler.drain() }
-        XCTAssertEqual(applier.playedAttempts.count, 2)
-        XCTAssertEqual(applier.playedWrites.count, 1)
-        XCTAssertEqual(applier.traktScrobbles.count, 1)
-        let pending = await reconciler.snapshot().pending
-        XCTAssertEqual(pending.first?.targets, [target("offline", "item")])
-    }
 }
 
-final class WetrakrWatchMutationTests: XCTestCase {
-    private func mutation() -> WatchMutation {
-        WatchMutation(
-            capturedAt: Date(timeIntervalSince1970: 1000),
-            canonicalMediaID: "tmdb:1", played: true, targets: [],
-            trakt: .init(kind: .movie, title: "Movie", year: nil, seasonNumber: nil,
-                         episodeNumber: nil, providerIDs: ["Tmdb": "1"], progress: 100)
-        )
-    }
-
-    func testCapturesConnectionAndTimestampBeforePersistingAndRetrying() async throws {
-        let applier = FakeWatchApplier()
-        applier.wetrakrAccountIdentity = "first-grant"
-        applier.wetrakrFails = true
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        await reconciler.enqueue(mutation())
-        var state = await reconciler.snapshot()
-        XCTAssertEqual(state.pending.first?.wetrakrAccountIdentity, "first-grant")
-        XCTAssertEqual(state.pending.first?.wetrakrCapturedAt, Date(timeIntervalSince1970: 1000))
-        let restored = try JSONDecoder().decode(WatchOutboxState.self, from: JSONEncoder().encode(state))
-        XCTAssertEqual(restored, state)
-        await reconciler.drain()
-        state = await reconciler.snapshot()
-        XCTAssertEqual(state.pending.first?.wetrakrPending, true)
-        applier.wetrakrAccountIdentity = "second-grant"
-        applier.wetrakrFails = false
-        await reconciler.drain()
-        XCTAssertEqual(applier.wetrakrWrites.count, 2)
-        XCTAssertEqual(applier.wetrakrWrites[0].0, applier.wetrakrWrites[1].0)
-        XCTAssertEqual(applier.wetrakrWrites[0].1, applier.wetrakrWrites[1].1)
-        XCTAssertEqual(applier.wetrakrWrites[1].2, "first-grant")
-        let final = await reconciler.snapshot()
-        XCTAssertTrue(final.pending.isEmpty)
-    }
-
-    func testLaterSignInDoesNotRetroactivelyUploadAWatchedTitle() async {
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        await reconciler.enqueue(mutation())
-        applier.wetrakrAccountIdentity = "later-grant"
-        await reconciler.drain()
-        XCTAssertTrue(applier.wetrakrWrites.isEmpty)
-    }
-
-    func testOlderOutboxRecordsDoNotAcquireANewTracker() throws {
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(mutation())) as? [String: Any])
-        json.removeValue(forKey: "wetrakrPending")
-        json.removeValue(forKey: "wetrakrAccountIdentity")
-        json.removeValue(forKey: "wetrakrCapturedAt")
-        let decoded = try JSONDecoder().decode(WatchMutation.self, from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertFalse(decoded.wetrakrPending)
-        XCTAssertNil(decoded.wetrakrIdempotencyKey)
-    }
-
-    func testCompletionCheckpointsAndFinalStopWriteOncePerViewingSession() async throws {
-        let applier = FakeWatchApplier()
-        applier.wetrakrAccountIdentity = "viewer"
-        let store = InMemoryWatchMutationStore()
-        let reconciler = WatchStateReconciler(store: store, applier: applier)
-        for viewing in 0..<3 {
-            await reconciler.beginLiveSession(accountID: "server", itemID: "movie")
-            // Repeated start notifications must not create a second viewing.
-            await reconciler.beginLiveSession(accountID: "server", itemID: "movie")
-            for minute in 90...100 {
-                var completed = mutation()
-                completed.capturedAt = Date(timeIntervalSince1970: Double(1000 + viewing * 10000 + minute * 60))
-                completed.targets = [target("server", "movie")]
-                completed.optimisticTargets = completed.targets
-                if minute == 100 {
-                    await reconciler.finishLiveSession(accountID: "server", itemID: "movie", mutation: completed)
-                } else {
-                    await reconciler.enqueue(completed)
-                    await reconciler.drain()
-                }
-            }
-        }
-        XCTAssertEqual(applier.wetrakrWrites.count, 3, "Previously sent 33 writes for these three viewings")
-        XCTAssertEqual(Set(applier.wetrakrWrites.map(\.1)).count, 3, "Real rewatches retain distinct keys")
-        let state = await reconciler.snapshot()
-        XCTAssertTrue(state.pending.isEmpty)
-        XCTAssertEqual(state.appliedWetrakr.count, 3)
-        let restored = try JSONDecoder().decode(WatchOutboxState.self, from: JSONEncoder().encode(state))
-        XCTAssertEqual(restored, state)
-    }
-
-    func testFailedCheckpointKeepsItsOriginalRetryIdentityAtFinalStop() async {
-        let applier = FakeWatchApplier()
-        applier.wetrakrAccountIdentity = "viewer"
-        applier.wetrakrFails = true
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        await reconciler.beginLiveSession(accountID: "server", itemID: "movie")
-        var completed = mutation()
-        completed.targets = [target("server", "movie")]
-        completed.optimisticTargets = completed.targets
-        await reconciler.enqueue(completed)
-        await reconciler.drain()
-        completed.capturedAt.addTimeInterval(60)
-        applier.wetrakrFails = false
-        await reconciler.finishLiveSession(accountID: "server", itemID: "movie", mutation: completed)
-        XCTAssertEqual(applier.wetrakrWrites.count, 2)
-        XCTAssertEqual(applier.wetrakrWrites[0].0, applier.wetrakrWrites[1].0)
-        XCTAssertEqual(applier.wetrakrWrites[0].1, applier.wetrakrWrites[1].1)
-    }
-
-    func testAppliedCompletionSurvivesRelaunchAndCannotSuppressAnotherGrant() async {
-        let applier = FakeWatchApplier()
-        applier.wetrakrAccountIdentity = "first"
-        let store = InMemoryWatchMutationStore()
-        let reconciler = WatchStateReconciler(store: store, applier: applier)
-        await reconciler.beginLiveSession(accountID: "server", itemID: "movie")
-        var completed = mutation()
-        completed.targets = [target("server", "movie")]
-        completed.optimisticTargets = completed.targets
-        await reconciler.enqueue(completed)
-        await reconciler.drain()
-        var saved = store.load()
-        XCTAssertEqual(saved.pending.count, 1)
-        saved.pending[0].wetrakrPending = true
-        let restored = WatchStateReconciler(store: InMemoryWatchMutationStore(saved), applier: applier)
-        await restored.drain()
-        XCTAssertEqual(applier.wetrakrWrites.count, 1)
-        applier.wetrakrAccountIdentity = "second"
-        completed.capturedAt.addTimeInterval(60)
-        await reconciler.enqueue(completed)
-        await reconciler.drain()
-        XCTAssertEqual(applier.wetrakrWrites.count, 2)
-        XCTAssertNotEqual(applier.wetrakrWrites[0].1, applier.wetrakrWrites[1].1)
-        XCTAssertEqual(applier.wetrakrWrites[1].2, "second")
-    }
-
-    func testCheckpointCoalescingDuringDeliveryDoesNotDispatchTwice() async {
-        let started = expectation(description: "History write started")
-        let latch = WetrakrWriteLatch()
-        let applier = FakeWatchApplier()
-        applier.wetrakrAccountIdentity = "viewer"
-        applier.beforeWetrakrCompletion = {
-            started.fulfill()
-            await latch.wait()
-        }
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        await reconciler.beginLiveSession(accountID: "server", itemID: "movie")
-        var completed = mutation()
-        completed.targets = [target("server", "movie")]
-        completed.optimisticTargets = completed.targets
-        await reconciler.enqueue(completed)
-        let firstDrain = Task { await reconciler.drain() }
-        await fulfillment(of: [started], timeout: 3)
-        completed.capturedAt.addTimeInterval(60)
-        await reconciler.enqueue(completed)
-        await latch.open()
-        await firstDrain.value
-        await reconciler.endLiveSession(accountID: "server", itemID: "movie")
-        XCTAssertEqual(applier.wetrakrWrites.count, 1)
-        let final = await reconciler.snapshot()
-        XCTAssertTrue(final.pending.isEmpty)
-    }
-}
-
-private actor WetrakrWriteLatch {
-    private var opened = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-    func wait() async {
-        if !opened { await withCheckedContinuation { waiters.append($0) } }
-    }
-    func open() {
-        opened = true
-        let pending = waiters
-        waiters = []
-        pending.forEach { $0.resume() }
-    }
-}
-
-private func playedMutation(canonical: String = "imdb:tt1", played: Bool = true, capturedAt: Date, targets: [WatchMutationTarget], trakt: TraktScrobbleIntent? = nil) -> WatchMutation {
+private func playedMutation(canonical: String = "imdb:tt1", played: Bool = true, capturedAt: Date, targets: [WatchMutationTarget]) -> WatchMutation {
     WatchMutation(
         capturedAt: capturedAt,
         canonicalMediaID: canonical,
         played: played,
         clearResume: played,
-        targets: targets,
-        trakt: trakt
+        targets: targets
     )
 }
 
@@ -1087,222 +818,6 @@ final class WatchOutboxStaleWriteTests: XCTestCase {
     }
 }
 
-// MARK: - Trakt mirror idempotency
-
-final class WatchOutboxTraktProgressTests: XCTestCase {
-    private func progress(_ percentage: Double, at time: Date = Date()) -> WatchMutation {
-        WatchMutation(
-            capturedAt: time, canonicalMediaID: "imdb:tt1",
-            resumePosition: percentage * 10, targets: [target("server", "movie")],
-            traktProgress: TraktScrobbleIntent(
-                kind: .movie, title: "Movie", year: nil, seasonNumber: nil,
-                episodeNumber: nil, providerIDs: ["Imdb": "tt1"], progress: percentage
-            )
-        )
-    }
-
-    func testPartialProgressPersistsAndRetriesWithoutHistoryMirrorsOrDuplicateServerWrites() async throws {
-        let applier = FakeWatchApplier()
-        applier.traktFails = true
-        applier.wetrakrAccountIdentity = "connected"
-        let store = InMemoryWatchMutationStore()
-        let reconciler = WatchStateReconciler(store: store, applier: applier)
-        await reconciler.enqueue(progress(50))
-        await reconciler.drain()
-        let pending = await reconciler.snapshot()
-        XCTAssertEqual(pending.pending.first?.traktProgress?.progress, 50)
-        XCTAssertEqual(pending.pending.first?.isFullyApplied, false)
-        XCTAssertEqual(pending.pending.first?.targets, [])
-        XCTAssertNil(pending.pending.first?.trakt)
-        XCTAssertEqual(pending.pending.first?.wetrakrPending, false)
-        let stored = try JSONDecoder().decode(WatchOutboxState.self, from: JSONEncoder().encode(pending))
-        XCTAssertEqual(stored, pending)
-        try store.save(stored)
-        applier.traktFails = false
-        let restored = WatchStateReconciler(store: store, applier: applier)
-        await restored.drain()
-        await restored.drain()
-        XCTAssertEqual(applier.traktScrobbles.map(\.progress), [50])
-        XCTAssertEqual(applier.resumeWrites.count, 1)
-        XCTAssertTrue(applier.playedWrites.isEmpty)
-        XCTAssertTrue(applier.simklScrobbles.isEmpty)
-        XCTAssertTrue(applier.anilistScrobbles.isEmpty)
-        XCTAssertTrue(applier.malScrobbles.isEmpty)
-        XCTAssertTrue(applier.wetrakrWrites.isEmpty)
-        let final = await restored.snapshot()
-        XCTAssertTrue(final.pending.isEmpty)
-        XCTAssertTrue(final.appliedTrakt.isEmpty)
-    }
-
-    func testLaterSameDayProgressCompletionAndRewatchAreNotSuppressed() async {
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        let time = Date()
-        for (index, percentage) in [50.0, 80, 100, 20].enumerated() {
-            var mutation = progress(percentage, at: time.addingTimeInterval(Double(index)))
-            if percentage == 100 {
-                mutation.trakt = mutation.traktProgress
-                mutation.traktPending = true
-                mutation.traktProgress = nil
-                mutation.played = true
-                mutation.resumePosition = nil
-                mutation.clearResume = true
-            }
-            await reconciler.enqueue(mutation)
-            await reconciler.drain()
-        }
-        XCTAssertEqual(applier.traktScrobbles.map(\.progress), [50, 80, 100, 20])
-        let state = await reconciler.snapshot()
-        XCTAssertEqual(state.appliedTrakt.count, 1)
-        XCTAssertTrue(state.pending.isEmpty)
-    }
-
-    func testNewerProgressWinsAndLaterNonProgressActionsDiscardPendingPause() {
-        let old = progress(50)
-        let newer = progress(80, at: old.capturedAt.addingTimeInterval(1))
-        XCTAssertEqual(WatchStateReconciler.coalesce(existing: old, incoming: newer).traktProgress?.progress, 80)
-        for action in ["complete", "unwatch", "dismiss", "in-app-resume"] {
-            var mutation = newer
-            mutation.traktProgress = nil
-            switch action {
-            case "complete":
-                mutation.played = true
-                mutation.trakt = newer.traktProgress
-                mutation.trakt?.progress = 100
-                mutation.traktPending = true
-            case "unwatch": mutation.played = false
-            case "dismiss": mutation.resumePosition = nil; mutation.clearResume = true
-            default: break
-            }
-            XCTAssertNil(WatchStateReconciler.coalesce(existing: old, incoming: mutation).traktProgress)
-        }
-    }
-
-    func testEarlierUndeliveredCompletionIsPreservedAlongsideNewPartialWatch() async {
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        let partial = progress(30)
-        var complete = playedMutation(
-            capturedAt: partial.capturedAt.addingTimeInterval(-1),
-            targets: partial.targets, trakt: partial.traktProgress
-        )
-        complete.trakt?.progress = 100
-        await reconciler.enqueue(complete)
-        await reconciler.enqueue(partial)
-        await reconciler.drain()
-        XCTAssertEqual(applier.traktScrobbles.map(\.progress), [100, 30])
-        XCTAssertEqual(applier.simklScrobbles.map(\.progress), [100])
-        XCTAssertEqual(applier.anilistScrobbles.map(\.progress), [100])
-        XCTAssertEqual(applier.malScrobbles.map(\.progress), [100])
-    }
-
-    func testLegacyOutboxDoesNotInventPausedPlayback() throws {
-        let mutation = playedMutation(capturedAt: Date(), targets: [])
-        let data = try JSONEncoder().encode(mutation)
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertNil(object["traktProgress"])
-        let decoded = try JSONDecoder().decode(WatchMutation.self, from: data)
-        XCTAssertNil(decoded.traktProgress)
-    }
-}
-
-final class WatchOutboxTraktTests: XCTestCase {
-    private func intent() -> TraktScrobbleIntent {
-        TraktScrobbleIntent(kind: .movie, title: "Dune", year: 2021, seasonNumber: nil, episodeNumber: nil, providerIDs: ["imdb": "tt1160419"], progress: 100)
-    }
-
-    /// Trakt is mirrored exactly once even across repeated drains (idempotency
-    /// ledger), and a finished watch still scrobbles.
-    func testTraktMirroredOnceAcrossDrains() async throws {
-        let store = InMemoryWatchMutationStore()
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(store: store, applier: applier)
-
-        await reconciler.enqueue(playedMutation(capturedAt: Date(), targets: [target("jellyfin", "j1")], trakt: intent()))
-        await reconciler.drain()
-        await reconciler.drain() // a second foreground drain must not double-post
-
-        XCTAssertEqual(applier.traktScrobbles.count, 1)
-    }
-
-    func testFinishedWatchMirrorsThroughEveryTrackerAdapter() async {
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(
-            store: InMemoryWatchMutationStore(),
-            applier: applier
-        )
-
-        await reconciler.enqueue(
-            playedMutation(
-                capturedAt: Date(),
-                targets: [target("share", "movie")],
-                trakt: intent()
-            )
-        )
-        await reconciler.drain()
-
-        XCTAssertEqual(applier.traktScrobbles.count, 1)
-        XCTAssertEqual(applier.simklScrobbles.count, 1)
-        XCTAssertEqual(applier.anilistScrobbles.count, 1)
-        XCTAssertEqual(applier.malScrobbles.count, 1)
-    }
-
-    func testNewerUnwatchCancelsQueuedFinishedWatchForEveryTracker() async {
-        let applier = FakeWatchApplier()
-        let reconciler = WatchStateReconciler(
-            store: InMemoryWatchMutationStore(),
-            applier: applier
-        )
-        let finishTime = Date(timeIntervalSince1970: 1_000)
-        await reconciler.enqueue(
-            playedMutation(
-                capturedAt: finishTime,
-                targets: [target("share", "movie")],
-                trakt: intent()
-            )
-        )
-        await reconciler.enqueue(
-            playedMutation(
-                played: false,
-                capturedAt: finishTime.addingTimeInterval(1),
-                targets: [target("share", "movie")]
-            )
-        )
-
-        await reconciler.drain()
-
-        XCTAssertEqual(
-            applier.playedWrites,
-            [.init(played: false, accountID: "share", itemID: "movie")]
-        )
-        XCTAssertTrue(applier.traktScrobbles.isEmpty)
-        XCTAssertTrue(applier.simklScrobbles.isEmpty)
-        XCTAssertTrue(applier.anilistScrobbles.isEmpty)
-        XCTAssertTrue(applier.malScrobbles.isEmpty)
-    }
-
-    /// A Trakt failure keeps the mirror pending (server target may already be done)
-    /// so it retries — never silently dropped.
-    func testTraktFailureRetriesWithoutDroppingServerWrite() async throws {
-        let store = InMemoryWatchMutationStore()
-        let applier = FakeWatchApplier()
-        applier.traktFails = true
-        let reconciler = WatchStateReconciler(store: store, applier: applier)
-
-        await reconciler.enqueue(playedMutation(capturedAt: Date(), targets: [target("jellyfin", "j1")], trakt: intent()))
-        await reconciler.drain()
-        XCTAssertEqual(applier.playedWrites.count, 1, "Server write succeeded")
-        let pendingTrakt = await reconciler.pendingCount
-        XCTAssertEqual(pendingTrakt, 1, "Trakt mirror still pending")
-
-        applier.traktFails = false
-        await reconciler.drain()
-        XCTAssertEqual(applier.traktScrobbles.count, 1)
-        let done = await reconciler.pendingCount
-        XCTAssertEqual(done, 0)
-    }
-}
-
 // MARK: - Live-session guard (never clobber the now-playing session)
 
 /// The bug these tests pin: a convergence drain that lands on the exact
@@ -1489,7 +1004,6 @@ private final class GatedWatchApplier: WatchMutationApplying, @unchecked Sendabl
         lock.unlock()
     }
 
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
 }
 
 final class WatchOutboxReentrancyTests: XCTestCase {
@@ -1561,34 +1075,4 @@ final class WatchOutboxReentrancyTests: XCTestCase {
         XCTAssertEqual(confirmed.first?.played, false)
     }
 
-    func testConfirmationContainsOnlyAppliedTargetsAndSurvivesTrackerFailure() async {
-        let applier = FakeWatchApplier()
-        applier.failingAccounts = ["offline"]
-        applier.traktFails = true
-        let (events, continuation) = AsyncStream<WatchMutation>.makeStream()
-        let reconciler = WatchStateReconciler(
-            store: InMemoryWatchMutationStore(), applier: applier,
-            onServerStateApplied: { continuation.yield($0) }
-        )
-        let online = target("online", "e3")
-        let offline = target("offline", "e3")
-        let live = target("live", "e3")
-        await reconciler.beginLiveSession(accountID: live.accountID, itemID: live.itemID)
-        await reconciler.enqueue(playedMutation(
-            capturedAt: Date(), targets: [online, offline, live],
-            trakt: TraktScrobbleIntent(
-                kind: .episode, title: "Show", year: nil, seasonNumber: 1, episodeNumber: 3,
-                providerIDs: ["imdb": "tt1"], progress: 100
-            )
-        ))
-        await reconciler.drain()
-        await reconciler.drain()
-        continuation.finish()
-        var confirmed: [WatchMutation] = []
-        for await event in events { confirmed.append(event) }
-        XCTAssertEqual(confirmed.count, 1, "Failed, deferred and tracker-only retries are not confirmations")
-        XCTAssertEqual(confirmed.first?.targets, [online])
-        let pending = await reconciler.snapshot().pending
-        XCTAssertEqual(pending.first?.targets, [offline, live])
-    }
 }

@@ -301,11 +301,6 @@ public struct MediaItemContextMenu: ViewModifier {
         let main = actions.filter { !$0.isSetApartInMenu }
         return content.contextMenu {
             menuButtons(for: main)
-            #if os(iOS)
-            if let url = item.metadataProvenance.wetrakrWatchlistURL {
-                WetrakrWatchlistLink(url: url)
-            }
-            #endif
             // Platforms that draw menu separators keep these actions apart.
             if !setApart.isEmpty {
                 Section { menuButtons(for: setApart) }

@@ -75,8 +75,7 @@ final class CrossServerIdentityHydrationTests: XCTestCase {
       item: a, played: true, primaryAccountID: "server", additionalSources: snapshot.sourceRefs(for: a)
     ))
     let applier = AppShellWatchMutationApplier(
-      resolveProvider: { _ in nil }, applyTrakt: { _ in }, applySimkl: { _ in },
-      applyAniList: { _ in }, applyMAL: { _ in }, allAccountIDs: { ["server"] },
+      resolveProvider: { _ in nil }, allAccountIDs: { ["server"] },
       indexedSources: { ids, kind, title, year, rejected in
         snapshot.sources(forIdentities: ids, kind: kind, anchorTitle: title,
                          anchorYear: year, rejectedSourceIDs: rejected)
@@ -161,8 +160,7 @@ final class CrossServerIdentityHydrationTests: XCTestCase {
       XCTAssertEqual(queued.first?.targets.map(\.itemID), [card.id])
       let persisted = try JSONDecoder().decode(WatchMutation.self, from: JSONEncoder().encode(mutation))
       let applier = AppShellWatchMutationApplier(
-        resolveProvider: { _ in nil }, applyTrakt: { _ in }, applySimkl: { _ in },
-        applyAniList: { _ in }, applyMAL: { _ in }, allAccountIDs: { ["server"] },
+        resolveProvider: { _ in nil }, allAccountIDs: { ["server"] },
         indexedSources: { ids, kind, title, year, rejected in
           snapshot.sources(forIdentities: ids, kind: kind, anchorTitle: title, anchorYear: year, rejectedSourceIDs: rejected)
         },

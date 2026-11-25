@@ -17,8 +17,6 @@ public enum PlozzCustomization {
 
     public static let isCustomBuild = isCustom(bundleIdentifier: Bundle.main.bundleIdentifier)
 
-    public static var supportsTrackers: Bool { !isCustomBuild }
-
     /// The personal build opens a library directly on its Browse grid. Library
     /// mode tabs and the Recommended/Playlists/Collections pages stay upstream
     /// code, but are not exposed here.
@@ -111,11 +109,6 @@ public enum PlozzCustomization {
 
     /// Pages that only expose a disabled capability stay out of Settings search.
     public static func isSettingsSearchPageVisible(_ page: SettingsSearchPage) -> Bool {
-        switch page {
-        case .trackers:
-            return supportsTrackers
-        default:
-            return true
-        }
+        true
     }
 }

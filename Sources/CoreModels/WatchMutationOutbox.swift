@@ -67,17 +67,6 @@ public struct WatchOutboxState: Codable, Sendable, Equatable {
     public var clock: [String: Date]
     var ownershipClocks: [String: [WatchOwnershipClock]]
     var sourceClocks: [String: Date]
-    /// Trakt idempotency ledger: key → when we wrote it, pruned by TTL so our own
-    /// replays across relaunch don't re-post history.
-    public var appliedTrakt: [String: Date]
-    /// Simkl idempotency ledger.
-    public var appliedSimkl: [String: Date]
-    /// Successful WeTrakr completion writes, keyed by viewing session, not day.
-    public var appliedWetrakr: [String: Date]
-    /// AniList idempotency ledger.
-    public var appliedAniList: [String: Date]
-    /// MAL idempotency ledger.
-    public var appliedMAL: [String: Date]
     /// Recently-applied in-progress resume writes, keyed by ``WatchMutationTarget/id``
     /// (`"accountID:itemID"`), used by Home's Continue Watching overlay to clamp a
     /// server's drain-time timestamp inflation back down to the play's real time.
@@ -88,22 +77,12 @@ public struct WatchOutboxState: Codable, Sendable, Equatable {
     public init(
         pending: [WatchMutation] = [],
         clock: [String: Date] = [:],
-        appliedTrakt: [String: Date] = [:],
-        appliedSimkl: [String: Date] = [:],
-        appliedWetrakr: [String: Date] = [:],
-        appliedAniList: [String: Date] = [:],
-        appliedMAL: [String: Date] = [:],
         appliedRecency: [String: AppliedResumeRecord] = [:]
     ) {
         self.pending = pending
         self.clock = clock
         self.ownershipClocks = [:]
         self.sourceClocks = [:]
-        self.appliedTrakt = appliedTrakt
-        self.appliedSimkl = appliedSimkl
-        self.appliedWetrakr = appliedWetrakr
-        self.appliedAniList = appliedAniList
-        self.appliedMAL = appliedMAL
         self.appliedRecency = appliedRecency
     }
 
@@ -112,8 +91,7 @@ public struct WatchOutboxState: Codable, Sendable, Equatable {
     // MARK: - Codable (back-compatible)
 
     private enum CodingKeys: String, CodingKey {
-        case pending, clock, ownershipClocks, sourceClocks, appliedTrakt, appliedSimkl, appliedAniList, appliedMAL, appliedRecency
-        case appliedWetrakr
+        case pending, clock, ownershipClocks, sourceClocks, appliedRecency
     }
 
     public init(from decoder: Decoder) throws {
@@ -130,23 +108,6 @@ public struct WatchOutboxState: Codable, Sendable, Equatable {
             [String: [WatchOwnershipClock]].self, forKey: .ownershipClocks
         ) ?? [:]
         sourceClocks = try container.decodeIfPresent([String: Date].self, forKey: .sourceClocks) ?? [:]
-        appliedTrakt = try container.decodeIfPresent(
-            [String: Date].self,
-            forKey: .appliedTrakt
-        ) ?? [:]
-        appliedSimkl = try container.decodeIfPresent(
-            [String: Date].self,
-            forKey: .appliedSimkl
-        ) ?? [:]
-        appliedWetrakr = try container.decodeIfPresent([String: Date].self, forKey: .appliedWetrakr) ?? [:]
-        appliedAniList = try container.decodeIfPresent(
-            [String: Date].self,
-            forKey: .appliedAniList
-        ) ?? [:]
-        appliedMAL = try container.decodeIfPresent(
-            [String: Date].self,
-            forKey: .appliedMAL
-        ) ?? [:]
         appliedRecency = try container.decodeIfPresent(
             [String: AppliedResumeRecord].self,
             forKey: .appliedRecency

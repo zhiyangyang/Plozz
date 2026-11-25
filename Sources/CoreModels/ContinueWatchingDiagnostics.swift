@@ -11,7 +11,7 @@ import Foundation
 ///     `/library/onDeck` in particular is *not* the modern Continue Watching hub
 ///     and does not honour "Remove from Continue Watching", so a row built from
 ///     it legitimately disagrees with what the Plex app shows.
-///  2. **Whether our write ever landed.** Resume/scrobble writes are fire-and-
+///  2. **Whether our write ever landed.** Resume writes are fire-and-
 ///     forget; a rejected or never-sent write leaves the server's idea of the
 ///     title untouched forever.
 ///  3. **What the local overlay did to the fetched row.** The overlay may drop a

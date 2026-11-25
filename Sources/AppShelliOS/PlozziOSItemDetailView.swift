@@ -8,7 +8,6 @@ import FeaturePlayback
 import MediaDownloads
 import MetadataKit
 import RatingsService
-import TraktService
 import SwiftUI
 
 private struct PlozziOSDetailViewModelKey: Hashable {
@@ -209,7 +208,7 @@ struct PlozziOSItemDetailView: View {
                 guard !PlozzCustomization.showsEmbySimilar else { return nil }
                 guard !appModel.isOfflineMode, let search = relatedTitleLibrarySearch(in: accounts) else { return nil }
                 return RelatedTitlesLoader(
-                    resolver: .production(traktClientID: TraktConfig.resolved().clientID),
+                    resolver: .production(),
                     search: search,
                     indexedLibrarySources: identitySources,
                     loadIndexedItem: relatedTitleLibraryItemLoader(in: accounts),

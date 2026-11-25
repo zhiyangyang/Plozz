@@ -39,7 +39,6 @@ final class WatchMutationServerPlaybackTests: XCTestCase {
         AppShellWatchMutationApplier(
             isActive: { active?.value.withLock { $0 } ?? true },
             resolveProvider: { _ in provider },
-            applyTrakt: { _ in }, applySimkl: { _ in }, applyAniList: { _ in }, applyMAL: { _ in }
         )
     }
 
@@ -238,7 +237,6 @@ final class WatchMutationServerPlaybackTests: XCTestCase {
         await offline.setReadFailure(true)
         let applier = AppShellWatchMutationApplier(
             resolveProvider: { $0 == "account" ? newer : offline },
-            applyTrakt: { _ in }, applySimkl: { _ in }, applyAniList: { _ in }, applyMAL: { _ in }
         )
         let store = InMemoryWatchMutationStore()
         let reconciler = WatchStateReconciler(store: store, applier: applier)

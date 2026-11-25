@@ -15,16 +15,15 @@ final class PlaybackWatchPolicyTests: XCTestCase {
         for position in [0.0, 1] {
             XCTAssertNil(WatchMutationFactory.playbackStop(
                 item: item, position: position, watchedPercent: position / 72,
-                primaryAccountID: "origin", reportTraktProgress: true
+                primaryAccountID: "origin"
             ))
         }
         for position in [2.0, 10, 30, 59.999, 60, 120] {
             let mutation = WatchMutationFactory.playbackStop(
                 item: item, position: position, watchedPercent: position / 72,
-                primaryAccountID: "origin", reportTraktProgress: true
+                primaryAccountID: "origin"
             )
             XCTAssertEqual(mutation?.resumePosition, position)
-            XCTAssertNotNil(mutation?.traktProgress)
         }
     }
 
@@ -46,13 +45,11 @@ final class PlaybackWatchPolicyTests: XCTestCase {
         for percent in [10.0, 100] {
             let mutation = try XCTUnwrap(WatchMutationFactory.playbackStop(
                 item: trailer, position: 120, watchedPercent: percent,
-                primaryAccountID: "origin", additionalSources: [otherCopy], reportTraktProgress: true
+                primaryAccountID: "origin", additionalSources: [otherCopy]
             ))
             XCTAssertEqual(mutation.targets.map(\.id), ["origin:trailer"])
             XCTAssertFalse(mutation.expansionPending)
             XCTAssertTrue(mutation.identities.isEmpty)
-            XCTAssertNil(mutation.trakt)
-            XCTAssertNil(mutation.traktProgress)
             XCTAssertEqual(mutation.played, percent == 100 ? true : nil)
             XCTAssertEqual(mutation.resumePosition, percent == 100 ? nil : 120)
             XCTAssertNotEqual(mutation.canonicalMediaID, WatchMutationFactory.playbackStop(
@@ -77,19 +74,16 @@ final class PlaybackWatchPolicyTests: XCTestCase {
         XCTAssertTrue(MediaExtra(item: restored, kind: .featurette).playbackItem.isExtra)
     }
 
-    func testSpecialFeatureNeverPropagatesParentIdentityOrTrackerWrites() throws {
+    func testSpecialFeatureNeverPropagatesParentIdentity() throws {
         var item = movie()
         item.id = "featurette"
         let feature = MediaExtra(item: item, kind: .featurette).playbackItem
         for percent in [10.0, 100] {
             let mutation = try XCTUnwrap(WatchMutationFactory.playbackStop(
                 item: feature, position: 15, watchedPercent: percent, primaryAccountID: "origin",
-                additionalSources: [.init(accountID: "other", itemID: "movie-copy", providerKind: .plex)],
-                reportTraktProgress: true
+                additionalSources: [.init(accountID: "other", itemID: "movie-copy", providerKind: .plex)]
             ))
             XCTAssertEqual(mutation.targets.map(\.id), ["origin:featurette"])
-            XCTAssertNil(mutation.trakt)
-            XCTAssertNil(mutation.traktProgress)
             XCTAssertFalse(mutation.expansionPending)
             XCTAssertTrue(mutation.identities.isEmpty)
         }
@@ -104,8 +98,6 @@ final class PlaybackWatchPolicyTests: XCTestCase {
         ))
         XCTAssertEqual(mutation.targets.map(\.id), ["origin:trailer"])
         XCTAssertEqual(mutation.played, true)
-        XCTAssertNil(mutation.trakt)
-        XCTAssertNil(mutation.traktProgress)
         XCTAssertFalse(mutation.expansionPending)
         XCTAssertTrue(mutation.identities.isEmpty)
     }

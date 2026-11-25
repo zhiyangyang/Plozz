@@ -4,10 +4,10 @@ import CoreModels
 /// Builds durable ``WatchMutation`` values from a ``MediaItem`` so the action
 /// coordinator (mark watched/unwatched) and the player (resume / finish fan-out)
 /// produce identical, cross-server-correct intents. Centralised so the target
-/// derivation and Trakt-mirror policy live in exactly one place.
+/// derivation policy lives in exactly one place.
 public enum WatchMutationFactory {
     /// Considered "finished" at or above this watched percentage — finishing marks
-    /// the title played everywhere, clears resume, and mirrors to Trakt.
+    /// the title played everywhere and clears resume.
     public static let finishedThreshold: Double = 90
 
     /// Every server target this title should converge on, addressed by *that
@@ -101,19 +101,6 @@ public enum WatchMutationFactory {
         )
     }
 
-    private static func traktIntent(for item: MediaItem, progress: Double) -> TraktScrobbleIntent {
-        TraktScrobbleIntent(
-            kind: item.kind,
-            title: item.title,
-            seriesTitle: item.parentTitle,
-            year: item.productionYear,
-            seasonNumber: item.seasonNumber,
-            episodeNumber: item.episodeNumber,
-            providerIDs: item.providerIDs,
-            progress: progress
-        )
-    }
-
     /// The origin episode seed + expansion flag for an episode item, so the
     /// reconciler can fan a watch out to the same episode on every other server
     /// hosting the series. Movies (or items missing a season/episode) get no seed
@@ -150,8 +137,6 @@ public enum WatchMutationFactory {
     }
 
     /// Both explicit watch-state actions clear resume everywhere. Only marking
-    /// watched mirrors to Trakt (write-if-missing); unwatch never deletes history
-    /// from external trackers.
     public static func playedToggle(item: MediaItem, played: Bool, primaryAccountID: String?, additionalSources: [MediaSourceRef] = [], crossServerSync: Bool = true, capturedAt: Date = Date()) -> WatchMutation? {
         let targets = targets(for: item, primaryAccountID: primaryAccountID, additionalSources: additionalSources, crossServerSync: crossServerSync)
         guard !targets.isEmpty else { return nil }
@@ -169,7 +154,6 @@ public enum WatchMutationFactory {
             played: played,
             clearResume: true,
             targets: targets,
-            trakt: played && !item.isExtra && !item.isTrailer && !item.isYouTubeTrailer ? traktIntent(for: item, progress: 100) : nil,
             episodeOrigin: episode.origin,
             expansionPending: episode.pending || identity.pending,
             identities: identity.identities,
@@ -205,8 +189,8 @@ public enum WatchMutationFactory {
     }
 
     /// The convergence mutation for leaving the player: at/above the finished
-    /// threshold it marks the title played everywhere (clearing resume) and mirrors
-    /// to Trakt; otherwise it writes the resume position to every server so a
+    /// threshold it marks the title played everywhere (clearing resume); otherwise
+    /// it writes the resume position to every server so a
     /// best-source switch resumes where you left off, on whichever server backs it.
     /// Returns `nil` when there is nothing worth converging (no targets, or an
     /// unfinished item barely started).
@@ -214,8 +198,8 @@ public enum WatchMutationFactory {
     /// every server that holds it.
     ///
     /// Deliberately leaves watched state alone. Marking an abandoned film watched
-    /// would clear the row too, and it would also tell every server — and any
-    /// tracker mirroring them — that it was finished, corrupting the history that
+    /// would clear the row too, and it would also tell every server that it was
+    /// finished, corrupting the history that
     /// decides what to suggest next. The viewer asked for it off the row, not for
     /// a claim about having seen it.
     ///
@@ -223,8 +207,6 @@ public enum WatchMutationFactory {
     /// live on several servers, and taking it off the row on one while leaving it
     /// on another just moves the problem. Resume state converges or it does not
     /// mean anything.
-    ///
-    /// No Trakt intent, for the same reason as above — nothing was watched.
     public static func removeFromContinueWatching(
         item: MediaItem,
         primaryAccountID: String?,
@@ -281,9 +263,7 @@ public enum WatchMutationFactory {
         })
     }
 
-    /// External players cannot send Plozz's realtime scrobbles. Their return
-    /// opts into a durable Trakt pause without changing completed-watch mirrors.
-    public static func playbackStop(item: MediaItem, position: TimeInterval, watchedPercent: Double, primaryAccountID: String?, additionalSources: [MediaSourceRef] = [], crossServerSync: Bool = true, reportTraktProgress: Bool = false, capturedAt: Date = Date()) -> WatchMutation? {
+    public static func playbackStop(item: MediaItem, position: TimeInterval, watchedPercent: Double, primaryAccountID: String?, additionalSources: [MediaSourceRef] = [], crossServerSync: Bool = true, capturedAt: Date = Date()) -> WatchMutation? {
         let targets = targets(for: item, primaryAccountID: primaryAccountID, additionalSources: additionalSources, crossServerSync: crossServerSync)
         guard !targets.isEmpty else { return nil }
         // OFF: origin-only convergence with no expansion seeds (see `playedToggle`).
@@ -299,7 +279,6 @@ public enum WatchMutationFactory {
                 played: true,
                 clearResume: true,
                 targets: targets,
-                trakt: !item.isExtra && !item.isTrailer && !item.isYouTubeTrailer ? traktIntent(for: item, progress: 100) : nil,
                 episodeOrigin: episode.origin,
                 expansionPending: episode.pending || identity.pending,
                 identities: identity.identities,
@@ -319,9 +298,6 @@ public enum WatchMutationFactory {
             episodeNumber: item.episodeNumber,
             resumePosition: position,
             targets: targets,
-            traktProgress: reportTraktProgress && !item.isExtra && !item.isTrailer && !item.isYouTubeTrailer
-                && watchedPercent.isFinite && watchedPercent > 0
-                ? traktIntent(for: item, progress: watchedPercent) : nil,
             episodeOrigin: episode.origin,
             expansionPending: episode.pending || identity.pending,
             identities: identity.identities,

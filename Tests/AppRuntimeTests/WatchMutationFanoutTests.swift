@@ -87,7 +87,6 @@ final class WatchMutationFanoutTests: XCTestCase {
                 let intent = try XCTUnwrap(queued.first)
                 XCTAssertEqual(intent.played, false)
                 XCTAssertTrue(intent.clearResume)
-                XCTAssertNil(intent.trakt)
                 XCTAssertEqual(intent.targets.map(\.id), ["a:item"])
                 XCTAssertFalse(intent.expansionPending)
                 let restored = try JSONDecoder().decode(WatchMutation.self, from: JSONEncoder().encode(intent))
@@ -110,7 +109,6 @@ final class WatchMutationFanoutTests: XCTestCase {
         ))
         XCTAssertEqual(Set(intent.targets.map(\.id)), ["jellyfin-account:jf-1", "plex:px"])
         XCTAssertTrue(intent.clearResume)
-        XCTAssertNil(intent.trakt)
 
         let episode = MediaItem(
             id: "e3", title: "Third", kind: .episode,

@@ -122,7 +122,7 @@ public struct WatchMutationAuthorization: Codable, Hashable, Sendable {
 }
 
 /// The reconciler binds this to one queued intent. An enforcing applier checks
-/// it again after its own awaits, immediately before calling a provider/tracker.
+/// it again after its own awaits, immediately before calling a provider write.
 /// It cannot retract requests that have already been dispatched.
 public struct WatchMutationDeliveryAuthorization: Sendable {
     @TaskLocal public static var current: WatchMutationDeliveryAuthorization?
@@ -154,6 +154,6 @@ public struct WatchMutationDeliveryAuthorization: Sendable {
 }
 
 /// Opt-in contract: implementations recheck the task-local delivery requirement
-/// after every internal suspension preceding another provider/tracker operation.
+/// after every internal suspension preceding another provider write.
 /// Unmarked appliers cannot receive guarded mutations.
 public protocol WatchMutationAuthorizationEnforcing: WatchMutationApplying {}

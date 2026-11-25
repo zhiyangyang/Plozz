@@ -208,10 +208,6 @@ final class LiveWatchProgressTests: XCTestCase {
                     )
                     let applier = AppShellWatchMutationApplier(
                         resolveProvider: { $0 == "test-origin" ? provider : nil },
-                        applyTrakt: { _ in throw InvalidConfiguration() },
-                        applySimkl: { _ in throw InvalidConfiguration() },
-                        applyAniList: { _ in throw InvalidConfiguration() },
-                        applyMAL: { _ in throw InvalidConfiguration() },
                         allAccountIDs: { ["test-origin"] }
                     )
                     let outbox = WatchStateReconciler(store: store, applier: applier)
@@ -251,8 +247,7 @@ final class LiveWatchProgressTests: XCTestCase {
                     XCTAssertEqual(queued.count, 1)
                     XCTAssertEqual(mutation.targets.map(\.id), ["test-origin:\(selected.id)"])
                     XCTAssertTrue(mutation.clearResume)
-                    XCTAssertNil(mutation.trakt)
-                    let enqueued = await outbox.enqueue(mutation)
+                            let enqueued = await outbox.enqueue(mutation)
                     XCTAssertTrue(enqueued)
 
                     let restoredStore = try DurableWatchMutationStore(
@@ -358,10 +353,9 @@ final class LiveWatchProgressTests: XCTestCase {
             let position = 15.0
             let mutation = try XCTUnwrap(WatchMutationFactory.playbackStop(
                 item: trailer, position: position, watchedPercent: position / (trailer.runtime ?? 1) * 100,
-                primaryAccountID: "test-origin", reportTraktProgress: true
+                primaryAccountID: "test-origin"
             ))
             XCTAssertEqual(mutation.targets.map(\.itemID), [trailer.id])
-            XCTAssertNil(mutation.traktProgress)
             XCTAssertFalse(mutation.expansionPending)
             try await writer.setResumePosition(
                 try XCTUnwrap(mutation.resumePosition), itemID: trailer.id, capturedAt: mutation.capturedAt

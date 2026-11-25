@@ -1,4 +1,4 @@
-// The keychain primitives moved down to `CoreSecureStore` so the tracker
+// The keychain primitives moved down to `CoreSecureStore` so the token
 // services can share them without reaching up into a Feature module. Re-exported
 // here so the modules that already import FeatureAuthCore for `KeychainStore`
 // keep compiling unchanged.

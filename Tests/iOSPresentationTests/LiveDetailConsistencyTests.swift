@@ -74,8 +74,7 @@ final class LiveDetailConsistencyTests: XCTestCase {
         let lastPlayedAt = try XCTUnwrap(current.lastPlayedAt)
         let target = WatchMutationTarget(accountID: account.account.id, itemID: current.id)
         let applier = AppShellWatchMutationApplier(
-            resolveProvider: { id in id == account.account.id ? provider : nil },
-            applyTrakt: { _ in }, applySimkl: { _ in }, applyAniList: { _ in }, applyMAL: { _ in }
+            resolveProvider: { id in id == account.account.id ? provider : nil }
         )
         for action in 0..<4 {
             var mutation = WatchMutation(

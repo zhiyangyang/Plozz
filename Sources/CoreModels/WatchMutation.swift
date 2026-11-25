@@ -42,52 +42,14 @@ public struct EpisodeOrigin: Codable, Hashable, Sendable {
     }
 }
 
-/// A durable, self-contained description of a Trakt scrobble to perform — kept
-/// neutral (no `TraktService` types) so it can live in the outbox file and be
-/// replayed at launch by whatever scrobbler the app wires in.
-public struct TraktScrobbleIntent: Codable, Hashable, Sendable {
-    public var kind: MediaItemKind
-    public var title: String?  // l10n:content — media title
-    /// Series title for episodes, so anime trackers can title-search brand-new
-    /// shows that public id maps (ARM) haven't indexed yet. Nil for movies.
-    public var seriesTitle: String?  // l10n:content — media title
-    public var year: Int?
-    public var seasonNumber: Int?
-    public var episodeNumber: Int?
-    /// External ids (imdb/tmdb/tvdb/trakt, mixed casing tolerated downstream).
-    public var providerIDs: [String: String]
-    /// Watched percent at the scrobble (0...100).
-    public var progress: Double
-
-    public init(
-        kind: MediaItemKind,
-        title: String?,  // l10n:content — media title
-        seriesTitle: String? = nil,
-        year: Int?,
-        seasonNumber: Int?,
-        episodeNumber: Int?,
-        providerIDs: [String: String],
-        progress: Double
-    ) {
-        self.kind = kind
-        self.title = title
-        self.seriesTitle = seriesTitle
-        self.year = year
-        self.seasonNumber = seasonNumber
-        self.episodeNumber = episodeNumber
-        self.providerIDs = providerIDs
-        self.progress = progress
-    }
-}
-
 /// A single watch-state INTENT, persisted to disk **before** the network call so a
 /// watch is never silently lost when a server is asleep / the app is offline / the
 /// app is killed mid-write.
 ///
 /// One mutation expresses the desired convergent state for *one title* across the
 /// servers that hold it (`targets`): an optional resume position to write and/or an
-/// optional played flag, plus an optional one-shot Trakt mirror. The reconciler
-/// drains it best-effort and idempotently — applying it twice is harmless.
+/// optional played flag. The reconciler drains it best-effort and idempotently —
+/// applying it twice is harmless.
 public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public private(set) var authorization: WatchMutationAuthorization?
@@ -133,31 +95,13 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
     /// are removed from ``targets``. UI replay uses this immutable history so a
     /// partially drained offline mutation still matches already-written copies.
     public var optimisticTargets: [WatchMutationTarget]
-    /// Keep target history for identity/tracker recovery while excluding copies
+    /// Keep target history for identity recovery while excluding copies
     /// whose newer server playback has superseded this intent from UI replay.
     public var supersededTargetIDs: Set<String> = []
     public var effectiveOptimisticTargets: [WatchMutationTarget] {
         guard !supersededTargetIDs.isEmpty else { return optimisticTargets }
         return optimisticTargets.filter { !supersededTargetIDs.contains($0.id) }
     }
-    /// Optional durable Trakt mirror, drained once (idempotency-keyed).
-    public var trakt: TraktScrobbleIntent?
-    /// Pending partial playback for Trakt only; separate from completed-watch
-    /// mirrors so it cannot mark an episode watched on another tracker.
-    public var traktProgress: TraktScrobbleIntent?
-    /// Whether the Trakt mirror still needs writing (cleared on success).
-    public var traktPending: Bool
-    /// Whether the Simkl mirror still needs writing (cleared on success).
-    public var simklPending: Bool
-    public var wetrakrPending: Bool
-    public var wetrakrAccountIdentity: String?
-    public var wetrakrCapturedAt: Date?
-    /// Shared by completion checkpoints and the final stop of one viewing session.
-    public var wetrakrIdempotencyKey: String?
-    /// Whether the AniList mirror still needs writing (cleared on success).
-    public var anilistPending: Bool
-    /// Whether the MAL mirror still needs writing (cleared on success).
-    public var malPending: Bool
     /// Retry counter for backoff / give-up diagnostics.
     public var attempts: Int
 
@@ -232,8 +176,6 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         played: Bool? = nil,
         clearResume: Bool = false,
         targets: [WatchMutationTarget],
-        trakt: TraktScrobbleIntent? = nil,
-        traktProgress: TraktScrobbleIntent? = nil,
         attempts: Int = 0,
         episodeOrigin: EpisodeOrigin? = nil,
         expansionPending: Bool = false,
@@ -241,10 +183,6 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         kind: MediaItemKind? = nil,
         anchorTitle: String? = nil,
         anchorYear: Int? = nil,
-        simklPending: Bool? = nil,
-        wetrakrPending: Bool? = nil,
-        anilistPending: Bool? = nil,
-        malPending: Bool? = nil,
         rejectedSourceIDs: Set<String> = [],
         observedLastPlayedAt: [String: Date] = [:],
         isExplicitReset: Bool = false
@@ -263,16 +201,6 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         self.observedLastPlayedAt = observedLastPlayedAt
         self.targets = targets
         self.optimisticTargets = targets
-        self.trakt = trakt
-        self.traktProgress = traktProgress
-        self.traktPending = trakt != nil
-        self.simklPending = simklPending ?? (trakt != nil)
-        self.wetrakrPending = wetrakrPending ?? false
-        self.wetrakrAccountIdentity = nil
-        self.wetrakrCapturedAt = nil
-        self.wetrakrIdempotencyKey = nil
-        self.anilistPending = anilistPending ?? (trakt != nil)
-        self.malPending = malPending ?? (trakt != nil)
         self.attempts = attempts
         self.episodeOrigin = episodeOrigin
         self.expansionPending = expansionPending
@@ -288,9 +216,7 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case id, capturedAt, canonicalMediaID, seasonNumber, episodeNumber
-        case resumePosition, played, clearResume, targets, optimisticTargets, trakt, traktProgress, traktPending
-        case simklPending, anilistPending, malPending
-        case wetrakrPending, wetrakrAccountIdentity, wetrakrCapturedAt, wetrakrIdempotencyKey
+        case resumePosition, played, clearResume, targets, optimisticTargets
         case attempts, targetRetries, episodeOrigin, expansionPending, appliedTargetIDs, expansionStartedAt, identities, kind
         case anchorTitle, anchorYear, authorization, serverScope, rejectedSourceIDs
         case observedLastPlayedAt, isExplicitReset, supersededTargetIDs
@@ -319,7 +245,7 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
 
     /// Decodes tolerating outbox files written before `episodeOrigin` /
     /// `expansionPending` / `identities` / `kind` / `anchorTitle` / `anchorYear` /
-    /// tracker pending flags existed (they decode to `nil` / `false` / `[]`), so an
+    /// other optional fields existed (they decode to `nil` / `false` / `[]`), so an
     /// in-app upgrade never drops an ordinary queued watch. Guarded identities
     /// use a versioned envelope so older readers cannot discard their requirement.
     public init(from decoder: Decoder) throws {
@@ -377,16 +303,6 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
             [WatchMutationTarget].self,
             forKey: .optimisticTargets
         ) ?? targets
-        trakt = try container.decodeIfPresent(TraktScrobbleIntent.self, forKey: .trakt)
-        traktProgress = try container.decodeIfPresent(TraktScrobbleIntent.self, forKey: .traktProgress)
-        traktPending = try container.decodeIfPresent(Bool.self, forKey: .traktPending) ?? (trakt != nil)
-        simklPending = try container.decodeIfPresent(Bool.self, forKey: .simklPending) ?? false
-        wetrakrPending = try container.decodeIfPresent(Bool.self, forKey: .wetrakrPending) ?? false
-        wetrakrAccountIdentity = try container.decodeIfPresent(String.self, forKey: .wetrakrAccountIdentity)
-        wetrakrCapturedAt = try container.decodeIfPresent(Date.self, forKey: .wetrakrCapturedAt)
-        wetrakrIdempotencyKey = try container.decodeIfPresent(String.self, forKey: .wetrakrIdempotencyKey)
-        anilistPending = try container.decodeIfPresent(Bool.self, forKey: .anilistPending) ?? false
-        malPending = try container.decodeIfPresent(Bool.self, forKey: .malPending) ?? false
         attempts = try container.decodeIfPresent(Int.self, forKey: .attempts) ?? 0
         targetRetries = try container.decodeIfPresent([String: TargetRetry].self, forKey: .targetRetries) ?? [:]
         episodeOrigin = try container.decodeIfPresent(EpisodeOrigin.self, forKey: .episodeOrigin)
@@ -452,16 +368,6 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         }
         try container.encode(targets, forKey: .targets)
         try container.encode(optimisticTargets, forKey: .optimisticTargets)
-        try container.encodeIfPresent(trakt, forKey: .trakt)
-        try container.encodeIfPresent(traktProgress, forKey: .traktProgress)
-        try container.encode(traktPending, forKey: .traktPending)
-        try container.encode(simklPending, forKey: .simklPending)
-        try container.encode(wetrakrPending, forKey: .wetrakrPending)
-        try container.encodeIfPresent(wetrakrAccountIdentity, forKey: .wetrakrAccountIdentity)
-        try container.encodeIfPresent(wetrakrCapturedAt, forKey: .wetrakrCapturedAt)
-        try container.encodeIfPresent(wetrakrIdempotencyKey, forKey: .wetrakrIdempotencyKey)
-        try container.encode(anilistPending, forKey: .anilistPending)
-        try container.encode(malPending, forKey: .malPending)
         try container.encode(attempts, forKey: .attempts)
         if !targetRetries.isEmpty {
             try container.encode(targetRetries, forKey: .targetRetries)
@@ -551,25 +457,16 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         }
     }
 
-    /// Durable Trakt idempotency key (`profile | canonicalMediaId | episode |
-    /// day_bucket`) so our own replays across relaunch don't double-write history.
-    /// `profile` is folded in by the reconciler (its store is profile-scoped) so it
-    /// is omitted here.
-    public func traktIdempotencyKey(dayBucket: String) -> String {
-        // Tracker ownership remains per Plozz profile, not per server Home user.
-        "\(titleCoalesceKey)|\(dayBucket)"
-    }
-
-    /// Whether every server target AND all tracker mirrors are done **and** no
-    /// cross-server twin expansion is still owed — safe to prune.
+    /// Whether every server target is done **and** no cross-server twin
+    /// expansion is still owed — safe to prune.
     public var isFullyApplied: Bool {
-        targets.isEmpty && !traktPending && traktProgress == nil && !simklPending && !wetrakrPending && !anilistPending && !malPending && !expansionPending
+        targets.isEmpty && !expansionPending
     }
 
     // MARK: - Canonical id
 
     /// Derives a stable cross-server canonical id from a provider id map, preferring
-    /// the most authoritative namespace. After Trakt (the watch-sync authority, which
+    /// the most authoritative namespace. The provider-id order mirrors
     /// is not a merge namespace) this mirrors ``MediaItemIdentity/strongExternalNamespaces``
     /// **exactly** — same order, same alias resolution, same canonical tokens — so the
     /// outbox's notion of "same title across servers" matches the identity index. If
@@ -600,7 +497,7 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         kind: MediaItemKind? = nil,
         fallback: String
     ) -> String {
-        // Trakt is the watch-sync authority and is NOT one of the merge identity's
+        // The trakt provider id is preferred when present and is NOT one of the merge identity's
         // external namespaces, so it stays the highest-priority canonical key.
         for (key, value) in providerIDs where key.lowercased() == "trakt" {
             let v = value.trimmingCharacters(in: .whitespaces)
@@ -635,19 +532,5 @@ public struct WatchMutation: Codable, Hashable, Sendable, Identifiable {
         return "local:\(fallback)"
     }
 
-    /// Day bucket (UTC `yyyy-MM-dd`) for the Trakt idempotency key / TTL pruning.
-    public static func dayBucket(for date: Date, calendar: Calendar = .iso8601UTC) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
-    }
-}
 
-public extension Calendar {
-    /// ISO-8601 calendar pinned to UTC — deterministic day bucketing regardless of
-    /// device timezone, so a watch near midnight buckets consistently.
-    static var iso8601UTC: Calendar {
-        var calendar = Calendar(identifier: .iso8601)
-        calendar.timeZone = TimeZone(identifier: "UTC") ?? .current
-        return calendar
-    }
 }

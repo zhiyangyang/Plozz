@@ -178,7 +178,7 @@ final class SettingsCommunityPresentationTests: XCTestCase {
                     textSize == .accessibility3 ? .accessibilityExtraLarge : .large)
             )
             let titles = try ["Playback", "Subtitles", "Live TV", "Libraries", "Appearance",
-                              "Screens", "Trackers", "Seerr", "Language"].enumerated().map { index, title in
+                              "Screens", "Language"].enumerated().map { index, title in
                 // Recognize each row at native resolution rather than downsampling the tall category list.
                 let rowTop = index * 180
                 let row = try XCTUnwrap(image.cropping(to: CGRect(x: 0, y: rowTop, width: image.width, height: 180)))

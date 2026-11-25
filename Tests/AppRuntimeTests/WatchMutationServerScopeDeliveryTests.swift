@@ -233,7 +233,6 @@ private final class ServerViewerFixture {
                     )
                 }
             },
-            applyTrakt: { _ in }, applySimkl: { _ in }, applyAniList: { _ in }, applyMAL: { _ in }
         )
     }
 }

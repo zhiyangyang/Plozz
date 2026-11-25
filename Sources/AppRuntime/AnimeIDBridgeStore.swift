@@ -2,7 +2,7 @@ import CoreNetworking
 import CoreModels
 import Foundation
 
-/// Loads and caches the anime id mappings that let a tracker's show and a
+/// Loads and caches the anime id mappings that let an external catalogue's show and a
 /// server's show be recognised as one title.
 ///
 /// The dataset is the community `anime-lists` mapping — the same source

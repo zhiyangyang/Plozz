@@ -173,7 +173,6 @@ private struct EmbyWatchApplier: WatchMutationApplying {
         try await provider.setResumePosition(seconds, itemID: target.itemID, capturedAt: capturedAt)
     }
 
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
 }
 
 /// Emby 4.10.0.40 returns HTTP 200 but saves Played=false when a UserData

@@ -1,5 +1,4 @@
 #if os(iOS)
-import AniListService
 import AppRuntime
 import CoreModels
 import CoreNetworking
@@ -13,7 +12,6 @@ import FeatureProfiles
 import FeatureSettings
 import FeatureWatchlistCore
 import Foundation
-import MALService
 import MediaDownloads
 import MediaTransportCore
 import MetadataKit
@@ -22,9 +20,6 @@ import ProviderJellyfin
 import ProviderPlex
 import ProviderSilo
 import ProviderShare
-import SimklService
-import WetrakrService
-import TraktService
 import UIKit
 
 @MainActor
@@ -264,11 +259,6 @@ final class PlozziOSAppModel {
     /// across platforms.
     let tmdbUserKeyModel: TMDBUserKeyModel
     let shareScanStatus: ShareScanStatusModel
-    let traktService: TraktService
-    let simklService: SimklService
-    let wetrakrService: WetrakrService
-    let anilistService: AniListService
-    let malService: MALService
     let appLanguage: AppLanguageSettingsModel
     private(set) var requiresLaunchProfileSelection: Bool
     private(set) var settings: PlozziOSSettingsModel
@@ -414,7 +404,6 @@ final class PlozziOSAppModel {
     private let mediaShareAccountService: MediaShareAccountService
     private let mediaShareConfigurationService: MediaShareAccountConfigurationService
     private let mediaShareRescanService: MediaShareRescanService
-    @ObservationIgnored private var trackerProfileGeneration: UInt64 = 0
     @ObservationIgnored private var plexUserSelectionGeneration: UInt64 = 0
     @ObservationIgnored private var appliesPlexIdentityAfterLibrarySelection = false
     @ObservationIgnored private var beginsFirstRunAfterLibrarySelection = false
@@ -561,12 +550,6 @@ final class PlozziOSAppModel {
         boot("accountsProviders")
         if offline { accountsProviders.localProviders = [:] }
         let shareScanStatus = ShareScanStatusModel()
-        let trackerNamespace = profiles.activeNamespace
-        let traktService = TraktServiceFactory.make(namespace: trackerNamespace)
-        let simklService = SimklServiceFactory.make(namespace: trackerNamespace)
-        let wetrakrService = WetrakrServiceFactory.make(namespace: trackerNamespace)
-        let anilistService = AniListServiceFactory.make(namespace: trackerNamespace)
-        let malService = MALServiceFactory.make(namespace: trackerNamespace)
         self.accountStore = accountStore
         self.profiles = profiles
         self.accountsProviders = accountsProviders
@@ -593,11 +576,6 @@ final class PlozziOSAppModel {
                 ? nil
                 : Self.universalWatchlistStorageDirectory()
         )
-        self.traktService = traktService
-        self.simklService = simklService
-        self.wetrakrService = wetrakrService
-        self.anilistService = anilistService
-        self.malService = malService
         self.requiresLaunchProfileSelection = requiresLaunchProfileSelection
         let initialSettings = PlozziOSSettingsModel(
             namespace: profiles.activeNamespace,
@@ -745,23 +723,8 @@ final class PlozziOSAppModel {
             plexHomeUsers.ensurePlexIdentityForActiveProfile()
         }
         drainWatchOutbox()
-        // Ordered: the import reads whatever credentials the trackers hold, so
-        // it must not start until they point at THIS profile — otherwise it
-        // writes the previous profile's watchlist into this one.
         Task { @MainActor in
-            await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
-        }
-        if PlozzCustomization.supportsTrackers {
-            self.traktService.onConnectionAvailable = { [weak self] in
-                Task { await self?.resumeUniversalWatchlistAuthentication() }
-            }
-            self.wetrakrService.onConnectionChanged = { [weak self] in
-                Task {
-                    guard let self, let destination = self.wetrakrService.watchlistDestination else { return }
-                    await self.trackerWatchlistConnectionChanged(destination: destination)
-                }
-            }
         }
         prepareMediaAliasLedger()
         observeApplicationScenes()
@@ -1232,8 +1195,7 @@ final class PlozziOSAppModel {
             if profiles.finishSetup(for: id) {
                 identityIndex.warmIdentityIndex()
                 Task { @MainActor in
-                    await updateTrackersForActiveProfile()
-                    await prepareUniversalWatchlist()
+                            await prepareUniversalWatchlist()
                 }
             }
         }
@@ -1252,8 +1214,7 @@ final class PlozziOSAppModel {
         if profiles.finishSetup(for: id) {
             identityIndex.warmIdentityIndex()
             Task { @MainActor in
-                await updateTrackersForActiveProfile()
-                await prepareUniversalWatchlist()
+                    await prepareUniversalWatchlist()
             }
         }
         profileOnboardingStep = nil
@@ -1336,7 +1297,6 @@ final class PlozziOSAppModel {
         accountsProviders.reloadAccounts()
         transitionDownloads(to: profiles.activeProfileID)
         Task { [weak self] in
-            await self?.ensureTrackersScopedToActiveProfile()
             await self?.prepareUniversalWatchlist()
         }
     }
@@ -1378,7 +1338,6 @@ final class PlozziOSAppModel {
                 )
         ).isEmpty else { return }
         Task { @MainActor in
-            await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
     }
@@ -1653,11 +1612,7 @@ final class PlozziOSAppModel {
         identityIndex.reset()
         if !isOfflineMode { identityIndex.warmIdentityIndex() }
         drainWatchOutbox()
-        // Ordered: the import reads whatever credentials the trackers hold, so
-        // it must not start until they point at THIS profile — otherwise it
-        // writes the previous profile's watchlist into this one.
         Task { @MainActor in
-            await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
 
@@ -1693,57 +1648,6 @@ final class PlozziOSAppModel {
             )
             self.refreshOfflineProviders()
         }
-    }
-
-    /// Re-points every tracker at the active profile's namespace.
-    ///
-    /// `async` rather than fire-and-forget: each `setActiveProfile` suspends, so
-    /// a detached Task flipped the namespaces one at a time with real suspension
-    /// points between them — long enough for the watchlist import to read a
-    /// tracker still pointing at the previous profile and write its watchlist
-    /// into the new one. See the matching note in `AppState`.
-    /// The namespace every tracker is currently pointed at, once scoped.
-    /// `.some(nil)` is a real value — the default profile uses a `nil` namespace.
-    private var trackerScopedNamespace: String??
-
-    /// See `UniversalWatchlistHost.ensureTrackersScopedToActiveProfile()`.
-    var trackersAreScopedToActiveProfile: Bool {
-        guard let scoped = trackerScopedNamespace else { return false }
-        return scoped == profiles.activeNamespace
-    }
-
-    func ensureTrackersScopedToActiveProfile() async {
-        guard !trackersAreScopedToActiveProfile else { return }
-        await updateTrackersForActiveProfile()
-    }
-
-    private func updateTrackersForActiveProfile() async {
-        guard !isOfflineMode else { return }
-        let namespace = profiles.activeNamespace
-        // The personal build compiles no tracker integrations. There is
-        // nothing to re-point, so mark the empty tracker set as scoped;
-        // otherwise `trackersAreScopedToActiveProfile` stays false and the
-        // unified watchlist defers its read forever. That read is what turns
-        // Emby/Jellyfin Favorites into the Favorites page.
-        guard PlozzCustomization.supportsTrackers else {
-            trackerScopedNamespace = .some(namespace)
-            return
-        }
-        trackerProfileGeneration &+= 1
-        let generation = trackerProfileGeneration
-        trackerScopedNamespace = nil
-        guard generation == trackerProfileGeneration else { return }
-        await traktService.setActiveProfile(namespace: namespace)
-        guard generation == trackerProfileGeneration else { return }
-        await simklService.setActiveProfile(namespace: namespace)
-        guard generation == trackerProfileGeneration else { return }
-        await wetrakrService.setActiveProfile(namespace: namespace)
-        guard generation == trackerProfileGeneration else { return }
-        await anilistService.setActiveProfile(namespace: namespace)
-        guard generation == trackerProfileGeneration else { return }
-        await malService.setActiveProfile(namespace: namespace)
-        guard generation == trackerProfileGeneration else { return }
-        trackerScopedNamespace = .some(namespace)
     }
 
     private func makeLibraryActionFeedback(
@@ -1785,7 +1689,6 @@ final class PlozziOSAppModel {
         let initialSnapshot: IdentityIndexSnapshot
         let reconciler: WatchStateReconciler
         let downloads: PlozziOSDownloadsModel
-        let scrobbler: PlozziOSTrackerScrobbler
     }
 
     func makePlaybackSession() -> PlaybackSession {
@@ -1798,14 +1701,7 @@ final class PlozziOSAppModel {
             primaryAccountID: accountsProviders.primaryActiveAccount?.id,
             initialSnapshot: identityIndex.identitySnapshotStore.current,
             reconciler: watchReconciler,
-            downloads: downloads,
-            scrobbler: PlozziOSTrackerScrobbler(
-                trakt: traktService.playbackScrobbler(),
-                simkl: SimklServiceFactory.make(namespace: namespace).scrobbler,
-                wetrakr: wetrakrService.playbackScrobbler(),
-                anilist: AniListServiceFactory.make(namespace: namespace).scrobbler,
-                mal: MALServiceFactory.make(namespace: namespace).scrobbler
-            )
+            downloads: downloads
         )
     }
 
@@ -1827,8 +1723,7 @@ final class PlozziOSAppModel {
                 item: result.item, position: result.position, watchedPercent: result.watchedPercent,
                 primaryAccountID: result.item.sourceAccountID,
                 additionalSources: identityIndex.identitySnapshotStore.current.sourceRefs(for: result.item),
-                crossServerSync: settings.playback.settings.syncWatchAcrossServers,
-                reportTraktProgress: true
+                crossServerSync: settings.playback.settings.syncWatchAcrossServers
               )?.bindingServerScope(accountsProviders.watchMutationServerScope) else { return }
         mutation.id = result.id
         mutation.capturedAt = result.reportedAt
@@ -2022,11 +1917,6 @@ final class PlozziOSAppModel {
     private func makeWatchReconciler(profileID: String) -> WatchStateReconciler {
         let profile = profiles.profiles.first { $0.id == profileID } ?? profiles.activeProfile
         let namespace = profile.settingsNamespace(isDefault: profiles.isDefault(profile))
-        let trakt = TraktServiceFactory.make(namespace: namespace).scrobbler
-        let simkl = SimklServiceFactory.make(namespace: namespace).scrobbler
-        let wetrakr = WetrakrServiceFactory.make(namespace: namespace).playbackScrobbler()
-        let anilist = AniListServiceFactory.make(namespace: namespace).scrobbler
-        let mal = MALServiceFactory.make(namespace: namespace).scrobbler
         let store: any WatchMutationStoring
         if let durableLocalStateStore {
             do {
@@ -2070,48 +1960,6 @@ final class PlozziOSAppModel {
                         isPlexIdentityResolved: self.plexHomeUsers.hasResolvedWatchMutationIdentity
                     )
                 }
-            },
-            applyTrakt: { intent in
-                guard PlozzCustomization.supportsTrackers else { return }
-                try await trakt.scrobbleResult(
-                    item: intent.makeScrobbleItem(),
-                    progress: intent.progress,
-                    event: intent.playbackEvent
-                )
-            },
-            applySimkl: { intent in
-                guard PlozzCustomization.supportsTrackers else { return }
-                try await simkl.scrobbleResult(
-                    item: intent.makeScrobbleItem(),
-                    progress: intent.progress,
-                    event: .stop
-                )
-            },
-            applyAniList: { intent in
-                guard PlozzCustomization.supportsTrackers else { return }
-                try await anilist.scrobbleResult(
-                    item: intent.makeScrobbleItem(),
-                    progress: intent.progress,
-                    event: .stop
-                )
-            },
-            applyMAL: { intent in
-                guard PlozzCustomization.supportsTrackers else { return }
-                try await mal.scrobbleResult(
-                    item: intent.makeScrobbleItem(),
-                    progress: intent.progress,
-                    event: .stop
-                )
-            },
-            wetrakrAccountIdentity: {
-                PlozzCustomization.supportsTrackers ? wetrakr.accountIdentity : nil
-            },
-            applyWetrakr: { intent, capturedAt, key, identity in
-                guard PlozzCustomization.supportsTrackers else { return }
-                try await wetrakr.recordWatch(
-                    item: intent.makeScrobbleItem(), capturedAt: capturedAt,
-                    idempotencyKey: key, expectedAccountIdentity: identity
-                )
             },
             allAccountIDs: { [weak self] in
                 await MainActor.run {
@@ -2600,11 +2448,7 @@ final class PlozziOSAppModel {
         identityIndex.reset()
         identityIndex.warmIdentityIndex()
         drainWatchOutbox()
-        // Ordered: the import reads whatever credentials the trackers hold, so
-        // it must not start until they point at THIS profile — otherwise it
-        // writes the previous profile's watchlist into this one.
         Task { @MainActor in
-            await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
     }

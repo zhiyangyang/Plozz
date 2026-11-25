@@ -616,7 +616,7 @@ public actor WatchlistReconciler {
     }
 
     /// A closure that asks `destinationID` which library item an entry is, or
-    /// `nil` when that destination can't answer (a tracker knows what you want
+    /// `nil` when that destination can't answer (an external list knows what you want
     /// to watch, not what you own).
     ///
     /// Handed out as a closure so callers need not know the destination types,

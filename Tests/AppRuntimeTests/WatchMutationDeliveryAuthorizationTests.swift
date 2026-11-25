@@ -13,8 +13,7 @@ final class WatchMutationDeliveryAuthorizationTests: XCTestCase {
                 if account == "b" { await gate.pause() }
                 return provider
             },
-            applyTrakt: { _ in }, applySimkl: { _ in },
-            applyAniList: { _ in }, applyMAL: { _ in }, allAccountIDs: { ["a", "b"] }
+            allAccountIDs: { ["a", "b"] }
         )
         let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
         var older = WatchMutation(
@@ -64,8 +63,6 @@ final class WatchMutationDeliveryAuthorizationTests: XCTestCase {
                 await gate?.pause()
                 return provider
             },
-            applyTrakt: { _ in }, applySimkl: { _ in },
-            applyAniList: { _ in }, applyMAL: { _ in },
             allAccountIDs: { ["origin", "other"] }
         )
     }

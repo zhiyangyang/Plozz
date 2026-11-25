@@ -1,7 +1,6 @@
 #if DEBUG && canImport(AVFoundation)
 import CoreModels
 import Foundation
-import TraktService
 import XCTest
 #if canImport(UIKit)
 import UIKit
@@ -981,7 +980,6 @@ private final class UniversalLiveFixture {
             provider: { [weak self] _ in self?.providerAvailable == true ? provider : nil },
             authorization: { [weak self] in self?.authorization == expectedAuthorization ? expectedAuthorization : nil },
             historyAuthorization: { [weak self] in self?.historyToken },
-            scrobbler: UniversalLiveScrobbler(),
             onCompleted: { [weak self] _, _, _ in self?.completions += 1 },
             clock: { [unowned self] in self.now },
             uptime: { [unowned self] in self.uptime }
@@ -1064,9 +1062,6 @@ private actor UniversalLiveProvider: LibraryChannelPlaybackProviding {
     nonisolated func imageURL(itemID: String, kind: ImageKind, maxWidth: Int?) -> URL? { nil }
 }
 
-private struct UniversalLiveScrobbler: TraktScrobbling {
-    func scrobble(item: MediaItem, progress: Double, event: PlaybackEvent) async {}
-}
 
 @MainActor
 private final class UniversalLiveGate {

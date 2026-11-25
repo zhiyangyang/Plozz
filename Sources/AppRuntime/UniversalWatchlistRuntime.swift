@@ -213,14 +213,13 @@ public protocol UniversalWatchlistHost: AnyObject {
     var identityIndex: IdentityIndexModel { get }
     var accountsProviders: AccountsProvidersModel { get }
 
-    /// The connected TRACKER destinations — Trakt, Simkl, and anything added
+    /// Connected watchlist destinations.
     /// later. Passed as destinations rather than as the services themselves so
     /// `AppRuntime` need not depend on any of them.
     ///
     /// A list rather than one property because these are peers: a viewer may sync
     /// to both, and when one service's API becomes unusable the others must carry
     /// on untouched.
-    var trackerWatchlistDestinations: [any WatchlistDestination] { get }
 
     /// Where the durable mutation outbox lives. Each shell resolves its own writable
     /// state directory (they differ between tvOS and iOS).
@@ -236,7 +235,7 @@ public protocol UniversalWatchlistHost: AnyObject {
     /// held in memory as well as on disk because watchlist membership is asked
     /// once per card and must not touch the filesystem to answer.
     var universalWatchlistNativeView: NativeWatchlistView { get set }
-    /// Maps an anime between the id spaces trackers and media servers use, which
+    /// Maps an anime between the id spaces external catalogues and media servers use, which
     /// otherwise never meet. See `AnimeIDBridgeStore`.
     var universalWatchlistAnimeBridge: AnimeIDBridgeStore { get }
     var universalWatchlistNativeViewStore:
@@ -266,23 +265,6 @@ public protocol UniversalWatchlistHost: AnyObject {
     /// Live account-level plex.tv tokens for Discover, read at the moment of use
     /// by the watchlist destinations.
     var plexDiscoverTokens: PlexDiscoverTokenBox { get }
-
-    /// Guarantees every tracker's token store points at the ACTIVE profile,
-    /// re-pointing if it doesn't and returning only once it does.
-    ///
-    /// The import reads whatever credentials the destinations hold, so this has
-    /// to be true before it runs — otherwise it pulls another profile's
-    /// watchlist and writes it here. Ordering the profile-switch path fixed the
-    /// obvious caller and missed a second one (accounts invalidating re-enters
-    /// `prepareUniversalWatchlist` on its own Task), which is why the guarantee
-    /// belongs here rather than at each call site. Implementations must be
-    /// idempotent and cheap when already scoped — this is called on every
-    /// prepare.
-    func ensureTrackersScopedToActiveProfile() async
-
-    /// False throughout re-scoping, including a return to the same profile.
-    /// Connection callbacks must defer rather than recursively start another scope change.
-    var trackersAreScopedToActiveProfile: Bool { get }
 
     /// Whether the ACTIVE profile is locked and nobody has entered its PIN this
     /// run.
@@ -367,7 +349,6 @@ public extension UniversalWatchlistHost {
 
     private var isUniversalWatchlistReconciliationReady: Bool {
         guard runtimeFeatureFlags.isEnabled(.universalWatchlist),
-              trackersAreScopedToActiveProfile,
               universalWatchlistNativeViewLoaded,
               universalWatchlistReconciler != nil else { return false }
         return universalWatchlistProfileID == UniversalWatchlistScope.live(
@@ -423,8 +404,6 @@ public extension UniversalWatchlistHost {
             }
             try await mediaAliasLedger.activate(profileID: profileID)
             try await seedLegacyUniversalWatchlist()
-            // Before anything reads a destination.
-            await ensureTrackersScopedToActiveProfile()
             // Every step above suspends, and the active profile can change across
             // any of them. Building the reconciler for a profile that is no
             // longer active gives it THAT profile's destinations and credentials,
@@ -434,10 +413,6 @@ public extension UniversalWatchlistHost {
             // that superseded us runs its own prepare; dropping here is correct.
             guard profiles.activeProfileID == profileID else {
                 PlozzLog.app.info("Watchlist prepare superseded — profile changed during hydrate")
-                return
-            }
-            guard trackersAreScopedToActiveProfile else {
-                PlozzLog.app.info("Watchlist prepare deferred — trackers still changing profile")
                 return
             }
             try await makeUniversalWatchlistReconciler(profileID: profileID)
@@ -1198,7 +1173,7 @@ public extension UniversalWatchlistHost {
         var resolvableEntries:
             [(WatchlistDestinationID, WatchlistDestinationEntry)] = []
         var resolutionRequests: [MediaAliasResolutionRequest] = []
-        // Widen every entry's ids before anything is resolved. A tracker's row
+        // Widen every entry's ids before anything is resolved. An external row
         // knows a show only as AniList/MAL and a server's row only as
         // AniDB/TMDb/TVDb, so without this they share nothing to match on and
         // the ledger — correctly refusing to merge records with no common
@@ -2079,7 +2054,6 @@ public extension UniversalWatchlistHost {
             }
         }
         let legacyValidatedDestinationIDs = Set(destinations.map(\.id.rawValue))
-        destinations.append(contentsOf: trackerWatchlistDestinations)
         // Which destinations may contribute to what the viewer sees. Taken from
         // the destinations actually built, so it can never drift from the set
         // that gets read — and narrowing it is exactly what makes switching a
@@ -2159,27 +2133,6 @@ public extension UniversalWatchlistHost {
         await universalWatchlistRetryScheduler?.reschedule()
     }
 
-    func trackerWatchlistConnectionChanged(destination: any WatchlistDestination) async {
-        universalWatchlistShouldResumeAuthentication = true
-        guard isUniversalWatchlistReconciliationReady,
-              let reconciler = universalWatchlistReconciler else {
-            PlozzLog.app.info("Watchlist connection refresh deferred — scope not ready")
-            return
-        }
-        let profileID = profiles.activeProfileID
-        var view = universalWatchlistNativeView
-        view.discardCachedEntries(
-            for: destination.id, unlessIdentityScopeMatches: destination.cacheIdentityScope
-        )
-        persistUniversalWatchlistNativeView(view)
-        announceUniversalWatchlistDidChange()
-        await resumeUniversalWatchlistAuthentication()
-        guard profiles.activeProfileID == profileID,
-              universalWatchlistReconciler === reconciler,
-              isUniversalWatchlistReconciliationReady,
-              mayReadUniversalWatchlist() else { return }
-        await refreshNativeWatchlistView()
-    }
 
     /// Tell every surface the watchlist moved, and drop the memoized membership
     /// set first.

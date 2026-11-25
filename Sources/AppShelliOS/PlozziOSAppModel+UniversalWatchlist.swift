@@ -26,21 +26,6 @@ extension PlozziOSAppModel: UniversalWatchlistHost {
     var plexDiscoverTokens: PlexDiscoverTokenBox { plexHomeUsers.plexDiscoverTokens }
 
 
-    var trackerWatchlistDestinations: [any WatchlistDestination] {
-        // The personal build disables tracker settings; do not let credentials
-        // left by another build contribute tracker lists to Favorites.
-        guard PlozzCustomization.supportsTrackers else { return [] }
-        // Peers, not a fallback chain: a viewer may sync to both, and
-        // one service being unconfigured or unusable must not affect the
-        // other.
-        let candidates: [(any WatchlistDestination)?] = [
-            traktService.watchlistDestination,
-            simklService.watchlistDestination,
-            wetrakrService.watchlistDestination,
-            anilistService.watchlistDestination,
-            malService.watchlistDestination,
-        ]
-        return candidates.compactMap { $0 }
-    }
+
 }
 #endif

@@ -19,7 +19,7 @@ final class DeveloperInfoTests: XCTestCase {
     func testSnapshotSurfacesChannelAndAlwaysHasCoreRows() {
         let items = DeveloperInfo.snapshot(channel: .testflight)
         let ids = Set(items.map(\.id))
-        for expected in ["app", "build-kind", "bundle-id", "version", "build-number", "channel", "app-group", "crash-endpoint"] {
+        for expected in ["app", "build-kind", "bundle-id", "version", "build-number", "channel", "app-group"] {
             XCTAssertTrue(ids.contains(expected), "missing \(expected)")
         }
         XCTAssertEqual(items.first(where: { $0.id == "channel" })?.value, "TestFlight")

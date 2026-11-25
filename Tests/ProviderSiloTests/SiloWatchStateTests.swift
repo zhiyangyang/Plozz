@@ -36,7 +36,6 @@ private struct SiloWatchedApplier: WatchMutationApplying {
     func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {
         try await provider.setResumePosition(seconds, itemID: target.itemID, capturedAt: capturedAt)
     }
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
 }
 
 extension SiloProviderTests {

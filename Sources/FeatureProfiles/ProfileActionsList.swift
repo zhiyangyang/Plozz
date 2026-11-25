@@ -324,7 +324,7 @@ public struct ProfileActionsList: View {
             Button("Delete Profile", role: .destructive) { onDelete?() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Deleting removes this profile's preferences (theme, playback, subtitles, spoilers, trackers) and which servers it includes. Signed-in server accounts stay shared.")
+            Text("Deleting removes this profile's preferences (theme, playback, subtitles, spoilers) and which servers it includes. Signed-in server accounts stay shared.")
         }
     }
 

@@ -230,7 +230,7 @@ extension SettingsSearchCatalog {
               keywords: "account profile sources libraries watching as server user"),
         .init("watcher-plex-user", page: .accountLibraries, title: "Plex Home user",
               keywords: "account profile sources libraries watching as server user"),
-        .init("cross-server-watch-sync", page: .trackers, title: "Sync watch state across servers",
+        .init("cross-server-watch-sync", page: .playback, title: "Sync watch state across servers",
               keywords: "watch state synchronize watched progress across servers"),
         .init("metadata-order-mode", page: .metadata, title: "Order",
               keywords: "metadata providers priority information artwork source"),

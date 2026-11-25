@@ -191,7 +191,6 @@ private actor ScopedRecordingApplier: WatchMutationAuthorizationEnforcing {
     func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {
         writes.append(WatchMutationDeliveryAuthorization.current?.serverScope?.accounts.first?.plexHomeUserID ?? "owner")
     }
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
 }
 
 private actor LegacyServerScopeApplier: WatchMutationApplying {
@@ -200,5 +199,4 @@ private actor LegacyServerScopeApplier: WatchMutationApplying {
     func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {
         writes += 1
     }
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws { writes += 1 }
 }

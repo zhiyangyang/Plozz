@@ -1,8 +1,8 @@
 import Foundation
 
 /// Pure duration/watched-percentage arithmetic for progress reporting, resume
-/// points, and Trakt scrobbling. Extracted from `PlayerViewModel` so the rules
-/// that keep resume/scrobble honest (which duration source wins, how a stop
+/// points. Extracted from `PlayerViewModel` so the rules that keep resume
+/// reporting honest (which duration source wins, how a stop
 /// position maps to a percentage) can be unit-tested without an engine, a
 /// provider, or a running player.
 ///

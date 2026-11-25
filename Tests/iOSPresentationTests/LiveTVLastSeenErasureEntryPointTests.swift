@@ -66,8 +66,7 @@ final class LiveTVLastSeenErasureEntryPointTests: XCTestCase {
         XCTAssertFalse(app.profiles.activeProfile.isKids)
         XCTAssertTrue(app.profiles.firstRunProfileSetupComplete)
         XCTAssertFalse(app.managementRequiresParentalPIN)
-        await app.ensureTrackersScopedToActiveProfile()
-        try await fixture.seed()
+                try await fixture.seed()
         return fixture
     }
 

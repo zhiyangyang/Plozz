@@ -19,7 +19,7 @@ public enum AppError: Error, Equatable, Sendable {
     /// The requested resource does not exist (HTTP 404).
     case notFound
     /// The request conflicts with the server's current state (HTTP 409). For
-    /// some endpoints — notably Trakt's `/scrobble` — a 409 means "already
+    /// some endpoints — notably watch-state writes — a 409 means "already
     /// recorded" and is a *success*, so it is surfaced as a distinct case
     /// instead of the generic `.invalidResponse` so callers can treat it that way.
     case conflict
@@ -155,7 +155,7 @@ public enum AppError: Error, Equatable, Sendable {
 
 /// Whether a failed identity check means the stored credential is actually bad.
 ///
-/// Signing someone out is destructive and, for a tracker, unrecoverable without
+/// Signing someone out is destructive and, for an external service, unrecoverable without
 /// a fresh OAuth round trip on a TV remote. Only the server saying "this
 /// credential is rejected" justifies it. Anything else — offline, DNS, timeout,
 /// a 500, a malformed body, a cancelled task — says nothing about the token, and

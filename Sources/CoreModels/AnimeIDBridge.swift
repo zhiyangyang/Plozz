@@ -2,7 +2,7 @@ import Foundation
 
 /// Maps one anime between the id spaces that never meet on their own.
 ///
-/// Anime trackers and media servers do not share an identifier. AniList and
+/// Anime catalogues and media servers do not share an identifier. AniList and
 /// MyAnimeList live in their own numbering; Plex and Jellyfin describe the same
 /// show with AniDB, TMDb, TVDb and IMDb. Nothing in a watchlist entry from
 /// either side can be matched against the other, so the alias ledger — which
@@ -150,7 +150,7 @@ public struct AnimeIDBridge: Sendable, Equatable {
 public extension MediaAliasEvidence {
     /// The same evidence, plus every equivalent id the bridge knows.
     ///
-    /// Applied where evidence ENTERS the ledger, so both a tracker's row and a
+    /// Applied where evidence ENTERS the ledger, so both an external row and a
     /// server's row carry the union of ids before anything tries to match them.
     /// That is what lets the resolver merge them on a shared id rather than on a
     /// title, which it rightly refuses to do — merging "Dr. Stone (2019)" with

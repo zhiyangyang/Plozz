@@ -588,7 +588,7 @@ public final class ExternalPlaybackRuntime {
             let percent = pending.progress.map { $0 * 100 } ?? WatchProgressMath.watchedPercent(
                 position: boundedPosition, engineDuration: duration ?? 0, itemRuntime: nil
             )
-            // The durable outbox owns retries and cross-server/tracker convergence.
+            // The durable outbox owns retries and cross-server convergence.
             try await onProgress(ExternalPlaybackCompletion(
                 id: pending.id, item: item, position: boundedPosition, watchedPercent: percent,
                 reportedAt: pending.returnedAt ?? pending.createdAt

@@ -1209,20 +1209,10 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertFalse(app.buttons["Micro"].exists)
     }
 
-    func testTrackersHideUnreleasedWetrakr() {
-        openSettingsPage("Trackers")
-        let wetrakr = NSPredicate(format: "label CONTAINS[c] %@", "WeTrakr")
-        for _ in 0..<3 {
-            XCTAssertEqual(app.buttons.matching(wetrakr).count, 0, app.debugDescription)
-            XCTAssertEqual(app.staticTexts.matching(wetrakr).count, 0, app.debugDescription)
-            app.collectionViews.firstMatch.swipeUp()
-        }
-    }
-
     func testRootOrganizationMatchesAcrossAdaptiveLayouts() {
         let titles = [
             "Playback", "Subtitles", "Live TV", "Libraries", "Appearance",
-            "Screens & Navigation", "Trackers", "Language"
+            "Screens & Navigation", "Language"
         ]
         for arguments in [[], ["--compact-settings"], ["--large-text"]] {
             launch(settingsRoot: true, arguments: arguments)
@@ -1981,7 +1971,7 @@ final class SettingsInteractionTests: XCTestCase {
     func testSettingsSectionsOpenTheirOwnDestinations() {
         for title in [
             "Playback", "Subtitles", "Live TV", "Libraries", "Appearance", "Screens & Navigation",
-            "Trackers", "Customize Home", "App navigation", "Detail Page", "Theme", "Spoiler Protection", "Circadian Mode",
+            "Customize Home", "App navigation", "Detail Page", "Theme", "Spoiler Protection", "Circadian Mode",
             "Profiles", "Sources", "Downloads", "Metadata Providers", "Help & Diagnostics", "Attributions"
         ] {
             openSettingsPage(title)
@@ -3005,7 +2995,7 @@ final class SettingsInteractionTests: XCTestCase {
         let identifiers = [
             "Playback": "playback", "Subtitles": "subtitles", "Live TV": "liveTV",
             "Libraries": "libraries", "Appearance": "appearance",
-            "Screens & Navigation": "screensNavigation", "Trackers": "trackers", "Language": "language"
+            "Screens & Navigation": "screensNavigation", "Language": "language"
         ]
         if let identifier = identifiers[title] {
             return app.buttons["settings-category-\(identifier)"]

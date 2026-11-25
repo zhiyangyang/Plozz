@@ -255,22 +255,6 @@ public enum PlozzAttributions {
             licenses: [.init("CC BY-SA 4.0", family: .api)]
         ),
         PlozzAttribution(
-            title: "Watch Tracking",
-            detail:
-                "Watch-history sync integrations — Trakt (trakt.tv), Simkl (simkl.com), "
-                + "AniList (anilist.co), MyAnimeList (myanimelist.net), and WeTrakr "
-                + "(wetrakr.com) — use their "
-                + "respective public APIs. None endorses or is affiliated with Plozz.",
-            licenses: [.init("API", family: .api)]
-        ),
-        PlozzAttribution(
-            title: "Last.fm",
-            detail:
-                "Optional music listening-history sync uses the Last.fm API "
-                + "(https://www.last.fm). Last.fm is not affiliated with Plozz.",
-            licenses: [.init("API", family: .api)]
-        ),
-        PlozzAttribution(
             title: "Kitsu",
             detail:
                 "Anime artwork is sourced from Kitsu (https://kitsu.io). "

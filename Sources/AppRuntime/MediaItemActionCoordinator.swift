@@ -338,7 +338,7 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
     /// durably. The optimistic `MediaItemMutation` flips the badge immediately; the
     /// real fan-out is delegated to the ``WatchMutationOutbox`` so the write survives
     /// an asleep server, an offline app, or a kill mid-write, and is mirrored to
-    /// Trakt (write-if-missing, never delete) when marking watched. No brittle
+    /// cross-server write when marking watched. No brittle
     /// revert-on-all-fail: a queued write retries until it lands ("fail toward
     /// writing").
     private func performPlayedToggle(played: Bool, on item: MediaItem, action: MediaItemAction) {

@@ -113,8 +113,7 @@ public struct PlaybackSettings: Codable, Equatable, Sendable {
     /// **every** server that holds it (the default), or only the server you
     /// actually watched on. ON (default) preserves today's cross-server fan-out;
     /// OFF scopes writes to the origin server and suppresses all cross-server
-    /// probing/expansion. Independent of Trakt, which is an account-level
-    /// integration and keeps scrobbling either way.
+    /// probing/expansion.
     public var syncWatchAcrossServers: Bool
 
     /// Whether a horizontal scrub gesture works **while playing** (the default),

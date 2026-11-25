@@ -159,7 +159,7 @@ public extension Notification.Name {
 /// yanked back to the top of the screen after a menu action.
 ///
 /// This is the single UI-facing watch-state channel for every managed provider,
-/// filesystem share, and tracker-backed playback. New source types participate by
+/// filesystem share, and provider-backed playback. New source types participate by
 /// producing the same account-scoped mutation; views never need provider-specific
 /// refresh logic.
 ///

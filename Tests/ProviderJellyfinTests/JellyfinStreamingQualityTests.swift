@@ -27,7 +27,6 @@ private struct ResumeMutationApplier: WatchMutationApplying {
         try await provider.setResumePosition(seconds, itemID: target.itemID, capturedAt: capturedAt)
     }
 
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
 }
 
 final class JellyfinStreamingQualityTests: XCTestCase {

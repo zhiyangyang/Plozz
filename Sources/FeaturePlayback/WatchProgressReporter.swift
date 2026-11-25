@@ -1,7 +1,6 @@
 import CoreModels
 import CoreNetworking
 import Foundation
-import TraktService
 
 /// Seam back to ``PlayerViewModel`` for the live playback signals the reporter
 /// samples. Held **weakly** so the reporter never retains the view model.
@@ -24,7 +23,7 @@ protocol WatchProgressReporterHost: AnyObject {
 
 /// Owns progress reporting + the convergence-checkpoint loop extracted from
 /// ``PlayerViewModel``: fanning the play/pause/progress/stop lifecycle out to
-/// the provider and Trakt, and periodically writing the live position back so
+/// the provider, and periodically writing the live position back so
 /// progress converges across servers without waiting for the user to press Back.
 ///
 /// Responsibilities that were fragile inline and are now in one testable place:
@@ -37,9 +36,7 @@ final class WatchProgressReporter {
     private weak var host: WatchProgressReporterHost?
     private let provider: any MediaProvider
     private let itemID: String
-    private let scrobbler: any TraktScrobbling
     private let checkpointInterval: TimeInterval
-    private let scrobblesLibraryItem: Bool
     private let onCheckpoint: @Sendable (_ position: TimeInterval, _ watchedPercent: Double) -> Void
 
     private var checkpointTask: Task<Void, Never>?
@@ -57,7 +54,6 @@ final class WatchProgressReporter {
         let event: PlaybackEvent
         let item: MediaItem
         let percent: Double
-        let scrobble: Bool
     }
 
     private final class PendingProgress {
@@ -72,17 +68,13 @@ final class WatchProgressReporter {
         host: WatchProgressReporterHost,
         provider: any MediaProvider,
         itemID: String,
-        scrobbler: any TraktScrobbling,
         checkpointInterval: TimeInterval,
-        scrobblesLibraryItem: Bool = true,
         onCheckpoint: @escaping @Sendable (_ position: TimeInterval, _ watchedPercent: Double) -> Void
     ) {
         self.host = host
         self.provider = provider
         self.itemID = itemID
-        self.scrobbler = scrobbler
         self.checkpointInterval = checkpointInterval
-        self.scrobblesLibraryItem = scrobblesLibraryItem
         self.onCheckpoint = onCheckpoint
     }
 
@@ -111,11 +103,11 @@ final class WatchProgressReporter {
     /// Closes admission synchronously, before a rendition clears its request or
     /// tears down the clock. The returned task is not cancelled with its waiter.
     func finishSession(
-        position: TimeInterval, duration: TimeInterval?, scrobble: Bool = true
+        position: TimeInterval, duration: TimeInterval?
     ) -> Task<Void, Never>? {
         enqueueReport(
             event: .stop, isPaused: true, positionOverride: position,
-            durationOverride: duration, scrobble: scrobble
+            durationOverride: duration
         )
     }
 
@@ -124,8 +116,7 @@ final class WatchProgressReporter {
         event: PlaybackEvent,
         isPaused: Bool,
         positionOverride: TimeInterval? = nil,
-        durationOverride: TimeInterval? = nil,
-        scrobble: Bool = true
+        durationOverride: TimeInterval? = nil
     ) -> Task<Void, Never>? {
         if event == .stop {
             if let terminalReport { return terminalReport }
@@ -152,9 +143,7 @@ final class WatchProgressReporter {
             position: position, engineDuration: knownDuration ?? 0, itemRuntime: nil
         )
         let report = Report(
-            progress: progress, event: event, item: request.item, percent: percent,
-            scrobble: scrobble && scrobblesLibraryItem
-                && !request.item.isExtra && !request.item.isTrailer && !request.item.isYouTubeTrailer
+            progress: progress, event: event, item: request.item, percent: percent
         )
         if event == .progress, let pendingProgress {
             pendingProgress.entry.report = report
@@ -166,7 +155,6 @@ final class WatchProgressReporter {
         let progressEntry = event == .progress ? PendingProgress(report) : nil
         let previous = reportTail
         let provider = provider
-        let scrobbler = scrobbler
         // Capture the request and timing before suspension. A later engine or
         // request replacement must not relabel an already queued event.
         let task = Task { [weak self] in
@@ -197,9 +185,6 @@ final class WatchProgressReporter {
                 } else {
                     PlozzLog.playback.debug("Progress report failed (non-fatal)")
                 }
-            }
-            if delivery.scrobble {
-                await scrobbler.scrobble(item: delivery.item, progress: delivery.percent, event: event)
             }
         }
         if let progressEntry { pendingProgress = (progressEntry, task) }

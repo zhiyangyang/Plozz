@@ -48,8 +48,7 @@ final class HomeModelLifetimeTests: XCTestCase {
                 systemColorScheme: .dark
             ).sharedHomeViewModel
         }
-        await app.ensureTrackersScopedToActiveProfile()
-        try await Task.sleep(for: .seconds(1))
+                try await Task.sleep(for: .seconds(1))
         try await PerformanceProbe.measure(self, scenario: "mobile-home-lifecycle") {
             for _ in 0..<20 {
                 weak var retired = model()
@@ -68,8 +67,7 @@ final class HomeModelLifetimeTests: XCTestCase {
                     "Retained profile models: Home=\(retired != nil), settings=\(retiredSettings != nil), downloads=\(retiredDownloads != nil)"
                 )
             }
-            await app.ensureTrackersScopedToActiveProfile()
-            try await Task.sleep(for: .seconds(1))
+                        try await Task.sleep(for: .seconds(1))
             return ["replacements": 20, "survivingModels": 0]
         }
         try await PerformanceProbe.attachMemoryAfterOneSecond(self, scenario: "mobile-home-lifecycle")

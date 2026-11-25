@@ -15,7 +15,6 @@ final class WatchOutboxEvidenceCoalescingTests: XCTestCase {
     private struct NoopWatchMutationApplier: WatchMutationApplying {
         func setPlayed(_ played: Bool, on target: WatchMutationTarget) async throws {}
         func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {}
-        func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
     }
 
     func testConflictingIDsAndRejectedOriginsKeepSeparateQueuedActions() async {

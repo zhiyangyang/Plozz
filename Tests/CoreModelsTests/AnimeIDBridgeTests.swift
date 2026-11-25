@@ -1,7 +1,7 @@
 import CoreModels
 import XCTest
 
-/// Anime trackers and media servers never share an identifier: AniList and
+/// Anime catalogues and media servers never share an identifier: AniList and
 /// MyAnimeList have their own numbering, while Plex and Jellyfin describe the
 /// same show as AniDB/TMDb/TVDb/IMDb. Without a bridge the alias ledger has
 /// nothing to match on and correctly declines to merge, so one show becomes two

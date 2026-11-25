@@ -51,12 +51,6 @@ let package = Package(
         .library(name: "ProviderPlex", targets: ["ProviderPlex"]),
         .library(name: "ProviderShare", targets: ["ProviderShare"]),
         .library(name: "RatingsService", targets: ["RatingsService"]),
-        .library(name: "TraktService", targets: ["TraktService"]),
-        .library(name: "CoreTrackerAuth", targets: ["CoreTrackerAuth"]),
-        .library(name: "WetrakrService", targets: ["WetrakrService"]),
-        .library(name: "SimklService", targets: ["SimklService"]),        .library(name: "AniListService", targets: ["AniListService"]),
-        .library(name: "MALService", targets: ["MALService"]),
-        .library(name: "LastFmService", targets: ["LastFmService"]),
         .library(name: "CoreSecureStore", targets: ["CoreSecureStore"]),
         .library(name: "FeatureAuthCore", targets: ["FeatureAuthCore"]),
         .library(name: "FeatureAuth", targets: ["FeatureAuth"]),
@@ -388,35 +382,6 @@ let package = Package(
             name: "RatingsService",
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
-        .target(
-            name: "TraktService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "CoreTrackerAuth"]
-        ),
-        .target(
-            name: "CoreTrackerAuth",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
-        ),
-        .target(
-            name: "WetrakrService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "CoreTrackerAuth"]
-        ),
-        .target(
-            name: "SimklService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
-        ),
-        .target(
-            name: "AniListService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
-        ),
-        .target(
-            name: "MALService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
-        ),
-        .target(
-            name: "LastFmService",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
-        ),
-
         // MARK: Features
         .target(
             name: "FeatureDiscoveryCore",
@@ -450,7 +415,7 @@ let package = Package(
         ),
         .target(
             name: "FeaturePlayback",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreUI", "TraktService", "MetadataKit"],
+            dependencies: ["CoreModels", "CoreNetworking", "CoreUI", "MetadataKit"],
             resources: [.process("Resources")]
         ),
         .target(
@@ -467,7 +432,7 @@ let package = Package(
         ),
         .target(
             name: "FeatureSettings",
-            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "FeatureProfiles", "TraktService", "WetrakrService", "SimklService", "AniListService", "MALService", "LastFmService"]
+            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "FeatureProfiles"]
         ),
         .target(
             name: "FeatureProfiles",
@@ -777,7 +742,6 @@ let package = Package(
                 "ProviderIPTV",
                 "ProviderShare",
                 "CoreSecureStore",
-                "TraktService",
             ]
         ),
 
@@ -834,11 +798,6 @@ let package = Package(
                 "ProviderPlex",
                 "ProviderShare",
                 "RatingsService",
-                "TraktService",
-                "SimklService",
-                "WetrakrService",
-                "AniListService",
-                "MALService",
             ]
         ),
 
@@ -847,9 +806,8 @@ let package = Package(
         // Test doubles that several suites need. SwiftPM cannot list one file in
         // two targets, so a shared double has to live in a target of its own;
         // otherwise it gets copy-pasted, which is exactly what happened here:
-        // `RecordingHTTPClient` existed as four byte-identical copies (Trakt,
-        // Simkl, AniList, MAL) and `StubURLProtocol` as two (HTTP, WebDAV), and
-        // three of the four had already drifted to name the wrong service.
+        // `StubURLProtocol` and the shared request recording helpers serve every
+        // HTTP-backed provider, so they live here instead of being copy-pasted.
         // Consumers use `@testable import TestSupportNetworking`, so nothing here
         // needs to be `public`.
         .target(
@@ -927,30 +885,6 @@ let package = Package(
         .testTarget(
             name: "RatingsServiceTests",
             dependencies: ["RatingsService", "CoreModels", "CoreNetworking"]
-        ),
-        .testTarget(
-            name: "TraktServiceTests",
-            dependencies: ["TraktService", "CoreTrackerAuth", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "WetrakrServiceTests",
-            dependencies: ["WetrakrService", "CoreTrackerAuth", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "SimklServiceTests",
-            dependencies: ["SimklService", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "LastFmServiceTests",
-            dependencies: ["LastFmService", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "AniListServiceTests",
-            dependencies: ["AniListService", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "MALServiceTests",
-            dependencies: ["MALService", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
         ),
         .testTarget(
             name: "FeatureAuthTests",

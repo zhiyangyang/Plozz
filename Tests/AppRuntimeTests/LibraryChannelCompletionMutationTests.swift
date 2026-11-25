@@ -20,7 +20,6 @@ final class LibraryChannelCompletionMutationTests: XCTestCase {
         XCTAssertEqual(completion.played, true)
         XCTAssertNil(completion.resumePosition)
         XCTAssertFalse(completion.clearResume)
-        XCTAssertNotNil(completion.trakt)
         XCTAssertEqual(Set(completion.targets.map(\.accountID)), ["origin", "other"])
         XCTAssertTrue(try XCTUnwrap(WatchMutationFactory.playedToggle(
             item: item, played: true, primaryAccountID: "origin"

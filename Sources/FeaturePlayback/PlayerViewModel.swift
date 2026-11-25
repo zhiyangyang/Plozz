@@ -5,7 +5,6 @@ import Observation
 import CoreModels
 import CoreNetworking
 import CoreUI
-import TraktService
 import MetadataKit
 #if canImport(UIKit)
 import UIKit
@@ -505,10 +504,6 @@ public final class PlayerViewModel {
     private var segmentsTask: Task<Void, Never>?
     /// Clears the transient "Skipping…" auto-skip notice after a short delay.
     private var autoSkipNoticeTask: Task<Void, Never>?
-    /// Best-effort Trakt scrobbler. Receives the same start/pause/stop lifecycle
-    /// as the in-app progress report so watches sync to Trakt. A no-op when Trakt
-    /// is unconfigured or disconnected.
-    private let scrobbler: any TraktScrobbling
     /// Community skip-marker databases (IntroDB / TheIntroDB), consulted as a
     /// backup to the server's own markers when enabled in settings.
     private let communitySkipMarkers: any CommunitySkipMarkerFetching
@@ -645,9 +640,8 @@ public final class PlayerViewModel {
     private let neighborResolver: (@Sendable () async -> (previous: MediaItem?, next: MediaItem?))?
 
     /// Resolves the playing episode's *series-level* external IDs (off the main
-    /// actor) and merges them into the scrobble item so trackers that need the
-    /// show's ids — Simkl — can match an episode whose metadata only carries
-    /// episode-level ids. `nil` for non-episode playback.
+    /// actor) so cross-server series memory can match an episode whose metadata
+    /// only carries episode-level ids. `nil` for non-episode playback.
     private let seriesIDResolver: (@Sendable () async -> [String: String]?)?
 
     /// Set when the player wants to advance to a different episode — either at
@@ -730,7 +724,7 @@ public final class PlayerViewModel {
 
     /// Durable cross-server convergence hook, called once on `stop()` with the final
     /// position and watched percentage. The AppShell wires this to enqueue a
-    /// ``WatchMutation`` so the watch fans out (resume / played+Trakt) to **every**
+    /// ``WatchMutation`` so the watch fans out (resume / played) to **every**
     /// server holding the title and survives relaunch — independent of the live
     /// per-report path, which only touches the launch server. Defaults to a no-op so
     /// the player is usable standalone / in tests.
@@ -744,7 +738,6 @@ public final class PlayerViewModel {
     /// writes against it until playback ends — a mid-play drain can never disturb
     /// the now-playing session. Idempotent on the receiver. Defaults to a no-op.
     private let onPlaybackStarted: @Sendable () -> Void
-    private let scrobblesLibraryItem: Bool
 
     /// Periodic mid-playback convergence hook, called roughly every
     /// ``checkpointInterval`` seconds of continuous play with the current position
@@ -759,11 +752,11 @@ public final class PlayerViewModel {
 
     /// How often (seconds) the periodic convergence checkpoint fires during
     /// continuous play. ~60s is the agreed compromise: a casual "walk away"
-    /// propagates to other servers within a minute, while servers and their Trakt
+    /// propagates to other servers within a minute, while servers and their
     /// plugins aren't spammed. Tunable; `0` (or non-positive) disables the loop.
     private let checkpointInterval: TimeInterval
 
-    /// Owns progress reporting (provider + Trakt lifecycle fan-out) and the
+    /// Owns progress reporting and the
     /// periodic convergence-checkpoint loop. Set at the end of `init` (needs
     /// `self` as its host). Driven from playback start / setPaused / stop / the
     /// engine progress callback / background lifecycle.
@@ -811,7 +804,6 @@ public final class PlayerViewModel {
         seriesTrackStore: (any SeriesTrackPreferenceStoring)? = nil,
         seriesAccountFallbackID: String? = nil,
         startPosition: TimeInterval? = nil,
-        scrobbler: any TraktScrobbling = DisabledTraktScrobbler(),
         communitySkipMarkers: any CommunitySkipMarkerFetching = CommunitySkipMarkerService(),
         engineFactory: EngineFactory = .native,
         authenticatedHTTPResolver:
@@ -857,7 +849,6 @@ public final class PlayerViewModel {
             rememberSubtitle: playbackSettings.rememberSubtitleTrackPerSeries
         )
         self.startPositionOverride = startPosition
-        self.scrobbler = scrobbler
         self.communitySkipMarkers = communitySkipMarkers
         self.engineFactory = engineFactory
         self.authenticatedHTTPResolver = authenticatedHTTPResolver
@@ -876,9 +867,6 @@ public final class PlayerViewModel {
         self.onPlaybackStopped = onPlaybackStopped
         self.onPlaybackStoppedWithoutProgress = onPlaybackStoppedWithoutProgress
         self.onPlaybackStarted = onPlaybackStarted
-        self.scrobblesLibraryItem = (offlineItem ?? episodeItem).map {
-            !$0.isExtra && !$0.isTrailer && !$0.isYouTubeTrailer
-        } ?? true
         self.onPlaybackCheckpoint = onPlaybackCheckpoint
         self.checkpointInterval = checkpointInterval
         self.adoptedResolved = adoptedResolved
@@ -915,9 +903,7 @@ public final class PlayerViewModel {
             host: self,
             provider: provider,
             itemID: itemID,
-            scrobbler: scrobbler,
             checkpointInterval: checkpointInterval,
-            scrobblesLibraryItem: scrobblesLibraryItem,
             onCheckpoint: onPlaybackCheckpoint
         )
         self.nextEpisodeCoordinator = NextEpisodeCoordinator(
@@ -1294,9 +1280,9 @@ public final class PlayerViewModel {
     }
 
     /// Fetches the playing episode's series-level ids and folds them into the
-    /// item's `providerIDs` under the `Series*` namespace, so scrobblers that
-    /// need the show's id (Simkl) can match an episode that only carried
-    /// episode-level ids. Best-effort: a miss leaves scrobble behavior unchanged.
+    /// item's `providerIDs` under the `Series*` namespace, so cross-server series
+    /// memory can reconcile an episode that only carried episode-level ids.
+    /// Best-effort: a miss leaves the current memory behavior unchanged.
     private func enrichSeriesIDs() async {
         if let seriesIDResolver, var current = request,
            let raw = await seriesIDResolver(), !raw.isEmpty {
@@ -1486,8 +1472,7 @@ public final class PlayerViewModel {
             }
             configureControls(for: request)
 
-            // Enrich the episode with its series-level ids in the background so the
-            // first scrobble can identify the show on trackers that require it, then
+            // Enrich the episode with its series-level ids in the background, then
             // reconcile cross-server per-series memory. Runs for any episode: even
             // without a resolver the item may already carry series ids to reconcile.
             if request.item.kind == .episode && !request.usesUnidentifiedDiscTimeline {
@@ -1831,7 +1816,7 @@ public final class PlayerViewModel {
         let outgoing = request
         let outgoingReport = progressReporter.finishSession(
             position: replacesTimeline ? currentResumePosition() : position,
-            duration: progressReporter.knownPlaybackDuration(), scrobble: false
+            duration: progressReporter.knownPlaybackDuration()
         )
         request = nil
         streamingQuality.currentStream = .init()
@@ -2486,7 +2471,7 @@ public final class PlayerViewModel {
 
     // MARK: - Progress reporting / convergence checkpoints
     //
-    // Progress reporting (provider + Trakt lifecycle) and the periodic
+    // Progress reporting and the periodic
     // convergence-checkpoint loop live in `WatchProgressReporter`. The view model
     // keeps only the public `checkpointNow()` entry point (used by the background
     // lifecycle path below) as a thin forwarder.

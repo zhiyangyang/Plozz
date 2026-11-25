@@ -236,8 +236,7 @@ final class LiveJellyfinWatchActionTests: XCTestCase {
             let provider = JellyfinProvider(session: session, http: http)
             self.provider = provider
             applier = AppShellWatchMutationApplier(
-                resolveProvider: { id in id == "live-jellyfin" ? provider : nil },
-                applyTrakt: { _ in }, applySimkl: { _ in }, applyAniList: { _ in }, applyMAL: { _ in }
+                resolveProvider: { id in id == "live-jellyfin" ? provider : nil }
             )
         }
 

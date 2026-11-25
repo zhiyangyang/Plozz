@@ -11,7 +11,7 @@ import Foundation
 /// **Why this writes through the backend (and never fakes a local flag):** the
 /// media server is the single source of truth for watched state. Writing to it
 /// means any server-side sync the user has configured — e.g. the Jellyfin or
-/// Plex **Trakt** plugin — picks the change up automatically, and every other
+/// Plex's external **Trakt** plugin — picks the change up automatically, and every other
 /// client sees it too.
 public protocol WatchStateProviding: Sendable {
     /// Marks `itemID` played (`true`) or unplayed (`false`) on the server.

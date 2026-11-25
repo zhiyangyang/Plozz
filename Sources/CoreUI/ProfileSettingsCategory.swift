@@ -1,4 +1,3 @@
-import CoreModels
 import Foundation
 
 /// Profile-owned categories in a shared order, with platform-specific capabilities.
@@ -12,7 +11,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
     #endif
     case appearance
     case screensNavigation
-    case trackers
     case language
 
     public var id: Self { self }
@@ -28,7 +26,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
         #endif
         case .appearance: "Appearance"
         case .screensNavigation: "Screens & Navigation"
-        case .trackers: "Trackers"
         case .language: "Language"
         }
     }
@@ -44,7 +41,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
         #endif
         case .appearance: "paintpalette"
         case .screensNavigation: "rectangle.3.group"
-        case .trackers: "link"
         case .language: "globe"
         }
     }
@@ -55,12 +51,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
             "Theme, cards, artwork, and display size"
         case .screensNavigation:
             "Navigation and screen preferences"
-        case .trackers:
-            if RuntimeFeatureFlags.buildDefault.isEnabled(.wetrakr) {
-                "Trakt, Simkl, WeTrakr, AniList, MyAnimeList, Last.fm"
-            } else {
-                "Trakt, Simkl, AniList, MyAnimeList, Last.fm"
-            }
         default:
             nil
         }

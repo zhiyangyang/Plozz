@@ -253,8 +253,7 @@ struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>
             header()
                 .settingsActionRow()
             ForEach(ProfileSettingsCategory.allCases.filter {
-                (!isKidsProfile || $0 != .downloads)
-                    && (PlozzCustomization.supportsTrackers || $0 != .trackers)
+                !isKidsProfile || $0 != .downloads
             }) { category in
                 if category == .language {
                     PlozziOSSettingsLanguagePicker(appLanguage: appLanguage)
@@ -419,8 +418,6 @@ private struct PlozziOSProfileSettingsPage: View {
             )
         case .screensNavigation:
             PlozziOSScreensNavigationSettingsView(appModel: appModel)
-        case .trackers:
-            PlozziOSTrackerSettingsView(appModel: appModel)
         case .language:
             List {
                 PlozziOSSettingsLanguagePicker(appLanguage: appModel.appLanguage)
@@ -1575,7 +1572,6 @@ private struct PlozziOSSettingsSearchDestination: View {
             .id(ObjectIdentifier(appModel.settings.libraryPresentation))
         case .liveTV, .liveTVSources, .liveTVGuide, .liveTVVisibility: profilePage(.liveTV)
         case .language: profilePage(.language)
-        case .trackers: profilePage(.trackers)
         case .downloads: profilePage(.downloads)
         case .profiles:
             List {

@@ -68,12 +68,6 @@ public struct DetailInformationSections: View {
 
     public var body: some View {
         Group {
-            if let url = item.metadataProvenance.wetrakrWatchlistURL {
-                WetrakrWatchlistLink(url: url)
-                    .frame(maxWidth: maximumContentWidth, alignment: .leading)
-                    .padding(.horizontal, horizontalInset)
-                    .frame(maxWidth: .infinity)
-            }
             if hasContent {
                 sectionBody
                     .environment(\.plozzNativeInformationFocus, true)

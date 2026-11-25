@@ -8,15 +8,11 @@ final class WatchMutationAuthorizationTests: XCTestCase {
 
     private func mutation(
         canonical: String = "imdb:tt1", offset: Double = 0,
-        targets: [String] = ["origin"], trackers: Bool = false, expansion: Bool = false
+        targets: [String] = ["origin"], expansion: Bool = false
     ) -> WatchMutation {
         WatchMutation(
             capturedAt: time.addingTimeInterval(offset), canonicalMediaID: canonical, played: true,
             targets: targets.map { WatchMutationTarget(accountID: $0, itemID: "item") },
-            trakt: trackers ? TraktScrobbleIntent(
-                kind: .movie, title: "Movie", year: 2025, seasonNumber: nil,
-                episodeNumber: nil, providerIDs: ["imdb": "tt1"], progress: 100
-            ) : nil,
             expansionPending: expansion,
             identities: MediaItemIdentity.identities(for: MediaItem(
                 id: "item", title: "Movie", kind: .movie, productionYear: 2025,
@@ -76,7 +72,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
             store: InMemoryWatchMutationStore(), applier: applier,
             onAuthorizationRejection: { rejected.append($0, $1) }
         )
-        let accepted = await reconciler.enqueue(guarded(mutation(trackers: true, expansion: true), by: consent))
+        let accepted = await reconciler.enqueue(guarded(mutation(expansion: true), by: consent))
         guard accepted else { XCTFail("Valid intent must enqueue"); return }
         let drain = Task { await reconciler.drain() }
         await gate.waitUntilPaused()
@@ -90,7 +86,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         XCTAssertEqual(rejected.errors, [.denied])
     }
 
-    func testRevocationAfterOriginStopsResumeOtherTargetsAndTrackers() async {
+    func testRevocationAfterOriginStopsResumeOtherTargets() async {
         let consent = OutboxConsent()
         let applier = AuthorizedOutboxApplier()
         await applier.setAfterWrite { event in
@@ -101,7 +97,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
             store: InMemoryWatchMutationStore(), applier: applier,
             onAuthorizationRejection: { rejected.append($0, $1) }
         )
-        var intent = mutation(targets: ["origin", "other"], trackers: true)
+        var intent = mutation(targets: ["origin", "other"])
         intent.clearResume = true
         _ = await reconciler.enqueue(guarded(intent, by: consent))
         await reconciler.drain()
@@ -110,28 +106,6 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         XCTAssertEqual(rejected.errors, [.denied])
         let snapshot = await reconciler.snapshot()
         XCTAssertTrue(snapshot.pending.isEmpty)
-        XCTAssertTrue(snapshot.appliedTrakt.isEmpty)
-    }
-
-    func testRevocationAfterTraktPreservesConfirmedWriteButStopsRemainingMirrors() async {
-        let consent = OutboxConsent()
-        let applier = AuthorizedOutboxApplier()
-        await applier.setAfterWrite { event in
-            if event == "trakt" { await MainActor.run { consent.allowed = false } }
-        }
-        let rejected = OutboxAuthorizationRejections()
-        let reconciler = WatchStateReconciler(
-            store: InMemoryWatchMutationStore(), applier: applier,
-            onAuthorizationRejection: { rejected.append($0, $1) }
-        )
-        _ = await reconciler.enqueue(guarded(mutation(trackers: true), by: consent))
-        await reconciler.drain()
-        let events = await applier.events
-        XCTAssertEqual(events, ["played:origin", "trakt"])
-        let snapshot = await reconciler.snapshot()
-        XCTAssertEqual(snapshot.appliedTrakt.count, 1)
-        XCTAssertTrue(snapshot.appliedSimkl.isEmpty)
-        XCTAssertEqual(rejected.errors, [.denied])
     }
 
     func testPendingRetryRevalidatesInsteadOfUsingEnqueueTimeConsent() async {
@@ -154,7 +128,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
 
     func testRestoredRequirementHasNoRuntimeCapabilityAndCannotDispatch() async throws {
         let consent = OutboxConsent()
-        let original = guarded(mutation(trackers: true), by: consent)
+        let original = guarded(mutation(), by: consent)
         let state = WatchOutboxState(pending: [original], clock: [original.coalesceKey: original.capturedAt])
         let restored = try JSONDecoder().decode(WatchOutboxState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(restored, state)
@@ -202,12 +176,12 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         let consent = OutboxConsent()
         let applier = AuthorizedOutboxApplier()
         let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        let protected = guarded(mutation(targets: ["origin", "other"], trackers: true), by: consent)
+        let protected = guarded(mutation(targets: ["origin", "other"]), by: consent)
         _ = await reconciler.enqueue(protected)
         await reconciler.drain()
         await reconciler.drain()
         let events = await applier.events
-        XCTAssertEqual(events, ["played:origin", "played:other", "trakt", "simkl", "anilist", "mal"])
+        XCTAssertEqual(events, ["played:origin", "played:other"])
         let snapshot = await reconciler.snapshot()
         XCTAssertTrue(snapshot.pending.isEmpty)
         XCTAssertNil(snapshot.clock[protected.coalesceKey])
@@ -215,14 +189,14 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         XCTAssertFalse(acceptedAgain)
     }
 
-    func testGuardedEvidenceNeverAbsorbsManualTargetsOrTrackerIntent() async {
+    func testGuardedEvidenceNeverAbsorbsManualTargetsOrSyntheticIntent() async {
         let consent = OutboxConsent()
         let applier = AuthorizedOutboxApplier()
         let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
         var manual = mutation(targets: ["manual"])
         manual.played = false
         _ = await reconciler.enqueue(manual)
-        let protected = guarded(mutation(canonical: "tmdb:99", offset: 10, targets: ["protected"], trackers: true), by: consent)
+        let protected = guarded(mutation(canonical: "tmdb:99", offset: 10, targets: ["protected"]), by: consent)
         _ = await reconciler.enqueue(protected)
         let queued = await reconciler.snapshot()
         XCTAssertEqual(queued.pending.count, 2)
@@ -240,7 +214,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         let consent = OutboxConsent()
         let applier = AuthorizedOutboxApplier()
         let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        let protected = guarded(mutation(targets: ["protected"], trackers: true), by: consent)
+        let protected = guarded(mutation(targets: ["protected"]), by: consent)
         _ = await reconciler.enqueue(protected)
         var manual = mutation(canonical: "tmdb:99", offset: 10, targets: ["manual"])
         manual.played = false
@@ -306,7 +280,7 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         let applier = AuthorizedOutboxApplier()
         await applier.setExpansionGate(gate)
         let reconciler = WatchStateReconciler(store: InMemoryWatchMutationStore(), applier: applier)
-        let protected = guarded(mutation(targets: ["protected"], trackers: true, expansion: true), by: consent)
+        let protected = guarded(mutation(targets: ["protected"], expansion: true), by: consent)
         guard await reconciler.enqueue(protected) else { XCTFail("Valid intent must enqueue"); return }
         let drain = Task { await reconciler.drain() }
         await gate.waitUntilPaused()
@@ -319,7 +293,6 @@ final class WatchMutationAuthorizationTests: XCTestCase {
         XCTAssertEqual(events, ["played:manual"])
         let snapshot = await reconciler.snapshot()
         XCTAssertTrue(snapshot.pending.isEmpty)
-        XCTAssertTrue(snapshot.appliedTrakt.isEmpty)
     }
 
     func testCompletedCapabilityReleasesItsValidatorEvenIfCallerRetainsMutation() async {
@@ -399,10 +372,6 @@ private actor AuthorizedOutboxApplier: WatchMutationAuthorizationEnforcing {
     func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {
         try await write("resume:\(target.accountID)")
     }
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws { try await write("trakt") }
-    func scrobbleSimkl(_ intent: TraktScrobbleIntent) async throws { try await write("simkl") }
-    func scrobbleAniList(_ intent: TraktScrobbleIntent) async throws { try await write("anilist") }
-    func scrobbleMAL(_ intent: TraktScrobbleIntent) async throws { try await write("mal") }
     func expandTargets(for mutation: WatchMutation) async -> WatchTargetExpansion {
         await expansionGate?.pause()
         return WatchTargetExpansion(targets: [WatchMutationTarget(accountID: "expanded", itemID: "item")])
@@ -416,9 +385,6 @@ private struct UnmarkedOutboxApplier: WatchMutationApplying {
     }
     func setResumePosition(_ seconds: TimeInterval, on target: WatchMutationTarget, capturedAt: Date) async throws {
         try await recorder.setResumePosition(seconds, on: target, capturedAt: capturedAt)
-    }
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {
-        try await recorder.scrobbleTrakt(intent)
     }
 }
 

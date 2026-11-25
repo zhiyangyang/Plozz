@@ -55,7 +55,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, liveSubtitleStyle, musicPlayer, topShelf
-    case downloads, profiles, metadata, diagnostics, trackers, liveTVSources
+    case downloads, profiles, metadata, diagnostics, liveTVSources
     case playbackAdvanced, streamingAdvanced, metadataDiagnostics, detailRatingSources
     case liveTVGuide, liveTVVisibility, profileAppearance, profileSettings, accountLibraries
     case releaseNotes
@@ -99,7 +99,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .profiles: ["Profiles"]
         case .metadata: ["Metadata Providers"]
         case .diagnostics: ["Help & Diagnostics"]
-        case .trackers: ["Trackers"]
         case .liveTVSources: ["Live TV", "TV Sources"]
         case .playbackAdvanced: ["Playback", "Advanced"]
         case .streamingAdvanced: ["Playback", "Streaming quality", "Advanced"]
@@ -133,7 +132,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .profiles, .profileAppearance, .profileSettings: "person.2"
         case .metadata, .metadataDiagnostics: "sparkles.rectangle.stack"
         case .diagnostics: "ladybug"
-        case .trackers: "link"
         case .releaseNotes: "doc.text"
         }
     }

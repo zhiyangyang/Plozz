@@ -26,8 +26,6 @@ private final class ExpandingFakeApplier: WatchMutationApplying, @unchecked Send
         lock.lock(); resumeWrites.append((seconds, target.accountID, target.itemID)); lock.unlock()
     }
 
-    func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
-
     func expandTargets(for mutation: WatchMutation) async -> WatchTargetExpansion {
         lock.lock(); expandCallCount += 1; lock.unlock()
         return expansion

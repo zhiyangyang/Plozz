@@ -1,6 +1,5 @@
 #if DEBUG && canImport(AVFoundation)
 import CoreModels
-import TraktService
 import XCTest
 #if canImport(UIKit)
 import UIKit
@@ -210,10 +209,10 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
     }
 
     private func fixture(
-        offset: Double = 0, history: Bool = false, externalHistory: Bool = false, durableValidation: Bool = false
+        offset: Double = 0, history: Bool = false, durableValidation: Bool = false
     ) throws -> LibraryPlaybackFixture {
         try LibraryPlaybackFixture(
-            offset: offset, history: history, externalHistory: externalHistory, durableValidation: durableValidation
+            offset: offset, history: history, durableValidation: durableValidation
         )
     }
 
@@ -332,7 +331,7 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
     }
 
     func testExternalCompletionSinkExclusivelyOwnsEveryHistorySideEffect() async throws {
-        let fixture = try fixture(history: true, externalHistory: true)
+        let fixture = try fixture(history: true)
         defer { fixture.player.stop() }
         fixture.player.tune()
         try await fixture.player.waitUntilSettled()
@@ -352,7 +351,7 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
 
     func testExternalCompletionStillRequiresBothWatchingAndProfileOptIn() async throws {
         for history in [false, true] {
-            let fixture = try fixture(history: history, externalHistory: true)
+            let fixture = try fixture(history: history)
             defer { fixture.player.stop() }
             if history { fixture.player.setWatching(false) }
             fixture.player.tune()
@@ -367,7 +366,7 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
     }
 
     func testExternalCompletionFailureCannotFallBackToProviderOrTrackerWrites() async throws {
-        let fixture = try fixture(history: true, externalHistory: true)
+        let fixture = try fixture(history: true)
         defer { fixture.player.stop() }
         fixture.state.externalError = .storageFailed
         fixture.player.tune()
@@ -386,7 +385,7 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
 
     func testQueuedExternalCompletionRevalidatesOptInAndProfileBeforeCallingSink() async throws {
         for revokeProfile in [false, true] {
-            let fixture = try fixture(history: true, externalHistory: true)
+            let fixture = try fixture(history: true)
             defer { fixture.player.stop() }
             fixture.player.tune()
             try await fixture.player.waitUntilSettled()
@@ -402,7 +401,7 @@ final class LibraryChannelPlaybackSessionTests: XCTestCase {
     }
 
     func testExternalCompletionDoesNotUseALateJoinPositionAsWatchedCoverage() async throws {
-        let fixture = try fixture(offset: 94, history: true, externalHistory: true)
+        let fixture = try fixture(offset: 94, history: true)
         defer { fixture.player.stop() }
         fixture.player.tune()
         try await fixture.player.waitUntilSettled()
@@ -912,7 +911,7 @@ private final class LibraryPlaybackFixture {
     let schedule: LibraryChannelSchedule
     let player: LibraryChannelPlaybackSession
 
-    init(offset: Double, history: Bool, externalHistory: Bool, durableValidation: Bool) throws {
+    init(offset: Double, history: Bool, durableValidation: Bool) throws {
         let library = LibraryChannelLibrary(accountID: "account", libraryID: "library")
         let items = try ["first", "second"].enumerated().map { index, id in
             var item = MediaItem(id: id, title: id, kind: .episode, runtime: 100)
@@ -934,16 +933,8 @@ private final class LibraryPlaybackFixture {
         let fixtureState = self.state
         let channelSchedule = self.schedule
         let provider = LibraryPlaybackProviderFixture(state: fixtureState)
-        let reporting: LibraryChannelHistoryReporting
-        if externalHistory {
-            reporting = .externalCompletion { scheduled, item, token in
-                try await fixtureState.completeExternally(scheduled: scheduled, item: item, token: token)
-            }
-        } else {
-            reporting = .sourceAndTrakt(
-                scrobbler: LibraryPlaybackScrobblerFixture(state: fixtureState),
-                onCompleted: { _, _, _ in fixtureState.checkpoints += 1 }
-            )
+        let reporting = LibraryChannelHistoryReporting.externalCompletion { scheduled, item, token in
+            try await fixtureState.completeExternally(scheduled: scheduled, item: item, token: token)
         }
         let validator: (@MainActor @Sendable () async -> String?)?
         if durableValidation {
@@ -1060,10 +1051,6 @@ private actor LibraryPlaybackProviderFixture: LibraryChannelPlaybackProviding {
     nonisolated func imageURL(itemID: String, kind: ImageKind, maxWidth: Int?) -> URL? { nil }
 }
 
-private struct LibraryPlaybackScrobblerFixture: TraktScrobbling {
-    let state: LibraryPlaybackStateFixture
-    func scrobble(item: MediaItem, progress: Double, event: PlaybackEvent) async { await state.track(progress) }
-}
 
 @MainActor
 private final class LibraryPlaybackGate {

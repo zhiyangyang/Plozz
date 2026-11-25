@@ -2,7 +2,6 @@
 import CoreModels
 import Foundation
 import Observation
-import TraktService
 
 public enum LibraryChannelPlaybackState: Equatable, Sendable {
     case idle, loading, playing, paused
@@ -13,18 +12,13 @@ public typealias LibraryChannelCompletionSink =
     @MainActor @Sendable (LibraryChannelItem, MediaItem, UUID) async throws -> Void
 
 public enum LibraryChannelHistoryReporting: Sendable {
-    /// The application sink owns every origin, tracker, cross-server and UI mutation.
-    /// Revalidate the supplied opt-in token and profile at any asynchronous commit.
+    /// The application sink owns every cross-server and UI mutation. Revalidate
+    /// the supplied opt-in token and profile at any asynchronous commit.
     case externalCompletion(LibraryChannelCompletionSink)
-    /// Compatibility path for callers without the application's mutation pipeline.
-    case sourceAndTrakt(
-        scrobbler: any TraktScrobbling,
-        onCompleted: @MainActor @Sendable (LibraryChannelItem, MediaItem, UUID) async -> Void
-    )
 }
 
 /// VOD decoder with broadcast scheduling, deliberately not PlayerViewModel:
-/// no ordinary resume/progress reporting, automatic next episode or teardown scrobble.
+/// no ordinary resume/progress reporting, automatic next episode or teardown watch-history write.
 /// Synchronous callbacks must be I/O-free when an asynchronous durable validator is supplied.
 @MainActor
 @Observable
@@ -87,7 +81,6 @@ public final class LibraryChannelPlaybackSession {
         authorization: @escaping @MainActor @Sendable () -> String?,
         validateAuthorization: (@MainActor @Sendable () async -> String?)? = nil,
         historyAuthorization: @escaping @MainActor @Sendable () -> UUID?,
-        scrobbler: any TraktScrobbling,
         onCompleted: @escaping @MainActor @Sendable (LibraryChannelItem, MediaItem, UUID) async -> Void,
         clock: @escaping @MainActor @Sendable () -> Date = { Date() },
         uptime: @escaping @MainActor @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
@@ -96,7 +89,7 @@ public final class LibraryChannelPlaybackSession {
             channelID: channelID, engine: engine, schedule: schedule, provider: provider,
             authorization: authorization, validateAuthorization: validateAuthorization,
             historyAuthorization: historyAuthorization,
-            historyReporting: .sourceAndTrakt(scrobbler: scrobbler, onCompleted: onCompleted),
+            historyReporting: .externalCompletion(onCompleted),
             clock: clock, uptime: uptime
         )
     }
@@ -757,16 +750,6 @@ public final class LibraryChannelPlaybackSession {
                 switch self.historyReporting {
                 case .externalCompletion(let sink):
                     try await sink(scheduledItem, request.item, token)
-                case .sourceAndTrakt(let scrobbler, let onCompleted):
-                    try await provider.recordLibraryChannelCompletion(itemID: request.item.id)
-                    try await self.validateAuthority(expectedAuthorization)
-                    guard !Task.isCancelled, self.historyAuthorization() == token,
-                          self.authorization() == expectedAuthorization else { return }
-                    await scrobbler.scrobble(item: request.item, progress: percent, event: .stop)
-                    try await self.validateAuthority(expectedAuthorization)
-                    guard !Task.isCancelled, self.historyAuthorization() == token,
-                          self.authorization() == expectedAuthorization else { return }
-                    await onCompleted(scheduledItem, request.item, token)
                 }
             } catch is CancellationError {
             } catch {

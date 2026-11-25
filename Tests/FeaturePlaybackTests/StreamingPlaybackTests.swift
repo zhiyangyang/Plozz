@@ -2,7 +2,6 @@
 @preconcurrency import AVFoundation
 @testable import CoreModels
 import Foundation
-import TraktService
 import XCTest
 #if canImport(UIKit)
 import UIKit
@@ -444,32 +443,6 @@ final class StreamingPlaybackTests: XCTestCase {
         XCTAssertNil(call.options.selectedSubtitle(in: [
             .init(id: 1, kind: .subtitle, displayTitle: "English", language: "en")
         ]))
-        await model.stop()
-    }
-
-    func testPausedSessionMaintenanceDoesNotWaitForScrobbling() async throws {
-        let provider = QualityPlaybackProvider()
-        let gate = QualityDecisionGate()
-        let engine = QualityEngine()
-        let model = PlayerViewModel(
-            provider: provider, itemID: "movie", streamingOptions: .init(quality: .hd720),
-            scrobbler: GatedQualityScrobbler(gate: gate),
-            engineFactory: .init(makeNative: { _ in engine })
-        )
-        model.streamingSessionMaintenance = .init(interval: .milliseconds(5))
-        let load = Task { await model.load() }
-        await gate.waitUntilEntered()
-        model.setPaused(true)
-        let deadline = ContinuousClock.now + .seconds(2)
-        while await provider.maintained.isEmpty, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
-        let maintained = await provider.maintained
-        XCTAssertFalse(maintained.isEmpty)
-        XCTAssertTrue(engine.isPaused)
-        XCTAssertEqual(engine.currentTime, 0)
-        await gate.release()
-        await load.value
         await model.stop()
     }
 
@@ -1903,12 +1876,6 @@ private actor QualityDecisionGate {
     func release() { continuation?.resume(); continuation = nil }
 }
 
-private struct GatedQualityScrobbler: TraktScrobbling {
-    let gate: QualityDecisionGate
-    func scrobble(item: MediaItem, progress: Double, event: PlaybackEvent) async {
-        if case .start = event { await gate.suspend() }
-    }
-}
 
 private actor QualityPlaybackProvider: StreamingQualityProviding, StreamingSessionMaintaining {
     struct Call: Sendable {

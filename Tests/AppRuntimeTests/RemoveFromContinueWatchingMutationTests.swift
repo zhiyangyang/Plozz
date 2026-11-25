@@ -29,16 +29,6 @@ final class RemoveFromContinueWatchingMutationTests: XCTestCase {
         XCTAssertNil(mutation?.resumePosition, "There is no position to write — it is being removed")
     }
 
-    /// Nothing was watched, so nothing is scrobbled. A tracker learning about an
-    /// abandoned film would be worse than it learning nothing.
-    func testDoesNotMirrorToTrackers() {
-        let mutation = WatchMutationFactory.removeFromContinueWatching(
-            item: movie(),
-            primaryAccountID: "plex"
-        )
-        XCTAssertNil(mutation?.trakt)
-    }
-
     /// Resume state that converges on one server and not another has not really
     /// been removed — it just moved.
     func testFansOutToEveryServerHoldingTheTitle() {

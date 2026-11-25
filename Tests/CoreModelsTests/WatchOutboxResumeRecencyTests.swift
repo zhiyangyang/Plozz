@@ -25,7 +25,6 @@ final class WatchOutboxResumeRecencyTests: XCTestCase {
             if failingAccounts.contains(target.accountID) { throw AppError.serverUnreachable }
             lock.lock(); resumeWrites.append((seconds, target.id)); lock.unlock()
         }
-        func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {}
     }
 
     private func target(_ account: String, _ item: String) -> WatchMutationTarget {

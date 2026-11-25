@@ -572,7 +572,6 @@ struct PlozziOSPlayerView: View {
             seriesTrackStore: appModel.seriesTrackStore,
             seriesAccountFallbackID: item.sourceAccountID,
             startPosition: startPosition,
-            scrobbler: session.scrobbler,
             engineFactory: PlozziOSPlaybackEngineComposition.engineFactory(
                 networkFileResolver: appModel.mediaShareRuntime.networkFileResolver,
                 authenticatedHTTPResolver: resolver

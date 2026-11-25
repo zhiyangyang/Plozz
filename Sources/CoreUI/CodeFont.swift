@@ -3,7 +3,7 @@ import SwiftUI
 
 public extension Font {
     /// A high-legibility font for one-time codes (Quick Connect, Plex link,
-    /// Trakt device code, …).
+    /// device code, …).
     ///
     /// Uses the monospaced system face (SF Mono), whose **dotted zero** makes
     /// `0` unmistakable from `O` and `1`/`I`/`l` distinct — important when a user

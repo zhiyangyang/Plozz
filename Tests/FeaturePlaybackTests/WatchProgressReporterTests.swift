@@ -1,6 +1,5 @@
 #if canImport(AVFoundation)
 import CoreModels
-import TraktService
 import XCTest
 
 @testable import FeaturePlayback
@@ -17,9 +16,8 @@ final class WatchProgressReporterTests: XCTestCase {
 
     private func makeSUT(
         checkpointInterval: TimeInterval = 0, // loop off by default; tests call emitCheckpoint directly
-        item: MediaItem = MediaItem(id: "item-1", title: "Ep", kind: .episode, runtime: 1_000),
-        scrobblesLibraryItem: Bool = true
-    ) -> (WatchProgressReporter, SpyReporterHost, RecordingProvider, RecordingScrobbler, CheckpointRecorder) {
+        item: MediaItem = MediaItem(id: "item-1", title: "Ep", kind: .episode, runtime: 1_000)
+    ) -> (WatchProgressReporter, SpyReporterHost, RecordingProvider, CheckpointRecorder) {
         let host = SpyReporterHost()
         host.request = PlaybackRequest(
             item: item,
@@ -29,18 +27,15 @@ final class WatchProgressReporterTests: XCTestCase {
         host.engineDuration = 1_000
         retainedHosts.append(host)
         let provider = RecordingProvider()
-        let scrobbler = RecordingScrobbler()
         let recorder = CheckpointRecorder()
         let sut = WatchProgressReporter(
             host: host,
             provider: provider,
             itemID: "item-1",
-            scrobbler: scrobbler,
             checkpointInterval: checkpointInterval,
-            scrobblesLibraryItem: scrobblesLibraryItem,
             onCheckpoint: { position, percent in recorder.record(position: position, percent: percent) }
         )
-        return (sut, host, provider, scrobbler, recorder)
+        return (sut, host, provider, recorder)
     }
 
     // MARK: helpers
@@ -60,59 +55,10 @@ final class WatchProgressReporterTests: XCTestCase {
         return await provider.events
     }
 
-    // MARK: report + scrobble fan-out
-
-    func testOriginalTrailerClassificationSurvivesUnmarkedPlaybackMetadata() async {
-        let (sut, _, provider, scrobbler, _) = makeSUT(scrobblesLibraryItem: false)
-        await sut.reportStart(isPaused: false, positionOverride: 0)
-        await sut.finishSession(position: 120, duration: 1_000)?.value
-        let events = await provider.events
-        let calls = await scrobbler.calls
-        XCTAssertEqual(events.map(\.event), [.start, .stop])
-        XCTAssertEqual(events.last?.position, 120)
-        XCTAssertTrue(calls.isEmpty)
-    }
-
-    func testBriefPlaybackStillSavesProgressIndependentlyOfHomeEligibility() async {
-        let (sut, host, provider, scrobbler, recorder) = makeSUT()
-        await sut.reportStart(isPaused: false, positionOverride: 0)
-        for position in [2.0, 10, 30, 59.999] {
-            host.engineCurrentTime = position
-            host.resumePosition = position
-            await sut.report(event: .progress, isPaused: false)
-            await sut.report(event: .pause, isPaused: true)
-            await sut.report(event: .unpause, isPaused: false)
-            sut.checkpointNow()
-        }
-        await sut.finishSession(position: 59.999, duration: 1_000)?.value
-        let events = await provider.events
-        XCTAssertEqual(events.first?.event, .start)
-        XCTAssertEqual(events.last?.event, .stop, "Server cleanup must still run.")
-        XCTAssertEqual(events.last?.position, 59.999)
-        let scrobbles = await scrobbler.calls
-        XCTAssertFalse(scrobbles.isEmpty)
-        XCTAssertEqual(recorder.positions, [2, 10, 30, 59.999])
-    }
-
-    func testReportingContinuesAcrossHomeAdmissionThreshold() async {
-        let (sut, host, provider, scrobbler, recorder) = makeSUT()
-        await sut.reportStart(isPaused: false, positionOverride: 0)
-        host.engineCurrentTime = 60
-        host.resumePosition = 60
-        await sut.report(event: .progress, isPaused: false)
-        sut.checkpointNow()
-        host.engineCurrentTime = 61
-        await sut.report(event: .progress, isPaused: false)
-        await sut.finishSession(position: 61, duration: 1_000)?.value
-        let events = await provider.events
-        let scrobbles = await scrobbler.calls
-        XCTAssertEqual(events.map(\.position), [0, 60, 61, 61])
-        XCTAssertEqual(scrobbles.map(\.event), [.start, .progress, .progress, .stop])
-        XCTAssertEqual(recorder.positions, [60])
-    }
+    // MARK: report fan-out
 
     func testExistingShortResumeIsNotClearedByThreshold() async {
-        let (sut, host, provider, _, recorder) = makeSUT(
+        let (sut, host, provider, recorder) = makeSUT(
             item: MediaItem(id: "item-1", title: "Movie", kind: .movie, resumePosition: 15)
         )
         await sut.reportStart(isPaused: false, positionOverride: 15)
@@ -125,113 +71,8 @@ final class WatchProgressReporterTests: XCTestCase {
         XCTAssertEqual(recorder.positions, [20])
     }
 
-    func testTrailerRetainsOwnProgressButNeverScrobblesParentIdentity() async {
-        let trailers = [
-            MediaItem(id: "item-1", title: "Movie", kind: .movie, isTrailer: true, resumePosition: 90),
-            MediaItem.youTubeTrailer(videoID: "abcdefghijk", title: "Movie")
-        ]
-        for item in trailers {
-            let (sut, host, provider, scrobbler, recorder) = makeSUT(item: item)
-            host.engineCurrentTime = 1_000
-            host.resumePosition = 1_000
-            await sut.reportStart(isPaused: false, positionOverride: 0)
-            await sut.report(event: .progress, isPaused: false)
-            await sut.report(event: .pause, isPaused: true)
-            sut.checkpointNow()
-            await sut.finishSession(position: 1_000, duration: 1_000)?.value
-            let events = await provider.events
-            let scrobbles = await scrobbler.calls
-            XCTAssertEqual(events.map(\.event), [.start, .progress, .pause, .stop])
-            XCTAssertEqual(events.last?.position, 1_000)
-            XCTAssertTrue(scrobbles.isEmpty)
-            XCTAssertEqual(recorder.positions, [1_000])
-        }
-    }
-
-    func testPausedOrSuspendedHeartbeatCannotOverwriteResumeWithZero() async {
-        let (sut, host, provider, scrobbler, _) = makeSUT()
-        host.engineCurrentTime = 4780.41
-        await sut.report(event: .pause, isPaused: true)
-        host.engineCurrentTime = 0.07
-        host.engineIsPaused = true
-        sut.reportProgress()
-        await Task.yield()
-        let events = await provider.events
-        XCTAssertEqual(events.map(\.event), [.pause])
-        XCTAssertEqual(events.first?.position, 4780.41)
-        let scrobbles = await scrobbler.calls
-        XCTAssertEqual(scrobbles.map(\.event), [.pause])
-    }
-
-
-    func testLibraryChannelRequestSuppressesEveryOrdinaryMutationIncludingStop() async {
-        let (sut, host, provider, scrobbler, recorder) = makeSUT()
-        host.request?.suppressOrdinaryWatchReporting = true
-        host.engineCurrentTime = 950
-        host.resumePosition = 950
-        await sut.reportStart(isPaused: false, positionOverride: 950)
-        await sut.report(event: .progress, isPaused: false)
-        await sut.report(event: .pause, isPaused: true)
-        await sut.report(event: .stop, isPaused: true, positionOverride: 950)
-        sut.checkpointNow()
-        let events = await provider.events
-        let scrobbles = await scrobbler.calls
-        XCTAssertTrue(events.isEmpty)
-        XCTAssertTrue(scrobbles.isEmpty)
-        XCTAssertTrue(recorder.positions.isEmpty)
-    }
-
-    func testReportSendsToProviderAndScrobbler() async {
-        let (sut, host, provider, scrobbler, _) = makeSUT()
-        host.engineCurrentTime = 500
-        await sut.report(event: .progress, isPaused: false)
-        let events = await provider.events
-        XCTAssertEqual(events.map(\.event), [.progress])
-        XCTAssertEqual(events.first?.position, 500)
-        let scrobbles = await scrobbler.calls
-        XCTAssertEqual(scrobbles.map(\.event), [.progress])
-        XCTAssertEqual(scrobbles.first?.progress ?? -1, 50, accuracy: 0.001) // 500/1000
-    }
-
-    func testReportHonorsPositionOverrideForScrobblePercent() async {
-        // At stop() the engine reads 0; the override must drive the scrobble percent.
-        let (sut, _, _, scrobbler, _) = makeSUT()
-        await sut.report(event: .stop, isPaused: true, positionOverride: 900)
-        let scrobbles = await scrobbler.calls
-        XCTAssertEqual(scrobbles.first?.progress ?? -1, 90, accuracy: 0.001)
-    }
-
-    func testStopUsesCapturedDurationAfterEngineTeardown() async {
-        for runtime: TimeInterval? in [nil, 2_000] {
-            let (sut, host, provider, scrobbler, _) = makeSUT(
-                item: MediaItem(id: "item-1", title: "Ep", kind: .episode, runtime: runtime)
-            )
-            host.engineDuration = 0
-            await sut.report(event: .stop, isPaused: true, positionOverride: 950, durationOverride: 1_000)
-            let events = await provider.events
-            let calls = await scrobbler.calls
-            XCTAssertEqual(events.last?.duration, 1_000)
-            XCTAssertEqual(calls.last?.progress, 95)
-        }
-    }
-
-    func testReportCapturesPercentBeforeProviderSuspends() async {
-        let (sut, host, provider, scrobbler, _) = makeSUT()
-        host.engineCurrentTime = 950
-        await provider.hold(.progress)
-        let report = Task { await sut.report(event: .progress, isPaused: false) }
-        await provider.waitUntilHeld()
-        host.engineCurrentTime = 0
-        host.engineDuration = 0
-        host.request = nil
-        await provider.release()
-        await report.value
-        let calls = await scrobbler.calls
-        XCTAssertEqual(calls.last?.progress, 95)
-    }
-
     func testStopDrainsEarlierProgressAndRejectsLateEvents() async {
-        let (sut, host, provider, _, _) = makeSUT()
+        let (sut, host, provider, _) = makeSUT()
         await sut.reportStart(isPaused: false, positionOverride: 0)
         host.engineCurrentTime = 950
         await provider.hold(.progress)
@@ -254,7 +95,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testStopWhileStartIsSuspendedCannotBeFollowedByDeferredPause() async {
-        let (sut, _, provider, _, _) = makeSUT()
+        let (sut, _, provider, _) = makeSUT()
         await provider.hold(.start)
         let start = Task { await sut.reportStart(isPaused: false, positionOverride: 0) }
         await provider.waitUntilHeld()
@@ -272,13 +113,13 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testReplacementDefersStateUntilItsOwnStartAndKeepsQueuedIdentity() async {
-        let (sut, host, provider, _, _) = makeSUT()
+        let (sut, host, provider, _) = makeSUT()
         await sut.reportStart(isPaused: false, positionOverride: 0)
         host.engineCurrentTime = 300
         await provider.hold(.progress)
         sut.reportProgress()
         await provider.waitUntilHeld()
-        let outgoing = sut.finishSession(position: 300, duration: 1_000, scrobble: false)
+        let outgoing = sut.finishSession(position: 300, duration: 1_000)
         host.request?.playSessionID = "session-2"
         sut.beginSession()
         host.engineCurrentTime = 400
@@ -295,7 +136,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testCancelledCallerCannotCancelFinalReport() async {
-        let (sut, _, provider, _, _) = makeSUT()
+        let (sut, _, provider, _) = makeSUT()
         await sut.reportStart(isPaused: false, positionOverride: 0)
         await provider.hold(.stop)
         let stop = Task {
@@ -310,50 +151,8 @@ final class WatchProgressReporterTests: XCTestCase {
         XCTAssertEqual(events.last?.duration, 1_000)
     }
 
-    func testSlowStartKeepsOnlyTheLatestPendingHeartbeat() async {
-        let (sut, host, provider, scrobbler, _) = makeSUT()
-        await provider.hold(.start)
-        let start = Task { await sut.reportStart(isPaused: false, positionOverride: 0) }
-        await provider.waitUntilHeld()
-        for position in 1...1_000 {
-            host.engineCurrentTime = Double(position)
-            sut.reportProgress()
-        }
-        await provider.release()
-        await start.value
-        _ = await waitForEvents(provider, count: 2)
-        await sut.report(event: .pause, isPaused: true)
-        let events = await provider.events
-        let calls = await scrobbler.calls
-        XCTAssertEqual(events.map(\.event), [.start, .progress, .pause])
-        XCTAssertEqual(events.filter { $0.event == .progress }.map(\.position), [1_000])
-        XCTAssertEqual(calls.filter { $0.event == .progress }.map(\.progress), [100])
-    }
-
-    func testStopDropsUnsentHeartbeatsButDrainsTheInFlightReport() async {
-        let (sut, host, provider, scrobbler, _) = makeSUT()
-        await sut.reportStart(isPaused: false, positionOverride: 0)
-        host.engineCurrentTime = 10
-        await provider.hold(.progress)
-        sut.reportProgress()
-        await provider.waitUntilHeld()
-        for position in 11...1_000 {
-            host.engineCurrentTime = Double(position)
-            sut.reportProgress()
-        }
-        let stop = sut.finishSession(position: 1_000, duration: 1_000)
-        await provider.release()
-        await stop?.value
-        let events = await provider.events
-        let calls = await scrobbler.calls
-        XCTAssertEqual(events.map(\.event), [.start, .progress, .stop])
-        XCTAssertEqual(events.map(\.position), [0, 10, 1_000])
-        XCTAssertEqual(calls.map(\.event), [.start, .progress, .stop])
-        XCTAssertEqual(calls.last?.progress, 100)
-    }
-
     func testStateChangesSupersedeQueuedHeartbeatsWithoutReorderingLifecycle() async {
-        let (sut, host, provider, _, _) = makeSUT()
+        let (sut, host, provider, _) = makeSUT()
         await provider.hold(.start)
         let start = Task { await sut.reportStart(isPaused: false, positionOverride: 0) }
         await provider.waitUntilHeld()
@@ -375,7 +174,7 @@ final class WatchProgressReporterTests: XCTestCase {
     // MARK: defer-until-started
 
     func testStateChangeBeforeStartIsDeferredThenFlushedWhenDifferent() async {
-        let (sut, _, provider, _, _) = makeSUT()
+        let (sut, _, provider, _) = makeSUT()
         // A pause arrives before .start — must NOT report yet.
         sut.reportStateChange(paused: true)
         await Task.yield()
@@ -389,7 +188,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testDeferredStateMatchingStartIsNotReplayed() async {
-        let (sut, _, provider, _, _) = makeSUT()
+        let (sut, _, provider, _) = makeSUT()
         sut.reportStateChange(paused: true)
         // Start ALSO paused → nothing to replay.
         await sut.reportStart(isPaused: true, positionOverride: 0)
@@ -398,7 +197,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testStateChangeAfterStartReportsImmediately() async {
-        let (sut, _, provider, _, _) = makeSUT()
+        let (sut, _, provider, _) = makeSUT()
         await sut.reportStart(isPaused: false, positionOverride: 0)
         sut.reportStateChange(paused: true)
         // reportStateChange spawns a Task; poll until it lands.
@@ -409,7 +208,7 @@ final class WatchProgressReporterTests: XCTestCase {
     // MARK: checkpoint dedup + guards
 
     func testCheckpointFiresOnForwardProgressAndDedupes() async {
-        let (sut, host, _, _, recorder) = makeSUT()
+        let (sut, host, _, recorder) = makeSUT()
         sut.startCheckpointLoop(seedPosition: 100) // seed, loop off (interval 0)
         host.resumePosition = 100
         sut.emitCheckpoint()
@@ -428,7 +227,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testCheckpointSuppressedWhilePausedUnlessForced() async {
-        let (sut, host, _, _, recorder) = makeSUT()
+        let (sut, host, _, recorder) = makeSUT()
         sut.startCheckpointLoop(seedPosition: 0)
         host.resumePosition = 300
         host.engineIsPaused = true
@@ -440,7 +239,7 @@ final class WatchProgressReporterTests: XCTestCase {
     }
 
     func testCheckpointNoOpWithoutRequest() async {
-        let (sut, host, _, _, recorder) = makeSUT()
+        let (sut, host, _, recorder) = makeSUT()
         host.request = nil
         host.resumePosition = 400
         sut.checkpointNow()
@@ -525,18 +324,6 @@ private actor RecordingProvider: MediaProvider {
         try await playbackInfo(for: itemID)
     }
     nonisolated func imageURL(itemID: String, kind: ImageKind, maxWidth: Int?) -> URL? { nil }
-}
-
-private actor RecordingScrobbler: TraktScrobbling {
-    struct Call {
-        let event: PlaybackEvent
-        let progress: Double
-    }
-    private(set) var calls: [Call] = []
-
-    func scrobble(item: MediaItem, progress: Double, event: PlaybackEvent) async {
-        calls.append(Call(event: event, progress: progress))
-    }
 }
 
 private final class CheckpointRecorder: @unchecked Sendable {

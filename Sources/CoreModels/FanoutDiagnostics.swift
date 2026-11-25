@@ -134,43 +134,18 @@ public enum FanoutDiagnostics {
             + "kind=\(target.providerKind?.rawValue ?? "?") -> \(outcome)"
     }
 
-    /// (d) Drain summary after one mutation pass. Surfaces every tracker mirror's
-    /// pending flag (not just Trakt) so a stuck Simkl/AniList/MAL scrobble is
+    /// (d) Drain summary after one mutation pass. Surfaces every remaining destination's
+    /// pending flag so a stuck destination write is
     /// visible at a glance alongside the server targets.
     public static func drainDoneLine(  // l10n:content — developer-facing diagnostic
         canonicalMediaID: String,
         remainingTargets: Int,
-        fullyApplied: Bool,
-        traktPending: Bool,
-        simklPending: Bool = false,
-        anilistPending: Bool = false,
-        malPending: Bool = false
+        fullyApplied: Bool
     ) -> String {
         "drain.done canonical=\(canonicalMediaID) remainingTargets=\(remainingTargets) "
-            + "fullyApplied=\(fullyApplied) trakt=\(traktPending ? "pending" : "done") "
-            + "simkl=\(simklPending ? "pending" : "done") "
-            + "anilist=\(anilistPending ? "pending" : "done") "
-            + "mal=\(malPending ? "pending" : "done")"
+            + "fullyApplied=\(fullyApplied)"
     }
 
-    /// (e) One external-tracker scrobble attempt's outcome. Surfaces the silent
-    /// no-op branches inside each scrobbler (gate / no usable ids / not connected /
-    /// not anime) plus success / failure, so a watch that never reaches a tracker is
-    /// pinpointable on device. Logs the title + the catalogue ids being sent (imdb /
-    /// tmdb / tvdb / mal / anilist — never tokens), since a present-but-wrong id
-    /// (e.g. an episode id used as a show id) is the subtle failure to catch.
-    public static func scrobbleLine(tracker: String, item: MediaItem, outcome: String) -> String {  // l10n:content — developer-facing diagnostic
-        let se = item.kind == .episode
-            ? " s\(item.seasonNumber.map(String.init) ?? "?")e\(item.episodeNumber.map(String.init) ?? "?")"
-            : ""
-        let ids = item.providerIDs.isEmpty
-            ? "[]"
-            : "[" + item.providerIDs
-                .map { "\($0.key.lowercased()):\($0.value)" }
-                .sorted()
-                .joined(separator: ",") + "]"
-        return "scrobble.\(tracker) title=\"\(item.title)\" kind=\(item.kind)\(se) ids=\(ids) -> \(outcome)"
-    }
 
     // MARK: - Formatting helpers
 

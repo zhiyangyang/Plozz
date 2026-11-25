@@ -737,8 +737,8 @@ public actor DurableWatchlistMutationStore {
     /// is not authenticated.
     ///
     /// Like a rate limit, missing authentication is a fact about the destination,
-    /// not about one title — without this, a disconnected tracker is contacted
-    /// once per queued title (observed: 73 pointless Trakt calls). `resume`
+    /// not about one title — without this, a disconnected destination is contacted
+    /// once per queued title. `resume`
     /// un-parks them by phase, so this stays symmetric with reconnecting.
     @discardableResult
     public func parkDestinationForAuthentication(

@@ -1,10 +1,9 @@
 import Foundation
 import CoreModels
-import TraktService
 
 /// Concrete ``WatchMutationApplying`` for either app: resolves an `accountID` to its
 /// live `MediaProvider` (on the main actor) and performs the played / resume write,
-/// and mirrors finished watches through injected tracker closures.
+/// and mirrors finished watches through the outbox's server targets.
 ///
 /// Capability rules:
 ///  - **Unresolved provider** (signed out / still resolving) → throw, so the outbox
@@ -23,12 +22,6 @@ public struct AppShellWatchMutationApplier: WatchMutationAuthorizationEnforcing 
     /// turn; `AccountsProvidersModel.provider(forWatchMutationAccountID:...)`
     /// supplies this atomic check-and-resolve contract.
     private let resolveProvider: @Sendable (String) async -> (any MediaProvider)?
-    private let applyTrakt: @Sendable (TraktScrobbleIntent) async throws -> Void
-    private let applySimkl: @Sendable (TraktScrobbleIntent) async throws -> Void
-    private let currentWetrakrAccountIdentity: @Sendable () -> String?
-    private let applyWetrakr: @Sendable (TraktScrobbleIntent, Date, String, String) async throws -> Void
-    private let applyAniList: @Sendable (TraktScrobbleIntent) async throws -> Void
-    private let applyMAL: @Sendable (TraktScrobbleIntent) async throws -> Void
     /// The **active** `Account.id`s (the set the identity index warms and that
     /// Home/Search fan out over), so episode twin expansion knows which *other*
     /// servers to probe and identity expansion can conclude once they're all
@@ -82,14 +75,6 @@ public struct AppShellWatchMutationApplier: WatchMutationAuthorizationEnforcing 
             throw WatchMutationServerScopeError.unavailable
         },
         resolveProvider: @escaping @Sendable (String) async -> (any MediaProvider)?,
-        applyTrakt: @escaping @Sendable (TraktScrobbleIntent) async throws -> Void,
-        applySimkl: @escaping @Sendable (TraktScrobbleIntent) async throws -> Void,
-        applyAniList: @escaping @Sendable (TraktScrobbleIntent) async throws -> Void,
-        applyMAL: @escaping @Sendable (TraktScrobbleIntent) async throws -> Void,
-        wetrakrAccountIdentity: @escaping @Sendable () -> String? = { nil },
-        applyWetrakr: @escaping @Sendable (TraktScrobbleIntent, Date, String, String) async throws -> Void = { _, _, _, _ in
-            throw AppError.invalidResponse
-        },
         allAccountIDs: @escaping @Sendable () async -> [String] = { [] },
         indexedSeriesSources: @escaping @Sendable (MediaItem) -> [IndexedSource] = { _ in [] },
         indexedSources: @escaping @Sendable ([MediaIdentity], MediaItemKind?, String?, Int?, Set<String>) -> [IndexedSource] = { _, _, _, _, _ in [] },
@@ -100,12 +85,6 @@ public struct AppShellWatchMutationApplier: WatchMutationAuthorizationEnforcing 
         self.isActive = isActive
         self.validateServerScope = validateServerScope
         self.resolveProvider = resolveProvider
-        self.applyTrakt = applyTrakt
-        self.applySimkl = applySimkl
-        self.currentWetrakrAccountIdentity = wetrakrAccountIdentity
-        self.applyWetrakr = applyWetrakr
-        self.applyAniList = applyAniList
-        self.applyMAL = applyMAL
         self.allAccountIDs = allAccountIDs
         self.indexedSeriesSources = indexedSeriesSources
         self.indexedSources = indexedSources
@@ -224,83 +203,6 @@ public struct AppShellWatchMutationApplier: WatchMutationAuthorizationEnforcing 
             }
         }
         try await resumeWriter.setResumePosition(seconds, itemID: target.itemID, capturedAt: capturedAt)
-    }
-
-    public func scrobbleTrakt(_ intent: TraktScrobbleIntent) async throws {
-        guard await isActive() else { throw AppError.serverUnreachable }
-        try await WatchMutationDeliveryAuthorization.check()
-        try await applyTrakt(intent)
-    }
-
-    public func scrobbleTrakt(_ intent: TraktScrobbleIntent, source: WatchMutationTarget?) async throws {
-        do {
-            try await scrobbleTrakt(intent)
-        } catch TraktScrobbleError.unidentifiableItem {
-            guard let source else { throw TraktScrobbleError.unidentifiableItem }
-            guard await isActive() else { throw AppError.serverUnreachable }
-            try await WatchMutationDeliveryAuthorization.check()
-            guard let provider = await scopedProvider(for: source.accountID) else {
-                throw AppError.serverUnreachable
-            }
-            guard await isActive() else { throw AppError.serverUnreachable }
-            try await WatchMutationDeliveryAuthorization.check()
-            let item = try await provider.item(id: source.itemID)
-            guard await isActive() else { throw AppError.serverUnreachable }
-            try await WatchMutationDeliveryAuthorization.check()
-            guard item.id == source.itemID, item.kind == intent.kind,
-                  item.sourceAccountID == nil || item.sourceAccountID == source.accountID,
-                  intent.seasonNumber == nil || intent.seasonNumber == item.seasonNumber,
-                  intent.episodeNumber == nil || intent.episodeNumber == item.episodeNumber else {
-                throw TraktScrobbleError.unidentifiableItem
-            }
-            var recovered = intent
-            recovered.seasonNumber = item.seasonNumber
-            recovered.episodeNumber = item.episodeNumber
-            let refreshedKeys = Set(item.providerIDs.keys.map { $0.lowercased() })
-            recovered.providerIDs = intent.providerIDs.filter { !refreshedKeys.contains($0.key.lowercased()) }
-                .merging(item.providerIDs) { _, refreshed in refreshed }
-            if !TraktScrobbler.canIdentify(recovered.makeScrobbleItem()),
-               item.kind == .episode, let seriesID = item.seriesID {
-                let series = try await provider.item(id: seriesID)
-                guard await isActive() else { throw AppError.serverUnreachable }
-                try await WatchMutationDeliveryAuthorization.check()
-                guard series.id == seriesID, series.kind == .series,
-                      series.sourceAccountID == nil || series.sourceAccountID == source.accountID else {
-                    throw TraktScrobbleError.unidentifiableItem
-                }
-                recovered.providerIDs.mergeSeriesProviderIDs(from: series.providerIDs)
-            }
-            try await scrobbleTrakt(recovered)
-        }
-    }
-
-    public func scrobbleSimkl(_ intent: TraktScrobbleIntent) async throws {
-        guard await isActive() else { throw AppError.serverUnreachable }
-        try await WatchMutationDeliveryAuthorization.check()
-        try await applySimkl(intent)
-    }
-
-    public var wetrakrAccountIdentity: String? { currentWetrakrAccountIdentity() }
-
-    public func scrobbleWetrakr(
-        _ intent: TraktScrobbleIntent, capturedAt: Date,
-        idempotencyKey: String, expectedAccountIdentity: String
-    ) async throws {
-        guard await isActive() else { throw AppError.serverUnreachable }
-        try await WatchMutationDeliveryAuthorization.check()
-        try await applyWetrakr(intent, capturedAt, idempotencyKey, expectedAccountIdentity)
-    }
-
-    public func scrobbleAniList(_ intent: TraktScrobbleIntent) async throws {
-        guard await isActive() else { throw AppError.serverUnreachable }
-        try await WatchMutationDeliveryAuthorization.check()
-        try await applyAniList(intent)
-    }
-
-    public func scrobbleMAL(_ intent: TraktScrobbleIntent) async throws {
-        guard await isActive() else { throw AppError.serverUnreachable }
-        try await WatchMutationDeliveryAuthorization.check()
-        try await applyMAL(intent)
     }
 
     /// Resolves the cross-server twins for a queued mutation. Branches on the
@@ -490,25 +392,5 @@ public struct AppShellWatchMutationApplier: WatchMutationAuthorizationEnforcing 
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds, execute: timeout)
         defer { timeout.cancel() }
         return try? await searchTask.value
-    }
-}
-
-extension TraktScrobbleIntent {
-    public var playbackEvent: PlaybackEvent { progress < 100 ? .pause : .stop }
-
-    /// Rebuilds a minimal `MediaItem` carrying just the fields a Trakt scrobble body
-    /// needs (kind, ids, season/episode, title/year), so the durable intent can be
-    /// replayed without retaining the original item.
-    public func makeScrobbleItem() -> MediaItem {
-        MediaItem(
-            id: "trakt-intent",
-            title: title ?? "",
-            kind: kind,
-            parentTitle: seriesTitle,
-            seasonNumber: seasonNumber,
-            episodeNumber: episodeNumber,
-            productionYear: year,
-            providerIDs: providerIDs
-        )
     }
 }
