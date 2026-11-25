@@ -30,8 +30,7 @@ final class PlozziOSSettingsModel {
 
     init(
         namespace: String? = nil,
-        allowsDiscovery: @escaping @MainActor () -> Bool = { true },
-        isSeerrConfigured: @escaping @MainActor () -> Bool = { false }
+        allowsDiscovery: @escaping @MainActor () -> Bool = { true }
     ) {
         theme = ThemeSettingsModel(
             store: ThemeSettingsStore(namespace: namespace)
@@ -59,7 +58,6 @@ final class PlozziOSSettingsModel {
             layoutStore: NavigationLibraryLayoutStore(namespace: namespace),
             librariesSnapshotStore: NavigationLibrariesSnapshotStore(namespace: namespace)
         )
-        navigation.setDiscoveryPolicy(allowed: allowsDiscovery, isSeerrConfigured: isSeerrConfigured)
         playback = PlaybackSettingsModel(
             store: PlaybackSettingsStore(namespace: namespace)
         )
@@ -91,7 +89,6 @@ final class PlozziOSSettingsModel {
             store: HeroSettingsStore(namespace: namespace)
         )
         hero.setDiscoveryPolicy(allowsDiscovery)
-        hero.setSeerrConnection(isSeerrConfigured)
         heroBackground = HeroBackgroundSettingsModel(
             store: HeroBackgroundSettingsStore(namespace: namespace)
         )

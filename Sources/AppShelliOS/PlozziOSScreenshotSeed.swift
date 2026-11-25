@@ -397,7 +397,6 @@ enum PlozziOSScreenshotSeed {
             }
             guard !appModel.profiles.firstRunProfileSetupComplete else { return }
             appModel.confirmFirstRunProfile()
-            appModel.completeFirstRunSeerrSetup()
             appModel.finishFirstRunThemeSelection()
         }
         #endif

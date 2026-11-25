@@ -2200,7 +2200,6 @@ struct PlozziOSHomeHeroArtworkLink: View {
                 appModel: appModel,
                 provider: provider,
                 item: item,
-                seerService: appModel.seerService,
                 openingArtwork: seedArtwork
             )
         }

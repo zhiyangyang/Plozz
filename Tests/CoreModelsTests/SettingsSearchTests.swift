@@ -21,7 +21,6 @@ final class SettingsSearchTests: XCTestCase {
                 XCTAssertEqual(entry.title.resolved(locale: locale), name)
                 XCTAssertTrue(localizedIndex.results(for: name).contains { $0.id == id }, "\(id): \(name)")
             }
-            XCTAssertEqual(SettingsSearchPage.seerr.path.map { $0.resolved(locale: locale) }, ["Seerr"])
         }
         let theme = try XCTUnwrap(SettingsSearchCatalog.entry(id: "theme"))
         guard case .localized = theme.title else {
@@ -119,35 +118,12 @@ final class SettingsSearchTests: XCTestCase {
         XCTAssertTrue(entries.allSatisfy { SettingsSearchCatalog.entry(id: $0.id) == $0 })
         let phone = Set(SettingsSearchCatalog.entries(on: .phone).map(\.id))
         let tablet = Set(SettingsSearchCatalog.entries(on: .tablet).map(\.id))
-        let tv = Set(SettingsSearchCatalog.entries(on: .television).map(\.id))
         XCTAssertTrue(phone.contains("player-orientation"))
         XCTAssertFalse(tablet.contains("player-orientation"))
         XCTAssertTrue(tablet.contains("background-audio"))
-        XCTAssertFalse(tv.contains("background-audio"))
-        XCTAssertTrue(tv.contains("card-focus"))
-        XCTAssertFalse(phone.contains("card-focus"))
-        XCTAssertFalse(phone.contains("navigation-layout"))
         let remembered = SettingsSearchCatalog.entry(id: "subtitle-remember")
         XCTAssertEqual(remembered?.destinationPage(on: .phone), .playback)
         XCTAssertEqual(remembered?.destinationPage(on: .television), .subtitles)
-    }
-
-    func testRowStyleSearchIsSeparateFromHeroAndOnlyAvailableOnTV() {
-        let targets = [
-            "home-layout", "showcase-logo-size", "showcase-text-size", "showcase-ratings",
-            "showcase-age", "showcase-rating-count", "showcase-discovery-row"
-        ]
-        let television = SettingsSearchCatalog.entries(on: .television)
-        for id in targets {
-            XCTAssertEqual(television.first { $0.id == id }?.page, .homeRowStyle, id)
-            XCTAssertFalse(SettingsSearchCatalog.carouselHeroTargets.contains(id), id)
-            for platform: SettingsSearchEntry.Platform in [.phone, .tablet] {
-                XCTAssertFalse(SettingsSearchCatalog.entries(on: platform).contains { $0.id == id }, id)
-            }
-        }
-        XCTAssertEqual(SettingsSearchCatalog.entry(id: "hero-ratings")?.page, .heroRatings)
-        XCTAssertEqual(SettingsSearchCatalog.entry(id: "hero-enabled")?.page, .hero)
-        XCTAssertEqual(SettingsSearchCatalog.entry(id: "home-row-style")?.page, .home)
     }
 
     func testModelBackedFamiliesAreExhaustive() {

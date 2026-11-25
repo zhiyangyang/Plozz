@@ -136,10 +136,8 @@ public enum SettingsRoute: Hashable {
     case integrations
     case metadata
     case metadataDiagnostics
-    case seerr
     case syncSetup
     case syncTroubleshooting
-    case seerUserPicker(profileID: String)
     case releaseNotes
     case attributions
     case help
@@ -181,7 +179,7 @@ extension SettingsRoute {
             if entry.requiresAdultProfile { return .adultProfile }
             return entry.page.requiresParentalAuthorization && isParentalSealed ? .parentalPIN : .allowed
         case .profile, .servers, .server, .parentalPIN, .topShelf,
-             .metadata, .metadataDiagnostics, .seerr, .seerUserPicker,
+             .metadata, .metadataDiagnostics,
              .syncSetup, .syncTroubleshooting:
             return .adultProfile
         case .myLibraries, .plexUser, .serverUser, .parentalPINSetup:

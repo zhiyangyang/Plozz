@@ -160,7 +160,6 @@ struct PlozziOSItemPage: View {
                 appModel: appModel,
                 provider: provider,
                 item: target,
-                seerService: appModel.seerService,
                 // An episode arriving through the menu is "Episode Info", which
                 // wants the episode itself. "Go to Season" hands over a season,
                 // so the two are distinguishable by kind.

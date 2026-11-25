@@ -23,7 +23,6 @@ public struct NavigationLibraryLayout: Codable, Equatable, Sendable {
     public static let collectionsKey = "plozz.navigation.collections"
     public static let watchlistKey = "plozz.navigation.watchlist"
     public static let upcomingKey = "plozz.navigation.upcoming"
-    public static let discoverKey = "plozz.navigation.discover"
     public static let liveTVKey = "plozz.navigation.liveTV"
     public static let musicKey = "plozz.navigation.music"
     public static let downloadsKey = "plozz.navigation.downloads"
@@ -250,7 +249,6 @@ public struct NavigationLibraryLayout: Codable, Equatable, Sendable {
             collectionsKey,
             watchlistKey,
             upcomingKey,
-            discoverKey,
             musicKey,
             downloadsKey,
             settingsKey,

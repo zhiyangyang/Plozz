@@ -280,13 +280,6 @@ public enum PlozzAttributions {
             licenses: [.init("API", family: .api)]
         ),
         PlozzAttribution(
-            title: "Seerr",
-            detail:
-                "Media discovery and requests can connect to a user's Seerr server. "
-                + "Source: https://github.com/seerr-team/seerr.",
-            licenses: [.init("API", family: .api)]
-        ),
-        PlozzAttribution(
             title: "Kitsu",
             detail:
                 "Anime artwork is sourced from Kitsu (https://kitsu.io). "

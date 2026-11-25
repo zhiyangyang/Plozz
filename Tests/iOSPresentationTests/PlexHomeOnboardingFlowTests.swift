@@ -47,7 +47,7 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         XCTAssertEqual(app.profileOnboardingStep, .libraries)
         app.advanceProfileOnboarding()
         XCTAssertEqual(app.profileBeingOnboarded?.id, selected.id)
-        XCTAssertEqual(app.profileOnboardingStep, .seerr)
+        XCTAssertEqual(app.profileOnboardingStep, .theme)
         XCTAssertTrue(app.profiles.profiles.first { $0.id == previous.id }?.needsSetup == true)
         XCTAssertFalse(app.profiles.activeProfile.needsSetup)
     }
@@ -124,8 +124,6 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         app.completeLibrarySelection()
         XCTAssertEqual(app.pendingFirstRunStep, .confirmProfile)
         app.confirmFirstRunProfile()
-        XCTAssertEqual(app.pendingFirstRunStep, .seerr)
-        app.completeFirstRunSeerrSetup()
         XCTAssertEqual(app.pendingFirstRunStep, .theme)
         app.finishFirstRunThemeSelection()
         XCTAssertNil(app.pendingFirstRunStep)

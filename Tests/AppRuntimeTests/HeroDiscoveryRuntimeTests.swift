@@ -129,7 +129,7 @@ final class HeroDiscoveryRuntimeTests: XCTestCase {
             HeroCurationLoadKey(
                 content: .init(), settings: settings, visibility: .default,
                 freshnessRevision: 0, identityIndexRevision: snapshot.revision,
-                scopeID: ObjectIdentifier(scope), seerRevision: connection
+                scopeID: ObjectIdentifier(scope)
             )
         }
 

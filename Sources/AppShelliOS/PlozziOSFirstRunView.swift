@@ -50,7 +50,6 @@ struct PlozziOSFirstRunView: View {
                 )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .prepareSeerrSetup(appModel.seerService)
         .onChange(of: step) { _, newStep in
             // nil means the flow finished; keep the current screen rendered so
             // the cover slides away over it rather than over an empty view.
@@ -100,18 +99,6 @@ struct PlozziOSFirstRunView: View {
             }
         case .confirmProfile:
             PlozziOSFirstProfileView(appModel: appModel)
-        case .seerr:
-            ProfileSeerrSetupView(
-                seer: appModel.seerService,
-                profile: appModel.profiles.activeProfile,
-                onSelect: { user in
-                    appModel.setSeerrUser(
-                        user,
-                        for: appModel.profiles.activeProfileID
-                    )
-                },
-                onContinue: appModel.completeFirstRunSeerrSetup
-            )
         case .theme:
             NavigationStack {
                 PlozziOSThemeWelcomeView(

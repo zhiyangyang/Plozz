@@ -255,8 +255,7 @@ struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>
             header()
                 .settingsActionRow()
             ForEach(ProfileSettingsCategory.allCases.filter {
-                (!isKidsProfile || ($0 != .seerr && $0 != .downloads))
-                    && (PlozzCustomization.supportsSeerr || $0 != .seerr)
+                (!isKidsProfile || $0 != .downloads)
                     && (PlozzCustomization.supportsTrackers || $0 != .trackers)
             }) { category in
                 if category == .language {
@@ -288,9 +287,7 @@ struct PlozziOSSettingsCategoryLabel: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 4) {
-                if category == .seerr {
-                    Text(verbatim: "Seerr")
-                } else if let title = category.localizedTitle {
+                if let title = category.localizedTitle {
                     Text(title)
                 }
                 if category == .libraries {
@@ -426,8 +423,6 @@ private struct PlozziOSProfileSettingsPage: View {
             PlozziOSScreensNavigationSettingsView(appModel: appModel)
         case .trackers:
             PlozziOSTrackerSettingsView(appModel: appModel)
-        case .seerr:
-            PlozziOSSeerrSettingsView(appModel: appModel)
         case .language:
             List {
                 PlozziOSSettingsLanguagePicker(appLanguage: appModel.appLanguage)
@@ -1621,7 +1616,6 @@ private struct PlozziOSSettingsSearchDestination: View {
                 isParentalUnlocked: isParentalUnlocked
             )
         case .accountLibraries: profilePage(.libraries)
-        case .seerr: PlozziOSSeerrSettingsView(appModel: appModel)
         case .sync: PlozziOSSyncSetupSettingsView(appModel: appModel)
         case .metadata:
             PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())

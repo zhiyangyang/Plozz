@@ -457,7 +457,6 @@ public final class HeroSettingsModel {
 
     private let store: HeroSettingsStoring
     private var discoveryAllowed: @MainActor () -> Bool = { true }
-    private var isSeerrConfigured: @MainActor () -> Bool = { false }
 
     public init(store: HeroSettingsStoring = HeroSettingsStore()) {
         self.store = store
@@ -467,12 +466,7 @@ public final class HeroSettingsModel {
     public var allowsDiscovery: Bool { discoveryAllowed() }
 
     public var effectiveSettings: HeroSettings {
-        settings.applyingSeerrDefault(isConfigured: isSeerrConfigured())
-            .applyingDiscoveryPolicy(allowed: allowsDiscovery)
-    }
-
-    public func setSeerrConnection(_ isConfigured: @escaping @MainActor () -> Bool) {
-        isSeerrConfigured = isConfigured
+        settings.applyingDiscoveryPolicy(allowed: allowsDiscovery)
     }
 
     /// Read the live profile so local edits and incoming household sync apply immediately.

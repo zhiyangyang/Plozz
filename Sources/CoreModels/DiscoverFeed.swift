@@ -43,7 +43,7 @@ public enum DiscoverFeedError: Error, Equatable, Sendable {
     public var userMessage: LocalizedStringResource {
         switch self {
         case .metadataUnavailable:
-            "Discover is unavailable. Connect Seerr or check your metadata settings."
+            "Discover is unavailable. Check your metadata settings."
         case .service(let error):
             error.userMessage
         }

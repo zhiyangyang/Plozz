@@ -7,7 +7,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
     case search
     case watchlist
     case upcoming
-    case discover
     case liveTV
     case music
     case settings
@@ -23,7 +22,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case .search: return "search"
         case .watchlist: return "watchlist"
         case .upcoming: return "upcoming"
-        case .discover: return "discover"
         case .liveTV: return "liveTV"
         case .music: return "music"
         case .settings: return "settings"
@@ -38,7 +36,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case "search": self = .search
         case "watchlist": self = .watchlist
         case "upcoming": self = .upcoming
-        case "discover": self = .discover
         case "liveTV": self = .liveTV
         case "music": self = .music
         case "settings": self = .settings
@@ -96,7 +93,7 @@ public enum NavigationDestinationDefaults {
 
     public static func compact(hasMusic: Bool) -> [String] {
         var keys = [
-            NavigationLibraryLayout.homeKey, NavigationLibraryLayout.discoverKey,
+            NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.watchlistKey, NavigationLibraryLayout.upcomingKey
         ]
         keys.append(NavigationLibraryLayout.liveTVKey)
@@ -165,14 +162,10 @@ public enum NavigationDestinationDefaults {
             ]
         }
         var keys = iOSDefaultVisibleKeys + [
-            NavigationLibraryLayout.discoverKey,
             NavigationLibraryLayout.watchlistKey,
             NavigationLibraryLayout.liveTVKey,
             NavigationLibraryLayout.settingsKey,
         ]
-        if !PlozzCustomization.supportsDiscover {
-            keys.removeAll { $0 == NavigationLibraryLayout.discoverKey }
-        }
         return keys
     }
 
@@ -329,7 +322,6 @@ public enum NavigationRailPlan {
         case NavigationLibraryLayout.searchKey: return .search
         case NavigationLibraryLayout.watchlistKey: return .watchlist
         case NavigationLibraryLayout.upcomingKey: return .upcoming
-        case NavigationLibraryLayout.discoverKey: return .discover
         case NavigationLibraryLayout.liveTVKey: return .liveTV
         case NavigationLibraryLayout.musicKey: return .music
         case NavigationLibraryLayout.settingsKey: return .settings
@@ -345,7 +337,6 @@ public enum NavigationRailPlan {
         case .search: return NavigationLibraryLayout.searchKey
         case .watchlist: return NavigationLibraryLayout.watchlistKey
         case .upcoming: return NavigationLibraryLayout.upcomingKey
-        case .discover: return NavigationLibraryLayout.discoverKey
         case .liveTV: return NavigationLibraryLayout.liveTVKey
         case .music: return NavigationLibraryLayout.musicKey
         case .settings: return NavigationLibraryLayout.settingsKey

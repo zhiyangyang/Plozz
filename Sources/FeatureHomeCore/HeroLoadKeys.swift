@@ -80,7 +80,6 @@ public struct HeroCurationLoadKey: Equatable, Sendable {
     private let identityIndexRevision: Int
     private let watchlistMembershipRevision: Int
     private let scopeID: ObjectIdentifier
-    private let seerRevision: UUID
     private let discoverySeeds: [HeroDiscoveryRequest.SeedIdentity]
 
     public init(
@@ -91,7 +90,6 @@ public struct HeroCurationLoadKey: Equatable, Sendable {
         identityIndexRevision: Int,
         watchlistMembershipRevision: Int = 0,
         scopeID: ObjectIdentifier,
-        seerRevision: UUID,
         isPreparingHome: Bool = false,
         loadingRows: Set<HomeRowKind> = [],
         language: String = "en"
@@ -114,7 +112,6 @@ public struct HeroCurationLoadKey: Equatable, Sendable {
         self.watchlistMembershipRevision = settings.isActive && settings.isEnabled(.watchlist)
             ? watchlistMembershipRevision : 0
         self.scopeID = scopeID
-        self.seerRevision = seerRevision
         discoverySeeds = settings.usesDiscoveryWatchlistSeeds
             ? HeroDiscoveryRequest(seeds: content.watchlist).seedIdentities : []
     }

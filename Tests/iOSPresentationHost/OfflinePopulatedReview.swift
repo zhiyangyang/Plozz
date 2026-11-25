@@ -114,7 +114,7 @@ enum OfflinePopulatedReview {
         let enabled = [
             NavigationLibraryLayout.homeKey, "\(accountID):movies", "\(accountID):shows",
             NavigationLibraryLayout.watchlistKey, NavigationLibraryLayout.downloadsKey,
-            NavigationLibraryLayout.searchKey, NavigationLibraryLayout.discoverKey, NavigationLibraryLayout.liveTVKey
+            NavigationLibraryLayout.searchKey, NavigationLibraryLayout.liveTVKey
         ]
         app.settings.navigation.applyLibrarySections(
             .init(enabled: enabled, disabled: available.filter { !enabled.contains($0) }),

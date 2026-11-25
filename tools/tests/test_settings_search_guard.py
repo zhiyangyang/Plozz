@@ -313,7 +313,7 @@ class RepositoryCoverageTests(unittest.TestCase):
     def test_reviewed_inner_controls_cannot_outlive_their_row_anchors(self):
         anchors = {
             "disc-playback", "subtitle-language", "external-template",
-            "trailer-sources", "detail-background", "seerr-profile-user",
+            "trailer-sources", "detail-background",
         }
         def matches_reviewed_anchor(expression):
             pattern = GUARD.string_pattern(expression)

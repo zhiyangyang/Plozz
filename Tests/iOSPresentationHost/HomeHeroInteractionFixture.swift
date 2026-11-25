@@ -82,7 +82,6 @@ struct HomeHeroInteractionFixture: View {
     @State private var playCount = 0
     @State private var settingsCount = 0
     @State private var isMuted = true
-    @State private var presentsSeasons = false
     @State private var homePageIsVisible = false
     @State private var pinnedIDs = ""
     private var testsAutoAdvance: Bool {
@@ -173,7 +172,7 @@ struct HomeHeroInteractionFixture: View {
                     autoAdvanceSeconds: 3,
                     onPlay: { _ in playCount += 1 },
                     onPinnedItemsChanged: { pinnedIDs = $0.sorted().joined(separator: ",") },
-                    isFrontmost: homePageIsVisible && !presentsSeasons,
+                    isFrontmost: homePageIsVisible,
                     pullModel: pull
                 )
             } rows: {
@@ -210,22 +209,6 @@ struct HomeHeroInteractionFixture: View {
             }
             .scrollClipDisabled()
             .plozzOnPageAppearanceChange { homePageIsVisible = $0 }
-            .overlay(alignment: .topTrailing) {
-                if testsAutoAdvance {
-                    Button("Open Seasons") { presentsSeasons = true }
-                }
-            }
-            .plozzSheet(isPresented: $presentsSeasons) {
-                PlozziOSSeasonRequestSheet(
-                    series: MediaItem(id: "series", title: "Fixture Series", kind: .series),
-                    availability: HeroRequestControlsFixture.availableSeasons,
-                    isRequesting: false, isRefreshing: false, refreshFailed: false, actingName: nil,
-                    onRefresh: {}, onRequest: { _ in }
-                )
-                .overlay(alignment: .bottom) {
-                    Text(verbatim: pinnedIDs).accessibilityIdentifier("sheet-hero-selection")
-                }
-            }
             .navigationTitle(usesNativeChrome ? "" : "Home fixture")
             .plozziOSItemNavigation(appModel: appModel)
             .plozziOSRailPlay { _ in playCount += 1 }

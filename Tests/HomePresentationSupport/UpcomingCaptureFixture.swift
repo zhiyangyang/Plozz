@@ -712,8 +712,6 @@ final class UpcomingCaptureState {
         if ProcessInfo.processInfo.arguments.contains("--capture-progressive") { return }
         let scope = UpcomingFeedLoader.scopeKey(
             profileID: app.profiles.activeProfileID, accounts: app.upcomingAccounts,
-            requestIdentity: app.profiles.activeProfile.seerrRequestIdentity,
-            connectionRevision: app.seerService.connectionRevision,
             language: Locale.current.identifier, regionCode: Locale.current.region?.identifier
         )
         let namespace = app.profiles.activeNamespace

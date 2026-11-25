@@ -36,14 +36,6 @@ struct PlozziOSSearchView: View {
                     appModel?.settings.homeVisibility.visibility.disabledKeys
                         ?? []
                 },
-                seerSearch: { [seer = appModel.seerService] query in
-                    guard !OfflineMode.shared.isEnabled else { return [] }
-                    return (try? await seer.search(query)) ?? []
-                },
-                seerRequestAvailability: { [seer = appModel.seerService] item in
-                    guard !OfflineMode.shared.isEnabled else { return nil }
-                    return await seer.requestAvailability(for: item)
-                }
             )
         )
     }
@@ -351,7 +343,6 @@ private struct PlozziOSSearchHeader: View {
 
 private struct PlozziOSSearchResultCard: View {
     @Environment(PlozziOSAppModel.self) private var appModel
-    @ScaledMetric(relativeTo: .caption2) private var cueHeight: CGFloat = 16
     let item: MediaItem
     let provider: (any MediaProvider)?
 
@@ -362,8 +353,7 @@ private struct PlozziOSSearchResultCard: View {
                     PlozziOSItemDetailView(
                         appModel: appModel,
                         provider: provider,
-                        item: item,
-                        seerService: appModel.seerService
+                        item: item
                     )
                 } label: {
                     card
@@ -376,32 +366,11 @@ private struct PlozziOSSearchResultCard: View {
     }
 
     private var card: some View {
-        let cue = SearchSection.availabilityCue(for: item)
-        return VStack(alignment: .leading, spacing: 6) {
-            PlozziOSPosterCard(
-                item: item,
-                reservesSubtitleSpace: PlozzCustomization.isCustomBuild,
-                captionHorizontalInset: 0
-            )
-            if PlozzCustomization.isCustomBuild {
-                Group {
-                    if let cue {
-                        Label(cue, systemImage: "rectangle.stack.badge.plus")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tint)
-                            .lineLimit(1)
-                    } else {
-                        Color.clear
-                            .accessibilityHidden(true)
-                    }
-                }
-                .frame(minHeight: cueHeight, alignment: .leading)
-            } else if let cue {
-                Label(cue, systemImage: "rectangle.stack.badge.plus")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tint)
-            }
-        }
+        PlozziOSPosterCard(
+            item: item,
+            reservesSubtitleSpace: PlozzCustomization.isCustomBuild,
+            captionHorizontalInset: 0
+        )
     }
 }
 #endif

@@ -394,7 +394,7 @@ struct HeroSettingsScreen: View {
             }
             HeroSettingsGroup(
                 title: "Discovery providers",
-                detail: "Recommendations may include content outside your libraries. Seerr is only needed to request it.",
+                detail: "Recommendations may include content outside your libraries.",
                 searchTargets: HeroDiscoverySource.allCases.map { "hero-discovery-\($0.rawValue)" }
             ) {
                 ForEach(HeroDiscoverySource.allCases) { source in

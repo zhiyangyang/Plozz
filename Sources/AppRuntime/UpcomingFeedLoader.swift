@@ -20,8 +20,7 @@ extension UniversalWatchlistHost {
 public enum UpcomingFeedLoader {
     public static func scopeKey(
         profileID: String, accounts: [ResolvedAccount],
-        requestIdentity: SeerRequestIdentity, connectionRevision: UUID?,
-        language: String, regionCode: String?, requestServerURL: String? = nil
+        language: String, regionCode: String?
     ) -> String {
         let sources = accounts.map {
             [
@@ -31,8 +30,7 @@ public enum UpcomingFeedLoader {
             ].map { "\($0.utf8.count):\($0)" }.joined()
         }.sorted().joined(separator: "|")
         return [
-            "interested-titles-v2", profileID, sources, String(describing: requestIdentity),
-            connectionRevision?.uuidString ?? "", language, regionCode ?? "", requestServerURL ?? "",
+            "interested-titles-v2", profileID, sources, language, regionCode ?? "",
         ].map { "\($0.utf8.count):\($0)" }.joined()
     }
 
@@ -47,7 +45,7 @@ public enum UpcomingFeedLoader {
     public static func load(
         accounts: [ResolvedAccount], watchlist: [MediaItem], regionCode: String?,
         interval: DateInterval,
-        requestedTitles: @escaping @Sendable () async throws -> [MediaItem],
+        requestedTitles: @escaping @Sendable () async throws -> [MediaItem] = { [] },
         isCurrent: @escaping @MainActor @Sendable () -> Bool,
         onProgress: @escaping @MainActor @Sendable ([UpcomingRelease]) -> Void = { _ in },
         schedule: @escaping @Sendable (MediaItem, DateInterval) async throws -> [UpcomingEpisode] = {

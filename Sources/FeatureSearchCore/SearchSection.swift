@@ -17,7 +17,6 @@ public struct SearchSection: Identifiable, Equatable, Sendable {
         case tvShows
         case episodes
         case other
-        case notInLibrary
 
         /// The section header shown to the user.
         ///
@@ -53,12 +52,6 @@ public struct SearchSection: Identifiable, Equatable, Sendable {
                     defaultValue: "Other",
                     comment: "Header for the search-results section collecting result types with no section of their own: seasons, videos, folders, collections."
                 )
-            case .notInLibrary:
-                return LocalizedStringResource(
-                    "search.section.notInLibrary",
-                    defaultValue: "Not in Your Library",
-                    comment: "Header for the search-results section listing titles the user does not have, which can be requested via Seerr."
-                )
             }
         }
     }
@@ -92,84 +85,4 @@ public struct SearchSection: Identifiable, Equatable, Sendable {
         }
     }
 
-    /// Compact Search-only cue for a playable series whose Seerr match says only
-    /// part of the show is available. Ordinary library cards have no availability,
-    /// and fully absent discovery cards remain in "Not in Your Library".
-    public static func availabilityCue(for item: MediaItem) -> LocalizedStringResource? {
-        guard item.kind == .series, item.availability == .partiallyAvailable else { return nil }
-        return LocalizedStringResource(
-            "search.cue.moreSeasons",
-            defaultValue: "More Seasons",
-            comment: "Badge on a search result for a show only partly in the user's library, meaning more seasons can be requested."
-        )
-    }
-
-    /// Transfers Seerr's partial-series state onto the matching playable library
-    /// item without changing its provider id, sources, ordering, or navigation.
-    /// The discovery duplicate is still filtered from "Not in Your Library".
-    ///
-    /// Pairing uses the shared kind-scoped identity overlap rather than a bare TMDb
-    /// compare, so a show the library exposes as IMDb/TVDB-only still picks up its
-    /// "More Seasons" cue, and a film sharing a TMDb integer with an unrelated show
-    /// never does.
-    public static func mergingDiscoveryAvailability(
-        into libraryResults: [MediaItem],
-        discoveryResults: [MediaItem],
-        requestableSeriesKeys: Set<String>
-    ) -> [MediaItem] {
-        guard !requestableSeriesKeys.isEmpty else { return libraryResults }
-        let partialSeriesKeys = discoveryResults.reduce(into: Set<String>()) { keys, item in
-            guard item.kind == .series, item.availability == .partiallyAvailable else { return }
-            let itemKeys = MediaItemIdentity.overlapKeys(for: item)
-            guard !itemKeys.isDisjoint(with: requestableSeriesKeys) else { return }
-            keys.formUnion(itemKeys)
-        }
-        guard !partialSeriesKeys.isEmpty else { return libraryResults }
-        return libraryResults.map { item in
-            guard item.kind == .series,
-                  !MediaItemIdentity.overlapKeys(for: item)
-                      .isDisjoint(with: partialSeriesKeys)
-            else { return item }
-            var updated = item
-            updated.availability = .partiallyAvailable
-            return updated
-        }
-    }
-
-    /// Builds the "Not in Your Library" section from Seerr discovery results,
-    /// filtering out anything that is really in the user's library:
-    ///
-    /// - titles Seerr reports as already `available`/`partiallyAvailable`, and
-    /// - titles sharing any strong identity with one the library search returned.
-    ///
-    /// The overlap test used to compare TMDb ids only, which double-listed every
-    /// title the library exposes under IMDb, TVDB or AniList but not TMDb — the user
-    /// saw the same film in their results *and* under "Not in Your Library", with a
-    /// Request button for something they already owned. It was also kind-blind, so a
-    /// requestable show could vanish because an unrelated movie shared its number.
-    ///
-    /// Preserves Seerr's relevance order and caps to `limit` (0 = uncapped).
-    /// Returns `nil` when nothing requestable remains, so the caller simply omits
-    /// the section.
-    public static func notInLibrarySection(
-        discoveryResults: [MediaItem],
-        libraryResults: [MediaItem],
-        limit: Int = 0
-    ) -> SearchSection? {
-        let libraryKeys = libraryResults.reduce(into: Set<String>()) {
-            $0.formUnion(MediaItemIdentity.overlapKeys(for: $1))
-        }
-        let filtered = discoveryResults.filter { item in
-            switch item.availability {
-            case .available, .partiallyAvailable:
-                return false // already fully/partly in the library
-            default:
-                break
-            }
-            // the library search already surfaced this title
-            return MediaItemIdentity.overlapKeys(for: item).isDisjoint(with: libraryKeys)
-        }
-        let capped = limit > 0 ? Array(filtered.prefix(limit)) : filtered
-        return capped.isEmpty ? nil : SearchSection(kind: .notInLibrary, items: capped)
-    }
 }

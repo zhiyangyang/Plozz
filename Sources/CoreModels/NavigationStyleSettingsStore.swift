@@ -84,28 +84,12 @@ public final class NavigationStyleSettingsModel {
     public private(set) var contentLibraries: [AggregatedLibrary]
     public private(set) var discoveredAccountIDs: Set<String>
     public private(set) var offlineAccountIDs: Set<String> = []
-    @ObservationIgnored private var discoveryAllowed: @MainActor () -> Bool = { true }
-    @ObservationIgnored private var seerrConfigured: @MainActor () -> Bool = { false }
-
-    public var allowsDiscover: Bool { discoveryAllowed() }
-
-    public func setDiscoveryPolicy(
-        allowed: @escaping @MainActor () -> Bool,
-        isSeerrConfigured: @escaping @MainActor () -> Bool
-    ) {
-        discoveryAllowed = allowed
-        seerrConfigured = isSeerrConfigured
-    }
-
     public func availableNavigationKeys(_ keys: [String]) -> [String] {
-        keys.filter { $0 != NavigationLibraryLayout.discoverKey || allowsDiscover }
+        keys
     }
 
     private func resolvedHiddenKeys(_ additional: Set<String>) -> Set<String> {
-        var hidden = automaticallyHiddenKeys.union(additional)
-        hidden.remove(NavigationLibraryLayout.discoverKey)
-        if !seerrConfigured() { hidden.insert(NavigationLibraryLayout.discoverKey) }
-        return hidden
+        automaticallyHiddenKeys.union(additional)
     }
 
     public var resolvedLibraryLayout: NavigationLibraryLayout {
@@ -121,7 +105,6 @@ public final class NavigationStyleSettingsModel {
             retainingWatchlist: retainingWatchlist
         )
         // A child restriction wins over explicit Show and synced layout intent.
-        if !allowsDiscover { layout.hiddenKeys.insert(NavigationLibraryLayout.discoverKey) }
         return layout
     }
 

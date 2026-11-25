@@ -19,9 +19,7 @@ public enum PlozzCustomization {
 
     public static var supportsCloudSync: Bool { !isCustomBuild }
     public static var supportsSyncSetup: Bool { !isCustomBuild }
-    public static var supportsSeerr: Bool { !isCustomBuild }
     public static var supportsTrackers: Bool { !isCustomBuild }
-    public static var supportsDiscover: Bool { !isCustomBuild }
 
     /// The personal build opens a library directly on its Browse grid. Library
     /// mode tabs and the Recommended/Playlists/Collections pages stay upstream
@@ -116,8 +114,6 @@ public enum PlozzCustomization {
     /// Pages that only expose a disabled capability stay out of Settings search.
     public static func isSettingsSearchPageVisible(_ page: SettingsSearchPage) -> Bool {
         switch page {
-        case .seerr:
-            return supportsSeerr
         case .trackers:
             return supportsTrackers
         case .sync:

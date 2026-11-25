@@ -1,33 +1,18 @@
 import Foundation
 
-/// The two independent capabilities offered by a show's download sheet.
+/// Whether a show's download sheet has library episodes to offer.
 public struct SeriesDownloadPresentation: Equatable, Sendable {
     public let hasLibraryDownloads: Bool
-    public let canRequestSeasons: Bool
 
-    public var isVisible: Bool { hasLibraryDownloads || canRequestSeasons }
+    public var isVisible: Bool { hasLibraryDownloads }
 
-    /// Request-only shows need a primary action, not just the toolbar's season manager.
-    public func showsHeroRequest(hasPlayAction: Bool) -> Bool {
-        canRequestSeasons && !hasLibraryDownloads && !hasPlayAction
-    }
-
-    public init(
-        item: MediaItem,
-        children: [MediaItem],
-        isDiscoveryItem: Bool,
-        seerConnected: Bool
-    ) {
+    public init(item: MediaItem, children: [MediaItem], isDiscoveryItem: Bool) {
         hasLibraryDownloads = item.kind == .series
             && !isDiscoveryItem
             && children.contains {
                 ($0.kind == .season || $0.kind == .episode) && $0.locallyValidatedPlayableSource
             }
-        canRequestSeasons = item.kind == .series
-            && item.providerIDs["Tmdb"] != nil
-            && seerConnected
     }
-
 }
 
 public enum SeriesDownloadAction: Equatable, Sendable {

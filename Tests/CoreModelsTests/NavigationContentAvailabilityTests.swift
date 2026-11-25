@@ -16,7 +16,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
             XCTAssertEqual(facts.automaticallyHiddenKeys, automaticKeys)
             XCTAssertTrue(facts.prefersLiveTV)
             let layout = NavigationLibraryLayout.default.resolvingAutomaticVisibility(
-                hidden: facts.automaticallyHiddenKeys.union([NavigationLibraryLayout.discoverKey])
+                hidden: facts.automaticallyHiddenKeys
             )
             for keys in [
                 NavigationDestinationDefaults.compact(hasMusic: false),
@@ -207,7 +207,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
 
     func testReorderingDoesNotPersistAutomaticHidingOrShowing() throws {
         let available = NavigationDestinationDefaults.compact(hasMusic: false)
-        let automaticKeys = self.automaticKeys.union([NavigationLibraryLayout.discoverKey])
+        let automaticKeys = self.automaticKeys
         var layout = NavigationLibraryLayout.default
         layout.apply(
             .init(
@@ -230,7 +230,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
 
     func testShowingAutomaticallyHiddenWatchlistCreatesOnlyThatOverride() {
         let available = NavigationDestinationDefaults.compact(hasMusic: false)
-        let automaticKeys = self.automaticKeys.union([NavigationLibraryLayout.discoverKey])
+        let automaticKeys = self.automaticKeys
         var layout = NavigationLibraryLayout.default
         layout.apply(
             .init(
@@ -240,7 +240,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
                 ],
                 disabled: [
                     NavigationLibraryLayout.homeKey, NavigationLibraryLayout.searchKey,
-                    NavigationLibraryLayout.discoverKey, NavigationLibraryLayout.upcomingKey
+                    NavigationLibraryLayout.upcomingKey
                 ]
             ),
             available: available,

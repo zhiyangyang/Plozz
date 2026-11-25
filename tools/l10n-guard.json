@@ -129,9 +129,6 @@
     "Sources/ProviderShare/ShareProvider.swift",
     "Sources/ProviderShare/ShareSeriesReconciler.swift",
     "Sources/RatingsService/TMDbRatingsProvider.swift",
-    "Sources/SeerService/SeerModels.swift",
-    "Sources/SeerService/SeerService.swift",
-    "Sources/SeerService/SeerUser.swift",
     "Sources/SimklService/SimklModels.swift",
     "Sources/TraktService/TraktModels.swift",
     "Sources/TraktService/TraktScrobbler.swift"

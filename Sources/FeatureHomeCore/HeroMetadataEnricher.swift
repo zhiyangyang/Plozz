@@ -21,7 +21,6 @@ public struct HeroMetadataEnricher: Sendable {
     private let providersByAccount: [String: any MediaProvider]
     private let targetSelector: @Sendable (MediaItem) -> MediaItem
     private let ratingsProvider: any ExternalRatingsProviding
-    private let requestIdentityResolver: (@Sendable (MediaItem) async -> String?)?
     private let libraryTargetResolver: (@Sendable (MediaItem) async -> MediaItem?)?
     private let hideWatched: Bool
 
@@ -29,7 +28,6 @@ public struct HeroMetadataEnricher: Sendable {
         accounts: [ResolvedAccount],
         targetSelector: @escaping @Sendable (MediaItem) -> MediaItem,
         ratingsProvider: any ExternalRatingsProviding = DisabledRatingsProvider(),
-        requestIdentityResolver: (@Sendable (MediaItem) async -> String?)? = nil,
         libraryTargetResolver: (@Sendable (MediaItem) async -> MediaItem?)? = nil,
         hideWatched: Bool = false
     ) {
@@ -39,7 +37,6 @@ public struct HeroMetadataEnricher: Sendable {
         )
         self.targetSelector = targetSelector
         self.ratingsProvider = ratingsProvider
-        self.requestIdentityResolver = requestIdentityResolver
         self.libraryTargetResolver = libraryTargetResolver
         self.hideWatched = hideWatched
     }
@@ -58,8 +55,7 @@ public struct HeroMetadataEnricher: Sendable {
         _ originalItems: [MediaItem],
         preservingPinnedSeries: PinnedSeriesProvider? = nil
     ) async -> [MediaItem] {
-        let identified = await resolvingRequestIdentities(in: originalItems)
-        let items = await resolvingLibraryTargets(in: identified)
+        let items = await resolvingLibraryTargets(in: originalItems)
         guard !Task.isCancelled else { return originalItems }
         let targets = Dictionary(
             uniqueKeysWithValues: items.indices.compactMap { index -> (Int, MediaItem)? in
@@ -251,46 +247,6 @@ public struct HeroMetadataEnricher: Sendable {
             }
         }
         return await applyingCachedRatings(to: enriched)
-    }
-
-    private func resolvingRequestIdentities(in items: [MediaItem]) async -> [MediaItem] {
-        guard let resolver = requestIdentityResolver, !Task.isCancelled else { return items }
-        let candidates = items.indices.filter { index in
-            let item = items[index]
-            return !item.locallyValidatedPlayableSource
-                && (item.availability != nil || !item.discoverySources.isEmpty)
-                && (item.kind == .movie || item.kind == .series)
-                && item.allowsTitleBasedMetadataMatching
-                && item.providerID(.tmdb) == nil
-        }
-        guard !candidates.isEmpty, !Task.isCancelled else { return items }
-        return await withTaskGroup(of: (Int, String?).self) { group in
-            var next = 0
-            func enqueue(_ index: Int) {
-                group.addTask { (index, await resolver(items[index])) }
-            }
-            while next < min(4, candidates.count) {
-                enqueue(candidates[next])
-                next += 1
-            }
-            var enriched = items
-            while let (index, resolvedID) = await group.next() {
-                guard !Task.isCancelled else {
-                    group.cancelAll()
-                    return items
-                }
-                if let resolvedID, let numericID = Int(resolvedID), numericID > 0 {
-                    enriched[index].providerIDs[ProviderIDNamespace.tmdb.canonicalKey] = resolvedID
-                } else {
-                    PlozzLog.app.debug("Hero discovery: request identity could not be resolved.")
-                }
-                if next < candidates.count {
-                    enqueue(candidates[next])
-                    next += 1
-                }
-            }
-            return enriched
-        }
     }
 
     private func resolvingLibraryTargets(in items: [MediaItem]) async -> [MediaItem] {

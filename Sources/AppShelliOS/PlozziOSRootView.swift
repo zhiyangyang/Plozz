@@ -134,7 +134,6 @@ public struct PlozziOSRootView: View {
                     .task { consumeDeferredPairingURL() }
             }
         }
-        .seerRequestDestination(appModel.seerService)
         .signInSyncPermission(
             appModel.providerCredentialSync.publicationPermission,
             canPresent: setupPresentationReady && appModel.isActiveProfileAuthorized
@@ -425,9 +424,6 @@ public struct PlozziOSRootView: View {
         .environment(\.plozzShowsProgressBars, appModel.settings.watchIndicator.showsProgressBars)
         .environment(\.plozzEpisodeCountBadgeStyle, appModel.settings.watchIndicator.episodeCountStyle)
         .environment(\.plozzWatchIndicatorColor, appModel.settings.watchIndicator.color)
-        // See the note in RootView: drives whether an unowned title's corner mark
-        // reads as information or as an invitation to request it.
-        .environment(\.plozzSeerConnected, appModel.seerService.isConfigured)
         .environment(
             \.plozzReduceTransparency,
             appModel.settings.transparency.preference.reducesTransparency(
@@ -914,7 +910,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
     case collections
     case watchlist
     case upcoming
-    case discover
     case liveTV
     case downloads
     case music
@@ -931,7 +926,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .collections: "collections"
         case .watchlist: "watchlist"
         case .upcoming: "upcoming"
-        case .discover: "discover"
         case .liveTV: "liveTV"
         case .downloads: "downloads"
         case .music: "music"
@@ -948,7 +942,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case "collections": self = .collections
         case "watchlist": self = .watchlist
         case "upcoming": self = .upcoming
-        case "discover": self = .discover
         case "liveTV": self = .liveTV
         case "downloads": self = .downloads
         case "music": self = .music
@@ -974,7 +967,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .watchlist:
             PlozzCustomization.isCustomBuild ? "Favorites" : "Watchlist"
         case .upcoming: "Upcoming"
-        case .discover: "Discover"
         case .liveTV: "Live TV"
         case .downloads: "Downloads"
         case .music: "Music"
@@ -996,7 +988,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .collections: "rectangle.stack"
         case .watchlist: PlozzCustomization.isCustomBuild ? "heart" : "bookmark"
         case .upcoming: "calendar"
-        case .discover: "sparkles"
         case .liveTV: "antenna.radiowaves.left.and.right"
         case .downloads: "arrow.down.circle"
         case .music: "music.note"
@@ -1087,8 +1078,6 @@ struct PlozziOSTabShell: View {
         UpcomingFeedLoader.scopeKey(
             profileID: appModel.profiles.activeProfileID,
             accounts: appModel.upcomingAccounts,
-            requestIdentity: appModel.seerService.requestIdentity,
-            connectionRevision: appModel.seerService.connectionRevision,
             language: locale.identifier, regionCode: Locale.current.region?.identifier
         )
     }
@@ -1106,12 +1095,9 @@ struct PlozziOSTabShell: View {
         let saved = appModel.resolvedUniversalWatchlistItems(candidates: [])
         let region = Locale.current.region?.identifier
         let language = locale.identifier
-        let identity = appModel.seerService.requestIdentity
-        let seer = appModel.seerService
         let cacheScope = UpcomingFeedLoader.scopeKey(
             profileID: appModel.profiles.activeProfileID, accounts: accounts,
-            requestIdentity: identity, connectionRevision: nil, language: language,
-            regionCode: region, requestServerURL: seer.savedBaseURLString
+            language: language, regionCode: region
         )
         let isCurrent: @MainActor @Sendable () -> Bool = {
             appModel.isLiveTVProfileAuthorized && upcomingScopeKey == scope
@@ -1128,9 +1114,6 @@ struct PlozziOSTabShell: View {
             return try await UpcomingFeedLoader.load(
                 accounts: accounts, watchlist: saved, regionCode: region,
                 interval: UpcomingFeedLoader.window(),
-                requestedTitles: {
-                    try await seer.personallyRequestedTitles(identity: identity, language: language)
-                },
                 isCurrent: isCurrent, onProgress: progress
             )
         }
@@ -1214,14 +1197,12 @@ struct PlozziOSTabShell: View {
                 ),
                 requiredEnabled: navigation.requiredNavigationKeys
             ).enabled
-            .filter { PlozzCustomization.supportsDiscover || $0 != NavigationLibraryLayout.discoverKey }
             .compactMap { key -> PlozziOSDestination? in
                 switch key {
                 case NavigationLibraryLayout.homeKey: return .home
                 case NavigationLibraryLayout.collectionsKey: return .collections
                 case NavigationLibraryLayout.watchlistKey: return .watchlist
                 case NavigationLibraryLayout.upcomingKey: return .upcoming
-                case NavigationLibraryLayout.discoverKey: return .discover
                 case NavigationLibraryLayout.liveTVKey: return .liveTV
                 case NavigationLibraryLayout.searchKey: return .search
                 case NavigationLibraryLayout.downloadsKey: return .downloads
@@ -1275,7 +1256,7 @@ struct PlozziOSTabShell: View {
             libraries: navigation.contentLibraries,
             discoveredAccountIDs: navigation.discoveredAccountIDs,
             disabledLibraryKeys: appModel.settings.homeVisibility.visibility.disabledKeys,
-            hasDiscoverySearch: appModel.seerService.isConfigured,
+            hasDiscoverySearch: false,
             hasWatchlistItems: navigation.hasWatchlistItems,
             hasWatchlistTitles: navigation.hasWatchlistTitles
         )
@@ -1427,7 +1408,7 @@ struct PlozziOSTabShell: View {
     private func destinationContent(
         for destination: PlozziOSDestination, keepsNavigationBar: Bool = false
     ) -> some View {
-        if appModel.isOfflineMode && (destination == .discover || destination == .liveTV) {
+        if appModel.isOfflineMode && (destination == .liveTV) {
             PlozziOSOfflineUnavailableView()
         } else {
         switch destination {
@@ -1488,11 +1469,6 @@ struct PlozziOSTabShell: View {
             }
                 .plozziOSItemNavigation(appModel: appModel)
                 .toolbarBackground(.automatic, for: .navigationBar)
-                .background { AppBackground(palette: palette) }
-        case .discover:
-            PlozziOSDiscoverView(appModel: appModel, onShowSettings: showSettings)
-                .plozziOSItemNavigation(appModel: appModel)
-                .toolbarBackground(.hidden, for: .navigationBar)
                 .background { AppBackground(palette: palette) }
         case .liveTV:
             PlozziOSLiveTVDestination(
@@ -2742,7 +2718,7 @@ private struct PlozziOSDestinationView: View {
                 onlyMovies: PlozzCustomization.favoritesOnlyMovies()
             )
             .id(activeAccountsIdentity)
-        case .discover, .upcoming, .liveTV, .collections, .library, .allLibraries, .music:
+        case .upcoming, .liveTV, .collections, .library, .allLibraries, .music:
             EmptyView()
         case .search:
             PlozziOSSearchView(

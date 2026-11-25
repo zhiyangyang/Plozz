@@ -76,8 +76,6 @@ final class SyncRecordMapTests: XCTestCase {
         p.linkedAccountID = "acct-9"
         p.plexHomeUserID = "home-1"
         p.plexHomeUserAccountID = "plex-acct"
-        p.seerrUserID = 42
-        p.seerrServerIdentity = SeerServerIdentity(baseURL: URL(string: "https://requests.example.com")!)
         let dto = ProfileSyncDTO(profile: p)
         let data = CanonicalJSON.encode(dto)!
         let json = String(decoding: data, as: UTF8.self)
@@ -93,8 +91,6 @@ final class SyncRecordMapTests: XCTestCase {
         // re-capturing must yield byte-identical canonical bytes.
         var local = Profile(id: "P1", name: "Old", avatarSymbol: "person.fill", colorIndex: 0)
         local.plexHomeUserID = "home-xyz"       // device-local, must be preserved + ignored
-        local.seerrUserID = 5
-        local.seerrServerIdentity = SeerServerIdentity(baseURL: URL(string: "https://requests.example.com")!)
 
         let incoming = ProfileSyncDTO(profile: Profile(
             id: "P1", name: "New Name", avatarSymbol: "star.fill", colorIndex: 4,
@@ -105,8 +101,6 @@ final class SyncRecordMapTests: XCTestCase {
         // Exact apply → merge into local (preserving device-local fields).
         let applied = incoming.merged(into: local)
         XCTAssertEqual(applied.plexHomeUserID, "home-xyz", "device-local field lost on apply")
-        XCTAssertEqual(applied.seerrUserID, 5)
-        XCTAssertEqual(applied.seerrServerIdentity, local.seerrServerIdentity)
 
         // Re-capture the DTO from the applied profile → must equal what we received.
         let recaptured = CanonicalJSON.encode(ProfileSyncDTO(profile: applied))!

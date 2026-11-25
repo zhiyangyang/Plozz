@@ -209,7 +209,6 @@ targets:
       - path: Tests/HomePresentationSupport/UpcomingCaptureFixture.swift
       - path: Tests/HomePresentationSupport/DetailSelectionFixture.swift
       - path: Tests/HomePresentationSupport/ContentRefreshReturnFixture.swift
-      - path: Tests/DiscoverPresentationSupport/DiscoverBrowseFixture.swift
       - path: Tests/AuthPresentationSupport/MobileServerOnboardingFixture.swift
       - path: Tests/AuthPresentationSupport/OnboardingPreviewHTTP.swift
       - path: Tests/FeatureLiveTVRemoteTests/SourceOnboardingFixture.swift

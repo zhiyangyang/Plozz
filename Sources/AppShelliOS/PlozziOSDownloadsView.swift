@@ -74,7 +74,6 @@ struct PlozziOSDownloadsView: View {
             if let provider = appModel.provider(for: nav.item) {
                 PlozziOSItemDetailView(
                     appModel: appModel, provider: provider, item: nav.item,
-                    seerService: appModel.seerService
                 )
             } else {
                 PlozzStateView(
@@ -171,7 +170,6 @@ struct PlozziOSDownloadsView: View {
                 if let provider = appModel.provider(for: item) {
                     PlozziOSItemDetailView(
                         appModel: appModel, provider: provider, item: item,
-                        seerService: appModel.seerService,
                         originSourceAccountID: item.sourceAccountID,
                         presentsEpisodeAsSubject: item.kind == .episode
                     )

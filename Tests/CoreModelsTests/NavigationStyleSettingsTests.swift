@@ -423,10 +423,8 @@ final class NavigationStyleSettingsStoreTests: XCTestCase {
         XCTAssertFalse(model.showsWatchlist)
         XCTAssertFalse(model.showsMusic)
         model.resetLibraryLayout()
-        XCTAssertEqual(model.librarySections(available: available).enabled,
-                       available.filter { $0 != NavigationLibraryLayout.discoverKey })
-        XCTAssertEqual(model.librarySections(available: available).disabled,
-                       [NavigationLibraryLayout.discoverKey])
+        XCTAssertEqual(model.librarySections(available: available).enabled, available)
+        XCTAssertTrue(model.librarySections(available: available).disabled.isEmpty)
         XCTAssertTrue(model.showsWatchlist)
         XCTAssertTrue(model.showsMusic)
         XCTAssertEqual(NavigationLibraryLayoutStore(defaults: defaults).load(), .default)

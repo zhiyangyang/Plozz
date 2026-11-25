@@ -232,8 +232,6 @@ extension SettingsSearchCatalog {
               keywords: "account profile sources libraries watching as server user"),
         .init("cross-server-watch-sync", page: .trackers, title: "Sync watch state across servers",
               keywords: "watch state synchronize watched progress across servers"),
-        .init("seerr-profile-user", page: .seerr, title: "Requests are made as",
-              keywords: "requests Seerr user identity"),
         .init("icloud-sync", page: .sync, title: "iCloud Sync",
               keywords: "iCloud sync synchronize backup settings devices household"),
         .init("metadata-order-mode", page: .metadata, title: "Order",

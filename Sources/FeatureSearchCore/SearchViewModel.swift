@@ -29,20 +29,6 @@ public final class SearchViewModel {
     /// Called only on the main actor (its `Set` result — `Sendable` — is what the
     /// per-account search tasks capture), so it needn't be `@Sendable` itself.
     private let disabledLibraryKeys: () -> Set<String>
-    /// Optional Seerr (Overseerr/Jellyseerr) discovery search. When set, its hits
-    /// are folded into a trailing "Not in Your Library" section — titles the user
-    /// can request rather than play. Runs concurrently with the library search and
-    /// must never throw (swallow errors to `[]` at the call site) so a Seerr outage
-    /// can't break library search. `nil` disables the discovery section entirely
-    /// (the zero-cost path when Seerr isn't connected).
-    private let seerSearch: (@Sendable (String) async -> [MediaItem])?
-    /// Resolves season-level coverage only for a partial Seerr series that also
-    /// matched a playable library result. The cue is shown only when at least one
-    /// season is genuinely requestable, never from aggregate partial status alone.
-    private let seerRequestAvailability: (@Sendable (MediaItem) async -> MediaRequestAvailability?)?
-    /// Best-effort cue enrichment runs after the playable search results publish.
-    /// A new query cancels it so stale availability can never mutate fresh results.
-    private nonisolated(unsafe) var availabilityCueEnrichmentTask: Task<Void, Never>?
 
     public init(
         accounts: [ResolvedAccount],
@@ -50,8 +36,6 @@ public final class SearchViewModel {
         debounceMilliseconds: Int = 350,
         identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef] = { _ in [] },
         disabledLibraryKeys: @escaping () -> Set<String> = { [] },
-        seerSearch: (@Sendable (String) async -> [MediaItem])? = nil,
-        seerRequestAvailability: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         diagnostics: PerformanceDiagnostics = .shared,
         searchDiagnostics: SearchDiagnosticJournal = .shared
     ) {
@@ -60,22 +44,14 @@ public final class SearchViewModel {
         self.debounce = .milliseconds(debounceMilliseconds)
         self.identitySources = identitySources
         self.disabledLibraryKeys = disabledLibraryKeys
-        self.seerSearch = seerSearch
-        self.seerRequestAvailability = seerRequestAvailability
         self.diagnostics = diagnostics
         self.searchDiagnostics = searchDiagnostics
-    }
-
-    deinit {
-        availabilityCueEnrichmentTask?.cancel()
     }
 
     /// Runs a debounced search for the current `query`. Safe to call on every
     /// keystroke via `.task(id: query)`: an empty query resets to idle, and a
     /// query that changes mid-flight discards the obsolete result.
     public func search() async {
-        availabilityCueEnrichmentTask?.cancel()
-        availabilityCueEnrichmentTask = nil
         let requested = SearchPolicy.normalized(query)
 
         guard SearchPolicy.shouldSearch(requested) else {
@@ -98,16 +74,6 @@ public final class SearchViewModel {
         defer { span?.finish(Task.isCancelled ? .cancelled : outcome, metrics: metrics) }
         state = .loading
 
-        // Start the discovery (Seerr) search concurrently with the library search
-        // so the two round-trips overlap. Structured `async let` so cancelling this
-        // task (the user kept typing) cancels the discovery child too. Never throws
-        // — a Seerr outage yields `[]` and leaves the library results intact.
-        let discoverySearch = seerSearch
-        async let discoveryItemsTask: [MediaItem] = {
-            guard let discoverySearch else { return [] }
-            return await discoverySearch(requested)
-        }()
-
         // The library search may throw only when EVERY account fails; capture that
         // rather than throwing, so a library outage still lets Seerr hits show.
         var libraryItems: [MediaItem] = []
@@ -120,7 +86,6 @@ public final class SearchViewModel {
             libraryError = .unknown("")
         }
 
-        let discoveryItems = await discoveryItemsTask
         guard SearchPolicy.isCurrent(requestedQuery: requested, liveQuery: query) else { return }
 
         let serverInfo = accounts.sourceServerInfo()
@@ -129,24 +94,12 @@ public final class SearchViewModel {
             identitySources: identitySources,
             serverInfo: { serverInfo[$0] }
         )
-        var sections = SearchSection.sections(from: dedupedLibrary)
-        if let notInLibrary = SearchSection.notInLibrarySection(
-            discoveryResults: discoveryItems,
-            libraryResults: dedupedLibrary,
-            limit: limit
-        ) {
-            sections.append(notInLibrary)
-        }
+        let sections = SearchSection.sections(from: dedupedLibrary)
         outcome = libraryError == nil ? .succeeded : .failed
         metrics = .init(items: sections.reduce(0) { $0 + $1.items.count }, rows: sections.count)
 
         if !sections.isEmpty {
             state = .loaded(sections)
-            scheduleAvailabilityCueEnrichment(
-                requestedQuery: requested,
-                discoveryResults: discoveryItems,
-                libraryResults: dedupedLibrary
-            )
         } else if let libraryError {
             // Nothing to show and the library search failed outright — surface the
             // error (matches prior behaviour). A Seerr-only failure just reads empty.
@@ -166,138 +119,6 @@ public final class SearchViewModel {
                 mutation.applied(to: item)
             })
         })
-    }
-
-    /// Synchronization seam for deterministic tests of the off-critical-path cue.
-    /// Production UI never waits for this work.
-    func waitForAvailabilityCueEnrichment() async {
-        await availabilityCueEnrichmentTask?.value
-    }
-
-    private func scheduleAvailabilityCueEnrichment(
-        requestedQuery: String,
-        discoveryResults: [MediaItem],
-        libraryResults: [MediaItem]
-    ) {
-        guard let seerRequestAvailability else { return }
-        let accounts = accounts
-        availabilityCueEnrichmentTask = Task { [weak self] in
-            let requestableSeriesKeys = await Self.requestablePartialSeriesKeys(
-                discoveryResults: discoveryResults,
-                libraryResults: libraryResults,
-                accounts: accounts,
-                availabilityResolver: seerRequestAvailability
-            )
-            guard !Task.isCancelled, !requestableSeriesKeys.isEmpty, let self else { return }
-            guard SearchPolicy.isCurrent(requestedQuery: requestedQuery, liveQuery: self.query),
-                  case let .loaded(currentSections) = self.state
-            else { return }
-            self.state = .loaded(currentSections.map { section in
-                SearchSection(
-                    kind: section.kind,
-                    items: SearchSection.mergingDiscoveryAvailability(
-                        into: section.items,
-                        discoveryResults: discoveryResults,
-                        requestableSeriesKeys: requestableSeriesKeys
-                    )
-                )
-            })
-        }
-    }
-
-    /// Kind-scoped identity keys of the partially-available shows Seerr can still
-    /// take a request for. Pairs library rows to discovery rows through the shared
-    /// identity overlap rather than a TMDb id, so a show the library only exposes
-    /// under IMDb/TVDB is no longer silently skipped.
-    private nonisolated static func requestablePartialSeriesKeys(
-        discoveryResults: [MediaItem],
-        libraryResults: [MediaItem],
-        accounts: [ResolvedAccount],
-        availabilityResolver: @escaping @Sendable (MediaItem) async -> MediaRequestAvailability?
-    ) async -> Set<String> {
-        let libraryKeys = libraryResults.reduce(into: Set<String>()) { keys, item in
-            guard item.kind == .series else { return }
-            keys.formUnion(MediaItemIdentity.overlapKeys(for: item))
-        }
-        let partialDiscovery = discoveryResults.filter { item in
-            item.kind == .series
-                && item.availability == .partiallyAvailable
-                && !MediaItemIdentity.overlapKeys(for: item).isDisjoint(with: libraryKeys)
-        }
-        let candidates = libraryResults.compactMap {
-            libraryItem -> (Set<String>, MediaItem, MediaItem)? in
-            guard libraryItem.kind == .series else { return nil }
-            let keys = MediaItemIdentity.overlapKeys(for: libraryItem)
-            guard let discoveryItem = partialDiscovery.first(where: {
-                !MediaItemIdentity.overlapKeys(for: $0).isDisjoint(with: keys)
-            }) else { return nil }
-            return (keys, libraryItem, discoveryItem)
-        }
-        return await withTaskGroup(of: Set<String>?.self) { group in
-            for (keys, libraryItem, discoveryItem) in candidates {
-                group.addTask {
-                    guard let availability = await availabilityResolver(discoveryItem),
-                          let ownedSeasonNumbers = await ownedSeasonNumbers(
-                            for: libraryItem,
-                            accounts: accounts
-                          )
-                    else { return nil }
-                    let reconciled = availability.markingAvailable(Array(ownedSeasonNumbers))
-                    return reconciled.requestableSeasonNumbers.isEmpty ? nil : keys
-                }
-            }
-            var result: Set<String> = []
-            for await keys in group {
-                if let keys { result.formUnion(keys) }
-            }
-            return result
-        }
-    }
-
-    /// Returns `nil` unless ownership could be checked on every known source.
-    /// Search cues are optional, so incomplete cross-server data fails closed
-    /// rather than advertising seasons that detail may discover are already owned.
-    private nonisolated static func ownedSeasonNumbers(
-        for item: MediaItem,
-        accounts: [ResolvedAccount]
-    ) async -> Set<Int>? {
-        var sources = item.sources
-        if let sourceAccountID = item.sourceAccountID,
-           !sources.contains(where: { $0.accountID == sourceAccountID && $0.itemID == item.id }) {
-            sources.append(MediaSourceRef(accountID: sourceAccountID, itemID: item.id, kind: item.kind))
-        }
-        var seen = Set<String>()
-        sources = sources.filter { seen.insert($0.id).inserted }
-        guard !sources.isEmpty else { return nil }
-
-        let providers = Dictionary(
-            accounts.map { ($0.account.id, $0.provider) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return await withTaskGroup(of: Set<Int>?.self) { group in
-            for source in sources {
-                guard let provider = providers[source.accountID] else { return nil }
-                group.addTask {
-                    do {
-                        let children = try await provider.children(of: source.itemID)
-                        return Set(children.compactMap { child in
-                            child.kind == .season || child.kind == .episode ? child.seasonNumber : nil
-                        })
-                    } catch {
-                        return nil
-                    }
-                }
-            }
-            var owned: Set<Int> = []
-            for await sourceSeasons in group {
-                guard let sourceSeasons else {
-                    group.cancelAll()
-                    return nil
-                }
-                owned.formUnion(sourceSeasons)
-            }
-            return owned
-        }
     }
 
     /// Searches every active account concurrently and round-robin interleaves the

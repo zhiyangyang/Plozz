@@ -30,7 +30,6 @@ public extension EnvironmentValues {
         plozzShowsUnwatchedEpisodeCount = source.plozzShowsUnwatchedEpisodeCount
         plozzShowsProgressBars = source.plozzShowsProgressBars
         plozzEpisodeCountBadgeStyle = source.plozzEpisodeCountBadgeStyle
-        plozzSeerConnected = source.plozzSeerConnected
         plozzReduceTransparency = source.plozzReduceTransparency
         plozzNavigationStyle = source.plozzNavigationStyle
         plozzNavigationContentInset = source.plozzNavigationContentInset

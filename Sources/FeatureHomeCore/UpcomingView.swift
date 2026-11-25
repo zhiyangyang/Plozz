@@ -279,7 +279,6 @@
 
     private struct UpcomingFeedStatus: View {
         let model: UpcomingFeedModel
-        @Environment(\.plozzSeerConnected) private var seerConnected
 
         var body: some View {
             let releases = upcomingAgendaReleases(model.releases)
@@ -316,9 +315,7 @@
             } else if visibleReleases.isEmpty {
                 ContentUnavailableView(
                     "Nothing upcoming yet", systemImage: "calendar",
-                    description: seerConnected
-                        ? Text("Shows and movies you watch, watchlist, or request appear here.")
-                        : Text("Shows and movies you watch or watchlist appear here.")
+                    description: Text("Shows and movies you watch or watchlist appear here.")
                 )
             }
         }

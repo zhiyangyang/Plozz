@@ -26,7 +26,7 @@ final class HeroLoadKeyTests: XCTestCase {
             content: content, settings: settings, visibility: .default,
             freshnessRevision: 0, identityIndexRevision: revision,
             watchlistMembershipRevision: membershipRevision,
-            scopeID: scopeID ?? ObjectIdentifier(scope), seerRevision: connection,
+            scopeID: scopeID ?? ObjectIdentifier(scope),
             isPreparingHome: isPreparingHome, loadingRows: loadingRows, language: language
         )
     }

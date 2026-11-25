@@ -324,7 +324,6 @@ final class NavigationRailPlanTests: XCTestCase {
         ]
         var expected = [
             NavigationLibraryLayout.homeKey,
-            NavigationLibraryLayout.discoverKey,
             NavigationLibraryLayout.watchlistKey,
             NavigationLibraryLayout.upcomingKey,
         ]
@@ -522,7 +521,6 @@ final class NavigationRailPlanTests: XCTestCase {
     func testAllHiddenDestinationsStillRenderAndFallBackToSettings() {
         var hidden: Set<String> = [
             NavigationLibraryLayout.homeKey,
-            NavigationLibraryLayout.discoverKey,
             NavigationLibraryLayout.searchKey,
             NavigationLibraryLayout.watchlistKey,
             NavigationLibraryLayout.upcomingKey,

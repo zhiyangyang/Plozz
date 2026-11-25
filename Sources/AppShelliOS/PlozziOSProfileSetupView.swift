@@ -199,21 +199,6 @@ struct PlozziOSProfileOnboardingCover: View {
                     appModel: appModel,
                     onDone: { appModel.advanceProfileOnboarding() }
                 )
-            case .seerr:
-                if let profile = appModel.profileBeingOnboarded {
-                    ProfileSeerrSetupView(
-                        seer: appModel.seerService,
-                        profile: profile,
-                        onSelect: { user in
-                            appModel.setSeerrUser(user, for: profile.id)
-                        },
-                        onContinue: { appModel.advanceProfileOnboarding() }
-                    )
-                } else {
-                    Color.clear.onAppear {
-                        appModel.advanceProfileOnboarding()
-                    }
-                }
             case .theme:
                 NavigationStack {
                     PlozziOSThemeWelcomeView(
@@ -248,7 +233,6 @@ struct PlozziOSProfileOnboardingCover: View {
                 EmptyView()
             }
         }
-        .prepareSeerrSetup(appModel.seerService)
         .id(appModel.profileOnboardingID)
         .transaction { $0.animation = nil }
     }

@@ -166,7 +166,6 @@ public struct NavigationLibrariesDetailView: View {
                 symbolName: customBuild ? "heart.fill" : "bookmark.fill"
             ),
             NavigationLibraryLayout.upcomingKey: .init(title: Text("Upcoming"), symbolName: "calendar"),
-            NavigationLibraryLayout.discoverKey: .init(title: Text("Discover"), symbolName: "sparkles"),
             NavigationLibraryLayout.musicKey: .init(title: Text("Music"), symbolName: "music.note"),
             NavigationLibraryLayout.downloadsKey: .init(title: Text("Downloads"), symbolName: "arrow.down.circle"),
             NavigationLibraryLayout.settingsKey: .init(title: Text("Settings"), symbolName: "gearshape.fill"),

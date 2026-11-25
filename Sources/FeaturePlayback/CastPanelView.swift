@@ -1274,7 +1274,6 @@ private struct CastCreditsRow: View {
     @Environment(\.playerCardMetrics) private var metrics
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     /// Whether an unowned credit here can be requested or is only flagged.
-    @Environment(\.plozzSeerConnected) private var seerConnected
     let items: [MediaItem]
     @FocusState.Binding var focus: PlayerControls.FocusSlot?
     /// Opens a title's own page, ending playback. `nil` leaves the posters inert.
@@ -1400,7 +1399,7 @@ private struct CastCreditsRow: View {
                 // to every entry, owned or not; the detail page is what knows
                 // the difference, offering Play for a title in the library and a
                 // request for one that is not.
-                let libraryMark = MediaLibraryMark.mark(for: item, seerConnected: seerConnected)
+                let libraryMark = MediaLibraryMark.mark(for: item)
                 Button { onOpenTitle?(item) } label: {
                     poster(for: item)
                         .frame(width: posterWidth, height: posterHeight)

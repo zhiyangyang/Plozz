@@ -1,6 +1,5 @@
 import Foundation
 import CoreModels
-import SeerService
 
 // MARK: - Secret transfer payloads (pairing channel ONLY)
 //
@@ -49,40 +48,19 @@ public struct ShareSecret: Codable, Hashable, Sendable {
     }
 }
 
-/// Legacy household-wide Seerr payload, accepted from older peers.
-/// New exports use profile-bound `seerrProfiles`, never this shared slot.
-public struct SeerrSecret: Codable, Hashable, Sendable {
-    public var baseURL: String
-    public var apiKey: String
-
-    public init(baseURL: String, apiKey: String) {
-        self.baseURL = baseURL
-        self.apiKey = apiKey
-    }
-}
-
 /// Transferable credentials. Device-local sessions still require sign-in.
 public struct SyncSecretsBundle: Codable, Hashable, Sendable {
     public var accounts: [AccountSecret]
     public var shares: [ShareSecret]
-    /// Optional so an older peer's payload (which has no such field) still decodes.
-    public var seerr: SeerrSecret?
-    /// Profile-bound API keys only. Device-specific user sessions are never transferred.
-    public var seerrProfiles: [String: SeerProfileConnections]?
-
     public init(
         accounts: [AccountSecret] = [],
-        shares: [ShareSecret] = [],
-        seerr: SeerrSecret? = nil,
-        seerrProfiles: [String: SeerProfileConnections]? = nil
+        shares: [ShareSecret] = []
     ) {
         self.accounts = accounts
         self.shares = shares
-        self.seerr = seerr
-        self.seerrProfiles = seerrProfiles
     }
 
-    public var isEmpty: Bool { accounts.isEmpty && shares.isEmpty && seerr == nil && (seerrProfiles?.isEmpty ?? true) }
+    public var isEmpty: Bool { accounts.isEmpty && shares.isEmpty }
 
     /// The set of account ids this bundle can sign in on the target device.
     public var authorizedAccountIDs: Set<String> {

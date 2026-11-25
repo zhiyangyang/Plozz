@@ -25,7 +25,6 @@ import ProviderJellyfin
 import ProviderPlex
 import ProviderSilo
 import ProviderShare
-import SeerService
 import SimklService
 import WetrakrService
 import TraktService
@@ -165,7 +164,6 @@ final class PlozziOSAppModel {
         case plexUser
         case libraries
         case confirmProfile
-        case seerr
         case theme
 
         var id: Self { self }
@@ -346,29 +344,6 @@ final class PlozziOSAppModel {
         let descByID = Dictionary(received.config.accounts.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let secretByID = Dictionary((received.secrets?.accounts ?? []).map { ($0.accountID, $0) }, uniquingKeysWith: { a, _ in a })
         let shareByID = Dictionary((received.secrets?.shares ?? []).map { ($0.accountID, $0) }, uniquingKeysWith: { a, _ in a })
-        // Household-wide, so not gated on any per-account authorization — it rides
-        // the bundle the user already approved.
-        if let seerr = received.secrets?.seerr {
-            Self.installSeerrSecretIfAbsent(seerr)
-            if restrictToAccountID == nil, let url = URL(string: seerr.baseURL) {
-                do {
-                    try Self.seerrAccountConnectionStore().importLegacyIfAbsent(
-                        SeerConnection(baseURL: url, apiKey: seerr.apiKey), profiles: incomingProfiles
-                    )
-                } catch { PlozzLog.auth.error("Seerr legacy pairing could not restore profile connections") }
-            }
-            // The service cached its config at init; reload so a connection that
-            // arrived with this pairing is live now, not after the next launch.
-            Task { [seerService] in await seerService.reloadConnection() }
-        }
-        if restrictToAccountID == nil, let seerrProfiles = received.secrets?.seerrProfiles {
-            do {
-                try Self.seerrAccountConnectionStore().importAPIKeysIfAbsent(
-                    seerrProfiles, allowedProfiles: Set(incomingProfiles.map(\.id))
-                )
-                Task { [seerService] in await seerService.reloadConnection() }
-            } catch { PlozzLog.auth.error("Seerr pairing could not restore profile connections") }
-        }
         // Track credentialed accounts we ATTEMPT (expected to sign in without a tap)
         // vs those that actually persisted, so the caller can gate success and
         // surface any that failed. Intentional skips (device-local SSH key, no URL)
@@ -506,7 +481,6 @@ final class PlozziOSAppModel {
     /// across platforms.
     let tmdbUserKeyModel: TMDBUserKeyModel
     let shareScanStatus: ShareScanStatusModel
-    let seerService: SeerService
     let traktService: TraktService
     let simklService: SimklService
     let wetrakrService: WetrakrService
@@ -732,7 +706,6 @@ final class PlozziOSAppModel {
         appAdmissionStore: any AppAdmissionStoring = AppAdmissionStore(),
         accountStore suppliedAccountStore: AccountStore? = nil,
         profileStore: (any ProfilePersisting)? = nil,
-        seerService suppliedSeerService: SeerService? = nil,
         appLanguage: AppLanguageSettingsModel? = nil,
         runtimeFeatureFlags: RuntimeFeatureFlags = .buildDefault
     ) {
@@ -812,11 +785,6 @@ final class PlozziOSAppModel {
         boot("accountsProviders")
         if offline { accountsProviders.localProviders = [:] }
         let shareScanStatus = ShareScanStatusModel()
-        let seerService = suppliedSeerService ?? SeerServiceFactory.make(
-            connectionStore: HouseholdSeerConnectionStore(
-                secureStore: KeychainStore(service: "com.plozz.app.household")
-            )
-        )
         let trackerNamespace = profiles.activeNamespace
         if PlozzCustomization.supportsTrackers {
             TraktSharedRefreshBootstrap.install()
@@ -852,14 +820,6 @@ final class PlozziOSAppModel {
                 ? nil
                 : Self.universalWatchlistStorageDirectory()
         )
-        self.seerService = seerService
-        // A Kids Profile with no mapped Seerr user would otherwise request as the
-        // unrestricted admin. Wired as a live closure so it always reflects the
-        // CURRENT profile — see `SeerService.refusesAdminRequests`.
-        seerService.refusesAdminRequests = { [weak profiles] in
-            guard let profiles else { return false }
-            return profiles.activeProfile.isKids && profiles.enforcesKidsRestrictions
-        }
         self.traktService = traktService
         self.simklService = simklService
         self.wetrakrService = wetrakrService
@@ -870,8 +830,7 @@ final class PlozziOSAppModel {
         self.requiresLaunchProfileSelection = requiresLaunchProfileSelection
         let initialSettings = PlozziOSSettingsModel(
             namespace: profiles.activeNamespace,
-            allowsDiscovery: { !profiles.activeProfile.isKids },
-            isSeerrConfigured: { seerService.isConfigured }
+            allowsDiscovery: { !profiles.activeProfile.isKids }
         )
         self.settings = initialSettings
         boot("settings")
@@ -1062,21 +1021,6 @@ final class PlozziOSAppModel {
             await prepareUniversalWatchlist()
         }
         applyCrashReportingPreference()
-        seerService.configureProfiles(
-            store: suppliedSeerService != nil || Self.isRunningUnitTests
-                ? InMemorySeerAccountConnectionStore()
-                : SeerAccountConnectionStore(secureStore: KeychainStore(service: "com.plozz.app.household")),
-            profiles: profiles.profilesForSync,
-            current: { [profiles] in profiles.activeProfile }
-        )
-        SeerProfileAuthentication.configure(
-            service: seerService, profiles: profiles, accounts: accountsProviders, plex: plexHomeUsers
-        )
-        Task {
-            guard PlozzCustomization.supportsSeerr, !isOfflineMode else { return }
-            await seerService.refreshStatus()
-        }
-
         // Bring up CloudKit config auto-sync (no-op unless the Sync & Setup flag is
         // on) and start observing local config changes to publish them.
         if PlozzCustomization.supportsTrackers {
@@ -1505,8 +1449,6 @@ final class PlozziOSAppModel {
     enum ProfileOnboardingStep: String, Identifiable, CaseIterable {
         /// Which servers this profile uses, and who it watches as on each.
         case libraries
-        /// Optional household Seerr connection + this profile's acting user.
-        case seerr
         /// Its colour scheme, which is per-profile.
         case theme
         /// Whether to put a PIN on it — offered at creation, like on tvOS, since
@@ -1518,8 +1460,7 @@ final class PlozziOSAppModel {
 
         var next: ProfileOnboardingStep? {
             switch self {
-            case .libraries: PlozzCustomization.supportsSeerr ? .seerr : .theme
-            case .seerr: .theme
+            case .libraries: .theme
             case .theme: .lockOffer
             case .lockOffer: nil
             }
@@ -2025,8 +1966,7 @@ final class PlozziOSAppModel {
     func refreshActiveProfileSettings() {
         settings = PlozziOSSettingsModel(
             namespace: profiles.activeNamespace,
-            allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids },
-            isSeerrConfigured: { [seerService] in seerService.isConfigured }
+            allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids }
         )
         seriesTrackStore = SeriesTrackPreferenceStore(
             namespace: profiles.activeNamespace
@@ -2058,10 +1998,6 @@ final class PlozziOSAppModel {
             await prepareUniversalWatchlist()
         }
 
-        if PlozzCustomization.supportsSeerr {
-            seerService.synchronizeProfile()
-            Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
-        }
     }
 
     @discardableResult
@@ -2900,7 +2836,7 @@ final class PlozziOSAppModel {
     /// Creates or updates a profile from a shared `ProfileEditorView` draft —
     /// the single draft-based persistence path shared with tvOS. Cosmetic fields
     /// (name, avatar symbol/emoji/photo, colours) are written through; every
-    /// non-cosmetic field (linked account, Plex Home bindings, Seerr identity,
+    /// non-cosmetic field (linked account, Plex Home bindings,
     /// active-account subset) is preserved. A new profile is seeded with the
     /// current household accounts, selected, and handed to the first-run theme
     /// step — mirroring the previous `addProfile` behaviour.
@@ -2984,8 +2920,7 @@ final class PlozziOSAppModel {
             }
             settings = PlozziOSSettingsModel(
                 namespace: profiles.activeNamespace,
-                allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids },
-                isSeerrConfigured: { [seerService] in seerService.isConfigured }
+                allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids }
             )
             seriesTrackStore = SeriesTrackPreferenceStore(
                 namespace: profiles.activeNamespace
@@ -3009,53 +2944,6 @@ final class PlozziOSAppModel {
             await updateTrackersForActiveProfile()
             await prepareUniversalWatchlist()
         }
-        if PlozzCustomization.supportsSeerr {
-            seerService.synchronizeProfile()
-            Task { await seerService.setActiveProfile(namespace: profiles.activeNamespace) }
-        }
-    }
-
-    var activeSeerrRequestIdentity: SeerRequestIdentity {
-        seerService.requestIdentity
-    }
-
-    var activeSeerrRequestActingName: String? {
-        let identity = activeSeerrRequestIdentity
-        guard identity.userID != nil,
-              !identity.requiresRelink(to: seerService.serverIdentity) else {
-            return nil
-        }
-        return seerService.requestAccountName
-    }
-
-    func setSeerrUser(_ user: SeerUser?, for profileID: String) {
-        guard let profile = profiles.profiles.first(where: { $0.id == profileID }) else {
-            return
-        }
-        if let user {
-            guard let userServer = user.serverIdentity,
-                  let currentServer = seerService.serverIdentity,
-                  userServer == currentServer else {
-                PlozzLog.auth.error(
-                    "Rejected Seerr profile mapping without matching server provenance"
-                )
-                return
-            }
-        }
-        profiles.update(
-            profile.settingSeerrUser(
-                id: user?.id,
-                name: user?.name,
-                avatarURL: user?.avatarURL?.absoluteString,
-                serverIdentity: user?.serverIdentity
-            )
-        )
-    }
-
-    func disconnectSeerr() {
-        // Keep server-bound profile mappings so reconnecting the same endpoint
-        // restores them. A different endpoint is blocked until each is relinked.
-        seerService.disconnect()
     }
 
     func activeAccountIDs(for profileID: String) -> Set<String> {
@@ -3295,13 +3183,6 @@ final class PlozziOSAppModel {
     }
 
     func confirmFirstRunProfile() {
-        let next: FirstRunStep = accounts.isEmpty && allowsStandalonePlayback
-            ? .theme
-            : (PlozzCustomization.supportsSeerr ? .seerr : .theme)
-        advanceFirstRunStep(to: next)
-    }
-
-    func completeFirstRunSeerrSetup() {
         advanceFirstRunStep(to: .theme)
     }
 

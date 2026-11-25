@@ -18,7 +18,6 @@ final class UpcomingEmptyStateTests: XCTestCase {
             for width in [CGFloat(390), 834] {
                 let text = try await renderedText(
                     model: model, width: width, name: failed ? "failed" : (connected ? "empty-seerr" : "empty"),
-                    seerConnected: connected
                 )
                 if failed {
                     XCTAssertTrue(text.contains("Couldn't load releases"), text)
@@ -68,7 +67,7 @@ final class UpcomingEmptyStateTests: XCTestCase {
     }
 
     private func renderedText(
-        model: UpcomingFeedModel, width: CGFloat, name: String, seerConnected: Bool = false
+        model: UpcomingFeedModel, width: CGFloat, name: String
     ) async throws -> String {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let previous = scene.windows.first(where: \.isKeyWindow)
@@ -81,7 +80,6 @@ final class UpcomingEmptyStateTests: XCTestCase {
             .environment(\.themePalette, .dark)
             .environment(\.colorScheme, .dark)
             .environment(\.locale, Locale(identifier: "en"))
-            .environment(\.plozzSeerConnected, seerConnected)
             .environment(\.horizontalSizeClass, width < 600 ? .compact : .regular)
             .environment(\.plozzMetrics, .touch(density: .standard))
         )

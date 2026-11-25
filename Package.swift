@@ -54,7 +54,6 @@ let package = Package(
         .library(name: "TraktService", targets: ["TraktService"]),
         .library(name: "CoreTrackerAuth", targets: ["CoreTrackerAuth"]),
         .library(name: "WetrakrService", targets: ["WetrakrService"]),
-        .library(name: "SeerService", targets: ["SeerService"]),
         .library(name: "SimklService", targets: ["SimklService"]),        .library(name: "AniListService", targets: ["AniListService"]),
         .library(name: "MALService", targets: ["MALService"]),
         .library(name: "LastFmService", targets: ["LastFmService"]),
@@ -416,10 +415,6 @@ let package = Package(
             dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "CoreTrackerAuth"]
         ),
         .target(
-            name: "SeerService",
-            dependencies: ["CoreModels", "CoreNetworking"]
-        ),
-        .target(
             name: "SimklService",
             dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore"]
         ),
@@ -486,7 +481,7 @@ let package = Package(
         ),
         .target(
             name: "FeatureSettings",
-            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "CrashReporting", "FeatureProfiles", "TraktService", "WetrakrService", "SeerService", "SimklService", "AniListService", "MALService", "LastFmService"]
+            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "CrashReporting", "FeatureProfiles", "TraktService", "WetrakrService", "SimklService", "AniListService", "MALService", "LastFmService"]
         ),
         .target(
             name: "FeatureProfiles",
@@ -502,7 +497,7 @@ let package = Package(
         // Config and encrypted credential pairing, with secret-safe diagnostics.
         .target(
             name: "FeatureSyncSetup",
-            dependencies: ["CoreModels", "CoreNetworking", "SeerService"]
+            dependencies: ["CoreModels", "CoreNetworking"]
         ),
 
         // Non-secret config auto-sync over CloudKit (CKSyncEngine, private DB).
@@ -834,7 +829,6 @@ let package = Package(
                 "ProviderShare",
                 "CoreSecureStore",
                 "TraktService",
-                "SeerService",
                 "FeatureSyncCloud"
             ]
         ),
@@ -893,7 +887,6 @@ let package = Package(
                 "ProviderPlex",
                 "ProviderShare",
                 "RatingsService",
-                "SeerService",
                 "TraktService",
                 "SimklService",
                 "WetrakrService",
@@ -1025,10 +1018,6 @@ let package = Package(
         .testTarget(
             name: "MALServiceTests",
             dependencies: ["MALService", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "SeerServiceTests",
-            dependencies: ["SeerService", "CoreModels", "CoreNetworking"]
         ),
         .testTarget(
             name: "FeatureAuthTests",

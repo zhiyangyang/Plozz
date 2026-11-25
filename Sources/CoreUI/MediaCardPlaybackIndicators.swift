@@ -55,7 +55,6 @@ public struct MediaCardPlaybackIndicators: View {
     @Environment(\.plozzShowsProgressBars) private var showsProgressBars
     @Environment(\.plozzEpisodeCountBadgeStyle) private var episodeCountStyle
     /// Whether an unowned title can be requested, or is merely flagged as absent.
-    @Environment(\.plozzSeerConnected) private var seerConnected
     /// Published by the hosting card so this chrome can settle back at rest and
     /// come to full strength on focus (tvOS only — see ``PlozzMediaChrome``).
     @Environment(\.plozzChromeIsFocused) private var isFocused
@@ -230,7 +229,7 @@ public struct MediaCardPlaybackIndicators: View {
     private var status: MediaPlaybackIndicatorPresentation.Status? {
         MediaPlaybackIndicatorPresentation.status(
             for: playback, hidesStatus: hidesStatus, indicator: watchStatusIndicator,
-            showsEpisodeCount: showsUnwatchedEpisodeCount, seerConnected: seerConnected
+            showsEpisodeCount: showsUnwatchedEpisodeCount
         )
     }
 
@@ -398,13 +397,13 @@ enum NativePosterIndicators: View, Equatable {
         .playback(indicators.bitmapInputs)
     }
 
-    func hasContent(indicator: WatchStatusIndicator, showsEpisodeCount: Bool, seerConnected: Bool) -> Bool {
+    func hasContent(indicator: WatchStatusIndicator, showsEpisodeCount: Bool) -> Bool {
         switch self {
         case .playback(let inputs):
             if inputs.rendersBottom { return true }
             return inputs.rendersStatus && MediaPlaybackIndicatorPresentation.status(
                 for: inputs.playback, hidesStatus: inputs.hidesStatus, indicator: indicator,
-                showsEpisodeCount: showsEpisodeCount, seerConnected: seerConnected
+                showsEpisodeCount: showsEpisodeCount
             ) != nil
         case let .episode(isWatched, hasProgress, isVisible, style, _, _):
             return isVisible && style != .hidden && (style == .watched ? isWatched : !isWatched && !hasProgress)
@@ -597,13 +596,9 @@ public struct MediaPlaybackIndicatorState: Equatable, Sendable {
     }
 
     /// The corner mark this card should wear, if any. Shares
-    /// ``MediaLibraryMark/mark(for:seerConnected:)`` without needing the full item.
-    func libraryMark(seerConnected: Bool) -> MediaLibraryMark? {
-        MediaLibraryMark.mark(
-            isNotInLibrary: isNotInLibrary,
-            availability: availability,
-            seerConnected: seerConnected
-        )
+    /// ``MediaLibraryMark/mark(for:)`` without needing the full item.
+    func libraryMark() -> MediaLibraryMark? {
+        isNotInLibrary ? .notInLibrary : nil
     }
 }
 
@@ -614,10 +609,10 @@ enum MediaPlaybackIndicatorPresentation {
 
     static func status(
         for item: MediaPlaybackIndicatorState, hidesStatus: Bool, indicator: WatchStatusIndicator,
-        showsEpisodeCount: Bool, seerConnected: Bool
+        showsEpisodeCount: Bool
     ) -> Status? {
         guard !hidesStatus, PosterCardPresentation.showsWatchStatus(for: item.kind) else { return nil }
-        if let mark = item.libraryMark(seerConnected: seerConnected) { return .library(mark) }
+        if let mark = item.libraryMark() { return .library(mark) }
         if let count = episodeCount(for: item, enabled: showsEpisodeCount, hidesStatus: hidesStatus) {
             return .episodeCount(count)
         }

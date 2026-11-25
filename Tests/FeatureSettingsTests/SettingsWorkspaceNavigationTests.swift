@@ -151,7 +151,7 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
     func testHouseholdRoutesRemainUnavailableToKidsEvenAfterUnlock() {
         let routes: [SettingsRoute] = [
             .servers, .server(key: "server"), .profile, .parentalPIN, .topShelf,
-            .metadata, .metadataDiagnostics, .seerr, .seerUserPicker(profileID: "child"),
+            .metadata, .metadataDiagnostics,
             .syncSetup, .syncTroubleshooting, .profileSettings(profileID: "adult"),
             .profileAppearance(profileID: "adult"), .profileLockSetup(profileID: "adult")
         ]

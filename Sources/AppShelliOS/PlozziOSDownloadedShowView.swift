@@ -77,7 +77,6 @@ struct PlozziOSDownloadedShowView: View {
                             appModel: appModel,
                             provider: provider,
                             item: nav.item,
-                            seerService: appModel.seerService,
                             originSourceAccountID: nav.item.sourceAccountID,
                             presentsEpisodeAsSubject: nav.item.kind == .episode
                         )

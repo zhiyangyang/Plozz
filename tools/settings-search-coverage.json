@@ -86,7 +86,6 @@
     "PlozziOSPlaybackSettingsView",
     "PlozziOSPlexHomeUserSettingsView",
     "PlozziOSProfilesView",
-    "PlozziOSSeerrSettingsView",
     "PlozziOSSettingsLanguagePicker",
     "PlozziOSSpoilerSettingsControls",
     "PlozziOSStreamingSettings",
@@ -97,7 +96,6 @@
     "ProfileActionsList",
     "ProfileEditorView",
     "ProfileNameField",
-    "SeerDetailView",
     "ServerUserDetailView",
     "SkipMarkerCommunityControl",
     "SkipMarkerContentControls",
@@ -3024,194 +3022,9 @@
         "version-selection"
       ]
     },
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|body|Button|\"Change account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|body|Button|\"Review account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|body|Button|\"Try again\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|body|Button|Text(changingAccount ? \"Cancel\" : \"Not now\") .frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift|ProfileSeerrSetupView|continueButton|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/ProfileSetupLibrariesView.swift|ProfileSetupLibrariesView|doneBar|Button|<dynamic>": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerAccountPage|body|Button|Text(dismissTitle)": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionDetail|body|Button|\"Remove connection\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionDetail|body|Button|\"Sign in again\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionDetail|body|Picker|\"Request as\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionDetail|body|SettingsMenuRow|\"Request as\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Button|\"Add account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Button|\"Edit connection\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Button|\"Try again\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Button|HStack { SeerConnectionLabel(connection: connection) Spacer() if seer.profileConnections.selected?.id == connection.id { Image(systemName: \"checkmark\").accessibilityLabel(Text(\"Selected\")) } Image(systemName: \"chevron.right\").accessibilityHidden(true) }": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Picker|\"Default account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|SettingsMenuRow|\"Default account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Toggle|\"Ask each time\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerConnectionsView.swift|SeerConnectionsContent|body|Toggle|\"Use last account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerPlexSignInView|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerPlexSignInView|body|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerServerDiscoverySection|body|Button|\"Scan Again\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerServerDiscoverySection|body|Button|SeerDiscoveredServerRow(address: url)": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|addressSection|TextField|\"Seerr server address\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|Text(\"Seerr account\").frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|Text(\"Use API key\").frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|Text(\"Use an account\").frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|Text(accounts.isEmpty ? \"Sign in with Plex\" : \"Use another Plex account\") .frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|alternatives|Button|mediaSignInLabel(\"Enter username and password\") .frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|Button|\"Use another account\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|Button|Text(\"Use this account\").frame(maxWidth: .infinity).plozzPageActionLabel()": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|Button|VStack(alignment: .leading, spacing: 4) { Text(verbatim: option.name).font(.headline).plozzForeground(.primary) if let name = option.serverName, !name.isEmpty { Text(verbatim: name).plozzForeground(.secondary) } if let url = option.serverURL { Text(verbatim: url.absoluteString) .font(.caption).plozzForeground(.secondary) } } .fixedSize(horizontal: false, vertical: true)": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|SecureField|\"API key\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|SecureField|\"Password\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSignInForm|body|TextField|mode == .local ? \"Email\" : \"Username\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/SeerSignInForm.swift|SeerSuggestedSetupView|body|Button|<dynamic>": {
-      "count": 2,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
     "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|accountRow|Button|\"Edit connection\"": {

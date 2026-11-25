@@ -77,66 +77,6 @@ final class ProfileModelTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Profile.self, from: data), p)
     }
 
-    func testSettingSeerrUserSetsAndClears() throws {
-        let base = Profile(id: "p1", name: "Dad")
-        XCTAssertNil(base.seerrUserID)
-
-        let server = try XCTUnwrap(SeerServerIdentity(baseURL: XCTUnwrap(URL(string: "https://requests.example.com"))))
-        let mapped = base.settingSeerrUser(
-            id: 7, name: "Dad (Seerr)", avatarURL: "https://x/y.png", serverIdentity: server
-        )
-        XCTAssertEqual(mapped.seerrUserID, 7)
-        XCTAssertEqual(mapped.seerrUserName, "Dad (Seerr)")
-        XCTAssertEqual(mapped.seerrUserAvatarURL, "https://x/y.png")
-        XCTAssertEqual(mapped.seerrRequestIdentity, .user(id: 7, server: server))
-
-        let cleared = mapped.settingSeerrUser(id: nil)
-        XCTAssertNil(cleared.seerrUserID)
-        XCTAssertNil(cleared.seerrUserName, "Clearing the id drops the cached name")
-        XCTAssertNil(cleared.seerrUserAvatarURL)
-        XCTAssertNil(cleared.seerrServerIdentity)
-        XCTAssertEqual(cleared.seerrRequestIdentity, .admin)
-    }
-
-    func testSeerrUserMappingSurvivesCodableRoundTrip() throws {
-        let server = try XCTUnwrap(SeerServerIdentity(baseURL: XCTUnwrap(URL(string: "https://requests.example.com"))))
-        let p = Profile(id: "p2", name: "Mom").settingSeerrUser(
-            id: 42, name: "Mom", avatarURL: nil, serverIdentity: server
-        )
-        let data = try JSONEncoder().encode(p)
-        let decoded = try JSONDecoder().decode(Profile.self, from: data)
-        XCTAssertEqual(decoded.seerrUserID, 42)
-        XCTAssertEqual(decoded.seerrServerIdentity, server)
-        XCTAssertFalse(decoded.seerrRequestIdentity.requiresRelink(to: server))
-        XCTAssertEqual(decoded, p)
-    }
-
-    func testLegacySeerrMappingRequiresConfirmation() throws {
-        let json = #"{"id":"p3","name":"Kid","avatarSymbol":"star.circle.fill","colorIndex":0,"createdAt":0,"seerrUserID":7,"seerrUserName":"Kid"}"#
-        let decoded = try JSONDecoder().decode(Profile.self, from: Data(json.utf8))
-        XCTAssertEqual(decoded.seerrUserID, 7)
-        XCTAssertEqual(decoded.seerrUserName, "Kid")
-        XCTAssertNil(decoded.seerrServerIdentity)
-        XCTAssertEqual(decoded.seerrRequestIdentity, .user(id: 7, server: nil))
-        let server = try XCTUnwrap(SeerServerIdentity(baseURL: XCTUnwrap(URL(string: "https://requests.example.com"))))
-        XCTAssertTrue(decoded.seerrRequestIdentity.requiresRelink(to: server))
-
-        let confirmed = decoded.settingSeerrUser(
-            id: decoded.seerrUserID, name: decoded.seerrUserName, serverIdentity: server
-        )
-        XCTAssertFalse(confirmed.seerrRequestIdentity.requiresRelink(to: server))
-        XCTAssertEqual(confirmed.seerrUserID, decoded.seerrUserID)
-    }
-
-    func testLegacyProfileJSONWithoutSeerrFieldsDecodesToNil() throws {
-        // A profile encoded before seerrUserID existed must decode cleanly.
-        let legacyJSON = #"{"id":"p3","name":"Kid","avatarSymbol":"star.circle.fill","colorIndex":0,"createdAt":0}"#
-        let decoded = try JSONDecoder().decode(Profile.self, from: Data(legacyJSON.utf8))
-        XCTAssertEqual(decoded.id, "p3")
-        XCTAssertNil(decoded.seerrUserID)
-        XCTAssertNil(decoded.seerrUserName)
-    }
-
     // MARK: Avatar symbols
 
     func testDefaultAvatarSymbolIsStablePerson() {
