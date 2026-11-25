@@ -933,7 +933,7 @@ fileprivate struct IOSProfilePhotoTile: View {
             } label: {
                 ZStack {
                     Circle().fill(palette.cardSurface)
-                    FallbackAsyncImage(urls: [candidate.imageURL], variant: .musicThumbnail) {
+                    FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) {
                         Image(systemName: "person.fill")
                             .font(.system(size: 30))
                             .foregroundStyle(palette.secondaryText)
@@ -1129,7 +1129,7 @@ fileprivate struct IOSProfileCompactPhotoTile: View {
         } label: {
             ZStack {
                 Circle().fill(palette.cardSurface)
-                FallbackAsyncImage(urls: [candidate.imageURL], variant: .musicThumbnail) {
+                FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) {
                     Image(systemName: "person.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(palette.secondaryText)

@@ -94,12 +94,10 @@ final class PlexMutationSharingTests: XCTestCase {
     }
 
     private enum Mutation: CaseIterable, Sendable {
-        case rating, watched, progress, timeline
+        case watched, progress, timeline
 
         func apply(alternate: Bool, to client: PlexClient) async throws {
             switch self {
-            case .rating:
-                try await client.setMusicRating(alternate ? 3 : 5, ratingKey: "101")
             case .watched:
                 try await client.setWatched(!alternate, ratingKey: "101")
             case .progress:

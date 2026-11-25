@@ -333,38 +333,10 @@ public final class ItemDetailViewModel {
 
     /// Stable identity for the active movie/series source. Includes the account so
     /// switching servers re-resolves even when two backends use the same item id.
-    public var themeMusicPlaybackID: String? {
-        guard !isDiscoveryItem, let activeProvider,
-              case let .loaded(detail) = state,
-              detail.item.kind == .movie || detail.item.kind == .series else {
-            return nil
-        }
-        return "\(activeSourceAccountID ?? activeProvider.kind.rawValue):\(activeItemID)"
-    }
-
     /// A source-specific library browse is an intentional source choice. Playback
     /// must remain on that server unless the viewer changes the source picker.
     public var isLibraryOriginPinned: Bool {
         originSourceAccountID != nil
-    }
-
-    /// Resolves theme audio as a best-effort decorative enhancement.
-    public func resolveThemeMusic() async -> ThemeMusic? {
-        guard themeMusicPlaybackID != nil, let activeProvider else { return nil }
-        do {
-            let theme = try await activeProvider.themeMusic(for: activeItemID)
-            if let theme {
-                PlozzLog.app.info(
-                    "Theme music: resolved item=\(activeItemID) source=\(theme.playbackSource.redactedLabel)"
-                )
-            }
-            return theme
-        } catch {
-            PlozzLog.app.error(
-                "Theme music: resolve failed item=\(activeItemID) error=\(String(describing: error))"
-            )
-            return nil
-        }
     }
 
     private let provider: (any MediaProvider)?

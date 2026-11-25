@@ -35,7 +35,7 @@ final class MetadataSourceAttributionTests: XCTestCase {
     }
 
     func testKnownExternalSourcesAreCovered() {
-        for source in [MetadataSource.anilist, .mal, .tvmaze, .kitsu, .omdb, .wikidata, .wikipedia, .musicbrainz, .deezer] {
+        for source in [MetadataSource.anilist, .mal, .tvmaze, .kitsu, .omdb, .wikidata, .wikipedia] {
             XCTAssertNotNil(MetadataSourceAttribution.for(source), "missing attribution for \(source.rawValue)")
         }
     }

@@ -307,7 +307,7 @@ final class NavigationStyleSettingsStoreTests: XCTestCase {
             XCTAssertTrue(NavigationDestinationDefaults.iPhoneOverflowKeys(visible: sections.enabled).isEmpty)
         }
         XCTAssertTrue(NavigationLibraryLayout.default
-            .sections(available: NavigationDestinationDefaults.compact(hasMusic: true))
+            .sections(available: NavigationDestinationDefaults.compact())
             .enabled.contains(NavigationLibraryLayout.settingsKey))
     }
 
@@ -395,12 +395,10 @@ final class NavigationStyleSettingsStoreTests: XCTestCase {
             available: available
         )
         XCTAssertFalse(model.showsWatchlist)
-        XCTAssertFalse(model.showsMusic)
         model.resetLibraryLayout()
         XCTAssertEqual(model.librarySections(available: available).enabled, available)
         XCTAssertTrue(model.librarySections(available: available).disabled.isEmpty)
         XCTAssertTrue(model.showsWatchlist)
-        XCTAssertTrue(model.showsMusic)
         XCTAssertEqual(NavigationLibraryLayoutStore(defaults: defaults).load(), .default)
     }
 

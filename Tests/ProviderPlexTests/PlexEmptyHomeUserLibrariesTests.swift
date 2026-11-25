@@ -14,17 +14,15 @@ final class PlexEmptyHomeUserLibrariesTests: XCTestCase {
         )
     }
 
-    func testAuthenticatedHomeUserWithoutServerGrantHasNoVideoOrMusicLibraries() async throws {
+    func testAuthenticatedHomeUserWithoutServerGrantHasNoLibraries() async throws {
         let http = StubHTTPClient()
         http.stub(pathSuffix: "/library/sections", json: "{}", status: 401)
         http.stub(pathSuffix: "/api/v2/resources", json: "[]")
         let provider = provider(http)
         let libraries = try await provider.libraries()
-        let music = try await provider.musicLibraries()
         XCTAssertTrue(libraries.isEmpty)
-        XCTAssertTrue(music.isEmpty)
         XCTAssertEqual(http.sentPaths, [
-            "/library/sections", "/api/v2/resources", "/library/sections", "/api/v2/resources"
+            "/library/sections", "/api/v2/resources"
         ])
         XCTAssertTrue(http.sentHeaders.allSatisfy { $0["X-Plex-Token"] == "home-user-cloud" })
         XCTAssertEqual(http.baseURL(forPathSuffix: "/api/v2/resources")?.host, "plex.tv")

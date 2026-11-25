@@ -282,7 +282,7 @@ public final class ExternalPlaybackRuntime {
         }
         try checkCurrent()
         switch account.provider.kind {
-        case .silo, .mediaShare, .subsonic:
+        case .silo, .mediaShare:
             guard Self.supportsIndependentHandoff(account.provider),
                   account.provider is any ExternalPlaybackProviding else { return false }
         case .jellyfin, .emby, .plex:

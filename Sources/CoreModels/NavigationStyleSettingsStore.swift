@@ -4,7 +4,7 @@ import Observation
 /// Persists the selected `NavigationStyle` and tvOS exit behavior across
 /// launches in standard `UserDefaults`.
 ///
-/// Mirrors `MusicPlayerSettingsStore`: both preferences are stored **per profile**
+/// Both preferences are stored **per profile**
 /// with namespace-scoped keys. The primary profile keeps the legacy un-suffixed
 /// navigation-style key so existing installs upgrade cleanly and inherit the
 /// choice they already made while it was an app-wide setting.
@@ -115,11 +115,6 @@ public final class NavigationStyleSettingsModel {
     public var showsWatchlist: Bool {
         get { resolvedLibraryLayout.isVisible(NavigationLibraryLayout.watchlistKey) }
         set { setDestination(newValue, key: NavigationLibraryLayout.watchlistKey) }
-    }
-
-    public var showsMusic: Bool {
-        get { libraryLayout.isVisible(NavigationLibraryLayout.musicKey) }
-        set { setDestination(newValue, key: NavigationLibraryLayout.musicKey) }
     }
 
 

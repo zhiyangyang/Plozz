@@ -5,7 +5,6 @@ import CoreModels
 import EnginePlozzigen
 import FeatureAuthCore
 import ProviderShare
-import ProviderSubsonic
 import UIKit
 import XCTest
 
@@ -16,47 +15,6 @@ final class LiveProviderSmokeTests: XCTestCase {
     func testFTPBrowseDetailAndPlayback() async throws { try await share("ftp") }
     func testNFSBrowseDetailAndPlayback() async throws { try await share("nfs") }
     func testWebDAVBrowseDetailAndPlayback() async throws { try await share("webdav") }
-
-    func testSubsonicSignInBrowseAndPlayback() async throws {
-        let config = try await configuration("subsonic")
-        do {
-            let session = try await SubsonicProvider.signIn(
-                address: try XCTUnwrap(config.baseURL).absoluteString,
-                username: try XCTUnwrap(config.username), password: try XCTUnwrap(config.password),
-                usesAPIKey: false, deviceID: UUID().uuidString
-            )
-            let provider = try SubsonicProvider(context: .init(
-                session: session, accountID: "live-subsonic", credentialRevision: .init()
-            ))
-            let libraries = try await provider.musicLibraries()
-            XCTAssertFalse(libraries.isEmpty)
-            let albums = try await provider.musicItems(in: "", kind: .album, page: .init(startIndex: 0, limit: 3))
-            let album = try XCTUnwrap(albums.albums.first)
-            let tracks = try await provider.tracks(in: album.id)
-            let track = try XCTUnwrap(tracks.first)
-            let request = try await provider.audioPlaybackInfo(for: track.id, queueContext: nil)
-            guard case .authenticatedHTTP(let locator) = request.playbackSource else { throw SmokeFailure.source }
-            let player = AVPlayer(url: try await provider.resolveHTTPResource(locator))
-            player.isMuted = true
-            defer { player.pause(); player.replaceCurrentItem(with: nil) }
-            player.play()
-            let deadline = ContinuousClock.now + .seconds(30)
-            while player.timeControlStatus != .playing, ContinuousClock.now < deadline {
-                if player.currentItem?.status == .failed { throw SmokeFailure.playback }
-                try await Task.sleep(for: .milliseconds(100))
-            }
-            XCTAssertEqual(player.timeControlStatus, .playing)
-            let start = player.currentTime().seconds
-            try await Task.sleep(for: .seconds(5))
-            XCTAssertGreaterThan(player.currentTime().seconds - start, 3)
-            player.pause()
-            let paused = player.currentTime().seconds
-            try await Task.sleep(for: .milliseconds(500))
-            XCTAssertEqual(player.currentTime().seconds, paused, accuracy: 0.25)
-        } catch {
-            XCTFail("Live Subsonic smoke failed: \(type(of: error))")
-        }
-    }
 
     private func share(_ kind: String) async throws {
         let config = try await configuration(kind)

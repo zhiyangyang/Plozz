@@ -91,7 +91,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     private var liveSourceResetCancellable: AnyCancellable?
 
     public var currentTime: TimeInterval { engine.currentTime }
-    public var audioTapPresentationTime: TimeInterval { engine.sourceTime }
     public var subtitlePresentationTime: TimeInterval {
         if usesNativeSubtitleCues, let time = engine.currentAVPlayer?.currentTime().seconds, time.isFinite {
             return time
@@ -2683,47 +2682,3 @@ public enum PlozzigenVideoEngineFactory {
 #if os(iOS)
 extension PlozzigenVideoEngine: PictureInPicturePresentingEngine {}
 #endif
-
-// MARK: - Song identification (#351)
-
-extension PlozzigenVideoEngine {
-    /// The engine's opt-in decoded-audio tap (mono Float32 48 kHz, source PTS),
-    /// which is exactly what ShazamKit's streaming matcher accepts.
-    @MainActor
-    public func installSongTap() -> AsyncStream<SongTapChunk>? {
-        // A server-transcoded HLS stream plays on the remote-HLS route, where the
-        // tap fetches the server's segments a second time. On Plex transcodes it
-        // could not decode them ("no tfhd") and a long seek then stalled playback
-        // with HTTP 404, so song identification stays off on that route.
-        guard engine.videoRoute != .remoteBypass else { return nil }
-        let tap = engine.installAudioTap(channels: .downmix)
-        guard engine.audioTapHasDeliverySource else {
-            engine.removeAudioTap()
-            return nil
-        }
-        let iterator = SongTapIterator(tap)
-        return AsyncStream(unfolding: { await iterator.next() })
-    }
-
-    /// One consumer pulls directly from Aether's bounded stream. No forwarding task,
-    /// second PCM queue, or main-actor hop is needed for each audio buffer.
-    private final class SongTapIterator: @unchecked Sendable {
-        private var iterator: AsyncStream<AudioTapBuffer>.Iterator
-
-        init(_ stream: AsyncStream<AudioTapBuffer>) {
-            iterator = stream.makeAsyncIterator()
-        }
-
-        func next() async -> SongTapChunk? {
-            guard let chunk = await iterator.next() else { return nil }
-            return SongTapChunk(
-                buffer: chunk.buffer, sourceTime: chunk.sourceTime, discontinuity: chunk.discontinuity
-            )
-        }
-    }
-
-    @MainActor
-    public func removeSongTap() {
-        engine.removeAudioTap()
-    }
-}

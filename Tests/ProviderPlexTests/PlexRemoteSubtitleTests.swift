@@ -113,8 +113,7 @@ final class PlexRemoteSubtitleTests: XCTestCase {
     func testPlexAdvertisesRemoteSubtitlesCapability() {
         let provider = PlexProvider(session: makeSession(), http: StubHTTPClient())
         XCTAssertTrue(provider.capabilities.contains(.remoteSubtitles))
-        XCTAssertTrue(provider.capabilities.contains(.music), "must not drop the Music capability")
-        XCTAssertTrue(provider.capabilities.contains(.video))
+            XCTAssertTrue(provider.capabilities.contains(.video))
     }
 
     func testDownloadedSRTIsMarkedExternalAndKeepsItsOriginalDeliveryFormat() async throws {

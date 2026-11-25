@@ -89,8 +89,6 @@ final class ThemeSettingsStoreTests: XCTestCase {
         // the enum but forgotten in `pickerOrder` would be silently unselectable.
         XCTAssertEqual(Set(AppTheme.pickerOrder), Set(AppTheme.allCases))
         XCTAssertEqual(AppTheme.pickerOrder.count, AppTheme.allCases.count)
-        XCTAssertEqual(Set(MusicPlayerAppearance.pickerOrder), Set(MusicPlayerAppearance.allCases))
-        XCTAssertEqual(MusicPlayerAppearance.pickerOrder.count, MusicPlayerAppearance.allCases.count)
     }
 }
 

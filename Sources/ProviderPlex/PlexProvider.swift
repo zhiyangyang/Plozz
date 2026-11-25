@@ -17,7 +17,6 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
     let libraryGenreCache = PlexLibraryGenreCache()
     private let extraWatchState: PlexExtraWatchState?
     private let videoPlaylistCache = VideoPlaylistSnapshotCache()
-    let themeArchiveResolver: @Sendable (String?) async -> URL?
     private let artworkOriginHistoryKey: String
     private let makeConnectionResolver: @Sendable ([URL], [URL]) -> PlexConnectionResolver
 
@@ -63,10 +62,7 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
         hybridEngineEnabled: Bool = false,
         connectionRefresh: PlexConnectionResolver.Refresh? = nil,
         probe: HTTPClient = URLSessionHTTPClient(session: .plozzDiscovery),
-        playbackFailureDiagnostics: PlaybackFailureDiagnostics = .shared,
-        themeArchiveResolver: @escaping @Sendable (String?) async -> URL? = {
-            await ThemeMusicArchive.resolvedURL(tvdbID: $0)
-        }
+        playbackFailureDiagnostics: PlaybackFailureDiagnostics = .shared
     ) {
         self.session = session
         self.accountID = accountID ?? session.server.id
@@ -75,7 +71,6 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
             PlexExtraWatchState(context: $0, session: session, durableStore: durableStore)
         }
         self.playbackFailureDiagnostics = playbackFailureDiagnostics
-        self.themeArchiveResolver = themeArchiveResolver
         let deviceProfile = PlexDeviceProfile(clientIdentifier: session.deviceID)
         // Probe the persisted connection list (or the single saved URL) and stay
         // on whichever is reachable. With only one candidate and no refresh this
@@ -761,38 +756,6 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
         var result: [MediaItem] = []
         for item in items { result.append(await stampExtra(item)) }
         return result
-    }
-
-    public func themeMusic(for itemID: String) async throws -> ThemeMusic? {
-        let metadata = try await client.metadata(ratingKey: itemID)
-        if let path = metadata.theme?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !path.isEmpty {
-            return ThemeMusic(
-                itemID: itemID,
-                playbackSource: .authenticatedHTTP(
-                    try authenticatedPlaybackLocator(
-                        itemID: itemID,
-                        mediaSourceID: nil,
-                        serverPath: path,
-                        deliveryMode: .directFile,
-                        purpose: .themeMusic,
-                        playSessionID: nil,
-                        formatHint: "mp3"
-                    )
-                ),
-                title: metadata.title
-            )
-        }
-
-        let tvdbID = Self.providerIDs(from: metadata)["Tvdb"]
-        guard let archiveURL = await themeArchiveResolver(tvdbID) else { return nil }
-        return ThemeMusic(
-            itemID: itemID,
-            playbackSource: .publicURL(
-                try SecretFreeURLSource(url: archiveURL)
-            ),
-            title: metadata.title
-        )
     }
 
     public func children(of itemID: String) async throws -> [MediaItem] {
@@ -3068,5 +3031,11 @@ extension PlexProvider: MetadataRefreshing {
     /// asynchronously.
     public func refreshMetadata(itemID: String) async throws {
         try await client.refreshMetadata(ratingKey: itemID)
+    }
+}
+
+extension PlexProvider: CapabilityReporting {
+    public var capabilities: ProviderCapability {
+        [.video, .remoteSubtitles, .libraryCollections, .videoPlaylists]
     }
 }

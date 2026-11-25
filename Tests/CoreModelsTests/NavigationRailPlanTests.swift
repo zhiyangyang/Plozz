@@ -61,9 +61,9 @@ final class NavigationRailPlanTests: XCTestCase {
             for layout in layouts {
                 let entries = NavigationRailPlan.entries(visibleLibraries: visible, layout: layout)
                 for keys in [
-                    NavigationDestinationDefaults.compact(hasMusic: true),
-                    NavigationDestinationDefaults.sidebar(visibleLibraries: visible, hasMusic: true),
-                    NavigationDestinationDefaults.rail(visibleLibraries: visible, hasMusic: false)
+                    NavigationDestinationDefaults.compact(),
+                    NavigationDestinationDefaults.sidebar(visibleLibraries: visible),
+                    NavigationDestinationDefaults.rail(visibleLibraries: visible)
                 ] {
                     XCTAssertEqual(
                         NavigationRailPlan.destinations(
@@ -81,11 +81,11 @@ final class NavigationRailPlanTests: XCTestCase {
     func testEditorDefaultsMatchEachTVNavigationStyle() {
         XCTAssertEqual(
             NavigationRailPlan.customizableKeys(visibleLibraries: [], style: .rail),
-            NavigationDestinationDefaults.rail(visibleLibraries: [], hasMusic: true)
+            NavigationDestinationDefaults.rail(visibleLibraries: [])
         )
         XCTAssertEqual(
             NavigationRailPlan.customizableKeys(visibleLibraries: [], style: .tabBar),
-            NavigationDestinationDefaults.sidebar(visibleLibraries: [], hasMusic: true)
+            NavigationDestinationDefaults.sidebar(visibleLibraries: [])
         )
         XCTAssertTrue(
             NavigationRailPlan.customizableKeys(visibleLibraries: [], style: .tabBar)
@@ -97,13 +97,13 @@ final class NavigationRailPlanTests: XCTestCase {
         let libraries = (1...20).map { library("\($0)", title: "Library \($0)", account: "plex") }
         var layout = NavigationLibraryLayout(
             order: ["plex:20", NavigationLibraryLayout.homeKey],
-            hiddenKeys: ["plex:1", NavigationLibraryLayout.musicKey]
+            hiddenKeys: ["plex:1"]
         )
         let saved = layout
         func resolved() -> [NavigationRailDestination] {
             NavigationRailPlan.destinations(
                 visibleLibraries: libraries, layout: layout,
-                availableKeys: NavigationDestinationDefaults.sidebar(visibleLibraries: libraries, hasMusic: true)
+                availableKeys: NavigationDestinationDefaults.sidebar(visibleLibraries: libraries)
             )
         }
         let sidebar = resolved()
@@ -111,7 +111,6 @@ final class NavigationRailPlanTests: XCTestCase {
         XCTAssertEqual(horizontal, sidebar)
         XCTAssertEqual(horizontal.first, .library("plex:20"))
         XCTAssertTrue(horizontal.contains(.settings))
-        XCTAssertFalse(horizontal.contains(.music))
         XCTAssertFalse(horizontal.contains(.library("plex:1")))
         XCTAssertEqual(layout, saved)
         XCTAssertTrue(sidebar.contains(.settings))
@@ -328,7 +327,6 @@ final class NavigationRailPlanTests: XCTestCase {
         ]
         expected += [
             NavigationLibraryLayout.searchKey,
-            NavigationLibraryLayout.musicKey,
             NavigationLibraryLayout.allLibrariesKey,
             "a:1",
             NavigationLibraryLayout.settingsKey,
@@ -489,7 +487,7 @@ final class NavigationRailPlanTests: XCTestCase {
         )
 
         XCTAssertFalse(layout.isVisible(NavigationLibraryLayout.watchlistKey))
-        XCTAssertTrue(layout.isVisible(NavigationLibraryLayout.musicKey))
+        XCTAssertTrue(layout.isVisible(NavigationLibraryLayout.settingsKey))
     }
 
     // MARK: Selection pruning
@@ -521,7 +519,6 @@ final class NavigationRailPlanTests: XCTestCase {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.searchKey,
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.musicKey,
             NavigationLibraryLayout.allLibrariesKey,
             "a:1",
         ]
@@ -554,7 +551,7 @@ final class NavigationRailPlanTests: XCTestCase {
 
     func testDestinationStorageValueRoundTrips() {
         var cases: [NavigationRailDestination] = [
-            .home, .search, .watchlist, .music, .settings, .allLibraries,
+            .home, .search, .watchlist, .settings, .allLibraries,
             .library("acct:lib:with:colons")
         ]
         for destination in cases {

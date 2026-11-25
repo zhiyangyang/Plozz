@@ -78,9 +78,7 @@ public struct NavigationLibrariesDetailView: View {
         let visible = all.filter { scope.homeVisibility.isEnabled($0.key) }
         #if os(iOS)
         let keys = NavigationDestinationDefaults.iOS(
-            visibleLibraries: includesIndividualLibraries ? visible : [],
-            hasMusic: !excludedKeys.contains(NavigationLibraryLayout.musicKey)
-                && AppReleaseChannel.current.isBeta && visible.contains { $0.library.isMusic }
+            visibleLibraries: includesIndividualLibraries ? visible : []
         )
         let automaticallyHiddenDestinations = NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(available: keys)
         #else
@@ -165,7 +163,6 @@ public struct NavigationLibrariesDetailView: View {
                 title: customBuild ? Text("Favorites") : Text("Watchlist"),
                 symbolName: customBuild ? "heart.fill" : "bookmark.fill"
             ),
-            NavigationLibraryLayout.musicKey: .init(title: Text("Music"), symbolName: "music.note"),
             NavigationLibraryLayout.downloadsKey: .init(title: Text("Downloads"), symbolName: "arrow.down.circle"),
             NavigationLibraryLayout.settingsKey: .init(title: Text("Settings"), symbolName: "gearshape.fill"),
             NavigationLibraryLayout.allLibrariesKey: LiftableReorderList<String>.Row(

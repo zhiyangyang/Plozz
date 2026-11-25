@@ -27,11 +27,6 @@ public enum ProviderIDNamespace: String, Codable, Hashable, Sendable, CaseIterab
     case seriesMal
     case seriesAniDB
 
-    case musicBrainzReleaseGroup
-    case musicBrainzRelease
-    case musicBrainzTrack
-    case musicBrainzArtist
-
     /// The key to *write* an id under so ``providerID(_:)`` finds it again. Lookup
     /// is alias- and punctuation-insensitive, so this only has to normalize to one
     /// of ``aliases`` — it uses the spelling the rest of the app already writes.
@@ -53,10 +48,6 @@ public enum ProviderIDNamespace: String, Codable, Hashable, Sendable, CaseIterab
         case .seriesAniList: return "SeriesAniList"
         case .seriesMal: return "SeriesMal"
         case .seriesAniDB: return "SeriesAniDB"
-        case .musicBrainzReleaseGroup: return "MusicBrainzReleaseGroup"
-        case .musicBrainzRelease: return "MusicBrainzRelease"
-        case .musicBrainzTrack: return "MusicBrainzTrack"
-        case .musicBrainzArtist: return "MusicBrainzArtist"
         }
     }
 
@@ -86,14 +77,6 @@ public enum ProviderIDNamespace: String, Codable, Hashable, Sendable, CaseIterab
         case .seriesMal: return ["seriesmal", "seriesmyanimelist"]
         case .seriesAniDB: return ["seriesanidb"]
 
-        case .musicBrainzReleaseGroup:
-            return ["musicbrainzreleasegroup", "musicbrainzreleasegroupid", "mbreleasegroupid"]
-        case .musicBrainzRelease:
-            return ["musicbrainzrelease", "musicbrainzreleaseid", "mbreleaseid", "musicbrainzalbum"]
-        case .musicBrainzTrack:
-            return ["musicbrainztrack", "musicbrainztrackid", "mbrecordingid"]
-        case .musicBrainzArtist:
-            return ["musicbrainzartist", "musicbrainzartistid", "mbartistid", "musicbrainzalbumartist"]
         }
     }
 }

@@ -54,7 +54,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case allScreens, navigation, home, hero, detail, language
     case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
-    case externalPlayer, skipMarkers, musicPlayer, topShelf
+    case externalPlayer, skipMarkers, topShelf
     case downloads, profiles, metadata, diagnostics
     case playbackAdvanced, streamingAdvanced, metadataDiagnostics, detailRatingSources
     case profileAppearance, profileSettings, accountLibraries
@@ -79,7 +79,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .hero: ["Screens & Navigation", "Home", "Hero"]
         case .heroContent: ["Screens & Navigation", "Home", "Hero", "Hero content sources"]
         case .heroRatings: ["Screens & Navigation", "Home", "Hero", "Ratings"]
-        case .heroTrailers: ["Screens & Navigation", "Movie & show details", "Trailers & music"]
+        case .heroTrailers: ["Screens & Navigation", "Movie & show details", "Trailers"]
         case .heroDiscovery: ["Screens & Navigation", "Home", "Hero", "Discovery providers"]
         case .heroLibraries: ["Screens & Navigation", "Home", "Hero", "Random libraries"]
         case .heroCollections: ["Screens & Navigation", "Home", "Hero", "Collections"]
@@ -92,7 +92,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .cardLabels: ["Appearance", "Cards", "Customize labels"]
         case .externalPlayer: ["Playback", "External player"]
         case .skipMarkers: ["Playback", "Intros, credits & more"]
-        case .musicPlayer: ["Screens & Navigation", "Music player"]
         case .topShelf: ["Top Shelf"]
         case .downloads: ["Downloads"]
         case .profiles: ["Profiles"]
@@ -118,7 +117,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .theme, .cards, .artwork, .circadian, .cardLabels: "paintpalette"
         case .allScreens, .navigation, .home, .hero, .detail, .heroContent, .heroRatings,
              .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
-             .homeFiltering, .homeLabels, .continueWatching, .libraries, .musicPlayer, .topShelf, .detailRatingSources,
+             .homeFiltering, .homeLabels, .continueWatching, .libraries, .topShelf, .detailRatingSources,
              .accountLibraries:
             "rectangle.3.group"
         case .language: "globe"
@@ -213,7 +212,6 @@ public struct SettingsSearchEntry: Identifiable, Hashable, Sendable {
     ) -> Bool {
         osVersion >= minimumOSVersion && !(isKids && requiresAdultProfile)
             && (id != "offline-mode" || featureFlags.isEnabled(.offlineMode))
-            && (page != .musicPlayer || platform == .television || releaseChannel.isBeta)
             && (self.platform == nil || self.platform == platform
                 || (self.platform == .mobile && platform != .television))
     }
@@ -228,7 +226,6 @@ public struct SettingsSearchEntry: Identifiable, Hashable, Sendable {
     public func destinationPath(on platform: Platform) -> [SettingsSearchLabel] {
         if platform != .television {
             if page == .theme { return [.localized("Appearance")] }
-            if page == .musicPlayer { return [.localized("Appearance"), .localized("Music player")] }
         }
         return destinationPage(on: platform).path + (subtitlePage == .appearance ? [] : [.localized(subtitlePage.title)])
             + (skipKind.map { [.localized($0.settingsTitle)] } ?? [])
@@ -418,8 +415,6 @@ public enum SettingsSearchCatalog {
               keywords: "remember sound track language episodes"),
         .init("lossless-audio", page: .playback, title: "Prefer lossless audio",
               keywords: "sound surround compressed HDMI ARC receiver audio compatibility"),
-        .init("identify-songs", page: .playback, title: "Identify songs",
-              keywords: "shazam music song soundtrack what song is playing apple music"),
         .init("read-ahead", page: .playback, title: "Video buffer",
               keywords: "buffering streaming cache ahead slow network stuttering loading memory"),
         .init("video-upscaling", page: .playback, title: "Video upscaling",
@@ -489,7 +484,7 @@ public enum SettingsSearchCatalog {
               keywords: "home hero carousel spotlight banner featured showcase enable disable turn on off hide",
               preferredQueries: ["hero", "home banner", "spotlight"]),
         .init("detail-background", page: .heroTrailers, title: "Detail background",
-              keywords: "movie show details hero trailer theme music behind artwork"),
+              keywords: "movie show details hero trailer behind artwork"),
         .init("detail-size", page: .detail, title: "Logo & text size",
               keywords: "movie show details title logo synopsis description bigger larger smaller"),
         .init("detail-ratings", page: .detail, title: "Show review scores",
@@ -524,7 +519,7 @@ public enum SettingsSearchCatalog {
             SettingsSearchEntry(
                 "artwork-view-\(area.rawValue)", page: .artwork, title: area.displayName,
                 keywords: "artwork posters background backdrop logo local server library online metadata providers",
-                platform: [.topShelf, .music, .recommendedHero].contains(area)
+                platform: [.topShelf, .recommendedHero].contains(area)
                     ? .television : area == .downloads ? .mobile : nil
             )
         } + SubtitleContentCategory.allCases.filter { $0 != .other }.flatMap { category in
@@ -582,7 +577,7 @@ public enum SettingsSearchCatalog {
         .init("hero-rating-count", page: .heroRatings, title: "Maximum ratings shown",
               keywords: "hero review scores number limit"),
         .init("trailer-sources", page: .heroTrailers, title: "Trailers",
-              keywords: "trailers music youtube server only off disable manual button sources"),
+              keywords: "trailers youtube server only off disable manual button sources"),
         .init("hero-trailers", page: .heroTrailers, title: "Home autoplay",
               keywords: "hero background video preview motion autoplay"),
         .init("hero-trailers-muted", page: .heroTrailers, title: "Start muted",

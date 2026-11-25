@@ -314,13 +314,6 @@ struct ArtworkScopeDiagram: View {
                     Region(x, 162, 65, 4)
                 ]
             }
-        case .music:
-            return [
-                Region(20, 24, 112, 112, highlighted: true, kind: .cover),
-                Region(158, 48, 126, 6), Region(158, 67, 84, 5),
-                Region(158, 106, 12, 12), Region(187, 106, 12, 12), Region(216, 106, 12, 12),
-                Region(20, 160, 264, 3)
-            ]
         case .topShelf:
             return [Region(12, 18, 90, 5), Region(162, 18, 90, 5)]
                 + (0..<6).map {

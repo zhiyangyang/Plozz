@@ -127,7 +127,7 @@ final class ProfileBackgroundPalettes {
         Task { [weak self] in
             // Reuse the shared cache (the tile likely already decoded this photo),
             // then extract off the main thread so the UI never stalls.
-            guard let image = await ArtworkImageCache.shared.image(for: url, variant: .musicThumbnail) else {
+            guard let image = await ArtworkImageCache.shared.image(for: url, variant: .profileThumbnail) else {
                 self?.inFlight.remove(key)
                 return
             }

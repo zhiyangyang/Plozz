@@ -6,7 +6,6 @@ public struct NavigationContentAvailability: Equatable, Sendable {
     public let hasHomeContent: Bool
     public let hasSearchContent: Bool
     public let hasWatchlistItems: Bool
-    private let hasMusicOnlyAccount: Bool
 
     public init(
         accounts: [Account],
@@ -17,7 +16,6 @@ public struct NavigationContentAvailability: Equatable, Sendable {
         hasWatchlistItems: Bool
     ) {
         let accountIDs = Set(accounts.map(\.id))
-        hasMusicOnlyAccount = !accounts.isEmpty && accounts.allSatisfy { $0.server.provider == .subsonic }
         let hasLibraries = libraries.contains {
             accountIDs.contains($0.accountID)
                 && !disabledLibraryKeys.contains($0.key)
@@ -26,8 +24,7 @@ public struct NavigationContentAvailability: Equatable, Sendable {
         // Keep established media navigation while an uncached server is loading
         // or unreachable.
         let hasUnresolvedMediaServer = accounts.contains {
-            $0.server.provider != .subsonic
-                && !discoveredAccountIDs.contains($0.id)
+            !discoveredAccountIDs.contains($0.id)
         }
         hasSearchContent = hasLibraries || hasUnresolvedMediaServer || hasDiscoverySearch
         hasHomeContent = hasSearchContent || accounts.contains { $0.server.provider == .plex }
@@ -42,7 +39,6 @@ public struct NavigationContentAvailability: Equatable, Sendable {
         return hidden
     }
 
-    public var prefersMusic: Bool { !hasHomeContent && hasMusicOnlyAccount }
 
     /// Only a successful answer can remove an account's remembered libraries.
     public static func reconcileLibraries(

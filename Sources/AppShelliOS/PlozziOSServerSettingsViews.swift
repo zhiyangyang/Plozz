@@ -517,7 +517,7 @@ private struct PlozziOSMyLibrariesContent: View {
                 if let url {
                     FallbackAsyncImage(
                         urls: [url],
-                        variant: .musicThumbnail
+                        variant: .profileThumbnail
                     ) {
                         fallback
                     }

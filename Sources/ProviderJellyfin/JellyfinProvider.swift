@@ -19,7 +19,6 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
     let collectionLibraryCache = MediaBrowserCollectionLibraryCache()
     let videoPlaylistCache = VideoPlaylistSnapshotCache()
     private let serverRatingsReader = JellyfinServerRatings()
-    let themeArchiveResolver: @Sendable (String?) async -> URL?
     private let authenticatedStreamProber: (any AuthenticatedHTTPStreamProbing)?
     private let probeDescriptors: MediaBrowserProbeDescriptorStore
     private let hybridEngineEnabled: Bool
@@ -44,18 +43,13 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
         hybridEngineEnabled: Bool = false,
         authenticatedStreamProber: (any AuthenticatedHTTPStreamProbing)? = nil,
         addressProbe: any HTTPClient = URLSessionHTTPClient(session: .plozzDiscovery),
-        playbackRequests: PlaybackInfoRequestCoordinator = .shared,
-        themeArchiveResolver: @escaping @Sendable (String?) async -> URL? = {
-            await ThemeMusicArchive.resolvedURL(tvdbID: $0)
-        }
-
+        playbackRequests: PlaybackInfoRequestCoordinator = .shared
     ) {
         precondition(session.server.provider.usesMediaBrowserAPI)
         self.kind = session.server.provider
         self.session = session
         self.accountID = accountID ?? session.server.id
         self.credentialRevision = credentialRevision
-        self.themeArchiveResolver = themeArchiveResolver
         self.authenticatedStreamProber = authenticatedStreamProber
         self.hybridEngineEnabled = hybridEngineEnabled
         self.probeDescriptors = MediaBrowserProbeDescriptorStore()
@@ -881,40 +875,6 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
             )
         }
         return MediaExtra.ordered(localTrailers + specialFeatures)
-    }
-
-    public func themeMusic(for itemID: String) async throws -> ThemeMusic? {
-        if let song = try? await client.themeSongs(userID: session.userID, id: itemID).Items.first,
-           !song.Id.isEmpty {
-            let playSessionID = UUID().uuidString
-            let locator = try AuthenticatedHTTPPlaybackLocator(
-                provider: kind,
-                accountID: accountID,
-                credentialRevision: credentialRevision,
-                itemID: song.Id,
-                deliveryMode: .serverTranscode,
-                formatHint: MediaFormatHint(container: "ts"),
-                purpose: .themeMusic,
-                resource: try client.audioStreamResource(itemID: song.Id),
-                playSessionID: playSessionID
-            )
-            return ThemeMusic(
-                itemID: itemID,
-                playbackSource: .authenticatedHTTP(locator),
-                title: song.Name
-            )
-        }
-
-        let item = try? await client.item(userID: session.userID, id: itemID)
-        let tvdbID = item?.ProviderIds?["Tvdb"] ?? item?.ProviderIds?["tvdb"]
-        guard let archiveURL = await themeArchiveResolver(tvdbID) else { return nil }
-        return ThemeMusic(
-            itemID: itemID,
-            playbackSource: .publicURL(
-                try SecretFreeURLSource(url: archiveURL)
-            ),
-            title: item?.Name
-        )
     }
 
     public func children(of itemID: String) async throws -> [MediaItem] {
@@ -3230,5 +3190,11 @@ extension JellyfinProvider: MetadataRefreshing {
     /// forget: the server processes it asynchronously.
     public func refreshMetadata(itemID: String) async throws {
         try await client.refreshMetadata(itemID: itemID)
+    }
+}
+
+extension JellyfinProvider: CapabilityReporting {
+    public var capabilities: ProviderCapability {
+        [.video, .remoteSubtitles, .libraryCollections, .videoPlaylists]
     }
 }

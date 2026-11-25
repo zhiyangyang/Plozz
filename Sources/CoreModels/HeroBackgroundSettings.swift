@@ -28,8 +28,6 @@ public enum HeroBackgroundMode: String, Codable, CaseIterable, Sendable {
     /// Autoplay the item's trailer behind the hero (fast/local sources; see
     /// ``HeroBackgroundSettings/trailerMuted`` for audio).
     case trailer
-    /// Play the item's theme music softly on the detail page (no trailer).
-    case themeMusic
 
     public var displayName: LocalizedStringResource {
         switch self {
@@ -43,12 +41,6 @@ public enum HeroBackgroundMode: String, Codable, CaseIterable, Sendable {
             return LocalizedStringResource(
                 "heroBackground.trailer",
                 defaultValue: "Trailer",
-                comment: "Home hero background style option in Settings."
-            )
-        case .themeMusic:
-            return LocalizedStringResource(
-                "heroBackground.themeMusic",
-                defaultValue: "Theme music",
                 comment: "Home hero background style option in Settings."
             )
         }
@@ -68,33 +60,26 @@ public enum HeroBackgroundMode: String, Codable, CaseIterable, Sendable {
                 defaultValue: "Play the title's trailer behind the hero.",
                 comment: "One-line explanation shown under the hero-background picker."
             )
-        case .themeMusic:
-            return LocalizedStringResource(
-                "heroBackground.detail.themeMusic",
-                defaultValue: "Play a title's theme music while you browse its detail page.",
-                comment: "One-line explanation shown under the hero-background picker."
-            )
         }
     }
 }
 
 /// Per-profile hero background preferences, split by surface:
 ///  - the **Home** hero (carousel) can play a trailer behind the artwork;
-///  - the **Detail** page hero can play a trailer OR the title's theme music
-///    (mutually exclusive by construction — one `detailMode`).
+///  - the **Detail** page hero can play a trailer.
 /// Each surface owns its own mute *default* (`homeTrailerMuted`/`detailTrailerMuted`);
 /// the in-hero mute button is a transient session override that never writes these.
 ///
 /// Lenient decode with a migration from the legacy single-mode shape (`mode` +
-/// `trailerMuted`): the old mode maps to the detail page (theme music was always
-/// detail-only), and the home trailer inherits whether the old mode was `.trailer`.
+/// `trailerMuted`): the old mode maps to the detail page, and the home trailer
+/// inherits whether the old mode was `.trailer`.
 public struct HeroBackgroundSettings: Codable, Equatable, Sendable {
     public var trailerSources: TrailerSourcePolicy
     /// Whether a trailer autoplays behind the HOME hero. Default `true`.
     public var homeTrailerEnabled: Bool
     /// Mute *default* for the home hero's trailer. Default `true`.
     public var homeTrailerMuted: Bool
-    /// What plays behind the DETAIL page hero (static / trailer / theme music).
+    /// What plays behind the DETAIL page hero (static / trailer).
     public var detailMode: HeroBackgroundMode
     /// Mute *default* for the detail hero's trailer. Default `true`.
     public var detailTrailerMuted: Bool
@@ -115,8 +100,6 @@ public struct HeroBackgroundSettings: Codable, Equatable, Sendable {
 
     public static let `default` = HeroBackgroundSettings()
 
-    /// Whether the DETAIL page should play theme music.
-    public var themeMusicEnabled: Bool { detailMode == .themeMusic }
     public var homeTrailerPlaybackEnabled: Bool { trailerSources.allowsServerTrailers && homeTrailerEnabled }
     /// Whether the DETAIL page should autoplay a trailer.
     public var detailTrailerEnabled: Bool { trailerSources.allowsServerTrailers && detailMode == .trailer }
@@ -150,17 +133,21 @@ public struct HeroBackgroundSettings: Codable, Equatable, Sendable {
         trailerSources = (try? c.decodeIfPresent(TrailerSourcePolicy.self, forKey: .trailerSources))
             ?? d.trailerSources
         // Legacy single-mode values (present only in a pre-split persisted blob).
-        let legacyMode = ((try? c.decodeIfPresent(String.self, forKey: .mode)) ?? nil)
-            .flatMap { HeroBackgroundMode(rawValue: $0) }
+        let legacyRawMode = (try? c.decodeIfPresent(String.self, forKey: .mode)) ?? nil
+        let legacyMode = legacyRawMode.flatMap { HeroBackgroundMode(rawValue: $0) }
         let legacyMuted = (try? c.decodeIfPresent(Bool.self, forKey: .trailerMuted)) ?? nil
 
         homeTrailerEnabled = ((try? c.decodeIfPresent(Bool.self, forKey: .homeTrailerEnabled)) ?? nil)
             ?? legacyMode.map { $0 == .trailer } ?? d.homeTrailerEnabled
         homeTrailerMuted = ((try? c.decodeIfPresent(Bool.self, forKey: .homeTrailerMuted)) ?? nil)
             ?? legacyMuted ?? d.homeTrailerMuted
-        detailMode = ((try? c.decodeIfPresent(String.self, forKey: .detailMode)) ?? nil)
-            .flatMap { HeroBackgroundMode(rawValue: $0) }
-            ?? legacyMode ?? d.detailMode
+        let detailRawMode = (try? c.decodeIfPresent(String.self, forKey: .detailMode)) ?? nil
+        if detailRawMode == "themeMusic" || legacyRawMode == "themeMusic" {
+            detailMode = .off
+        } else {
+            detailMode = detailRawMode.flatMap { HeroBackgroundMode(rawValue: $0) }
+                ?? legacyMode ?? d.detailMode
+        }
         detailTrailerMuted = ((try? c.decodeIfPresent(Bool.self, forKey: .detailTrailerMuted)) ?? nil)
             ?? legacyMuted ?? d.detailTrailerMuted
     }
@@ -168,8 +155,7 @@ public struct HeroBackgroundSettings: Codable, Equatable, Sendable {
 
 // MARK: - Persistence
 
-/// Persists ``HeroBackgroundSettings`` per profile, mirroring the theme-music and
-/// hero-settings stores: the primary profile keeps an un-suffixed key so upgrading
+/// Persists ``HeroBackgroundSettings`` per profile, mirroring the hero-settings stores: the primary profile keeps an un-suffixed key so upgrading
 /// installs inherit cleanly; additional profiles pass their namespace.
 public protocol HeroBackgroundSettingsStoring: Sendable {
     func load() -> HeroBackgroundSettings
@@ -179,49 +165,20 @@ public protocol HeroBackgroundSettingsStoring: Sendable {
 public final class HeroBackgroundSettingsStore: HeroBackgroundSettingsStoring, @unchecked Sendable {
     private let defaults: UserDefaults
     private let key: String
-    private let legacyThemeMusicKey: String
     private let namespace: String?
 
     public init(defaults: UserDefaults = .standard, namespace: String? = nil) {
         self.defaults = defaults
         self.namespace = namespace
         self.key = SettingsKey.scoped("com.plozz.heroBackgroundSettings", namespace: namespace)
-        self.legacyThemeMusicKey = SettingsKey.scoped(
-            "com.plozz.themeMusicSettings",
-            namespace: namespace
-        )
     }
 
     public func load() -> HeroBackgroundSettings {
-        let themeData = defaults.data(forKey: legacyThemeMusicKey)
-        let themeMusic = themeData.flatMap {
-            try? JSONDecoder().decode(ThemeMusicSettings.self, from: $0)
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode(HeroBackgroundSettings.self, from: data) else {
+            return .default
         }
-        var settings: HeroBackgroundSettings
-        if let data = defaults.data(forKey: key),
-           let decoded = try? JSONDecoder().decode(HeroBackgroundSettings.self, from: data) {
-            settings = decoded
-        } else {
-            // One-time upgrade migration: preserve a profile that already opted
-            // into theme music instead of silently switching it to the new
-            // default (muted trailer).
-            settings = themeMusic?.isEnabled == true
-                ? HeroBackgroundSettings(detailMode: .themeMusic) : .default
-        }
-        let legacyVolume = themeData.flatMap {
-            try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
-        }?["volume"] as? String
-        if var themeMusic, legacyVolume == "off" {
-            if settings.detailMode == .themeMusic {
-                settings.detailMode = .off
-            }
-            // Persist silence before restoring an audible level for a future opt-in.
-            save(settings)
-            themeMusic.isEnabled = false
-            themeMusic.volume = ThemeMusicSettings.default.volume
-            ThemeMusicSettingsStore(defaults: defaults, namespace: namespace).save(themeMusic)
-        }
-        return settings
+        return decoded
     }
 
     public func save(_ settings: HeroBackgroundSettings) {
@@ -251,7 +208,7 @@ public final class InMemoryHeroBackgroundSettingsStore: HeroBackgroundSettingsSt
 }
 
 /// Observable wrapper so SwiftUI settings screens can two-way bind and have the
-/// change persisted + broadcast. Mirrors `ThemeMusicSettingsModel`.
+/// change persisted + broadcast.
 @MainActor
 @Observable
 public final class HeroBackgroundSettingsModel {

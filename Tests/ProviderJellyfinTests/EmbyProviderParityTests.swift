@@ -925,26 +925,4 @@ final class EmbyProviderParityTests: XCTestCase {
         )
     }
 
-    func testEmbyThemeMusicUsesCombinedThemeMediaEndpoint() async throws {
-        let stub = StubHTTPClient()
-        stub.stub(pathSuffix: "/Items/show1/ThemeMedia", json: """
-        {
-          "ThemeSongsResult":{
-            "Items":[{"Id":"song1","Name":"Main Theme","Type":"Audio"}],
-            "TotalRecordCount":1
-          }
-        }
-        """)
-        let provider = JellyfinProvider(session: makeSession(), http: stub)
-
-        let resolvedTheme = try await provider.themeMusic(for: "show1")
-        let theme = try XCTUnwrap(resolvedTheme)
-
-        XCTAssertEqual(theme.title, "Main Theme")
-        guard case .authenticatedHTTP(let locator) = theme.playbackSource else {
-            return XCTFail("expected authenticated theme resource")
-        }
-        XCTAssertEqual(locator.provider, .emby)
-        XCTAssertEqual(locator.resource.path, "Audio/song1/universal")
-    }
 }

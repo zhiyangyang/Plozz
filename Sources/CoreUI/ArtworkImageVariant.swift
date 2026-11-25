@@ -46,7 +46,7 @@ public enum ArtworkImageVariant: String, Sendable, CaseIterable {
     /// thumbnail at 2x is ~144px; cap at 256 for crispness while keeping the
     /// decoded bitmap tiny, so a long playlist (thousands of rows) can prefetch
     /// upcoming art ahead of scroll without retaining large bitmaps.
-    case musicThumbnail
+    case profileThumbnail
     /// Circular cast/crew headshots in the detail-page people row. Shown at
     /// roughly a 150–200pt circle, so ~400px at 2x is plenty; a cast of 30–50
     /// people would otherwise decode 30–50 full-size (multi-MB) profile images —
@@ -63,7 +63,7 @@ public enum ArtworkImageVariant: String, Sendable, CaseIterable {
     public var maxPixelSize: Int? {
         switch self {
         case .original: return nil
-        case .musicThumbnail: return 256
+        case .profileThumbnail: return 256
         case .serviceLogo: return 192
         case .personHeadshot: return 400
         case .posterPreview: return 320

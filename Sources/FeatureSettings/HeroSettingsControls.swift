@@ -11,7 +11,7 @@ public enum HeroSettingsPage: String, CaseIterable {
         case .titles:
             "Hero content sources"
         case .ratings: "Ratings"
-        case .trailers: "Trailers & music"
+        case .trailers: "Trailers"
         case .discovery: "Discovery"
         case .libraries: "Random libraries"
         case .collections: "Collections"
@@ -143,18 +143,16 @@ struct HeroRatingControls: View {
     }
 }
 
-public struct TrailersAndMusicSettingsView: View {
+public struct TrailersSettingsView: View {
     @Bindable private var background: HeroBackgroundSettingsModel
-    private let themeMusic: ThemeMusicSettingsModel
 
-    public init(background: HeroBackgroundSettingsModel, themeMusic: ThemeMusicSettingsModel) {
+    public init(background: HeroBackgroundSettingsModel) {
         self.background = background
-        self.themeMusic = themeMusic
     }
 
     public var body: some View {
         ViewCustomizationList(
-            title: "Trailers & music", initialRowID: "trailer-sources",
+            title: "Trailers", initialRowID: "trailer-sources",
             sectionSpacing: SettingsRowMetrics.formSectionSpacing, hasGroupedContent: true
         ) {
             HeroSettingsGroup(
@@ -188,21 +186,17 @@ public struct TrailersAndMusicSettingsView: View {
                 }
             }
             HeroSettingsGroup(
-                title: "Details", searchTargets: ["detail-background", "detail-trailer-muted", "theme-music-volume"]
+                title: "Details", searchTargets: ["detail-background", "detail-trailer-muted"]
             ) {
                 detailPicker
                 .accessibilityIdentifier("detail-background")
                 .settingsSearchAnchor(
                     "detail-background",
-                    fallbackFor: (background.settings.detailTrailerEnabled ? [] : ["detail-trailer-muted"])
-                        + (background.settings.themeMusicEnabled ? [] : ["theme-music-volume"])
+                    fallbackFor: background.settings.detailTrailerEnabled ? [] : ["detail-trailer-muted"]
                 )
                 if background.settings.detailTrailerEnabled {
                     Toggle("Start muted", isOn: $background.settings.detailTrailerMuted)
                         .settingsSearchAnchor("detail-trailer-muted")
-                }
-                if background.settings.themeMusicEnabled {
-                    ThemeMusicVolumeControl(model: themeMusic)
                 }
             }
         }
@@ -346,14 +340,13 @@ struct HeroSettingsScreen: View {
     let accounts: [ResolvedAccount]
     @Environment(HeroSettingsModel.self) private var hero
     @Environment(HeroBackgroundSettingsModel.self) private var background
-    @Environment(ThemeMusicSettingsModel.self) private var themeMusic
     @Environment(SettingsDetailNavigation.self) private var parentNavigation: SettingsDetailNavigation?
     @State var childNavigation = SettingsDetailNavigation()
 
     var body: some View {
         @Bindable var hero = hero
         if page == .trailers {
-            TrailersAndMusicSettingsView(background: background, themeMusic: themeMusic)
+            TrailersSettingsView(background: background)
         } else if page == .collections {
             HeroCollectionPickerView(selections: $hero.settings.collections, libraries: libraries, accounts: accounts)
         } else {

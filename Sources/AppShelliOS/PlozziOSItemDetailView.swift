@@ -278,7 +278,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.themePalette) private var palette
     @Environment(HeroTrailerController.self) private var trailerController
-    @Environment(\.themeMusicController) private var themeMusicController
     @Environment(PlozziOSAppModel.self) private var appModel
     /// Pushes another title from the Related row. Read here rather than only in a
     /// subview because a `navigationDestination` is hosted by the stack, so it
@@ -427,21 +426,14 @@ private struct PlozziOSCanonicalItemDetailView: View {
             isPageVisible = false
             viewModel.suspendEnrichment()
         }
-        .themeMusicPlayback(
-            playbackID: viewModel.themeMusicPlaybackID,
-            source: viewModel.currentSourceForDisplay,
-            isActive: isPageVisible && playbackRequest == nil
-        )
         .navigationTitle(Text(verbatim: ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 PlozziOSDetailAudioMuteControl(
-                    trailer: trailerController, themeMusic: themeMusicController,
-                    itemID: viewModel.state.value?.item.id,
-                    themePlaybackID: viewModel.themeMusicPlaybackID,
-                    isActive: isPageVisible && playbackRequest == nil
+                    trailer: trailerController,
+                    itemID: viewModel.state.value?.item.id
                 )
 
                 if let detail = viewModel.state.value {

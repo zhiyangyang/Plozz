@@ -1249,34 +1249,11 @@ final class SettingsInteractionTests: XCTestCase {
         }
     }
 
-    func testMozzBetaOpensThePublicInviteFromMobileSettings() {
-        for arguments in [[], ["--compact-settings"], ["--large-text"], ["--kids-settings"]] {
-            launch(settingsRoot: true, arguments: arguments + ["--capture-settings-links"])
-            let link = app.descendants(matching: .any).matching(identifier: "settings-mozz-beta").firstMatch
-            reveal(link, settingsMenu: true, fullyVisible: true)
-            XCTAssertTrue(link.isHittable, app.debugDescription)
-            XCTAssertTrue(link.label.contains("Mozz"), link.label)
-            XCTAssertTrue(link.label.contains("Free, open-source music player"), link.label)
-            XCTAssertTrue(link.label.contains("TestFlight public beta"), link.label)
-            XCTAssertGreaterThanOrEqual(link.frame.height, 44)
-            if !arguments.contains("--large-text"), link.frame.width >= 370 {
-                XCTAssertLessThanOrEqual(link.frame.height, 84, "Keep the existing three-line row height.")
-            }
-            capture("settings-mozz-beta-\(arguments.joined())")
-            link.tap()
-            let destination = app.staticTexts["fixture-opened-settings-url"]
-            XCTAssertTrue(destination.waitForExistence(timeout: 3), app.debugDescription)
-            XCTAssertEqual(destination.label, "https://testflight.apple.com/join/dmeawSSM")
-            XCTAssertTrue(app.navigationBars["Settings"].exists)
-            app.terminate()
-        }
-    }
-
     func testNestedAppearanceAndScreensKeepIndependentNavigation() {
         for title in ["Appearance", "Screens & Navigation"] {
             openSettingsPage(title)
             let children = title == "Appearance"
-                ? ["Music player", "Cards", "Artwork", "Circadian Mode"]
+                ? ["Cards", "Artwork", "Circadian Mode"]
                 : ["Spoiler Protection", "Customize Home", "Customize Libraries", "App navigation", "Detail Page"]
             for child in children {
                 let row = button(child)
@@ -1329,36 +1306,6 @@ final class SettingsInteractionTests: XCTestCase {
         app.navigationBars["App navigation"].buttons["BackButton"].tap()
         XCTAssertTrue(app.navigationBars["Screens & Navigation"].waitForExistence(timeout: 3))
         XCTAssertTrue(navigation.isHittable)
-    }
-
-    func testThemeMusicMuteUsesTheDetailToolbarAndCurrentPlayback() {
-        app.terminate()
-        app.launchArguments = ["--theme-mute-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        let mute = app.buttons["theme-music-mute"]
-        XCTAssertTrue(mute.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertEqual(mute.label, "Mute theme music")
-        XCTAssertFalse(app.buttons["trailer-mute"].exists)
-        mute.tap()
-        XCTAssertTrue(app.buttons.matching(identifier: "theme-music-mute")
-            .matching(NSPredicate(format: "label == %@", "Unmute theme music")).firstMatch.waitForExistence(timeout: 3))
-        XCTAssertEqual(app.staticTexts["theme-player-audio"].label, "Muted")
-        capture("theme-music-muted")
-        mute.tap()
-        XCTAssertTrue(app.buttons.matching(identifier: "theme-music-mute")
-            .matching(NSPredicate(format: "label == %@", "Mute theme music")).firstMatch.waitForExistence(timeout: 3))
-        XCTAssertEqual(app.staticTexts["theme-player-audio"].label, "Audible")
-        capture("theme-music-unmuted")
-        tapNativeSwitch(app.switches["Current item"])
-        XCTAssertFalse(mute.exists, "Another item's theme must not expose this detail's control.")
-        tapNativeSwitch(app.switches["Current item"])
-        XCTAssertTrue(mute.waitForExistence(timeout: 3))
-        tapNativeSwitch(app.switches["Active detail"])
-        XCTAssertFalse(mute.exists, "A covered detail cannot control foreground audio.")
-        tapNativeSwitch(app.switches["Active detail"])
-        XCTAssertTrue(mute.waitForExistence(timeout: 3))
-        app.buttons["Stop theme"].tap()
-        XCTAssertFalse(mute.exists)
     }
 
     func testScreenCardLabelControlsShareCentralOverrides() {
@@ -1616,7 +1563,7 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Appearance"].waitForExistence(timeout: 5))
     }
 
-    func testThemeCardsMenusAndMusicLinkKeepSeparateActions() {
+    func testThemeCardsAndMenusKeepSeparateActions() {
         launch()
         XCTAssertTrue(app.navigationBars["Appearance"].waitForExistence(timeout: 5))
         let light = app.buttons["theme-option-light"]
@@ -1638,11 +1585,6 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertTrue(systemOption.waitForExistence(timeout: 3), app.debugDescription)
         systemOption.tap()
         XCTAssertTrue(app.navigationBars["Appearance"].exists)
-        let music = app.buttons["appearance-musicPlayer"]
-        reveal(music)
-        music.tap()
-        XCTAssertTrue(app.navigationBars["Music player"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["music-appearance-matchTheme"].exists)
     }
 
     func testLabelEditsEnterCustomAndPresetsReplaceAllViews() {
@@ -2885,7 +2827,7 @@ final class SettingsInteractionTests: XCTestCase {
         let parent: String? = switch title {
         case "Customize Home", "Customize Libraries", "App navigation", "Detail Page", "Spoiler Protection":
             "Screens & Navigation"
-        case "Music player", "Circadian Mode": "Appearance"
+        case "Circadian Mode": "Appearance"
         default: nil
         }
         if let parent {

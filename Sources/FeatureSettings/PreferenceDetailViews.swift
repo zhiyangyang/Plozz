@@ -23,7 +23,6 @@ struct AppearanceDetailView: View {
     @Bindable var spoilers: SpoilerSettingsModel
     var section: AppearanceSettingsSection = .appearance
     var searchPageID: String? = nil
-    @Environment(MusicPlayerSettingsModel.self) private var musicPlayer
     /// App-wide card presentation — scale + style — that applies across every row
     /// and grid in the app (not just Home), so it lives in Appearance rather than
     /// Customize Home.
@@ -64,13 +63,12 @@ struct AppearanceDetailView: View {
                     .destination(.customizeLibraries),
                 SettingsSplitRow(id: "title-details", title: "Movie & show details") { EmptyView() }
                     .destination(.detailPage)
-            ] + availableRows.filter { $0.id == "music-player" }.map { $0.page() }
+            ]
         }
         return availableRows
     }
 
     private var allRows: [SettingsSplitRow] {
-        @Bindable var musicPlayer = musicPlayer
         @Bindable var density = density
         @Bindable var navigation = navigation
 
@@ -135,16 +133,6 @@ struct AppearanceDetailView: View {
                         librariesScope: librariesScope
                     )
                 }.groupedContent(),
-                SettingsSplitRow(
-                    id: "music-player",
-                    title: "Music player",
-                    description: "How the now-playing music screen looks.",
-                ) {
-                    MusicPlayerStyleDetail(
-                        appearance: $musicPlayer.appearance,
-                        showTrackDetails: $musicPlayer.showTrackDetails
-                    )
-                }.illustratedContent()
         ] + CircadianRowsBuilder(model: nightShift).rows
     }
 
@@ -282,10 +270,9 @@ struct SpoilerRowsBuilder {
         "Spoilers"
     }
 }
-/// Detail-page presentation and the shared trailer/music preferences.
+/// Detail-page presentation and the shared trailer preferences.
 struct DetailPageDetailView: View {
     let cards: CardStyleSettingsModel
-    @Bindable var themeMusic: ThemeMusicSettingsModel
     @Bindable var heroBackground: HeroBackgroundSettingsModel
     @Environment(\.detailHeaderSettings) private var detailHeaderSettings
 
@@ -297,15 +284,15 @@ struct DetailPageDetailView: View {
         var rows = [
             SettingsSplitRow(
                 id: "detail-page-hero-mode",
-                title: "Trailers & music",
+                title: "Trailers",
                 sectionStart: detailHeaderSettings == nil ? .heading(Text("Hero")) : nil
             ) {
                 SettingsPageLink {
-                    TrailersAndMusicSettingsView(background: heroBackground, themeMusic: themeMusic)
+                    TrailersSettingsView(background: heroBackground)
                 } label: {
-                    SettingsDisclosureLabel { Text("Trailers & music") }
+                    SettingsDisclosureLabel { Text("Trailers") }
                 }
-                .accessibilityIdentifier("detail-trailers-music")
+                .accessibilityIdentifier("detail-trailers")
             }.labeledControl()
         ]
         if let detailHeaderSettings {
@@ -775,12 +762,6 @@ struct PlaybackDetailView: View {
                 SettingsControlRows {
                     LosslessAudioControl()
                         .settingsSearchAnchor("lossless-audio")
-                    SettingsDescribedControl {
-                        Toggle("Identify songs", isOn: $playback.settings.identifySongs)
-                    } description: {
-                        Text("Shows the song playing in a movie or show in the player’s Info, using Shazam. Needs an internet connection.")
-                    }
-                    .settingsSearchAnchor("identify-songs")
                 }
             }
         ] + (AppReleaseChannel.current.isBeta ? [

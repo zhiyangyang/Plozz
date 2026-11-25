@@ -255,7 +255,6 @@ targets:
     sources:
       - path: Tests/iOSPresentationTests
       - path: Tests/FocusIntegrationTests/ContentRefreshSurfaceHostedTests.swift
-      - path: Tests/PlaybackPresentationSupport/PlayerSongLayoutPreviewTests.swift
       - path: Tests/PlaybackPresentationSupport/PlayerContinueWatchingPresentationTests.swift
       - path: Tests/PlaybackPresentationSupport/LocalTestHTTPServer.swift
       - path: Tests/CoreModelsTests/ContinueWatchingInPlayerSettingsTests.swift

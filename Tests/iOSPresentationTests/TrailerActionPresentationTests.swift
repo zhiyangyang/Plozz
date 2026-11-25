@@ -13,7 +13,7 @@ import XCTest
 
 @MainActor
 final class TrailerActionPresentationTests: XCTestCase {
-    func testSharedTrailerSettingsRenderOnPhoneAndTabletWithThemeMusicWhenTrailersAreOff() async throws {
+    func testSharedTrailerSettingsRenderOnPhoneAndTablet() async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let previous = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
@@ -22,9 +22,8 @@ final class TrailerActionPresentationTests: XCTestCase {
         window.makeKeyAndVisible()
         let suite = "TrailerSettingsPresentation.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let music = ThemeMusicSettingsModel(store: ThemeMusicSettingsStore(defaults: defaults))
         let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore(
-            HeroBackgroundSettings(detailMode: .themeMusic)
+            HeroBackgroundSettings(detailMode: .trailer)
         ))
         defer {
             window.isHidden = true
@@ -36,7 +35,7 @@ final class TrailerActionPresentationTests: XCTestCase {
             window.frame = CGRect(x: 0, y: 0, width: width, height: 1000)
             host.rootView = AnyView(
                 NavigationStack {
-                    TrailersAndMusicSettingsView(background: background, themeMusic: music)
+                    TrailersSettingsView(background: background)
                 }
                 .environment(\.themePalette, .dark)
                 .environment(\.colorScheme, .dark)
@@ -58,11 +57,9 @@ final class TrailerActionPresentationTests: XCTestCase {
                 request.recognitionLanguages = ["en-US"]
                 try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([request])
                 let text = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
-                XCTAssertTrue(text.contains("Trailers & music"), text)
+                XCTAssertTrue(text.contains("Trailers"), text)
                 XCTAssertTrue(text.contains("Home autoplay"), text)
                 XCTAssertTrue(text.contains("Detail background"), text)
-                XCTAssertTrue(text.contains("Theme music volume"), text)
-                XCTAssertTrue(background.settings.themeMusicEnabled)
             }
         }
     }

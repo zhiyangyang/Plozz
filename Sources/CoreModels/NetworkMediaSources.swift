@@ -338,8 +338,6 @@ public enum AuthenticatedHTTPDeliveryMode: String, Hashable, Sendable {
 public enum AuthenticatedHTTPResourcePurpose: String, Hashable, Sendable {
     case mediaStream
     case originalFile
-    case audioStream
-    case themeMusic
     case subtitle
     case scrubPreview
 }

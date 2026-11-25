@@ -117,15 +117,7 @@ struct InfoPanelView: View {
         let thumbRadius = PlozzTheme.Metrics.mediumMediaCornerRadius
         let contentPad = metrics.contentPadding
 
-        return PlayerSongLayout(
-            enabled: model.songRecognition.isAvailable, state: model.songRecognition.state, focus: $focus,
-            onOptionsPresented: {
-                model.isPanelOpen = $0
-                model.controlBarActivity &+= 1
-                if !$0 { actions.restoreInfoFocus() }
-            }
-        ) {
-            Group {
+        return Group {
                 if metrics.showsThumbnail {
                     regularBody(thumbRadius: thumbRadius, thumbHeight: metrics.contentHeight)
                         .padding(contentPad)
@@ -149,7 +141,6 @@ struct InfoPanelView: View {
             .modifier(PlayerCardHeight(metrics: metrics))
             .frame(maxWidth: .infinity, alignment: .leading)
             .modifier(PanelGlassBackground(cornerRadius: metrics.panelCornerRadius, mediaGlass: true))
-        }
     }
 
     /// The phone card: no thumbnail, and the three columns folded into rows.
@@ -510,14 +501,6 @@ private struct PlayerInfoArtwork: View {
         }
         Color.clear
             .frame(width: height * 16.0 / 9.0, height: height)
-            .background {
-                GeometryReader { geometry in
-                    Color.clear.preference(
-                        key: PlayerSongArtworkBounds.self,
-                        value: [.info: geometry.frame(in: .global)]
-                    )
-                }
-            }
             .overlay {
                 FallbackAsyncImage(
                     references: references,

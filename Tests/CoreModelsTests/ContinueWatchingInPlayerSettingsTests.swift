@@ -17,20 +17,15 @@ final class ContinueWatchingInPlayerSettingsTests: XCTestCase {
         }
     }
 
-    func testSongIdentificationAndTabVisibilityRemainIndependent() throws {
-        let legacy = try JSONDecoder().decode(PlaybackSettings.self, from: Data("{}".utf8))
-        XCTAssertTrue(legacy.identifySongs)
-        for enabled in [false, true] {
-            for mask in 0..<(1 << PlayerOptionalTab.allCases.count) {
-                var settings = PlaybackSettings(identifySongs: enabled)
-                for (index, tab) in PlayerOptionalTab.allCases.enumerated() {
-                    settings[keyPath: tab.visibilityKeyPath] = mask & (1 << index) != 0
-                }
-                let data = try JSONEncoder().encode(settings)
-                let restored = try JSONDecoder().decode(PlaybackSettings.self, from: data)
-                XCTAssertEqual(restored, settings)
-                XCTAssertEqual(restored.identifySongs, enabled)
+    func testOptionalTabVisibilityRoundTrips() throws {
+        for mask in 0..<(1 << PlayerOptionalTab.allCases.count) {
+            var settings = PlaybackSettings()
+            for (index, tab) in PlayerOptionalTab.allCases.enumerated() {
+                settings[keyPath: tab.visibilityKeyPath] = mask & (1 << index) != 0
             }
+            let data = try JSONEncoder().encode(settings)
+            let restored = try JSONDecoder().decode(PlaybackSettings.self, from: data)
+            XCTAssertEqual(restored, settings)
         }
     }
 

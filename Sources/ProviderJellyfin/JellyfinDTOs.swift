@@ -211,26 +211,11 @@ struct BaseItemDto: Decodable {
     /// and the server has generated trickplay images for the item.
     let Trickplay: [String: [String: TrickplayInfoDto]]?
 
-    // MARK: Music fields (additive, all optional)
-    //
-    // Present on `MusicArtist`/`MusicAlbum`/`Audio`/`Playlist`/`MusicGenre`
-    // responses; absent (and ignored) for video items.
-    /// The album title an `Audio` track belongs to.
-    let Album: String?
-    /// The id of the album an `Audio` track belongs to.
-    let AlbumId: String?
-    /// The primary album artist (for an album or a track).
-    let AlbumArtist: String?
-    /// The id of the album's primary artist, when reported via `AlbumArtists`.
-    let AlbumArtists: [NameGuidPairDto]?
-    /// Performing artists for a track/album.
-    let Artists: [String]?
-    /// Artist items with ids, used to link a track/album back to its artist.
-    let ArtistItems: [NameGuidPairDto]?
-    /// Genre names for an artist/album/track.
+    /// Genre names reported for the item.
     let Genres: [String]?
-    /// Number of children (e.g. albums for an artist, tracks for an album).
+    /// Number of children (episodes for a season, seasons for a series, …).
     let ChildCount: Int?
+
     /// Online trailer links the server resolved from its own metadata provider
     /// (e.g. YouTube watch URLs). Present only when `RemoteTrailers` is requested
     /// in `Fields`. These let Plozz surface official trailers with no client-side
@@ -471,18 +456,4 @@ enum JellyfinDate {
     static func iso8601(from date: Date) -> String {
         iso8601.string(from: date)
     }
-}
-
-// MARK: - Lyrics
-
-/// `GET /Audio/{itemId}/Lyrics` response. `Lyrics` carries one entry per line;
-/// `Start` (when present) is the line's offset in 100ns ticks. Plain-text
-/// lyrics omit `Start`.
-struct LyricDto: Decodable {
-    let Lyrics: [LyricLineDto]?
-}
-
-struct LyricLineDto: Decodable {
-    let Text: String?
-    let Start: Int64?
 }

@@ -115,10 +115,6 @@ public protocol MediaProvider: Sendable {
     /// online trailers remain a separate hero fallback.
     func extras(for itemID: String) async throws -> [MediaExtra]
 
-    /// The title's theme song as a credential-free playback source, or `nil`
-    /// when the backend and fallback archive have no theme.
-    func themeMusic(for itemID: String) async throws -> ThemeMusic?
-
     /// Children of a container (season → episodes, series → seasons, …).
     ///
     /// Intended for small containers whose contents fit comfortably in one
@@ -761,10 +757,6 @@ public extension MediaProvider {
 
     /// Default: no attached local extras.
     func extras(for itemID: String) async throws -> [MediaExtra] { [] }
-
-    /// Default: no theme. Jellyfin and Plex override this; media shares,
-    /// trailers, aggregates, and test doubles remain graceful no-ops.
-    func themeMusic(for itemID: String) async throws -> ThemeMusic? { nil }
 
     /// Default: ignore `forceTranscode` and resolve normally. Providers that can
     /// force a server-side transcode (Jellyfin, Plex) override this; test doubles

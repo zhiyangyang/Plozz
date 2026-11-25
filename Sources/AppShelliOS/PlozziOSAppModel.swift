@@ -58,7 +58,6 @@ final class PlozziOSAppModel {
         return DetailSnapshotCacheScope(profileID: profiles.activeProfileID, identityMaterial: material)
     }
 
-    let music: PlozziOSMusicRuntime? = AppReleaseChannel.current.isBeta ? PlozziOSMusicRuntime() : nil
     private let appAdmission: AppAdmissionModel
     let offlineMode: PlozziOSOfflineModeModel
     var isOfflineModeAvailable: Bool {

@@ -173,7 +173,7 @@ final class JellyfinCapabilityProfileTests: XCTestCase {
         XCTAssertEqual(
             Set(json.keys),
             [
-                "MaxStreamingBitrate", "MaxStaticBitrate", "MusicStreamingTranscodingBitrate",
+                "MaxStreamingBitrate", "MaxStaticBitrate",
                 "DirectPlayProfiles", "TranscodingProfiles", "CodecProfiles", "SubtitleProfiles"
             ]
         )

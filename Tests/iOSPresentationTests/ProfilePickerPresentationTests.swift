@@ -260,7 +260,7 @@ final class ProfilePickerPresentationTests: XCTestCase {
             context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
         }
         let cache = try XCTUnwrap(ArtworkSession.shared.configuration.urlCache)
-        let requestURL = ArtworkImageVariant.musicThumbnail.requestURL(for: url)
+        let requestURL = ArtworkImageVariant.profileThumbnail.requestURL(for: url)
         let request = URLRequest(url: requestURL)
         let response = try XCTUnwrap(HTTPURLResponse(
             url: requestURL, statusCode: 200, httpVersion: nil,
@@ -270,7 +270,7 @@ final class ProfilePickerPresentationTests: XCTestCase {
             CachedURLResponse(response: response, data: try XCTUnwrap(image.pngData())), for: request
         )
         defer { cache.removeCachedResponse(for: request) }
-        let decoded = await ArtworkImageCache.shared.image(for: url, variant: .musicThumbnail)
+        let decoded = await ArtworkImageCache.shared.image(for: url, variant: .profileThumbnail)
         _ = try XCTUnwrap(decoded)
 
         var photo = Profile(id: "photo", name: "Photo", colorIndex: 2)

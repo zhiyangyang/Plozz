@@ -7,7 +7,6 @@ import FeaturePlayback
 import FeatureAuth
 import FeatureProfiles
 import FeatureSettings
-import FeatureMusic
 import SwiftUI
 import UIKit
 
@@ -64,7 +63,6 @@ struct PlozziOSSettingsView: View {
             }
         }
         .environment(appModel.profiles)
-        .environment(appModel.settings.themeMusic)
         .environment(\.managedProviderSetupRouter, providerSetupRouter)
         .plozzSheet(item: $providerSetupRouter.addressAccount) { account in
             let profileID = appModel.profiles.activeProfileID
@@ -1488,9 +1486,7 @@ private struct PlozziOSSettingsSearchDestination: View {
             )
         case .navigation: PlozziOSNavigationSettingsView(appModel: appModel)
         case .heroTrailers:
-            TrailersAndMusicSettingsView(
-                background: appModel.settings.heroBackground, themeMusic: appModel.settings.themeMusic
-            )
+            TrailersSettingsView(background: appModel.settings.heroBackground)
         case .home, .hero, .heroContent, .heroRatings, .heroDiscovery,
              .heroLibraries, .heroCollections, .homeRows, .homeRowStyle, .homeFiltering, .homeLabels, .continueWatching:
             PlozziOSHomeSettingsView(
@@ -1503,7 +1499,7 @@ private struct PlozziOSSettingsSearchDestination: View {
         case .detail:
             PlozziOSDetailPageSettingsView(
                 cards: appModel.settings.cardStyle, heroBackground: appModel.settings.heroBackground,
-                themeMusic: appModel.settings.themeMusic, detailPage: appModel.settings.detailPage
+                detailPage: appModel.settings.detailPage
             )
         case .detailRatingSources:
             PlozziOSDetailRatingPriorityView(model: appModel.settings.detailPage)
@@ -1545,12 +1541,6 @@ private struct PlozziOSSettingsSearchDestination: View {
             PlozziOSDiagnosticsSettingsView(
                 appModel: appModel, model: appModel.settings.diagnostics
             )
-        case .musicPlayer:
-            if let music = appModel.music {
-                PlozziOSMusicPlayerSettingsView(model: music.settings)
-            } else {
-                PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
-            }
         case .topShelf:
             PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
         case .releaseNotes:
@@ -1899,11 +1889,10 @@ struct PlozziOSAppearanceSettingsView: View {
     @State private var destination: Page?
 
     private enum Page: String, CaseIterable, Identifiable {
-        case musicPlayer, cards, artwork, circadian
+        case cards, artwork, circadian
         var id: Self { self }
         var title: LocalizedStringResource {
             switch self {
-            case .musicPlayer: "Music player"
             case .cards: "Cards"
             case .artwork: "Artwork"
             case .circadian: "Circadian Mode"
@@ -1926,13 +1915,6 @@ struct PlozziOSAppearanceSettingsView: View {
                     }
                 }
                 .settingsSearchAnchor("liquid-glass")
-                if appModel.music != nil {
-                    Button { destination = .musicPlayer } label: {
-                        SettingsDisclosureLabel { Text(Page.musicPlayer.title) }
-                    }
-                    .settingsActionRow()
-                    .accessibilityIdentifier("appearance-musicPlayer")
-                }
             }
             .settingsSearchGroup(["theme", "gradient-backgrounds", "liquid-glass"])
             SettingsSectionGroup {
@@ -1949,10 +1931,6 @@ struct PlozziOSAppearanceSettingsView: View {
         .navigationTitle("Appearance")
         .navigationDestination(item: $destination) { page in
             switch page {
-            case .musicPlayer:
-                if let music = appModel.music {
-                    PlozziOSMusicPlayerSettingsView(model: music.settings)
-                }
             case .cards:
                 CardAppearanceControls(
                     cards: cardStyle, watchIndicator: watchIndicator,
@@ -2080,33 +2058,13 @@ private struct PlozziOSScreensNavigationSettingsView: View {
                 PlozziOSDetailPageSettingsView(
                     cards: appModel.settings.cardStyle,
                     heroBackground: appModel.settings.heroBackground,
-                    themeMusic: appModel.settings.themeMusic, detailPage: appModel.settings.detailPage
+                    detailPage: appModel.settings.detailPage
                 )
             }
         }
     }
 }
 
-struct PlozziOSMusicPlayerSettingsView: View {
-    @Bindable var model: MusicPlayerSettingsModel
-
-    var body: some View {
-        List {
-            SettingsSectionGroup("Appearance") {
-                CompactMusicStylePicker(selection: $model.appearance) { appearance in
-                    MusicPlayerStylePreview(
-                        appearance: appearance, cornerRadius: MobileSettingsMetrics.previewContentCornerRadius
-                    )
-                }
-                .settingsSearchAnchor("music-style")
-                .accessibilityIdentifier("music-player-appearance")
-            }
-            .settingsSearchGroup(["music-style"])
-        }
-        .settingsPageSurface()
-        .navigationTitle("Music player")
-    }
-}
 
 struct PlozziOSAllScreensSettingsView: View {
     let contentRatings: ContentRatingSettingsModel
@@ -2174,7 +2132,6 @@ private struct PlozziOSNavigationSettingsView: View {
                 NavigationLibrariesDetailView(
                     scope: navigationLibrariesScope,
                     navigation: appModel.settings.navigation,
-                    excludedKeys: appModel.music == nil ? [NavigationLibraryLayout.musicKey] : []
                 )
                 .id(appModel.navigationLibrariesScopeKey)
             }
@@ -2325,7 +2282,6 @@ private struct HomeLibraryChoice {
 private struct PlozziOSDetailPageSettingsView: View {
     let cards: CardStyleSettingsModel
     @Bindable var heroBackground: HeroBackgroundSettingsModel
-    @Bindable var themeMusic: ThemeMusicSettingsModel
     @Bindable var detailPage: DetailPageSettingsModel
 
     var body: some View {
@@ -2361,12 +2317,12 @@ private struct PlozziOSDetailPageSettingsView: View {
             .settingsSearchGroup(["detail-age"])
             SettingsSectionGroup {
                 SettingsPageLink {
-                    TrailersAndMusicSettingsView(background: heroBackground, themeMusic: themeMusic)
+                    TrailersSettingsView(background: heroBackground)
                 } label: {
-                    SettingsDisclosureLabel { Text("Trailers & music") }
+                    SettingsDisclosureLabel { Text("Trailers") }
                 }
                 .settingsActionRow()
-                .accessibilityIdentifier("detail-trailers-music")
+                .accessibilityIdentifier("detail-trailers")
             }
             SettingsSectionGroup("Cards") {
                 CardCaptionSettingsLink(cards: cards, scope: .detail)
@@ -2601,14 +2557,8 @@ struct PlozziOSPlaybackSettingsView: View {
             SettingsSectionGroup("Audio") {
                 LosslessAudioControl()
                     .settingsSearchAnchor("lossless-audio")
-                SettingsDescribedControl {
-                    Toggle("Identify songs", isOn: $model.settings.identifySongs)
-                } description: {
-                    Text("Shows the song playing in a movie or show in the player’s Info, using Shazam. Needs an internet connection.")
-                }
-                .settingsSearchAnchor("identify-songs")
             }
-            .settingsSearchGroup(["lossless-audio", "identify-songs"])
+            .settingsSearchGroup(["lossless-audio"])
             if AppReleaseChannel.current.isBeta {
                 SettingsSectionGroup("Video") {
                     SettingsDescribedControl {

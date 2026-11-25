@@ -91,7 +91,7 @@ public enum HeroTrailerSurfaceRole: Sendable, Equatable {
 /// Shared, app-level owner of the **hero trailer** — one muted (by default)
 /// `AVPlayer` whose video layer is rendered by both the Home hero carousel and
 /// the detail-page hero. Hoisting it above both surfaces (like
-/// ``ThemeMusicController``) is what lets a trailer that started in the Home hero
+/// is what lets a trailer that started in the Home hero
 /// keep playing when the user opens the detail page: only the foreground metadata
 /// swaps; the same player keeps rolling behind it.
 ///
@@ -170,7 +170,7 @@ public final class HeroTrailerController {
 
     public init() {
         // Never let the trailer claim the Now-Playing transport or interrupt
-        // music; it's ambient. Muting is applied per play() call.
+        // ambient audio. Muting is applied per play() call.
         player.actionAtItemEnd = .pause
         player.appliesMediaSelectionCriteriaAutomatically = false
         // Looping hero and detail trailers are ambient: let the display sleep.
@@ -788,7 +788,7 @@ public final class HeroTrailerController {
         do {
             let session = AVAudioSession.sharedInstance()
             // Mix so a muted trailer never disturbs other audio; a sound-on trailer
-            // still coexists (and theme music is blocked separately at the app level).
+            // still coexists.
             try session.setCategory(.playback, mode: .moviePlayback, options: [.mixWithOthers])
             try session.setActive(true)
         } catch {

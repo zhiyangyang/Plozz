@@ -221,7 +221,7 @@ class RepositoryCoverageTests(unittest.TestCase):
 
     def test_refactored_editors_still_reject_new_unregistered_preferences(self):
         names = {
-            "PlozziOSAppearanceSettingsView", "TrailersAndMusicSettingsView",
+            "PlozziOSAppearanceSettingsView", "TrailersSettingsView",
             "PlozziOSMyLibrariesContent", "MyLibrariesContentView",
             "HomeEditorSaveAction", "HomeRowNameEditor",
             "HomeRowRemoveAction", "NavigationNameEditor", "ServerProviderChoices",

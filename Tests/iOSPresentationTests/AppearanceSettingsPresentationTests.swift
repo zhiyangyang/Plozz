@@ -186,7 +186,6 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
             accountStore: AccountStore(secureStore: InMemorySecureStore()),
             profileStore: ProfileStore(defaults: defaults)
         )
-        let musicBefore = app.music?.settings.appearance
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let previous = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
@@ -214,7 +213,6 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(350))
         try await inspect(window, theme)
         XCTAssertEqual(themeStore.load(), theme.theme)
-        XCTAssertEqual(app.music?.settings.appearance, musicBefore)
     }
 
     private func scrollView(_ window: UIWindow) throws -> UIScrollView {

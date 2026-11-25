@@ -29,22 +29,6 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         }
     }
 
-    @MainActor
-    func testMusicOnlyStartupPrefersMusicWithoutHomeContent() {
-        for discovery in [false, true] {
-            let facts = availability(
-                accounts: [account("music", provider: .subsonic)], discovery: discovery
-            )
-            XCTAssertEqual(facts.automaticallyHiddenKeys, discovery
-                ? [NavigationLibraryLayout.watchlistKey] : automaticKeys)
-            XCTAssertEqual(facts.prefersMusic, !discovery)
-        }
-        let mixed = availability(accounts: [
-            account("music", provider: .subsonic), account("server", provider: .jellyfin)
-        ])
-        XCTAssertFalse(mixed.prefersMusic)
-    }
-
     func testKnownEmptyDisabledAndOtherProfileLibrariesDoNotEnableSearch() {
         let server = account("server", provider: .jellyfin)
         for (libraries, disabled) in [
@@ -100,7 +84,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
     }
 
     func testReorderingDoesNotPersistAutomaticHidingOrShowing() throws {
-        let available = NavigationDestinationDefaults.compact(hasMusic: false)
+        let available = NavigationDestinationDefaults.compact()
         let automaticKeys = self.automaticKeys
         var layout = NavigationLibraryLayout.default
         layout.apply(
@@ -123,7 +107,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
     }
 
     func testShowingAutomaticallyHiddenWatchlistCreatesOnlyThatOverride() {
-        let available = NavigationDestinationDefaults.compact(hasMusic: false)
+        let available = NavigationDestinationDefaults.compact()
         let automaticKeys = self.automaticKeys
         var layout = NavigationLibraryLayout.default
         layout.apply(

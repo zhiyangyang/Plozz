@@ -46,7 +46,6 @@ let package = Package(
         .library(name: "FeatureDiscoveryCore", targets: ["FeatureDiscoveryCore"]),
         .library(name: "ProviderJellyfin", targets: ["ProviderJellyfin"]),
         .library(name: "ProviderSilo", targets: ["ProviderSilo"]),
-        .library(name: "ProviderSubsonic", targets: ["ProviderSubsonic"]),
         .library(name: "ProviderPlex", targets: ["ProviderPlex"]),
         .library(name: "ProviderShare", targets: ["ProviderShare"]),
         .library(name: "RatingsService", targets: ["RatingsService"]),
@@ -60,7 +59,6 @@ let package = Package(
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
         .library(name: "FeatureProfiles", targets: ["FeatureProfiles"]),
         .library(name: "FeatureWatchlistCore", targets: ["FeatureWatchlistCore"]),
-        .library(name: "FeatureMusic", targets: ["FeatureMusic"]),
         .library(name: "MediaDownloads", targets: ["MediaDownloads"]),
         .library(name: "MediaTransportCore", targets: ["MediaTransportCore"]),
         .library(name: "MediaTransportHTTP", targets: ["MediaTransportHTTP"]),
@@ -347,10 +345,6 @@ let package = Package(
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
         .target(
-            name: "ProviderSubsonic",
-            dependencies: ["CoreModels", "CoreNetworking"]
-        ),
-        .target(
             name: "ProviderPlex",
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
@@ -385,11 +379,11 @@ let package = Package(
         ),
         .target(
             name: "FeatureAuthCore",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "ProviderJellyfin", "ProviderPlex", "ProviderSilo", "ProviderSubsonic"]
+            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "ProviderJellyfin", "ProviderPlex", "ProviderSilo"]
         ),
         .target(
             name: "FeatureAuth",
-            dependencies: ["CoreModels", "CoreUI", "FeatureAuthCore", "ProviderPlex", "ProviderSilo", "ProviderSubsonic"]
+            dependencies: ["CoreModels", "CoreUI", "FeatureAuthCore", "ProviderPlex", "ProviderSilo"]
         ),
         .target(
             name: "FeatureHomeCore",
@@ -425,18 +419,6 @@ let package = Package(
         .target(
             name: "FeatureWatchlistCore",
             dependencies: ["CoreModels"]
-        ),
-
-        // MARK: Music (browse + audio playback engine)
-        //
-        // Self-contained music experience: aggregator/view models, the conditional
-        // Music tab UI, and the app-scoped `AudioPlaybackController` (AVQueuePlayer
-        // + background audio + Now Playing). Depends only on CoreModels/CoreUI so
-        // it stays decoupled from the video feature modules.
-        .target(
-            name: "FeatureMusic",
-            dependencies: ["CoreModels", "CoreUI", "MetadataKit", "CoreNetworking"],
-            resources: [.process("iOS/Resources"), .copy("iOS/Mozz-NOTICE.txt")]
         ),
 
         // MARK: Protocol-neutral media transport
@@ -720,7 +702,6 @@ let package = Package(
                 "MediaTransportWebDAV",
                 "ProviderJellyfin",
                 "ProviderSilo",
-                "ProviderSubsonic",
                 "ProviderPlex",
                 "ProviderShare",
                 "CoreSecureStore",
@@ -749,7 +730,6 @@ let package = Package(
         .target(
             name: "AppShelliOS",
             dependencies: [
-                "FeatureMusic",
                 "FeatureShareOnboarding",
                 "AppRuntime",
                 "CoreModels",
@@ -852,10 +832,6 @@ let package = Package(
             dependencies: ["ProviderSilo", "CoreModels", "CoreNetworking", "TestSupportPerformance"]
         ),
         .testTarget(
-            name: "ProviderSubsonicTests",
-            dependencies: ["ProviderSubsonic", "CoreModels", "CoreNetworking"]
-        ),
-        .testTarget(
             name: "ProviderPlexTests",
             dependencies: ["ProviderPlex", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
         ),
@@ -879,10 +855,6 @@ let package = Package(
         .testTarget(
             name: "FeatureProfilesTests",
             dependencies: ["FeatureProfiles", "CoreModels"]
-        ),
-        .testTarget(
-            name: "FeatureMusicTests",
-            dependencies: ["FeatureMusic", "CoreModels", "CoreUI"]
         ),
         .testTarget(
             name: "FeaturePlaybackTests",

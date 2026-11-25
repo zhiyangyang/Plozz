@@ -33,7 +33,6 @@
     "HeroSettingsScreen",
     "HeroTitleControls",
     "HeroTitleSources",
-    "TrailersAndMusicSettingsView",
     "HomeFilteringSettingsView",
     "HomeHeroSettingsView",
     "HomeRowStylePicker",
@@ -53,7 +52,6 @@
     "MobileSubtitleFileFormattingView",
     "MobileSubtitleShadowOutlineView",
     "MobileSubtitleStyleEditor",
-    "MusicPlayerStyleDetail",
     "MyLibrariesDetailView",
     "NavigationAppearanceDetail",
     "NavigationLibrariesDetailView",
@@ -92,8 +90,7 @@
     "StreamingCustomQualityEditor",
     "StreamingQualityPicker",
     "SubtitleModeControl",
-    "SubtitleStylePanel",
-    "ThemeMusicVolumeControl"
+    "SubtitleStylePanel"
   ],
   "directories": [
     "Sources/FeatureSettings/"
@@ -141,7 +138,6 @@
     "Sources/FeatureSettings/CardAppearanceControls.swift",
     "Sources/FeatureSettings/CardCaptionCustomizationContent.swift",
     "Sources/FeatureSettings/CollectionSectionSettingsView.swift",
-    "Sources/FeatureSettings/CompactMusicStylePicker.swift",
     "Sources/FeatureSettings/ContinueWatchingArtworkPicker.swift",
     "Sources/FeatureSettings/ContinueWatchingNextUpControl.swift",
     "Sources/FeatureSettings/ExternalPlayerSettingsView.swift",
@@ -166,7 +162,6 @@
     "Sources/FeatureSettings/SettingsContext.swift",
     "Sources/FeatureSettings/SettingsSplitLayout.swift",
     "Sources/FeatureSettings/SkipMarkerSettingsControl.swift",
-    "Sources/FeatureSettings/ThemeMusicVolumeControl.swift",
     "Sources/FeatureSettings/WatchIndicatorColorPicker.swift"
   ],
   "input_types": [
@@ -857,13 +852,6 @@
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAppearanceSettingsView|body|Button|SettingsDisclosureLabel { Text(Page.musicPlayer.title) }": {
-      "count": 1,
-      "reason": "Navigation to the independently indexed music appearance editor.",
-      "covered_by": [
-        "music-style"
-      ]
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAppearanceSettingsView|body|Button|SettingsDisclosureLabel { Text(page.title) }": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -883,14 +871,6 @@
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDetailPageSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers & music\") }": {
-      "count": 1,
-      "reason": "Navigation to the indexed trailer sources and detail background controls.",
-      "covered_by": [
-        "trailer-sources",
-        "detail-background"
-      ]
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDeveloperInfoSection|body|Button|Label(\"Copy Info\", systemImage: \"doc.on.doc\")": {
       "count": 1,
@@ -918,11 +898,6 @@
       "covered_by": [
         "disc-playback"
       ]
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSPlaybackSettingsView|body|Toggle|\"Identify songs\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSPlaybackSettingsView|body|Toggle|\"P7 FEL → P8.1 conversion\"": {
       "count": 1,
@@ -1161,11 +1136,6 @@
     "Sources/AppShelliOS/ServerOnboardingViews.swift|PlexServerSelection|body|Button|HStack(spacing: 16) { VStack(alignment: .leading, spacing: 4) { Text(verbatim: server.name).font(.headline) Text(server.isOwned ? \"Owned\" : \"Shared\") .font(.subheadline).foregroundStyle(.secondary) } .fixedSize(horizontal: false, vertical: true) Spacer(minLength: 8) Image(systemName: selected.contains(server.id) ? \"checkmark.circle.fill\" : \"circle\") .font(.title2) .accessibilityHidden(true) } .frame(minHeight: 44)": {
       "count": 1,
       "reason": "Selects server connections during explicit Plex account setup; not a saved preference or a search shortcut into credentials.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/ServerOnboardingViews.swift|ServerProviderChoices|body|Button|HStack(spacing: 16) { ProviderBrandMark(provider: .subsonic, size: 40).accessibilityHidden(true) Text(verbatim: ProviderKind.subsonic.displayName) Spacer(minLength: 8) Image(systemName: \"chevron.forward\").accessibilityHidden(true) } .frame(minHeight: 44)": {
-      "count": 1,
-      "reason": "Chooses Navidrome/Subsonic for an explicit new source connection; not a preference value.",
       "covered_by": []
     },
     "Sources/AppShelliOS/ServerOnboardingViews.swift|ServerProviderChoices|body|Button|HStack(spacing: 16) { ProviderBrandMark(provider: provider, size: 40) .accessibilityHidden(true) Text(verbatim: provider.displayName) .font(.headline) .fixedSize(horizontal: false, vertical: true) Spacer(minLength: 8) Image(systemName: \"chevron.forward\") .font(.footnote.weight(.semibold)) .foregroundStyle(.secondary) .accessibilityHidden(true) } .frame(minHeight: 44)": {
@@ -1448,13 +1418,6 @@
         "profile-lock-entry"
       ]
     },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileCompactPhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .musicThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 24)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-photo"
-      ]
-    },
     "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileDeleteSection|body|Button|Label(\"Delete Profile\", systemImage: \"trash\") .frame(maxWidth: .infinity, minHeight: 44)": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -1473,13 +1436,6 @@
       "covered_by": [
         "profile-symbol",
         "profile-emoji",
-        "profile-photo"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfilePhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .musicThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 30)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected))": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
         "profile-photo"
       ]
     },
@@ -1704,20 +1660,6 @@
       "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
       "covered_by": [
         "hero-choose-libraries"
-      ]
-    },
-    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersAndMusicSettingsView|detailPicker.picker|Picker|\"Detail background\"": {
-      "count": 1,
-      "reason": "The detailPicker use in body owns the detail-background anchor and unavailable muted/volume fallbacks.",
-      "covered_by": [
-        "detail-background"
-      ]
-    },
-    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersAndMusicSettingsView|sourcePicker.picker|Picker|\"Trailers\"": {
-      "count": 1,
-      "reason": "The sourcePicker use in body owns the trailer-sources anchor and disabled-autoplay fallback.",
-      "covered_by": [
-        "trailer-sources"
       ]
     },
     "Sources/FeatureSettings/HomeContentPickerView.swift|HomeContentPickerDoneButton|body|Button|\"Done\"": {
@@ -2024,14 +1966,6 @@
         "theme"
       ]
     },
-    "Sources/FeatureSettings/PreferenceDetailViews.swift|DetailPageDetailView|heroRows.rows|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers & music\") }": {
-      "count": 1,
-      "reason": "Navigation to the indexed trailer sources and detail background controls.",
-      "covered_by": [
-        "trailer-sources",
-        "detail-background"
-      ]
-    },
     "Sources/FeatureSettings/PreferenceDetailViews.swift|PlaybackDetailView|audioLanguageMenu|Picker|\"Audio language\"": {
       "count": 1,
       "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
@@ -2045,11 +1979,6 @@
       "covered_by": [
         "audio-language"
       ]
-    },
-    "Sources/FeatureSettings/PreferenceDetailViews.swift|PlaybackDetailView|audioRows|Toggle|\"Identify songs\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
     },
     "Sources/FeatureSettings/PreferenceDetailViews.swift|PlaybackDetailView|audioRows|Toggle|\"P7 FEL → P8.1 conversion\"": {
       "count": 1,
@@ -2198,15 +2127,54 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/ThemeMusicVolumeControl.swift|ThemeMusicVolumeControl|body|Button|if ownsPreview { Label(\"Stop preview\", systemImage: \"stop.fill\") } else { Label(\"Play preview\", systemImage: \"play.fill\") }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/VideoUpscalingControl.swift|VideoUpscalingControl|picker|Picker|\"Video upscaling\"": {
       "count": 1,
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
+    },
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDetailPageSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers\") }": {
+      "count": 1,
+      "reason": "Navigation to the indexed trailer sources and detail background controls.",
+      "covered_by": [
+        "trailer-sources",
+        "detail-background"
+      ]
+    },
+    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileCompactPhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 24)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
+      "count": 1,
+      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
+      "covered_by": [
+        "profile-photo"
+      ]
+    },
+    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfilePhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 30)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected))": {
+      "count": 1,
+      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
+      "covered_by": [
+        "profile-photo"
+      ]
+    },
+    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersSettingsView|detailPicker.picker|Picker|\"Detail background\"": {
+      "count": 1,
+      "reason": "The detailPicker use in body owns the detail-background anchor and unavailable muted/volume fallbacks.",
+      "covered_by": [
+        "detail-background"
+      ]
+    },
+    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersSettingsView|sourcePicker.picker|Picker|\"Trailers\"": {
+      "count": 1,
+      "reason": "The sourcePicker use in body owns the trailer-sources anchor and disabled-autoplay fallback.",
+      "covered_by": [
+        "trailer-sources"
+      ]
+    },
+    "Sources/FeatureSettings/PreferenceDetailViews.swift|DetailPageDetailView|heroRows.rows|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers\") }": {
+      "count": 1,
+      "reason": "Navigation to the indexed trailer sources and detail background controls.",
+      "covered_by": [
+        "trailer-sources",
+        "detail-background"
+      ]
     }
   }
 }

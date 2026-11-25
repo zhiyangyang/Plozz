@@ -49,7 +49,7 @@ public struct MetadataSourceAttribution: Sendable, Equatable, Identifiable {
 
     private static let orderedSources: [MetadataSource] = [
         .tvdb, .tmdb, .anilist, .mal, .tvmaze, .kitsu, .omdb,
-        .wikidata, .wikipedia, .musicbrainz, .deezer,
+        .wikidata, .wikipedia,
     ]
 
     private static let table: [MetadataSource: MetadataSourceAttribution] = {
@@ -110,18 +110,6 @@ public struct MetadataSourceAttribution: Sendable, Equatable, Identifiable {
             name: "Wikipedia",
             notice: "Text and biography lookups use Wikipedia (wikipedia.org) under CC BY-SA; see each page's terms. Artwork from Wikipedia and Wikimedia Commons retains its per-file license and copyright.",
             url: URL(string: "https://www.wikipedia.org")
-        ))
-        add(.init(
-            source: .musicbrainz,
-            name: "MusicBrainz",
-            notice: "Music metadata is sourced from MusicBrainz (musicbrainz.org), which does not endorse or affiliate with Plozz.",
-            url: URL(string: "https://musicbrainz.org")
-        ))
-        add(.init(
-            source: .deezer,
-            name: "Deezer",
-            notice: "Music artwork is sourced from the Deezer API (deezer.com), which does not endorse or affiliate with Plozz.",
-            url: URL(string: "https://www.deezer.com")
         ))
         return map
     }()

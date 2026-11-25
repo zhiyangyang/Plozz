@@ -789,36 +789,6 @@ public struct JellyfinClient: Sendable {
         return try await http.decode(MdbListCachedRatings.self, from: endpoint, baseURL: baseURL)
     }
 
-    /// `GET /Items/{id}/ThemeSongs`. Parent inheritance lets season and episode
-    /// requests resolve their series theme when the server supports it.
-    func themeSongs(userID: String, id: String) async throws -> ItemsResponse {
-        if providerKind == .emby {
-            let endpoint = Endpoint(
-                path: "/Items/\(id)/ThemeMedia",
-                queryItems: [
-                    URLQueryItem(name: "UserId", value: userID),
-                    URLQueryItem(name: "InheritFromParent", value: "true")
-                ],
-                headers: authHeaders
-            )
-            return try await http.decode(ThemeMediaResponse.self, from: endpoint, baseURL: baseURL)
-                .ThemeSongsResult ?? ItemsResponse(Items: [], TotalRecordCount: 0)
-        }
-        let endpoint = Endpoint(
-            path: "/Items/\(id)/ThemeSongs",
-            queryItems: [
-                URLQueryItem(name: "UserId", value: userID),
-                URLQueryItem(name: "InheritFromParent", value: "true")
-            ],
-            headers: authHeaders
-        )
-        return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL)
-    }
-
-    /// `GET /MediaSegments/{itemId}` — server-detected structural segments
-    /// (intro, outro, recap, …). Available on Jellyfin 10.10+ or any server with
-    /// a media-segment provider plugin; older servers 404, which the provider
-    /// treats as "no segments". Times are 100-nanosecond ticks.
     func mediaSegments(itemID: String) async throws -> [MediaSegmentDto] {
         let endpoint = Endpoint(
             path: "/MediaSegments/\(itemID)",
@@ -1660,103 +1630,6 @@ public struct JellyfinClient: Sendable {
         _ = try await http.send(endpoint, baseURL: baseURL)
     }
 
-    // MARK: Music
-
-    var musicMaxStreamingBitrate: Int {
-        capabilityProfile.maxStreamingBitrate ?? JellyfinCapabilityProfile.defaultMaxBitrate
-    }
-
-    /// One page of music items from a container, using an explicit Jellyfin
-    /// `SortBy` (music needs multi-key sorts like `ParentIndexNumber,IndexNumber`
-    /// for album track order that the video `SortField` enum can't express).
-    func musicItems(
-        userID: String,
-        parentID: String?,
-        includeItemTypes: [String],
-        recursive: Bool,
-        startIndex: Int,
-        limit: Int,
-        sortBy: String,
-        sortOrder: String,
-        artistID: String? = nil,
-        filters: [String] = []
-    ) async throws -> ItemsResponse {
-        var queryItems = [
-            URLQueryItem(name: "StartIndex", value: String(startIndex)),
-            URLQueryItem(name: "Limit", value: String(limit)),
-            URLQueryItem(name: "SortBy", value: sortBy),
-            URLQueryItem(name: "SortOrder", value: sortOrder),
-            URLQueryItem(name: "Fields", value: "Genres,ChildCount,PrimaryImageAspectRatio"),
-            URLQueryItem(name: "ImageTypeLimit", value: "1"),
-            URLQueryItem(name: "EnableTotalRecordCount", value: "true")
-        ]
-        if let parentID, !parentID.isEmpty {
-            queryItems.append(URLQueryItem(name: "ParentId", value: parentID))
-        }
-        if let artistID, !artistID.isEmpty {
-            queryItems.append(URLQueryItem(name: "ArtistIds", value: artistID))
-        }
-        if !filters.isEmpty {
-            queryItems.append(URLQueryItem(name: "Filters", value: filters.joined(separator: ",")))
-        }
-        if recursive {
-            queryItems.append(URLQueryItem(name: "Recursive", value: "true"))
-        }
-        if !includeItemTypes.isEmpty {
-            queryItems.append(URLQueryItem(name: "IncludeItemTypes", value: includeItemTypes.joined(separator: ",")))
-        }
-        let endpoint = Endpoint(path: "/Users/\(userID)/Items", queryItems: queryItems, headers: authHeaders)
-        return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL)
-    }
-
-    /// `GET /Artists` — the indexed artist list (optionally scoped to a library).
-    func artists(
-        userID: String,
-        parentID: String?,
-        startIndex: Int,
-        limit: Int,
-        sortOrder: String = "Ascending"
-    ) async throws -> ItemsResponse {
-        var queryItems = [
-            URLQueryItem(name: "UserId", value: userID),
-            URLQueryItem(name: "StartIndex", value: String(startIndex)),
-            URLQueryItem(name: "Limit", value: String(limit)),
-            URLQueryItem(name: "SortBy", value: "SortName"),
-            URLQueryItem(name: "SortOrder", value: sortOrder),
-            URLQueryItem(name: "Fields", value: "Genres,ChildCount"),
-            URLQueryItem(name: "ImageTypeLimit", value: "1"),
-            URLQueryItem(name: "EnableTotalRecordCount", value: "true")
-        ]
-        if let parentID, !parentID.isEmpty {
-            queryItems.append(URLQueryItem(name: "ParentId", value: parentID))
-        }
-        let endpoint = Endpoint(path: "/Artists", queryItems: queryItems, headers: authHeaders)
-        return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL)
-    }
-
-    /// `GET /MusicGenres` — genres present in the music libraries.
-    func musicGenres(
-        userID: String,
-        parentID: String?,
-        startIndex: Int,
-        limit: Int
-    ) async throws -> ItemsResponse {
-        var queryItems = [
-            URLQueryItem(name: "UserId", value: userID),
-            URLQueryItem(name: "StartIndex", value: String(startIndex)),
-            URLQueryItem(name: "Limit", value: String(limit)),
-            URLQueryItem(name: "SortBy", value: "SortName"),
-            URLQueryItem(name: "SortOrder", value: "Ascending"),
-            URLQueryItem(name: "EnableTotalRecordCount", value: "true")
-        ]
-        if let parentID, !parentID.isEmpty {
-            queryItems.append(URLQueryItem(name: "ParentId", value: parentID))
-        }
-        let endpoint = Endpoint(path: "/MusicGenres", queryItems: queryItems, headers: authHeaders)
-        return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL)
-    }
-
-    /// `GET /Playlists/{id}/Items` — a playlist's tracks in playlist order.
     func playlistItems(
         userID: String, playlistID: String, start: Int? = nil, limit: Int? = nil
     ) async throws -> ItemsResponse {
@@ -1773,46 +1646,6 @@ public struct JellyfinClient: Sendable {
             headers: authHeaders
         )
         return try await http.decode(ItemsResponse.self, from: endpoint, baseURL: baseURL)
-    }
-
-    /// Builds credential-free `/Audio/{id}/universal` instructions. Authentication
-    /// and the per-play session are attached only when playback begins.
-    func audioStreamResource(itemID: String) throws -> AuthenticatedHTTPResource {
-        var pathComponents = URLComponents()
-        pathComponents.path = "/Audio/\(itemID)/universal"
-        let query = try [
-            AuthenticatedHTTPQueryItem(
-                name: "DeviceId",
-                value: deviceProfile.deviceID
-            ),
-            AuthenticatedHTTPQueryItem(
-                name: "MaxStreamingBitrate",
-                value: String(musicMaxStreamingBitrate)
-            ),
-            // Bare containers would allow unsupported codecs (such as DTS in WAV).
-            AuthenticatedHTTPQueryItem(
-                name: "Container",
-                value: JellyfinMusicDirectPlayProfile.universalContainers
-            ),
-            AuthenticatedHTTPQueryItem(name: "TranscodingContainer", value: "ts"),
-            AuthenticatedHTTPQueryItem(name: "TranscodingProtocol", value: "hls"),
-            AuthenticatedHTTPQueryItem(name: "AudioCodec", value: "aac")
-        ]
-        return try AuthenticatedHTTPResource(
-            pathBase: .configuredBaseURL,
-            path: String(
-                pathComponents.percentEncodedPath.drop(while: { $0 == "/" })
-            ),
-            queryItems: query
-        )
-    }
-
-    /// `GET /Audio/{itemId}/Lyrics` — the track's lyrics, timestamped (ticks) or
-    /// plain. Returns `nil` when the server has no lyrics (it answers 404), which
-    /// is mapped to "no lyrics" rather than an error by the caller.
-    func lyrics(itemID: String) async throws -> LyricDto {
-        let endpoint = Endpoint(path: "/Audio/\(itemID)/Lyrics", headers: authHeaders)
-        return try await http.decode(LyricDto.self, from: endpoint, baseURL: baseURL)
     }
 
     /// Builds an item image URL. When the server-advertised image `tag` (a

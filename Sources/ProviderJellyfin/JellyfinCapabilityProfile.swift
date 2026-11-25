@@ -17,7 +17,6 @@ import CoreModels
 public struct JellyfinCapabilityProfile: Encodable, Sendable, Equatable {
     public var maxStreamingBitrate: Int?
     public var maxStaticBitrate: Int?
-    public var musicStreamingTranscodingBitrate: Int
     public var directPlayProfiles: [DirectPlayProfile]
     public var transcodingProfiles: [TranscodingProfile]
     public var codecProfiles: [CodecProfile]
@@ -26,7 +25,6 @@ public struct JellyfinCapabilityProfile: Encodable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case maxStreamingBitrate = "MaxStreamingBitrate"
         case maxStaticBitrate = "MaxStaticBitrate"
-        case musicStreamingTranscodingBitrate = "MusicStreamingTranscodingBitrate"
         case directPlayProfiles = "DirectPlayProfiles"
         case transcodingProfiles = "TranscodingProfiles"
         case codecProfiles = "CodecProfiles"
@@ -39,7 +37,6 @@ public struct JellyfinCapabilityProfile: Encodable, Sendable, Equatable {
         // JellyfinClient replaces Original's nulls with Emby's numeric protocol ceiling.
         try values.encode(maxStreamingBitrate, forKey: .maxStreamingBitrate)
         try values.encode(maxStaticBitrate, forKey: .maxStaticBitrate)
-        try values.encode(musicStreamingTranscodingBitrate, forKey: .musicStreamingTranscodingBitrate)
         try values.encode(directPlayProfiles, forKey: .directPlayProfiles)
         try values.encode(transcodingProfiles, forKey: .transcodingProfiles)
         try values.encode(codecProfiles, forKey: .codecProfiles)
@@ -65,7 +62,6 @@ extension JellyfinCapabilityProfile {
         JellyfinCapabilityProfile(
             maxStreamingBitrate: maxBitrate,
             maxStaticBitrate: maxBitrate,
-            musicStreamingTranscodingBitrate: 384_000,
             directPlayProfiles: directPlay(capabilities, hybrid: hybridEngineEnabled),
             transcodingProfiles: [transcoding(capabilities)],
             codecProfiles: codec(capabilities, hybrid: hybridEngineEnabled),

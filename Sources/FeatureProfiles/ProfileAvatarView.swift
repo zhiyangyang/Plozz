@@ -154,7 +154,7 @@ public struct ProfileAvatarView: View {
     /// Picks a cache variant sized to the avatar: a crisp source for the large
     /// picker tiles, a cheap thumbnail for the small Settings rows.
     private static func variant(for size: CGFloat) -> ArtworkImageVariant {
-        size >= 160 ? .posterCard : .musicThumbnail
+        size >= 160 ? .posterCard : .profileThumbnail
     }
 
     /// Symbol on colored tile — the original avatar style. Also used as the

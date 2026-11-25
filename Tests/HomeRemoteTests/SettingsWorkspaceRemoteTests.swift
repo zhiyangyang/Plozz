@@ -585,24 +585,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
             let plex = app.buttons.matching(NSPredicate(format: "label == %@", "Plex")).firstMatch
             try focus(plex, in: app)
             XCTAssertTrue(hasFocus(plex), "The foreground chooser must respond to the remote.")
-            if route == "servers" {
-                let music = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Navidrome")).firstMatch
-                try focus(music, in: app)
-                XCUIRemote.shared.press(.select)
-                let signIn = app.buttons["subsonic-sign-in"]
-                let cancel = app.buttons["subsonic-cancel"]
-                XCTAssertTrue(signIn.waitForExistence(timeout: 10), app.debugDescription)
-                XCTAssertTrue(cancel.exists)
-                XCTAssertFalse(signIn.isEnabled, "An empty form must not submit.")
-                XCTAssertEqual(signIn.frame.width, 840, accuracy: 2,
-                               "The native Sign In button must fill the form, not just its text.")
-                XCTAssertEqual(cancel.frame.width, signIn.frame.width, accuracy: 2)
-                XCTAssertEqual(cancel.frame.minX, signIn.frame.minX, accuracy: 2)
-                capture("source-navidrome-actions-\(style)", in: app)
-                try focus(cancel, in: app)
-                XCUIRemote.shared.press(.select)
-                XCTAssertTrue(plex.waitForExistence(timeout: 10), app.debugDescription)
-            }
             XCUIRemote.shared.press(.menu)
             XCTAssertTrue(add.waitForExistence(timeout: 10), app.debugDescription)
             XCUIRemote.shared.press(.menu)
@@ -891,49 +873,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         XCTAssertTrue(hasFocus(navigation), "Back must restore focus to App navigation.")
         #else
         throw XCTSkip("Simulator-only navigation screenshot review.")
-        #endif
-    }
-
-    func testSharedTrailerPolicyKeepsThemeMusicAndIndependentHomeAutoplay() throws {
-        #if targetEnvironment(simulator)
-        let app = try launchSettings(style: "tabBar")
-        defer { app.terminate() }
-        try focus(section("screensNavigation", in: app), in: app)
-        XCUIRemote.shared.press(.select)
-        try focus(app.buttons["settings-page-title-details"], in: app)
-        XCUIRemote.shared.press(.select)
-        try focus(app.buttons["settings-group-detail-page-hero-mode"], in: app)
-        XCUIRemote.shared.press(.select)
-        XCTAssertTrue(app.staticTexts["Trailers & music"].waitForExistence(timeout: 5))
-        func select(_ value: String, in pickerID: String) throws {
-            try focus(app.buttons[pickerID], in: app)
-            XCUIRemote.shared.press(.select)
-            let option = app.cells.containing(.any, identifier: value).firstMatch
-            XCTAssertTrue(option.waitForExistence(timeout: 5), app.debugDescription)
-            try focus(option, in: app)
-            XCUIRemote.shared.press(.select)
-        }
-        try select("Theme music", in: "detail-background")
-        let volume = app.buttons["Theme music volume"]
-        XCTAssertTrue(volume.waitForExistence(timeout: 5), app.debugDescription)
-        try focus(volume, in: app)
-        let original = try XCTUnwrap(volume.value as? String)
-        XCUIRemote.shared.press(.right)
-        let adjusted = try XCTUnwrap(volume.value as? String)
-        XCTAssertNotEqual(adjusted, original)
-        try select("Off", in: "trailer-sources")
-        XCTAssertTrue(volume.exists, "Disabling trailers must not disable theme music.")
-        XCTAssertEqual(volume.value as? String, adjusted)
-        XCTAssertFalse(app.switches["hero-trailers"].isEnabled)
-        capture("trailers-off-theme-music-on", in: app)
-        try select("Server only", in: "trailer-sources")
-        XCTAssertTrue(app.switches["hero-trailers"].isEnabled)
-        XCTAssertEqual(volume.value as? String, adjusted)
-        try select("Trailer", in: "detail-background")
-        XCTAssertFalse(volume.exists)
-        capture("server-trailers-independent-autoplay", in: app)
-        #else
-        throw XCTSkip("Never changes detail settings on a physical device.")
         #endif
     }
 
@@ -1627,7 +1566,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         try focus(section("screensNavigation", in: app), in: app)
         XCUIRemote.shared.press(.select)
         assertInlineSettingsHeader("Screens & Navigation", back: pageBack("settings-category-back", in: app), in: app)
-        for id in ["customize-home", "customize-libraries", "navigation", "title-details", "music-player", "all-screens"] {
+        for id in ["customize-home", "customize-libraries", "navigation", "title-details", "all-screens"] {
             XCTAssertTrue(app.buttons["settings-page-\(id)"].exists)
         }
         XCTAssertFalse(app.buttons["settings-page-cards"].exists)
@@ -1703,7 +1642,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         XCUIRemote.shared.press(.menu)
         XCTAssertTrue(app.buttons["settings-page-navigation"].waitForExistence(timeout: 5), app.debugDescription)
         for (page, heading) in [
-            ("music-player", "Music player"),
             ("title-details", "Movie & show details")
         ] {
             let link = app.buttons["settings-page-\(page)"]
@@ -1781,7 +1719,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         for (id, label) in [
             ("navigation", "App navigation"), ("all-screens", "All screens"),
             ("customize-home", "Home"), ("customize-libraries", "Libraries"),
-            ("title-details", "Movie & show details"), ("music-player", "Music player")
+            ("title-details", "Movie & show details")
         ] {
             let link = app.buttons["settings-page-\(id)"]
             XCTAssertTrue(link.waitForExistence(timeout: 5), app.debugDescription)

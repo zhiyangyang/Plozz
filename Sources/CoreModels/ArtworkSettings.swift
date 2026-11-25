@@ -26,7 +26,7 @@ public enum ArtworkPreference: String, CaseIterable, Codable, Identifiable, Send
 public enum ArtworkArea: String, CaseIterable, Codable, Identifiable, Sendable {
     case home, homeRows, recommendedHero, recommended, browse, collections, playlists
     case continueWatching, search, watchlist, details, episodes
-    case playback, music, topShelf, downloads
+    case playback, topShelf, downloads
 
     public var id: Self { self }
 
@@ -49,7 +49,6 @@ public enum ArtworkArea: String, CaseIterable, Codable, Identifiable, Sendable {
         case .details: "Title detail pages"
         case .episodes: "Episode browser"
         case .playback: "Video player artwork"
-        case .music: "Music"
         case .topShelf: "Top Shelf"
         case .downloads: "Downloads"
         }
@@ -70,7 +69,6 @@ public enum ArtworkArea: String, CaseIterable, Codable, Identifiable, Sendable {
         case .details: "Movie and show backgrounds, logos, and related-title posters."
         case .episodes: "Episode thumbnails in a show's detail page, rather than the video player."
         case .playback: "Video player Info, episode and playlist menus, Up Next, and system Now Playing."
-        case .music: "Covers, artist images, and the music player."
         case .topShelf: "The large preview above Plozz on the Apple TV Home Screen."
         case .downloads: "Artwork saved with new downloads; existing downloads keep their images."
         }

@@ -1010,7 +1010,6 @@ public final class PlayerViewModel {
             guard let self, !self.didStop, self.engineToken == callbackEngineToken,
                   self.diagnosticAttempt == callbackAttempt else { return }
             self.endTemporarySpeedBoost()
-            self.stopSongWatch()
             let failureGeneration = self.streamingLoadGeneration
             let failureEvidence = self.engine.streamingFailure
             self.recordPlaybackFailure(
@@ -1040,7 +1039,6 @@ public final class PlayerViewModel {
         }
         engine.onEnded = { [weak self] in
             guard let self, self.engineToken == callbackEngineToken else { return }
-            self.stopSongWatch()
             self.recordPlayback(.ended)
             self.handlePlaybackEnded()
         }
@@ -1356,7 +1354,6 @@ public final class PlayerViewModel {
         streamingQuality.preparation = .requesting
         phase = .loading
         controls.infoCard.chapters = []
-        stopSongWatch()  // a new item starts without the last song
         let bringUpStart = Date()
         bringUpStartedAt = bringUpStart
         HandoffDiagnostics.emit(
@@ -1828,7 +1825,6 @@ public final class PlayerViewModel {
         seekCoordinator.cancelAll()
         subtitleOverlay.cancelAll()
         // Stop the old byte stream immediately, especially when leaving Wi-Fi.
-        stopSongWatch()
         engine.stop()
         streamingSwitchTask = Task { @MainActor [self] in
             await maintenance?.value
@@ -2133,7 +2129,6 @@ public final class PlayerViewModel {
         startPosition: TimeInterval
     ) async {
         endTemporarySpeedBoost()
-        stopSongWatch()
         var request = request
         request.dolbyVisionFELConversion = dolbyVisionFELOverride ?? playbackSettings.dolbyVisionFELConversion
         cancelVideoUpscalingChange()
@@ -2252,7 +2247,6 @@ public final class PlayerViewModel {
         configureTracksAfterLoad(for: request)
         readySpeedBoostLoadGeneration = rangeLoadGeneration
         phase = .ready
-        startSongWatch()
         streamingQuality.preparation = .waitingForVideo
         // Hold the bring-up spinner until the engine actually presents its first
         // frame, so `.loading` → `.ready` is one continuous indicator rather than
@@ -2565,49 +2559,6 @@ public final class PlayerViewModel {
         requestSeek(to: chapter.start, origin: "chapter")
     }
 
-    /// Listens to the playing audio (the engine's decoded-audio tap, not
-    /// the microphone) and keeps the song card on the song Shazam hears, so
-    /// the Info card can show it. Restarts its tap when a reload ends the old one,
-    /// and starts over on every seek (see `requestSeek`).
-    @ObservationIgnored private var songWatch: SongRecognitionController?
-
-    private func startSongWatch() {
-        guard !OfflineMode.shared.isEnabled, playbackSettings.identifySongs, intendsPlayback, phase == .ready,
-              !didStop, !controls.isSeeking else { return }
-        guard songWatch == nil else { return }
-        controls.songRecognition.resumeExpiry()
-        let engine = engine
-        let controls = controls
-        let watch = SongRecognitionController(
-            install: { [weak controls] in
-                let stream = engine.installSongTap()
-                let available = stream != nil
-                if controls?.songRecognition.isAvailable != available {
-                    controls?.songRecognition.isAvailable = available
-                }
-                return stream
-            },
-            remove: { engine.removeSongTap() },
-            report: { [weak self] song in
-                self?.controls.songRecognition.heard(song)
-            },
-            playbackTime: { engine.audioTapPresentationTime }
-        )
-        songWatch = watch
-        watch.start()
-    }
-
-    private func stopSongWatch(clear: Bool = true, preserveAvailability: Bool = false) {
-        songWatch?.stop()
-        songWatch = nil
-        if clear {
-            controls.songRecognition.heard(nil)
-            if !preserveAvailability { controls.songRecognition.isAvailable = false }
-        } else {
-            controls.songRecognition.pauseExpiry()
-        }
-    }
-
     /// Requests a committed seek. Coalesces rapid presses and defers the engine
     /// commit; owned by ``SeekScrubCoordinator``. See that type for the full
     /// coalescing / resume-confirm semantics. `origin` names the caller in the
@@ -2624,7 +2575,6 @@ public final class PlayerViewModel {
         seekCoordinator.requestSeek(to: seconds)
         foregroundReload.noteUserSeek(to: controls.pendingSeekTarget ?? seconds)
         // What was heard before the jump belongs to another part of the film.
-        stopSongWatch(preserveAvailability: true)
         nowPlaying?.refresh()
     }
 
@@ -2632,10 +2582,8 @@ public final class PlayerViewModel {
     /// want a one-shot await. New transport input goes through `requestSeek`.
     public func seek(to seconds: TimeInterval) async {
         endTemporarySpeedBoost()
-        stopSongWatch(preserveAvailability: true)
         foregroundReload.noteUserSeek(to: seconds)
         await seekCoordinator.seek(to: seconds)
-        startSongWatch()
         nowPlaying?.refresh()
     }
 
@@ -2790,10 +2738,8 @@ public final class PlayerViewModel {
         if resuming { AirPlayAudioSession.rebuildStreamBeforeResume() }
         if paused {
             engine.pause()
-            stopSongWatch(clear: false)
         } else {
             engine.play()
-            startSongWatch()
         }
         // A user pause means "no progress" is expected — don't let the stall
         // watchdog misfire, and stop any post-seek resume nudging so we don't
@@ -2844,7 +2790,6 @@ public final class PlayerViewModel {
             return
         }
         guard !didStop else { return }
-        stopSongWatch()
         endTemporarySpeedBoost()
         let suspendedPosition = foregroundReload.preservedPosition
         recordPlayback(.stopped, stopReason: .requested)
@@ -3249,7 +3194,7 @@ extension PlayerViewModel: SeekScrubCoordinatorHost {
     var seekIntendsPlayback: Bool { intendsPlayback }
     var seekDidStop: Bool { didStop }
     func seekApplyPaused(_ paused: Bool) { applyPaused(paused, origin: "seek") }
-    func seekDidSettle() { startSongWatch() }
+    func seekDidSettle() {}
 }
 
 extension PlayerViewModel: WatchProgressReporterHost {
@@ -3448,7 +3393,6 @@ extension PlayerViewModel: EngineHandoffCoordinatorHost {
     }
 
     func handoffPrepareMediaServicesRecovery() {
-        stopSongWatch()
         streamingResumePosition = handoffMediaServicesResumePosition
         if phase == .ready { streamingTrackSnapshot = subtitleController.streamSnapshot() }
         streamingLoadGeneration += 1
@@ -3500,7 +3444,6 @@ extension PlayerViewModel: EngineHandoffCoordinatorHost {
             }
         }
         if case .failed(let error) = phase {
-            stopSongWatch()
             if streamingQuality.error == nil {
                 streamingQuality.error = Self.streamingFailure(error, evidence: engine.streamingFailure)
             }

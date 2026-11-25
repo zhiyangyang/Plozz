@@ -61,7 +61,7 @@ public struct MetadataEnrichmentConfig: Sendable {
     /// then TMDb artwork, the keyless anime/TV sources, and the factual/last-mile
     /// fallbacks and isolated extras last.
     public static let defaultBaseOrder: [MetadataSource] = [
-        .tvdb, .tmdb, .anilist, .tvmaze, .kitsu, .wikidata, .wikipedia, .omdb, .deezer, .musicbrainz,
+        .tvdb, .tmdb, .anilist, .tvmaze, .kitsu, .wikidata, .wikipedia, .omdb,
     ]
 
     /// Whether `source` participates in enrichment (not disabled).

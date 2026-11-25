@@ -6,7 +6,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
     case home
     case search
     case watchlist
-    case music
     case settings
     /// A single library, addressed by its ``AggregatedLibrary/key``.
     case library(String)
@@ -19,7 +18,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case .home: return "home"
         case .search: return "search"
         case .watchlist: return "watchlist"
-        case .music: return "music"
         case .settings: return "settings"
         case .allLibraries: return "allLibraries"
         case let .library(key): return "library:\(key)"
@@ -31,7 +29,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case "home": self = .home
         case "search": self = .search
         case "watchlist": self = .watchlist
-        case "music": self = .music
         case "settings": self = .settings
         case "allLibraries": self = .allLibraries
         default:
@@ -85,19 +82,17 @@ public enum NavigationDestinationDefaults {
         visible.count > 5 ? Set(visible.dropFirst(4)) : []
     }
 
-    public static func compact(hasMusic: Bool) -> [String] {
-        var keys = [
+    public static func compact() -> [String] {
+        [
             NavigationLibraryLayout.homeKey,
-            NavigationLibraryLayout.watchlistKey
+            NavigationLibraryLayout.watchlistKey,
+            NavigationLibraryLayout.searchKey,
+            NavigationLibraryLayout.settingsKey,
         ]
-        keys.append(NavigationLibraryLayout.searchKey)
-        if hasMusic { keys.append(NavigationLibraryLayout.musicKey) }
-        keys.append(NavigationLibraryLayout.settingsKey)
-        return keys
     }
 
-    public static func sidebar(visibleLibraries: [AggregatedLibrary], hasMusic: Bool) -> [String] {
-        var keys = compact(hasMusic: hasMusic)
+    public static func sidebar(visibleLibraries: [AggregatedLibrary]) -> [String] {
+        var keys = compact()
         keys.insert(
             contentsOf: NavigationRailPlan.availableKeys(visibleLibraries: visibleLibraries),
             at: keys.count - 1
@@ -105,8 +100,8 @@ public enum NavigationDestinationDefaults {
         return keys
     }
 
-    public static func rail(visibleLibraries: [AggregatedLibrary], hasMusic: Bool) -> [String] {
-        var keys = sidebar(visibleLibraries: visibleLibraries, hasMusic: hasMusic)
+    public static func rail(visibleLibraries: [AggregatedLibrary]) -> [String] {
+        var keys = sidebar(visibleLibraries: visibleLibraries)
         keys.removeAll { $0 == NavigationLibraryLayout.searchKey }
         keys.insert(NavigationLibraryLayout.searchKey, at: 0)
         return keys
@@ -161,11 +156,9 @@ public enum NavigationDestinationDefaults {
 
     public static func iOS(
         visibleLibraries: [AggregatedLibrary],
-        hasMusic: Bool = false,
         customBuild: Bool = PlozzCustomization.isCustomBuild
     ) -> [String] {
         var keys = iOSKeys(customBuild: customBuild)
-        if hasMusic { keys.insert(NavigationLibraryLayout.musicKey, at: 1) }
         let libraries = NavigationRailPlan.browsableLibraries(visibleLibraries)
         keys.insert(
             contentsOf: (libraries.count > 1 ? [NavigationLibraryLayout.allLibrariesKey] : [])
@@ -186,7 +179,7 @@ public enum NavigationDestinationDefaults {
         customBuild: Bool = PlozzCustomization.isCustomBuild
     ) -> Set<String> {
         Set(available).subtracting(
-            defaultVisibleKeys(customBuild: customBuild) + [NavigationLibraryLayout.musicKey]
+            defaultVisibleKeys(customBuild: customBuild)
         )
     }
 }
@@ -203,10 +196,10 @@ public enum NavigationRailPlan {
         let keys: [String]
         switch style {
         case .tabBar:
-            keys = NavigationDestinationDefaults.sidebar(visibleLibraries: visibleLibraries, hasMusic: true)
+            keys = NavigationDestinationDefaults.sidebar(visibleLibraries: visibleLibraries)
         case .sidebar:
-            keys = NavigationDestinationDefaults.sidebar(visibleLibraries: visibleLibraries, hasMusic: true)
-        case .rail: keys = NavigationDestinationDefaults.rail(visibleLibraries: visibleLibraries, hasMusic: true)
+            keys = NavigationDestinationDefaults.sidebar(visibleLibraries: visibleLibraries)
+        case .rail: keys = NavigationDestinationDefaults.rail(visibleLibraries: visibleLibraries)
         }
         return deduplicated(keys)
     }
@@ -307,7 +300,6 @@ public enum NavigationRailPlan {
         case NavigationLibraryLayout.homeKey: return .home
         case NavigationLibraryLayout.searchKey: return .search
         case NavigationLibraryLayout.watchlistKey: return .watchlist
-        case NavigationLibraryLayout.musicKey: return .music
         case NavigationLibraryLayout.settingsKey: return .settings
         case NavigationLibraryLayout.allLibrariesKey: return .allLibraries
         default: return nil
@@ -320,7 +312,6 @@ public enum NavigationRailPlan {
         case .home: return NavigationLibraryLayout.homeKey
         case .search: return NavigationLibraryLayout.searchKey
         case .watchlist: return NavigationLibraryLayout.watchlistKey
-        case .music: return NavigationLibraryLayout.musicKey
         case .settings: return NavigationLibraryLayout.settingsKey
         case .allLibraries: return NavigationLibraryLayout.allLibrariesKey
         case let .library(key): return key

@@ -84,7 +84,7 @@ public struct ArtworkCustomizationView: View {
     }
 
     private var areas: [ArtworkArea] {
-        ArtworkArea.allCases.filter { $0 != .topShelf && $0 != .music && $0 != .recommendedHero }
+        ArtworkArea.allCases.filter { $0 != .topShelf && $0 != .recommendedHero }
     }
 
     public var body: some View {
@@ -115,7 +115,7 @@ public struct ArtworkCustomizationView: View {
             })
             section("Across the app", areas: [
                 .continueWatching, .search, .watchlist, .details, .episodes,
-                .playback, .music, .topShelf, .downloads
+                .playback, .topShelf, .downloads
             ])
         }
     }

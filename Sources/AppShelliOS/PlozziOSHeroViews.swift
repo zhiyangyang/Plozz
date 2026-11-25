@@ -3610,21 +3610,12 @@ private struct PlozziOSDetailCredits: View {
 
 struct PlozziOSDetailAudioMuteControl: View {
     let trailer: HeroTrailerController
-    let themeMusic: ThemeMusicController?
     let itemID: String?
-    let themePlaybackID: String?
-    let isActive: Bool
 
     var body: some View {
         if trailer.isPlaying, trailer.activeSurfaceRole == .detail, let itemID,
            trailer.isShowing(itemID) {
             PlozziOSHeroAudioMuteToolbarButton(isMuted: trailer.isMuted, onToggle: trailer.toggleMuted)
-        } else if let themeMusic, let themePlaybackID,
-                  themeMusic.isPlaying, !themeMusic.isPreviewing,
-                  themeMusic.currentPlaybackID == themePlaybackID, isActive {
-            PlozziOSHeroAudioMuteToolbarButton(
-                isMuted: themeMusic.isMuted, onToggle: themeMusic.toggleMuted, source: .themeMusic
-            )
         }
     }
 }
@@ -3632,29 +3623,20 @@ struct PlozziOSDetailAudioMuteControl: View {
 struct PlozziOSHeroAudioMuteToolbarButton: View {
     let isMuted: Bool
     let onToggle: () -> Void
-    var source: Source = .trailer
-
-    enum Source {
-        case trailer, themeMusic
-
-        func label(isMuted: Bool) -> LocalizedStringResource {
-            switch self {
-            case .trailer: isMuted ? "Unmute trailer" : "Mute trailer"
-            case .themeMusic: isMuted ? "Unmute theme music" : "Mute theme music"
-            }
-        }
+    private func label(isMuted: Bool) -> LocalizedStringResource {
+        isMuted ? "Unmute trailer" : "Mute trailer"
     }
 
     var body: some View {
         Button(action: onToggle) {
             Label {
-                Text(source.label(isMuted: isMuted))
+                Text(label(isMuted: isMuted))
             } icon: {
                 Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
             }
         }
-        .accessibilityLabel(Text(source.label(isMuted: isMuted)))
-        .accessibilityIdentifier(source == .themeMusic ? "theme-music-mute" : "trailer-mute")
+        .accessibilityLabel(Text(label(isMuted: isMuted)))
+        .accessibilityIdentifier("trailer-mute")
     }
 }
 

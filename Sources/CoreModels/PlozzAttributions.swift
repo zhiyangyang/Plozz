@@ -281,22 +281,6 @@ public enum PlozzAttributions {
             licenses: [.init("CC BY-SA", family: .api)]
         ),
         PlozzAttribution(
-            title: "MusicBrainz, Cover Art Archive & Deezer",
-            detail:
-                "Music metadata and artwork lookups use MusicBrainz "
-                + "(https://musicbrainz.org), the Cover Art Archive "
-                + "(https://coverartarchive.org), and Deezer (https://www.deezer.com). "
-                + "Artwork retains its original copyright and applicable terms.",
-            licenses: [.init("API", family: .api)]
-        ),
-        PlozzAttribution(
-            title: "LRCLIB",
-            detail:
-                "Fallback plain and synchronized lyrics use LRCLIB "
-                + "(https://lrclib.net). Lyrics retain their original copyright.",
-            licenses: [.init("API", family: .api)]
-        ),
-        PlozzAttribution(
             title: "Community Skip Markers",
             detail:
                 "Optional intro, recap and credits markers use IntroDB "

@@ -115,7 +115,7 @@ final class MetadataDefaultOrderIdentityTests: XCTestCase {
         let config = MetadataEnrichmentConfig()
         XCTAssertEqual(
             config.orderedSources(for: .posterURL, query: makeQuery(.movie)),
-            [.tmdb, .tvdb, .wikidata, .wikipedia, .anilist, .tvmaze, .kitsu, .omdb, .deezer, .musicbrainz]
+            [.tmdb, .tvdb, .wikidata, .wikipedia, .anilist, .tvmaze, .kitsu, .omdb]
         )
         // TMDb leads every hero: an untagged image there reliably means "no text"
         // (a moderated convention), whereas TheTVDB contributors routinely leave a
@@ -123,11 +123,11 @@ final class MetadataDefaultOrderIdentityTests: XCTestCase {
         // the hero then drew that same wordmark on top of it.
         XCTAssertEqual(
             config.orderedSources(for: .backdropURL, query: makeQuery(.tvShow)),
-            [.tmdb, .tvdb, .wikidata, .wikipedia, .anilist, .tvmaze, .kitsu, .omdb, .deezer, .musicbrainz]
+            [.tmdb, .tvdb, .wikidata, .wikipedia, .anilist, .tvmaze, .kitsu, .omdb]
         )
         XCTAssertEqual(
             config.orderedSources(for: .posterURL, query: makeQuery(.anime)),
-            [.anilist, .kitsu, .tmdb, .tvdb, .tvmaze, .wikidata, .wikipedia, .omdb, .deezer, .musicbrainz]
+            [.anilist, .kitsu, .tmdb, .tvdb, .tvmaze, .wikidata, .wikipedia, .omdb]
         )
     }
 }

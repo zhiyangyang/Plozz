@@ -6,7 +6,6 @@ import CoreNetworking
 import ProviderJellyfin
 import ProviderPlex
 import ProviderSilo
-import ProviderSubsonic
 import Foundation
 
 public enum ManagedProviderRegistry {
@@ -38,9 +37,6 @@ public enum ManagedProviderRegistry {
         durableStore: DurableLocalStateStore? = nil
     ) -> ProviderRegistry {
         let registry = ProviderRegistry()
-        registry.register(.subsonic) { context in
-            try SubsonicProvider(context: context)
-        }
         registry.register(.silo) { context in
             guard let siloCredentials else { throw AppError.unauthorized }
             return try SiloProvider(context: context, credentials: siloCredentials)

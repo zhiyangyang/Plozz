@@ -72,12 +72,7 @@ public enum ProfileSettingsTransfer {
         LibraryPresentationSettingsStore.storageKey,
         "com.plozz.homeLayout.v2",
         "home-content",
-        "com.plozz.musicLandingLayout",
-        "com.plozz.themeMusicSettings",
         "com.plozz.seriesTrackPreferences",
-        "musicShowTrackDetails",
-        "musicLyricsEnabled",
-        "musicPlayerAppearance",
     ]
 
     /// Capture the transferable settings for one profile namespace (`nil` = the

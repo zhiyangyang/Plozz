@@ -4,7 +4,6 @@ import CoreNetworking
 import CoreUI
 import FeatureAuth
 import FeatureHomeCore
-import FeatureMusic
 import SwiftUI
 import UIKit
 import XCTest
@@ -74,7 +73,6 @@ final class ProfileToolbarPresentationTests: XCTestCase {
                                     .plozzOpaqueNavigationChrome()
                             }
                         }
-                        Tab("Music", systemImage: "music.note") { Color.black }
                         Tab("Downloads", systemImage: "arrow.down") { Color.black }
                         Tab("Search", systemImage: "magnifyingglass") { Color.black }
                         Tab("Discover", systemImage: "sparkles") { Color.black }
@@ -396,13 +394,13 @@ final class ProfileToolbarPresentationTests: XCTestCase {
         }
         let data = try XCTUnwrap(image.pngData())
         let cache = try XCTUnwrap(ArtworkSession.shared.configuration.urlCache)
-        let requestURL = ArtworkImageVariant.musicThumbnail.requestURL(for: url)
+        let requestURL = ArtworkImageVariant.posterCard.requestURL(for: url)
         let response = try XCTUnwrap(HTTPURLResponse(
             url: requestURL, statusCode: 200, httpVersion: nil,
             headerFields: ["Content-Type": "image/png", "Cache-Control": "max-age=3600"]
         ))
         cache.storeCachedResponse(CachedURLResponse(response: response, data: data), for: URLRequest(url: requestURL))
-        let decoded = await ArtworkImageCache.shared.image(for: url, variant: .musicThumbnail)
+        let decoded = await ArtworkImageCache.shared.image(for: url, variant: .posterCard)
         _ = try XCTUnwrap(decoded)
         return url
     }

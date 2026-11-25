@@ -23,8 +23,6 @@ public actor ArtworkRouter {
     private let tvmaze = TVmazeArtworkProvider()
     private let wikidata = WikidataArtworkProvider()
     private let wikipedia = WikipediaArtworkProvider()
-    private let deezer = DeezerMusicProvider()
-    private let musicBrainz = MusicBrainzArtworkProvider()
     private var tmdb: TMDbMetadataProvider
     /// Bundled TheTVDB backdrop tier (hero art only). Nil-safe when unconfigured.
     private let tvdb = TVDBArtworkProvider(client: TVDBClient(config: .resolved()))
@@ -519,44 +517,5 @@ public actor ArtworkRouter {
         }
     }
 
-    // MARK: - Music artwork (separate model path)
 
-    /// A large artist image for a music hero/background. Keyless (Deezer).
-    public func artistImageURL(artist: String) async -> URL? {
-        guard !PlozzCustomization.isCustomBuild else { return nil }
-        guard configuredMusicSources.contains(.deezer) else { return nil }
-        let key = "music|artist|\(artist.lowercased())|provider:deezer"
-        if let hit = await cache.cached(key) { return hit }
-        let url = await deezer.artistImageURL(artist: artist)
-        await cache.store(url, for: key)
-        return url
-    }
-
-    /// A large album cover, trying Deezer then MusicBrainz/Cover Art Archive.
-    public func albumCoverURL(artist: String?, album: String) async -> URL? {
-        guard !PlozzCustomization.isCustomBuild else { return nil }
-        for source in configuredMusicSources {
-            let key = "music|album|\((artist ?? "").lowercased())|\(album.lowercased())|provider:\(source.rawValue)"
-            if let hit = await cache.cached(key) {
-                if let hit { return hit }
-                continue
-            }
-            let url: URL?
-            switch source {
-            case .deezer: url = await deezer.albumCoverURL(artist: artist, album: album)
-            case .musicbrainz: url = await musicBrainz.albumCoverURL(artist: artist, album: album)
-            default: continue
-            }
-            await cache.store(url, for: key)
-            if let url { return url }
-        }
-        return nil
-    }
-
-    private var configuredMusicSources: [MetadataSource] {
-        let config = enrichmentBaseline.merged(withUserOverrides: settingsStore.load())
-        return config.order.filter {
-            ($0 == .deezer || $0 == .musicbrainz) && config.isEnabled($0)
-        }
-    }
 }

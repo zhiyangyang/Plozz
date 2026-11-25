@@ -14,7 +14,7 @@ final class MediaCollectionContractTests: XCTestCase {
     }
 
     func testCollectionCapabilityDoesNotOverlapExistingCapabilities() throws {
-        let previous: ProviderCapability = [.video, .music, .remoteSubtitles]
+        let previous: ProviderCapability = [.video, .remoteSubtitles]
         XCTAssertFalse(previous.contains(.libraryCollections))
         let combined = previous.union(.libraryCollections)
         let decoded = try JSONDecoder().decode(

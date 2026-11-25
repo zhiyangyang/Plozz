@@ -14,7 +14,7 @@ import Observation
 /// which manages its own visibility.
 ///
 /// Lives in `CoreUI` rather than beside the rail in `AppShell` because the stacks
-/// that know their own depth are spread across feature modules (`FeatureMusic`,
+/// that know their own depth are spread across feature modules (
 /// `FeatureSettings`), and a Feature cannot import the shell.
 @MainActor
 @Observable

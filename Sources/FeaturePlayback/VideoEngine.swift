@@ -95,10 +95,6 @@ public protocol VideoEngine: AnyObject {
     var discMenu: DiscMenuPlaybackState? { get }
     func discVideos() async throws -> [DiscVideo]
     #endif
-    /// Decoded playback audio for song identification (#351); nil when the engine
-    /// can't provide it. Call `removeSongTap()` when done.
-    func installSongTap() -> AsyncStream<SongTapChunk>?
-    func removeSongTap()
     var supportsActivePictureAnalysis: Bool { get }
     /// Stable through seeks and analysis resets; changes on source replacement or stop.
     /// Nil disables retaining the last confirmed picture through unavailable samples.
@@ -258,7 +254,6 @@ public protocol VideoEngine: AnyObject {
     /// Current playback position in seconds (`0` when unknown).
     var currentTime: TimeInterval { get }
     /// Rendered position on the source-PTS axis used by decoded audio taps.
-    var audioTapPresentationTime: TimeInterval { get }
     /// Clock on the emitted subtitle cues' axis, following the presented picture
     /// rather than a transport position advanced to a pending seek target.
     var subtitlePresentationTime: TimeInterval { get }
@@ -426,14 +421,11 @@ public extension VideoEngine {
     var discMenu: DiscMenuPlaybackState? { nil }
     func discVideos() async throws -> [DiscVideo] { throw CocoaError(.featureUnsupported) }
     #endif
-    func installSongTap() -> AsyncStream<SongTapChunk>? { nil }
-    func removeSongTap() {}
     var supportsActivePictureAnalysis: Bool { false }
     var activePictureSourceID: UUID? { nil }
     func sampleActivePicture() async -> VideoActivePictureState { .unsupported }
     func stopActivePictureAnalysis() {}
     var subtitlePresentationTime: TimeInterval { currentTime }
-    var audioTapPresentationTime: TimeInterval { currentTime }
     func renderSubtitles(at time: TimeInterval, style: SubtitleStyle) {}
     func renderSubtitles(at presentationTime: TimeInterval, offset: TimeInterval, style: SubtitleStyle) {
         renderSubtitles(at: presentationTime - offset, style: style)
