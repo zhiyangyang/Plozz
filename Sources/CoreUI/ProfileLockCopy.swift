@@ -165,17 +165,6 @@ public enum ProfileLockCopy {
         comment: "Second line on the Profile Lock row when the profile has no Plozz lock but does play as a PIN-protected Plex Home user."
     )
 
-    /// Shown under the keypad, and on the setup screen, when iCloud Sync is off.
-    ///
-    /// Worth saying out loud: a parent setting a lock reasonably assumes it
-    /// applies everywhere, and with Sync off it does not — the same profile is
-    /// still open on the iPhone.
-    public static let lockIsDeviceOnly = LocalizedStringResource(
-        "settings.profileLock.deviceOnly",
-        defaultValue: "iCloud Sync is off, so this lock only applies on this device.",
-        comment: "Caveat shown when a Profile Lock is set while iCloud Sync is off, meaning the user's other devices won't have the lock."
-    )
-
     public static let offerTitle = LocalizedStringResource(
         "settings.profileLock.offer.title",
         defaultValue: "Create a PIN?",

@@ -59,7 +59,6 @@ struct PlayerRotationFixture: View {
     @State private var request: PlozziOSPlaybackRequest?
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         let model = PlozziOSAppModel()
         model.settings.playback.settings = .default
         model.settings.playback.settings.useCommunityMarkers = false

@@ -21,8 +21,6 @@ import SwiftUI
 /// change-or-remove.
 public struct ProfileActionsList: View {
     private let profile: Profile
-    /// Whether the lock will reach the user's other devices. Drives the caveat.
-    private let syncEnabled: Bool
     /// Whether this profile plays as a PIN-protected Plex Home user, so one PIN
     /// can satisfy both.
     private let offersPlexPINReuse: Bool
@@ -67,7 +65,6 @@ public struct ProfileActionsList: View {
 
     public init(
         profile: Profile,
-        syncEnabled: Bool,
         offersPlexPINReuse: Bool = false,
         hasParentalPIN: Bool,
         restrictedActionsSealed: Bool,
@@ -87,7 +84,6 @@ public struct ProfileActionsList: View {
         onUnlock: @escaping () -> Void = {}
     ) {
         self.profile = profile
-        self.syncEnabled = syncEnabled
         self.offersPlexPINReuse = offersPlexPINReuse
         self.hasParentalPIN = hasParentalPIN
         self.restrictedActionsSealed = restrictedActionsSealed

@@ -13,7 +13,6 @@ struct PlexHomeSettingsOnboardingFixture: View {
     private let users: [PlexHomeUser]
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         let defaults = UserDefaults(suiteName: "PlexHomeSettingsOnboarding.\(UUID())")!
         let store = ProfileStore(defaults: defaults)
         let profiles = ProfilesModel(store: store)

@@ -152,7 +152,7 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
         let routes: [SettingsRoute] = [
             .servers, .server(key: "server"), .profile, .parentalPIN, .topShelf,
             .metadata, .metadataDiagnostics,
-            .syncSetup, .syncTroubleshooting, .profileSettings(profileID: "adult"),
+            .profileSettings(profileID: "adult"),
             .profileAppearance(profileID: "adult"), .profileLockSetup(profileID: "adult")
         ]
         for route in routes {

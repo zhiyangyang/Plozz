@@ -13,7 +13,7 @@ import Foundation
 /// mechanism instead of two.
 ///
 /// **The PIN is never stored.** Only a salted, iterated SHA-256 verifier is
-/// persisted, so reading the profile JSON (or the synced CloudKit record) does
+/// persisted, so reading the profile JSON does
 /// not hand over the PIN.
 ///
 /// Note the honest limit of that: a 4-digit PIN has 10,000 possible values, so

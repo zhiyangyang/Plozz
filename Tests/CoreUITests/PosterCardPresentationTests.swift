@@ -121,7 +121,7 @@ final class PosterCardPresentationTests: XCTestCase {
             for played in [false, true] {
                 let state = MediaPlaybackIndicatorState(MediaItem(id: "item", title: "Item", kind: kind, isPlayed: played))
                 XCTAssertNil(MediaPlaybackIndicatorPresentation.status(
-                    for: state, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true, seerConnected: false
+                    for: state, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true
                 ))
             }
         }
@@ -130,24 +130,24 @@ final class PosterCardPresentationTests: XCTestCase {
             resumePosition: 120, playedPercentage: 0.4, unwatchedEpisodeCount: 3
         ))
         XCTAssertEqual(MediaPlaybackIndicatorPresentation.status(
-            for: series, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true, seerConnected: false
+            for: series, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true
         ), .episodeCount(3))
         XCTAssertTrue(MediaPlaybackIndicatorPresentation.showsProgress(for: series))
         XCTAssertNil(MediaPlaybackIndicatorPresentation.status(
-            for: series, hidesStatus: false, indicator: .hidden, showsEpisodeCount: false, seerConnected: false
+            for: series, hidesStatus: false, indicator: .hidden, showsEpisodeCount: false
         ))
         let external = MediaPlaybackIndicatorState(MediaItem(
             id: "external", title: "External", kind: .movie, locallyValidatedPlayableSource: false
         ))
         XCTAssertEqual(MediaPlaybackIndicatorPresentation.status(
-            for: external, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true, seerConnected: true
+            for: external, hidesStatus: false, indicator: .hidden, showsEpisodeCount: true
         ), MediaPlaybackIndicatorPresentation.status(
-            for: external, hidesStatus: false, indicator: .unwatched, showsEpisodeCount: true, seerConnected: true
+            for: external, hidesStatus: false, indicator: .unwatched, showsEpisodeCount: true
         ))
         for watched in [false, true] {
             XCTAssertFalse(NativePosterIndicators.episode(
                 isWatched: watched, hasProgress: false, isVisible: true, style: .hidden, badgeSize: 24, flagSize: 24
-            ).hasContent(indicator: .hidden, showsEpisodeCount: true, seerConnected: false))
+            ).hasContent(indicator: .hidden, showsEpisodeCount: true))
         }
     }
 
@@ -250,8 +250,7 @@ final class PosterCardPresentationTests: XCTestCase {
                 XCTAssertFalse(MediaPlaybackIndicatorPresentation.showsProgress(for: state))
                 for indicator in WatchStatusIndicator.allCases {
                     XCTAssertNil(MediaPlaybackIndicatorPresentation.status(
-                        for: state, hidesStatus: false, indicator: indicator, showsEpisodeCount: true,
-                        seerConnected: false
+                        for: state, hidesStatus: false, indicator: indicator, showsEpisodeCount: true
                     ))
                 }
             }

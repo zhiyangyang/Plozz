@@ -23,12 +23,10 @@ public protocol TrackerTokenStoring: Sendable {
 }
 
 #if canImport(Security)
-/// Keychain-backed token store on the shared synced box so this
-/// sign-in reaches the profile's other devices through iCloud Keychain and the
-/// app's encrypted CloudKit transport. The default namespace retains `trakt.oauth`;
+/// Keychain-backed token store. The default namespace retains `trakt.oauth`;
 /// other profiles use `trakt.oauth.<namespace>`.
 public final class KeychainTrackerTokenStore: TrackerTokenStoring, @unchecked Sendable {
-    private let box: SyncedTokenBox<TrackerTokens>
+    private let box: TrackerTokenBox<TrackerTokens>
     private let service: String
     private let account: String
     private var namespace: String?
@@ -42,7 +40,7 @@ public final class KeychainTrackerTokenStore: TrackerTokenStoring, @unchecked Se
         self.service = service
         self.account = account
         self.namespace = namespace
-        box = SyncedTokenBox(
+        box = TrackerTokenBox(
             service: service,
             account: account,
             namespace: namespace

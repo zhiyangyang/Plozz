@@ -48,6 +48,4 @@ public final class LiveTVPlaybackIdentityHold {
 extension Notification.Name {
     public static let plozzLiveTVPlaybackIdentityDidBecomeIdle =
         Notification.Name("com.plozz.liveTV.playbackIdentityDidBecomeIdle")
-    public static let plozzLiveTVPortableStateDidApply =
-        Notification.Name("com.plozz.liveTV.portableStateDidApply")
 }

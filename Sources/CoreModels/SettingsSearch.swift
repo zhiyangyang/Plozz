@@ -55,7 +55,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, liveSubtitleStyle, musicPlayer, topShelf
-    case downloads, profiles, sync, metadata, diagnostics, trackers, liveTVSources
+    case downloads, profiles, metadata, diagnostics, trackers, liveTVSources
     case playbackAdvanced, streamingAdvanced, metadataDiagnostics, detailRatingSources
     case liveTVGuide, liveTVVisibility, profileAppearance, profileSettings, accountLibraries
     case releaseNotes
@@ -97,7 +97,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .topShelf: ["Top Shelf"]
         case .downloads: ["Downloads"]
         case .profiles: ["Profiles"]
-        case .sync: ["iCloud Sync"]
         case .metadata: ["Metadata Providers"]
         case .diagnostics: ["Help & Diagnostics"]
         case .trackers: ["Trackers"]
@@ -132,7 +131,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .language: "globe"
         case .downloads: "arrow.down.circle"
         case .profiles, .profileAppearance, .profileSettings: "person.2"
-        case .sync: "icloud"
         case .metadata, .metadataDiagnostics: "sparkles.rectangle.stack"
         case .diagnostics: "ladybug"
         case .trackers: "link"
@@ -142,7 +140,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
 
     public var requiresAdultProfile: Bool {
         switch self {
-        case .downloads, .profiles, .sync, .metadata, .metadataDiagnostics, .topShelf: true
+        case .downloads, .profiles, .metadata, .metadataDiagnostics, .topShelf: true
         default: false
         }
     }

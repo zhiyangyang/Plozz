@@ -565,58 +565,6 @@ final class WatchlistModelTests: XCTestCase {
         XCTAssertFalse(merged?.metadata.suppressesNativePresence ?? true)
     }
 
-    func testSyncCaptureApplyIsByteStableForAddAndTombstone() throws {
-        let alias = MediaAliasID()
-        let source = WatchlistModel()
-        try source.activate(profileID: "p")
-        try source.add(
-            profileID: "p",
-            aliasID: MediaAliasID(),
-            kind: .series
-        )
-        try source.add(profileID: "p", aliasID: alias, kind: .movie)
-        let key = WatchlistMediaStateRecordKey(
-            profileID: "p",
-            aliasID: alias
-        )
-        let addBytes = try XCTUnwrap(
-            source.captureSyncRecords(profileID: "p")[key.recordName]
-        )
-
-        let receiver = WatchlistModel()
-        try receiver.activate(profileID: "p")
-        try receiver.add(
-            profileID: "p",
-            aliasID: alias,
-            kind: .movie,
-            origin: .nativeImport
-        )
-        try receiver.applyRemoteSyncRecords(
-            profileID: "p",
-            changes: [key: addBytes]
-        )
-        let recapturedAdd = try receiver.captureSyncRecords(
-            profileID: "p",
-            fallback: [key.recordName: addBytes]
-        )
-        XCTAssertEqual(recapturedAdd[key.recordName], addBytes)
-
-        try source.remove(profileID: "p", aliasID: alias, kind: .movie)
-        let removeBytes = try XCTUnwrap(
-            source.captureSyncRecords(profileID: "p")[key.recordName]
-        )
-        try receiver.applyRemoteSyncRecords(
-            profileID: "p",
-            changes: [key: removeBytes]
-        )
-        XCTAssertFalse(receiver.activeSnapshot.contains(aliasID: alias))
-        let recapturedRemove = try receiver.captureSyncRecords(
-            profileID: "p",
-            fallback: [key.recordName: removeBytes]
-        )
-        XCTAssertEqual(recapturedRemove[key.recordName], removeBytes)
-    }
-
     func testSnapshotIndicesHaveBoundedShapeAtOneAndTenThousand() {
         for count in [1_000, 10_000] {
             let intents = (0..<count).map { index in
@@ -1022,56 +970,6 @@ final class WatchlistModelTests: XCTestCase {
             XCTAssertEqual(store.saveCount, 1)
             XCTAssertTrue(store.current.intents.isEmpty)
         }
-    }
-
-    func testRemoteApplyRejectsPoisonIndividuallyAndIgnoresDeletedProfile() throws {
-        let model = WatchlistModel()
-        try model.activate(profileID: "valid")
-        let goodAlias = MediaAliasID()
-        let poisonAlias = MediaAliasID()
-        let goodKey = WatchlistMediaStateRecordKey(
-            profileID: "valid",
-            aliasID: goodAlias
-        )
-        let poisonKey = WatchlistMediaStateRecordKey(
-            profileID: "valid",
-            aliasID: poisonAlias
-        )
-        let intent = WatchlistIntent(
-            aliasID: goodAlias,
-            kind: .movie,
-            desiredState: .present,
-            rank: 0,
-            origin: .cloud
-        )!
-        let report = try model.applyRemoteSyncRecords(
-            profileID: "valid",
-            changes: [
-                goodKey: CanonicalJSON.encode(
-                    WatchlistIntentSyncDTO(intent: intent)
-                )!,
-                poisonKey: Data("poison".utf8)
-            ]
-        )
-        XCTAssertEqual(report.appliedRecordNames, [goodKey.recordName])
-        XCTAssertEqual(report.rejectedRecordNames, [poisonKey.recordName])
-        XCTAssertTrue(model.activeSnapshot.contains(aliasID: goodAlias))
-
-        try model.activate(profileID: "deleted")
-        try model.removeProfile("deleted")
-        let deletedKey = WatchlistMediaStateRecordKey(
-            profileID: "deleted",
-            aliasID: MediaAliasID()
-        )
-        let deletedReport = try model.applyRemoteSyncRecords(
-            profileID: "deleted",
-            changes: [deletedKey: Data("ignored".utf8)]
-        )
-        XCTAssertEqual(
-            deletedReport.ignoredDeletedProfileRecordNames,
-            [deletedKey.recordName]
-        )
-        XCTAssertTrue(deletedReport.rejectedRecordNames.isEmpty)
     }
 
     /// Removing a title whose presence came from a DESTINATION's own list — a

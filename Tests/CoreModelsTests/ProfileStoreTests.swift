@@ -236,7 +236,6 @@ final class ProfileStoreTests: XCTestCase {
     }
 
     func testResetRetiresPendingMigrationWithoutRestoringProfilesOrMemberships() throws {
-        for syncErasure in [false, true] {
             let defaults = makeDefaults()
             let legacy = ProfileStore(defaults: defaults)
             _ = legacy.migrateLegacyIfNeeded(defaultName: "Original", defaultActiveAccountIDs: ["account"])
@@ -245,14 +244,12 @@ final class ProfileStoreTests: XCTestCase {
             let store = ProfileStore(defaults: defaults, secureStore: secure)
             store.setActiveAccountIDs([], forProfile: "pending")
             _ = store.loadProfiles()
-            if syncErasure { try store.resetForSyncErasure() }
-            else { store.resetForDebugging() }
+            store.resetForDebugging()
             secure.failedWriteKeys = []
             let restarted = ProfileStore(defaults: defaults, secureStore: secure)
             XCTAssertTrue(restarted.loadProfiles().isEmpty)
             XCTAssertNil(try restarted.readActiveAccountIDs(forProfile: "pending"))
             XCTAssertNil(defaults.object(forKey: "com.plozz.profiles.pendingSharedMembershipKeys"))
-        }
     }
 }
 
@@ -302,25 +299,6 @@ private final class InMemorySecureStoringDouble: SecureStoring, @unchecked Senda
 
 @MainActor
 final class ProfilesModelTests: XCTestCase {
-    func testSyncErasureReportsSecureStoreFailureWithoutPretendingProfilesWereReset() throws {
-        let suite = "ProfileErasure.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let secure = InMemorySecureStoringDouble()
-        let model = ProfilesModel(store: ProfileStore(defaults: defaults, secureStore: secure))
-        model.seedDefaultProfileIdentity(name: "Original", avatarImageURL: nil)
-        let before = model.profiles
-        secure.failRemovals = true
-        XCTAssertThrowsError(try model.resetToPristineDefaultAfterSyncErasure())
-        XCTAssertEqual(model.profiles, before)
-        secure.failRemovals = false
-        try model.resetToPristineDefaultAfterSyncErasure()
-        XCTAssertEqual(model.profiles.count, 1)
-        XCTAssertEqual(model.profiles.first?.name, "Me")
-        let reloaded = ProfilesModel(store: ProfileStore(defaults: defaults, secureStore: secure))
-        XCTAssertEqual(reloaded.profiles, model.profiles)
-    }
-
     func testReadbackFailureDeniesFallbackWithoutRenderingReadsAndRecovers() throws {
         let secure = InMemorySecureStoringDouble()
         let store = ProfileStore(defaults: makeDefaults(), secureStore: secure)
@@ -747,7 +725,7 @@ final class SettingsNamespaceTests: XCTestCase {
         XCTAssertEqual(SettingsKey.scoped("base", namespace: "abc"), "base.abc")
     }
 
-    // MARK: importProfiles (Sync & Setup transfer)
+    // MARK: importProfiles (device transfer)
 
     @MainActor
     func testImportProfilesOverwritesSharedIdDefaultCosmetics() {
@@ -793,28 +771,4 @@ final class SettingsNamespaceTests: XCTestCase {
         XCTAssertEqual(model.profiles.filter { $0.id == ProfileStore.defaultProfileID }.count, 1)
     }
 
-    @MainActor
-    func testMergeSyncedProfilesUpdatesDefaultProfile() {
-        let model = ProfilesModel(store: ProfileStore(defaults: makeDefaults()))
-        model.markFirstRunProfileSetupComplete()   // configured receiver
-
-        // An edit to the SHARED default profile (name + avatar) arriving via sync
-        // must apply — unlike importProfiles, which guards the default.
-        var edited = model.profiles.first { $0.id == ProfileStore.defaultProfileID }!
-        edited.name = "Renamed On Phone"
-        edited.avatarEmoji = "🍿"
-        model.mergeSyncedProfiles([edited])
-
-        let after = model.profiles.first { $0.id == ProfileStore.defaultProfileID }
-        XCTAssertEqual(after?.name, "Renamed On Phone")
-        XCTAssertEqual(after?.avatarEmoji, "🍿")
-    }
-
-    @MainActor
-    func testMergeSyncedProfilesAddsNewAndKeepsCount() {
-        let model = ProfilesModel(store: ProfileStore(defaults: makeDefaults()))
-        let newProfile = Profile(id: "kid-1", name: "Kid")
-        model.mergeSyncedProfiles([newProfile])
-        XCTAssertTrue(model.profiles.contains { $0.id == "kid-1" && $0.name == "Kid" })
-    }
 }

@@ -227,31 +227,6 @@ public actor MediaAliasLedger: MediaAliasResolving {
         return changedCount
     }
 
-    public func mergeRemote(
-        records incoming: [MediaAliasSyncDTO],
-        deletedAliasIDs: Set<MediaAliasID> = []
-    ) throws {
-        var candidate = records
-        for id in deletedAliasIDs {
-            candidate[id] = nil
-        }
-        for dto in incoming {
-            guard let applied = dto.applying(to: candidate[dto.id]) else {
-                throw DurableLocalStateError.malformedPayload
-            }
-            candidate[dto.id] = applied
-        }
-        candidate = MediaAliasDuplicateReconciler.reconcile(candidate)
-        guard candidate != records else { return }
-        try persistAndPublish(candidate, reconcile: false)
-    }
-
-    public func captureSyncDTOs() -> [MediaAliasSyncDTO] {
-        records.values
-            .sorted { $0.id < $1.id }
-            .map(MediaAliasSyncDTO.init(record:))
-    }
-
     /// Removes presentation art attached by the retired Home-watchlist seed.
     /// Identity/title/year remain; current Home/native sources supply fresh art.
     @discardableResult

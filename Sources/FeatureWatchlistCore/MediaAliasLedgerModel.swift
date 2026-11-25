@@ -2,34 +2,6 @@ import CoreModels
 import Foundation
 import Observation
 
-public struct MediaAliasRemoteChange: Sendable {
-    public let key: MediaStateRecordKey
-    public let value: Data?
-
-    public init(key: MediaStateRecordKey, value: Data?) {
-        self.key = key
-        self.value = value
-    }
-}
-
-public struct MediaAliasRemoteApplyReport: Equatable, Sendable {
-    public let rejectedRecordNames: [String]
-    public let forwardCompatibleRecordNames: [String]
-    public let ignoredDeletedProfileRecordNames: [String]
-
-    public init(
-        rejectedRecordNames: [String] = [],
-        forwardCompatibleRecordNames: [String] = [],
-        ignoredDeletedProfileRecordNames: [String] = []
-    ) {
-        self.rejectedRecordNames = rejectedRecordNames.sorted()
-        self.forwardCompatibleRecordNames = forwardCompatibleRecordNames.sorted()
-        self.ignoredDeletedProfileRecordNames = ignoredDeletedProfileRecordNames.sorted()
-    }
-
-    public static let empty = Self()
-}
-
 @MainActor
 @Observable
 public final class MediaAliasLedgerModel {
@@ -212,93 +184,6 @@ public final class MediaAliasLedgerModel {
         return changedCount
     }
 
-    public func captureAllAliasSyncRecords(
-        profileIDs: [String],
-        fallback: [SyncRecordID: Data] = [:]
-    ) async throws -> [SyncRecordID: Data] {
-        try ensureDeletionStateAvailable()
-        for profileID in pendingPurgeProfileIDs.sorted() {
-            try await purgeProfileStorage(profileID)
-            pendingPurgeProfileIDs.remove(profileID)
-        }
-
-        // Revival is an explicit consequence of the caller's profile list and
-        // happens once. A retry after a concurrent deletion must not feed this
-        // stale list through `loadProfiles` again and undo the new tombstone.
-        try await loadProfiles(profileIDs)
-        while true {
-            try Task.checkCancellation()
-            let generation = mutationGeneration
-            var batches: [(profileID: String, dtos: [MediaAliasSyncDTO])] = []
-            for profileID in ledgersByProfile.keys.sorted()
-            where !removedProfileIDs.contains(profileID) {
-                guard let ledger = ledgersByProfile[profileID] else { continue }
-                batches.append((
-                    profileID: profileID,
-                    dtos: await ledger.captureSyncDTOs()
-                ))
-            }
-            guard mutationGeneration == generation else { continue }
-            let removed = removedProfileIDs
-            // Canonical JSON encoding is CPU work and a large ledger can take
-            // seconds. This model is MainActor-isolated because it publishes
-            // observable snapshots; serialization has no UI state and must not
-            // block focus. The generation checks reject a result if any local
-            // mutation or profile removal lands while the actor is suspended.
-            let encoding = Task.detached(
-                priority: .utility
-            ) { () -> [SyncRecordID: Data]? in
-                var captured: [SyncRecordID: Data] = [:]
-                for batch in batches {
-                    if Task.isCancelled { return nil }
-                    for dto in batch.dtos {
-                        if Task.isCancelled { return nil }
-                        let key = MediaStateRecordKey(
-                            profileID: batch.profileID,
-                            aliasID: dto.id
-                        )
-                        guard let localBytes = CanonicalJSON.encode(dto) else {
-                            continue
-                        }
-                        if let fallbackBytes = fallback[key.recordName],
-                           let fallbackDTO = CanonicalJSON.decode(
-                               MediaAliasSyncDTO.self,
-                               from: fallbackBytes
-                           ),
-                           fallbackDTO.id == dto.id,
-                           fallbackDTO == dto {
-                            captured[key.recordName] = fallbackBytes
-                        } else {
-                            captured[key.recordName] = localBytes
-                        }
-                    }
-                }
-                for (recordName, bytes) in fallback
-                where captured[recordName] == nil {
-                    if Task.isCancelled { return nil }
-                    guard let key = MediaStateRecordKey.parse(recordName),
-                          !removed.contains(key.profileID) else {
-                        continue
-                    }
-                    captured[recordName] = bytes
-                }
-                return captured
-            }
-            let captured = await withTaskCancellationHandler {
-                await encoding.value
-            } onCancel: {
-                encoding.cancel()
-            }
-            try Task.checkCancellation()
-            guard let captured else { throw CancellationError() }
-            guard mutationGeneration == generation,
-                  removedProfileIDs == removed else {
-                continue
-            }
-            return captured
-        }
-    }
-
     private func publish(
         _ snapshot: MediaAliasSnapshot,
         profileID: String
@@ -309,65 +194,6 @@ public final class MediaAliasLedgerModel {
     }
 
     @discardableResult
-    public func applyRemoteChanges(
-        _ changes: [MediaStateRecordKey: Data?]
-    ) async throws -> MediaAliasRemoteApplyReport {
-        try await applyRemoteChanges(changes.map {
-            MediaAliasRemoteChange(key: $0.key, value: $0.value)
-        })
-    }
-
-    @discardableResult
-    public func applyRemoteChanges(
-        _ changes: [MediaAliasRemoteChange]
-    ) async throws -> MediaAliasRemoteApplyReport {
-        try ensureDeletionStateAvailable()
-        var rejectedRecordNames: [String] = []
-        var forwardCompatibleRecordNames: [String] = []
-        var ignoredDeletedProfileRecordNames: [String] = []
-        let grouped = Dictionary(grouping: changes, by: { $0.key.profileID })
-        for profileID in grouped.keys.sorted() {
-            if removedProfileIDs.contains(profileID) {
-                ignoredDeletedProfileRecordNames.append(
-                    contentsOf: grouped[profileID, default: []].map(\.key.recordName)
-                )
-                continue
-            }
-            let ledger = try await ledger(for: profileID)
-            var incoming: [MediaAliasSyncDTO] = []
-            var deleted: Set<MediaAliasID> = []
-            for change in grouped[profileID, default: []] {
-                let key = change.key
-                let payload = change.value
-                guard let payload else {
-                    deleted.insert(key.aliasID)
-                    continue
-                }
-                guard let dto = CanonicalJSON.decode(
-                    MediaAliasSyncDTO.self,
-                    from: payload
-                ), dto.id == key.aliasID else {
-                    rejectedRecordNames.append(key.recordName)
-                    continue
-                }
-                if CanonicalJSON.encode(dto) != payload {
-                    forwardCompatibleRecordNames.append(key.recordName)
-                }
-                incoming.append(dto)
-            }
-            try await ledger.mergeRemote(
-                records: incoming,
-                deletedAliasIDs: deleted
-            )
-            publish(await ledger.snapshot(), profileID: profileID)
-        }
-        return MediaAliasRemoteApplyReport(
-            rejectedRecordNames: rejectedRecordNames,
-            forwardCompatibleRecordNames: forwardCompatibleRecordNames,
-            ignoredDeletedProfileRecordNames: ignoredDeletedProfileRecordNames
-        )
-    }
-
     public func removeProfile(_ profileID: String) async throws {
         try ensureDeletionStateAvailable()
         if removedProfileIDs.insert(profileID).inserted {

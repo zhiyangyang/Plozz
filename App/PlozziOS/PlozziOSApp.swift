@@ -39,15 +39,12 @@ private final class PlozziOSAppDelegate: NSObject, UIApplicationDelegate {
 
 @main
 struct PlozziOSApp: App {
-    @State private var launchPrepared: Bool
     @UIApplicationDelegateAdaptor(PlozziOSAppDelegate.self) private var appDelegate
 
     init() {
         let bootStart = DispatchTime.now().uptimeNanoseconds
         PlozzLog.boot("App.init START")
-        PlozzCustomization.applyLaunchDefaultsIfNeeded()
         _ = AppInstallation.current
-        _launchPrepared = State(initialValue: SyncSetupLaunchPreparation.prepare())
         ProcessSignalPolicy.ignoreBrokenPipe()
         URLCache.shared = URLCache(
             memoryCapacity: 64 * 1024 * 1024,
@@ -65,16 +62,8 @@ struct PlozziOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if launchPrepared {
-                    PlozziOSRootView()
-                } else {
-                    ICloudSetupUnavailableView {
-                        launchPrepared = SyncSetupLaunchPreparation.prepare()
-                    }
-                }
-            }
-            .diagnosticRecordingStatus()
+            PlozziOSRootView()
+                .diagnosticRecordingStatus()
         }
     }
 }

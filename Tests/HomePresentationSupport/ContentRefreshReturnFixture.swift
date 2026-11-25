@@ -32,7 +32,6 @@ struct ContentRefreshReturnFixture: View {
             seriesDetail: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .reloadSeriesContext),
             episodeDetail: leaf, movieDetail: leaf
         )))
-        SyncSetupFeatureFlag().isEnabled = false
         let store = AccountStore(secureStore: InMemorySecureStore())
         let model = PlozziOSAppModel(accountStore: store, profileStore: ProfileStore(defaults: .standard))
         let profile = model.profiles.add(name: "Refresh fixture", isAwaitingSetup: false)

@@ -9,30 +9,6 @@ public enum WatchlistModelError: Error, Equatable, Sendable {
     case malformedRemoteRecord(String)
 }
 
-public struct WatchlistRemoteApplyReport: Equatable, Sendable {
-    public let appliedRecordNames: [String]
-    public let rejectedRecordNames: [String]
-    public let ignoredDeletedProfileRecordNames: [String]
-    public let preservedLocalRecordNames: [String]
-
-    public init(
-        appliedRecordNames: [String] = [],
-        rejectedRecordNames: [String] = [],
-        ignoredDeletedProfileRecordNames: [String] = [],
-        preservedLocalRecordNames: [String] = []
-    ) {
-        self.appliedRecordNames = appliedRecordNames.sorted()
-        self.rejectedRecordNames = rejectedRecordNames.sorted()
-        self.ignoredDeletedProfileRecordNames =
-            ignoredDeletedProfileRecordNames.sorted()
-        self.preservedLocalRecordNames = preservedLocalRecordNames.sorted()
-    }
-
-    public var appliedCount: Int { appliedRecordNames.count }
-    public var rejectedCount: Int { rejectedRecordNames.count }
-    public var preservedLocalCount: Int { preservedLocalRecordNames.count }
-}
-
 @MainActor
 @Observable
 public final class WatchlistModel {
@@ -449,98 +425,7 @@ public final class WatchlistModel {
         )
     }
 
-    public func captureSyncRecords(
-        profileID: String,
-        fallback: [SyncRecordID: Data] = [:]
-    ) throws -> [SyncRecordID: Data] {
-        try ensureHydrated(profileID)
-        var result: [SyncRecordID: Data] = [:]
-        for intent in statesByProfile[profileID]!.intents {
-            let key = WatchlistMediaStateRecordKey(
-                profileID: profileID,
-                aliasID: intent.aliasID
-            )
-            let dto = WatchlistIntentSyncDTO(intent: intent)
-            guard let bytes = CanonicalJSON.encode(dto) else { continue }
-            if let existing = fallback[key.recordName],
-               CanonicalJSON.decode(
-                WatchlistIntentSyncDTO.self,
-                from: existing
-               ) == dto {
-                result[key.recordName] = existing
-            } else {
-                result[key.recordName] = bytes
-            }
-        }
-        return result
-    }
-
     @discardableResult
-    public func applyRemoteSyncRecords(
-        profileID: String,
-        changes: [WatchlistMediaStateRecordKey: Data],
-        localCaptureDigests: [SyncRecordID: Data]? = nil
-    ) throws -> WatchlistRemoteApplyReport {
-        if removedProfileIDs.contains(profileID) {
-            return WatchlistRemoteApplyReport(
-                ignoredDeletedProfileRecordNames:
-                    changes.keys.map(\.recordName)
-            )
-        }
-        try hydrate(profileID: profileID)
-        var state = statesByProfile[profileID]!
-        var applied: [String] = []
-        var rejected: [String] = []
-        var preserved: [String] = []
-        for (key, bytes) in changes.sorted(by: {
-            $0.key.recordName < $1.key.recordName
-        }) {
-            guard key.profileID == profileID,
-                  let dto = CanonicalJSON.decode(
-                    WatchlistIntentSyncDTO.self,
-                    from: bytes
-                  ),
-                  dto.aliasID == key.aliasID,
-                  let incoming = dto.makeIntent()
-            else {
-                rejected.append(key.recordName)
-                continue
-            }
-            if let localCaptureDigests,
-               let local = state.intents.first(where: { $0.aliasID == key.aliasID }),
-               state.locallyAuthoredAliasIDs.contains(key.aliasID),
-               local.changedAt > incoming.changedAt {
-                guard let localBytes = CanonicalJSON.encode(WatchlistIntentSyncDTO(intent: local)) else {
-                    throw DurableLocalStateError.malformedPayload
-                }
-                // A durable action can precede its debounced sync capture. The
-                // ledger cannot resolve that unseen action, including after restart.
-                if localCaptureDigests[key.recordName] != Data(SHA256.hash(data: localBytes)) {
-                    preserved.append(key.recordName)
-                    continue
-                }
-            }
-            // Captured actions still use the ledger's logical-clock decision.
-            replace(incoming, in: &state)
-            state.locallyAuthoredAliasIDs.removeAll { $0 == key.aliasID }
-            state.nextRank = max(
-                state.nextRank,
-                incoming.rank == UInt64.max
-                    ? UInt64.max
-                    : incoming.rank + 1
-            )
-            applied.append(key.recordName)
-        }
-        if !applied.isEmpty {
-            try persist(state, profileID: profileID)
-        }
-        return WatchlistRemoteApplyReport(
-            appliedRecordNames: applied,
-            rejectedRecordNames: rejected,
-            preservedLocalRecordNames: preserved
-        )
-    }
-
     public func removeProfile(_ profileID: String) throws {
         if removedProfileIDs.insert(profileID).inserted {
             do {

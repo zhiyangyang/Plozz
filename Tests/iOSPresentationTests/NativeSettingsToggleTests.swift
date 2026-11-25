@@ -1707,7 +1707,7 @@ final class NativeSettingsToggleTests: XCTestCase {
                 if profilePage {
                     ProfileActionsList(
                         profile: .init(id: "native-signin", name: "Sample", avatarSymbol: "person.fill"),
-                        syncEnabled: false, hasParentalPIN: false, restrictedActionsSealed: false,
+                        hasParentalPIN: false, restrictedActionsSealed: false,
                         groupsActions: true,
                         automaticSignIn: AutomaticSignInSettings(isEnabled: model.binding),
                         onEditAppearance: { appearanceOpens += 1 },

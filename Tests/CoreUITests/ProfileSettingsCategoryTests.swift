@@ -7,7 +7,7 @@ final class ProfileSettingsCategoryTests: XCTestCase {
         #if os(iOS)
         expected.append(.downloads)
         #endif
-        expected += [.appearance, .screensNavigation, .trackers, .seerr, .language]
+        expected += [.appearance, .screensNavigation, .trackers, .language]
         XCTAssertEqual(ProfileSettingsCategory.allCases, expected)
         XCTAssertEqual(Set(ProfileSettingsCategory.allCases.map(\.id)).count, expected.count)
     }

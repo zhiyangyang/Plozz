@@ -9,7 +9,6 @@ import FeatureAuth
 import FeatureProfiles
 import FeatureSettings
 import FeatureMusic
-import FeatureSyncSetup
 import SwiftUI
 import UIKit
 
@@ -229,7 +228,6 @@ private enum PlozziOSSettingsDestination: Hashable {
     /// The household's Parental PIN.
     case parentalPIN
     case profile(ProfileSettingsCategory)
-    case syncSetup
     case metadata
     case diagnostics
     case attributions
@@ -438,7 +436,7 @@ var deviceName: String {
     UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
 }
 
-/// Heading for settings shared by every profile, independent of iCloud Sync.
+/// Heading for settings shared by every profile.
 private var deviceSettingsTitle: LocalizedStringResource { SettingsCopy.everyone }
 
 /// The iPad sidebar's current destination. The sidebar is intentionally built
@@ -619,13 +617,6 @@ private struct PlozziOSSettingsSplitView: View {
                                 title: KidsProfileCopy.parentalPIN,
                                 systemImage: "figure.and.child.holdinghands"
                             )
-                            if PlozzCustomization.supportsSyncSetup {
-                                settingsRow(
-                                    .syncSetup,
-                                    title: "iCloud Sync",
-                                    systemImage: "icloud"
-                                )
-                            }
                             settingsRow(
                                 .metadata,
                                 title: "Metadata Providers",
@@ -868,8 +859,6 @@ private struct PlozziOSSettingsSplitView: View {
                 onAddUser: onAddUser, canManageProviders: !isParentalSealed,
                 isPresented: selection == .profile(category)
             )
-        case .syncSetup:
-            PlozziOSSyncSetupSettingsView(appModel: appModel)
         case .metadata:
             PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())
         case .diagnostics:
@@ -1207,14 +1196,6 @@ private struct PlozziOSSettingsCompactMenu: View {
                         }
                         .settingsActionRow()
 
-                        if PlozzCustomization.supportsSyncSetup {
-                            SettingsPageLink {
-                                PlozziOSSyncSetupSettingsView(appModel: appModel)
-                            } label: {
-                                Label("iCloud Sync", systemImage: "icloud")
-                            }
-                            .settingsActionRow()
-                        }
                         // This link needs an explicit destination to keep neighboring actions independent.
                         Button {
                             showMetadata = true
@@ -1616,7 +1597,6 @@ private struct PlozziOSSettingsSearchDestination: View {
                 isParentalUnlocked: isParentalUnlocked
             )
         case .accountLibraries: profilePage(.libraries)
-        case .sync: PlozziOSSyncSetupSettingsView(appModel: appModel)
         case .metadata:
             PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())
         case .metadataDiagnostics:
@@ -1843,9 +1823,7 @@ struct PlozziOSAccountDetailView: View {
     let appModel: PlozziOSAppModel
     let account: Account
     @State private var confirmRemoval = false
-    @State private var confirmEverywhere = false
 
-    private var offerEverywhere: Bool { appModel.offersRemoveEverywhere }
 
     var body: some View {
         List {
@@ -1904,32 +1882,13 @@ struct PlozziOSAccountDetailView: View {
             isPresented: $confirmRemoval,
             titleVisibility: .visible
         ) {
-            if offerEverywhere {
-                Button("Remove Everywhere", role: .destructive) { confirmEverywhere = true }
-                Button("Remove from This \(deviceName)", role: .destructive) {
-                    appModel.removeAccount(id: account.id)
-                    dismiss()
-                }
-            } else {
-                Button("Remove", role: .destructive) {
-                    appModel.removeAccount(id: account.id)
-                    dismiss()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(offerEverywhere
-                 ? "Remove it from all your devices, or just this \(deviceName)?"
-                 : "Signs out and removes this server.")
-        }
-        .alert("Remove from all devices?", isPresented: $confirmEverywhere) {
-            Button("Remove Everywhere", role: .destructive) {
-                appModel.removeAccountEverywhere(id: account.id)
+            Button("Remove", role: .destructive) {
+                appModel.removeAccount(id: account.id)
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("“\(account.server.name)” will also be removed from your other devices signed in to iCloud.")
+            Text("Signs out and removes this server.")
         }
     }
 }

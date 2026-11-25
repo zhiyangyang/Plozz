@@ -4,115 +4,43 @@ import XCTest
 final class SeriesDownloadPresentationTests: XCTestCase {
     private let season = MediaItem(id: "season-1", title: "Season 1", kind: .season)
 
-    private func item(kind: MediaItemKind = .series, hasTMDB: Bool = true) -> MediaItem {
-        var item = MediaItem(id: "show", title: "A Show", kind: kind)
-        if hasTMDB { item.providerIDs["Tmdb"] = "123" }
-        return item
+    private func item(kind: MediaItemKind = .series) -> MediaItem {
+        MediaItem(id: "show", title: "A Show", kind: kind)
     }
 
-    func testLibraryDownloadsRemainAvailableWithoutSeerr() {
+    func testLibraryDownloadsRemainAvailableForASeriesWithSeasons() {
         let presentation = SeriesDownloadPresentation(
-            item: item(), children: [season], isDiscoveryItem: false, seerConnected: false
+            item: item(), children: [season], isDiscoveryItem: false
         )
         XCTAssertTrue(presentation.isVisible)
         XCTAssertTrue(presentation.hasLibraryDownloads)
-        XCTAssertFalse(presentation.canRequestSeasons)
     }
 
-    func testOwnedShowCanDownloadAndRequestMissingSeasons() {
+    func testDiscoveryMetadataIsNotDownloadableMedia() {
         let presentation = SeriesDownloadPresentation(
-            item: item(), children: [season], isDiscoveryItem: false, seerConnected: true
+            item: item(), children: [season], isDiscoveryItem: true
         )
-        XCTAssertTrue(presentation.isVisible)
-        XCTAssertTrue(presentation.hasLibraryDownloads)
-        XCTAssertTrue(presentation.canRequestSeasons)
-        XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: false))
-        XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: true))
-    }
-
-    func testUnownedShowCanOpenRequestOnlySheet() {
-        for children in [[], [season]] {
-            let presentation = SeriesDownloadPresentation(
-                item: item(), children: children, isDiscoveryItem: true, seerConnected: true
-            )
-            XCTAssertTrue(presentation.isVisible)
-            XCTAssertFalse(presentation.hasLibraryDownloads, "Discovery metadata is not downloadable media.")
-            XCTAssertTrue(presentation.canRequestSeasons)
-            XCTAssertTrue(presentation.showsHeroRequest(hasPlayAction: false))
-            XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: true))
-        }
-    }
-
-    func testRequestControlDoesNotDependOnLoadedLibrarySeasons() {
-        let presentation = SeriesDownloadPresentation(
-            item: item(), children: [], isDiscoveryItem: false, seerConnected: true
-        )
-        XCTAssertTrue(presentation.isVisible)
-        XCTAssertTrue(presentation.canRequestSeasons)
+        XCTAssertFalse(presentation.isVisible)
         XCTAssertFalse(presentation.hasLibraryDownloads)
-        XCTAssertTrue(presentation.showsHeroRequest(hasPlayAction: false))
-        XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: true))
-    }
-
-    func testMissingConnectionOrMetadataCannotOfferRequests() {
-        for (connected, hasTMDB) in [(false, true), (true, false), (false, false)] {
-            let presentation = SeriesDownloadPresentation(
-                item: item(hasTMDB: hasTMDB),
-                children: [season],
-                isDiscoveryItem: true,
-                seerConnected: connected
-            )
-            XCTAssertFalse(presentation.canRequestSeasons)
-            XCTAssertFalse(presentation.isVisible)
-            XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: false))
-        }
     }
 
     func testMoviesAndEpisodesKeepTheirExistingControls() {
         for kind in [MediaItemKind.movie, .episode] {
             let presentation = SeriesDownloadPresentation(
-                item: item(kind: kind), children: [season], isDiscoveryItem: false, seerConnected: true
+                item: item(kind: kind), children: [season], isDiscoveryItem: false
             )
             XCTAssertFalse(presentation.isVisible)
             XCTAssertFalse(presentation.hasLibraryDownloads)
-            XCTAssertFalse(presentation.canRequestSeasons)
-            XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: false))
         }
     }
 
     func testLooseEpisodesStillProvideOfflineDownloads() {
         let episode = MediaItem(id: "episode-1", title: "Episode 1", kind: .episode)
         let presentation = SeriesDownloadPresentation(
-            item: item(hasTMDB: false), children: [episode], isDiscoveryItem: false, seerConnected: false
+            item: item(), children: [episode], isDiscoveryItem: false
         )
         XCTAssertTrue(presentation.hasLibraryDownloads)
         XCTAssertTrue(presentation.isVisible)
-    }
-
-    func testPlayableOrDownloadableShowsKeepRequestsInTheSeasonManager() {
-        for children in [[season], [MediaItem(id: "episode", title: "Episode", kind: .episode)]] {
-            let presentation = SeriesDownloadPresentation(
-                item: item(), children: children, isDiscoveryItem: false, seerConnected: true
-            )
-            XCTAssertTrue(presentation.canRequestSeasons)
-            XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: false))
-            XCTAssertFalse(presentation.showsHeroRequest(hasPlayAction: true))
-        }
-    }
-
-    func testRequestOnlyShowsRetainHeroAccessForEveryRequestStatus() {
-        for status in [
-            MediaAvailabilityStatus.unknown, .pending, .processing, .deleted,
-            .available, .partiallyAvailable
-        ] {
-            var show = item()
-            show.availability = status
-            let presentation = SeriesDownloadPresentation(
-                item: show, children: [], isDiscoveryItem: true, seerConnected: true
-            )
-            XCTAssertTrue(presentation.showsHeroRequest(hasPlayAction: false),
-                          "Server status alone does not provide a playable episode.")
-        }
     }
 
     func testBulkDownloadLabelsDescribeTheirActualActions() {

@@ -469,7 +469,6 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         let peerWrites = await peer.appliedStates()
         XCTAssertEqual(sourceWrites, [])
         XCTAssertEqual(peerWrites, [.absent])
-        XCTAssertEqual(host.cloudPublishCount, 1)
         XCTAssertFalse(
             host.universalWatchlistUnion.activeAliasIDs.contains(aliasID)
         )
@@ -496,7 +495,6 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         let peerWritesAfterReAdd = await peer.appliedStates()
         XCTAssertEqual(sourceWritesAfterReAdd, [])
         XCTAssertEqual(peerWritesAfterReAdd, [.absent, .present])
-        XCTAssertEqual(host.cloudPublishCount, 2)
 
         await source.setEntries([])
         await host.refreshNativeWatchlistView()
@@ -511,7 +509,6 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
             peerWritesAfterSecondRemoval,
             [.absent, .present, .absent]
         )
-        XCTAssertEqual(host.cloudPublishCount, 3)
     }
 
     func testConfirmationFromAnotherDestinationIdentityCannotRemove() async throws {
@@ -1075,8 +1072,6 @@ final class UniversalWatchlistHostDouble: UniversalWatchlistHost {
     var activeProfileAwaitsUnlock = false
     var trackersAreScopedToActiveProfile = true
 
-    private(set) var cloudPublishCount = 0
-
     static let accountID = "acct"
     static let baseURL = URL(string: "http://plex.local:32400")!
 
@@ -1131,7 +1126,6 @@ final class UniversalWatchlistHostDouble: UniversalWatchlistHost {
         try await mediaAliasLedger.activate(profileID: profiles.activeProfileID)
     }
 
-    func scheduleCloudPublish() { cloudPublishCount += 1 }
     func ensureTrackersScopedToActiveProfile() async {}
 }
 

@@ -90,7 +90,6 @@
     "PlozziOSSpoilerSettingsControls",
     "PlozziOSStreamingSettings",
     "PlozziOSSubtitleSettingsView",
-    "PlozziOSSyncSetupSettingsView",
     "PlozziOSAppearanceSettingsView",
     "PlozziOSTrackerSettingsView",
     "ProfileActionsList",
@@ -125,11 +124,9 @@
     "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSPlexHomeUserSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSProfileSettingsView.swift",
-    "Sources/AppShelliOS/PlozziOSSeerrSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift",
     "Sources/AppShelliOS/PlozziOSSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSStreamingQuality.swift",
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSTrackerSettingsView.swift",
     "Sources/AppShelliOS/ServerOnboardingViews.swift",
     "Sources/CoreModels/ArtworkSettings.swift",
@@ -142,7 +139,6 @@
     "Sources/CoreModels/SubtitlePolicy.swift",
     "Sources/CoreUI/CollectionCoverLayoutPicker.swift",
     "Sources/CoreUI/DetailHeaderMetadataRow.swift",
-    "Sources/CoreUI/LiveTVPortableSyncSettings.swift",
     "Sources/CoreUI/PlaybackVersionPreferencePicker.swift",
     "Sources/CoreUI/ProfileSettingsCategory.swift",
     "Sources/FeatureAuth/ServerAddressesView.swift",
@@ -198,8 +194,6 @@
     "Sources/FeatureSettings/PlexLinkedUserDetailView.swift",
     "Sources/FeatureSettings/PreferenceDetailViews.swift",
     "Sources/FeatureSettings/ProfileLockSetupPage.swift",
-    "Sources/FeatureSettings/ProfileSeerrSetupView.swift",
-    "Sources/FeatureSettings/SeerDetailView.swift",
     "Sources/FeatureSettings/SendDiagnosticsCard.swift",
     "Sources/FeatureSettings/ServerUserDetailView.swift",
     "Sources/FeatureSettings/SettingsContext.swift",
@@ -562,23 +556,6 @@
         "Sources/FeatureSettings/IntegrationsDetailView.swift|MALAuthorizationCodeEntryView|body|Button|\"Cancel\"": 1,
         "Sources/FeatureSettings/IntegrationsDetailView.swift|MALAuthorizationCodeEntryView|body|Button|\"Connect\"": 1,
         "Sources/FeatureSettings/IntegrationsDetailView.swift|MALAuthorizationCodeEntryView|body|TextField|\"Enter code\"": 1
-      }
-    },
-    "SyncDataBreakdown": {
-      "kind": "presentation",
-      "reason": "Read-only sync data inspection with transient expansion controls.",
-      "controls": {
-        "Sources/FeatureSettings/SyncDataBreakdown.swift|SyncDataBreakdown|body|Button|\"Refresh Breakdown\"": 1
-      }
-    },
-    "SyncEraseDataView": {
-      "kind": "presentation",
-      "reason": "Destructive sync-data erasure flow, not a preference.",
-      "controls": {
-        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|body|Button|\"Cancel\"": 1,
-        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|body|Button|\"Erase Data\"": 1,
-        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|reviewContent|Button|\"Cancel\"": 1,
-        "Sources/FeatureSettings/SyncEraseDataView.swift|SyncEraseDataView|reviewContent|Button|\"Erase Sync Data…\"": 1
       }
     },
     "ParentalPINDetailView": {
@@ -1071,7 +1048,7 @@
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Cancel\"": {
-      "count": 2,
+      "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
@@ -1080,18 +1057,8 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Remove Everywhere\"": {
-      "count": 2,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Remove Server\"": {
       "count": 2,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Remove from This \\(deviceName)\"": {
-      "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
@@ -1111,21 +1078,11 @@
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAccountDetailView|body|Button|\"Cancel\"": {
-      "count": 2,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAccountDetailView|body|Button|\"Remove Everywhere\"": {
-      "count": 2,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAccountDetailView|body|Button|\"Remove Server\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAccountDetailView|body|Button|\"Remove from This \\(deviceName)\"": {
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSAccountDetailView|body|Button|\"Remove Server\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -1312,11 +1269,6 @@
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(\"iCloud Sync\", systemImage: \"icloud\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(KidsProfileCopy.manageProfile, systemImage: \"person.crop.circle\")": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
@@ -1459,76 +1411,6 @@
     "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|StreamingCustomQualityEditor|body|Button|\"Cancel\"": {
       "count": 1,
       "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|body|Button|\"Try Again\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|HStack { Image(systemName: \"tv\").font(.title3) VStack(alignment: .leading) { Text(device.displayName).fontWeight(.semibold) Text(\"Code \\(SyncPairingCode.grouped(device.serviceName))\") .font(.footnote).plozzForeground(.secondary) } Spacer() Image(systemName: \"chevron.forward\").plozzForeground(.secondary) } .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|HStack(spacing: 12) { ProviderBrandMark( provider: server.provider, size: 32, mediaShareTransport: server.mediaShareTransportKind ) VStack(alignment: .leading, spacing: 2) { Text(server.serverName).fontWeight(.medium) Text(\"Needs sign-in\") .font(.footnote) .plozzForeground(.secondary) } Spacer(minLength: 0) Image(systemName: \"chevron.forward\") .font(.footnote.weight(.semibold)) .plozzForeground(.tertiary) } .settingsControlTarget() .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|Label(\"Enter Code\", systemImage: \"keyboard\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|Label(\"Scan QR Code\", systemImage: \"qrcode.viewfinder\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|Label(\"Set Up From Another Device\", systemImage: \"qrcode\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|Text(\"Ignore\").settingsControlTarget()": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|Button|Text(\"Sync Now\").settingsControlTarget()": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncSetupSettingsView|idleList|SettingsPageLink|Label( \"Troubleshooting\", systemImage: \"wrench.and.screwdriver\" )": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncTroubleshootingView|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncTroubleshootingView|body|Button|\"Reset & Re-upload From This Device\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncTroubleshootingView|body|Button|Label(\"Erase Sync Data\", systemImage: \"trash\") .foregroundStyle(.red)": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncTroubleshootingView|body|Button|Label(\"Reload From iCloud\", systemImage: \"arrow.down.circle\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSyncSetupSettingsView.swift|PlozziOSSyncTroubleshootingView|body|Button|Label(\"Reset Sync\", systemImage: \"arrow.counterclockwise.icloud\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSTrackerSettingsView.swift|AniListSettingsContent|authorizationForm|Button|\"Cancel\"": {
@@ -2663,31 +2545,6 @@
         "library-covers"
       ]
     },
-    "Sources/FeatureSettings/ICloudOnboardingView.swift|ICloudOnboardingChoices|body|Button|\"Enable iCloud Sync\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ICloudOnboardingView.swift|ICloudOnboardingChoices|body|Button|\"Not now\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ICloudOnboardingView.swift|ICloudRestorationActions|body|Button|\"Retry\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ICloudOnboardingView.swift|ICloudRestorationActions|body|Button|\"Set up manually\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ICloudOnboardingView.swift|ICloudSetupUnavailableView|body|Button|\"Retry\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/IntegrationsDetailView.swift|IntegrationsDetailView|body|Button|\"Cancel\"": {
       "count": 2,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -3047,16 +2904,6 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|body|Button|\"Remove Everywhere\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|body|Button|\"Remove from This Apple TV\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|body|Button|signOutPrimaryLabel(pending)": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -3067,17 +2914,7 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|removeServerPanel|Button|\"Remove Everywhere\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|removeServerPanel|Button|\"Remove Server\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|removeServerPanel|Button|\"Remove from This Apple TV\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []

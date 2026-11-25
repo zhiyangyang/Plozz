@@ -435,9 +435,6 @@ final class HomeSettingsReturnTests: XCTestCase {
     }
 
     private func exerciseSettingsReturn(duringLoading: Bool) async throws {
-        let syncEnabled = UserDefaults.standard.object(forKey: SyncSetupFeatureFlag.storageKey)
-        SyncSetupFeatureFlag().isEnabled = false
-        defer { UserDefaults.standard.set(syncEnabled, forKey: SyncSetupFeatureFlag.storageKey) }
         let consentKey = "com.plozz.crashReportingSettings"
         let storedConsent = UserDefaults.standard.object(forKey: consentKey)
         CrashReportingSettingsStore().save(.init(

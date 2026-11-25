@@ -959,17 +959,6 @@ public struct LiveTVPrototypeView<PlayerContent: View>: View {
                 reloadRequest &+= 1
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .plozzLiveTVPortableStateDidApply)) { notification in
-            guard notification.object as? String == profileID else { return }
-            model.reloadPreferences()
-            refreshSourceAuthority()
-            if holdsPlaybackIdentity {
-                pendingPortableReload = true
-            } else {
-                loadedRequest = nil
-                reloadRequest &+= 1
-            }
-        }
         .onReceive(
             NotificationCenter.default.publisher(for: .plozzLiveTVPortableStateDidChange)
                 .receive(on: DispatchQueue.main)

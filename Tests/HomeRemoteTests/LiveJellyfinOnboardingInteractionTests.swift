@@ -36,7 +36,7 @@ final class LiveJellyfinOnboardingInteractionTests: XCTestCase {
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
         let connection = try JSONDecoder().decode(Connection.self, from: data)
         let app = XCUIApplication(bundleIdentifier: "com.thatcube.Plozz.FocusHost")
-        app.launchArguments = ["--live-jellyfin-onboarding", "-com.plozz.syncSetup.enabled", "NO"]
+        app.launchArguments = ["--live-jellyfin-onboarding"]
         app.launch()
         defer { app.terminate() }
         XCTAssertTrue(app.buttons["Jellyfin"].waitForExistence(timeout: 40))

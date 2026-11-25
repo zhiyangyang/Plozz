@@ -69,8 +69,6 @@ let package = Package(
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
         .library(name: "FeatureProfiles", targets: ["FeatureProfiles"]),
         .library(name: "FeatureWatchlistCore", targets: ["FeatureWatchlistCore"]),
-        .library(name: "FeatureSyncSetup", targets: ["FeatureSyncSetup"]),
-        .library(name: "FeatureSyncCloud", targets: ["FeatureSyncCloud"]),
         .library(name: "FeatureMusic", targets: ["FeatureMusic"]),
         .library(name: "CrashReporting", targets: ["CrashReporting"]),
         .library(name: "MediaDownloads", targets: ["MediaDownloads"]),
@@ -492,24 +490,6 @@ let package = Package(
             dependencies: ["CoreModels"]
         ),
 
-        // MARK: Sync & Setup (cross-device onboarding — feature-flagged, v1)
-        //
-        // Config and encrypted credential pairing, with secret-safe diagnostics.
-        .target(
-            name: "FeatureSyncSetup",
-            dependencies: ["CoreModels", "CoreNetworking"]
-        ),
-
-        // Non-secret config auto-sync over CloudKit (CKSyncEngine, private DB).
-        // Isolated here because it imports CloudKit; the pure snapshot<->records
-        // core lives in CoreModels. Propagates the shared household setup
-        // (descriptors, profiles, per-profile settings + membership) across one
-        // Apple ID's devices. NEVER carries tokens/passwords (that's pairing).
-        .target(
-            name: "FeatureSyncCloud",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "TraktService"]
-        ),
-
         // MARK: Music (browse + audio playback engine)
         //
         // Self-contained music experience: aggregator/view models, the conditional
@@ -829,7 +809,6 @@ let package = Package(
                 "ProviderShare",
                 "CoreSecureStore",
                 "TraktService",
-                "FeatureSyncCloud"
             ]
         ),
 
@@ -892,8 +871,6 @@ let package = Package(
                 "WetrakrService",
                 "AniListService",
                 "MALService",
-                "FeatureSyncSetup",
-                "FeatureSyncCloud",
             ]
         ),
 
@@ -937,18 +914,10 @@ let package = Package(
             dependencies: ["FeatureWatchlistCore", "CoreModels"]
         ),
         .testTarget(
-            name: "FeatureSyncSetupTests",
-            dependencies: ["FeatureSyncSetup", "CoreModels", "CoreNetworking"]
-        ),
-        .testTarget(
-            name: "FeatureSyncCloudTests",
-            dependencies: ["FeatureSyncCloud", "CoreModels", "TestSupportPerformance"]
-        ),
-        .testTarget(
             name: "AppRuntimeTests",
             dependencies: [
                 "AppRuntime", "CoreModels", "FeatureAuthCore", "CrashReporting", "FeatureHomeCore",
-                "FeatureSyncCloud", "TestSupportPerformance", "TestSupportNetworking"
+                "TestSupportPerformance", "TestSupportNetworking"
             ]
         ),
         .testTarget(

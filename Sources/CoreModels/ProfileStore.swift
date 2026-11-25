@@ -88,7 +88,6 @@ public protocol ProfilePersisting: Sendable {
     /// selection, household preference overrides, and the first-run flag) so
     /// the next launch behaves like a brand-new install.
     func resetForDebugging()
-    func resetForSyncErasure() throws
 }
 
 extension ProfilePersisting {
@@ -99,7 +98,6 @@ extension ProfilePersisting {
     public func parentalPIN() -> ParentalPIN? { nil }
     public func setParentalPIN(_ value: ParentalPIN?) {}
     public func resetForDebugging() {}
-    public func resetForSyncErasure() throws { resetForDebugging() }
     public func clearActiveAccountIDs(forProfile profileID: String) {}
     public func rootNamespaceOwnerID() -> String? { nil }
     public func setRootNamespaceOwnerID(_ id: String?) {}
@@ -305,20 +303,6 @@ public final class ProfileStore: ProfilePersisting, @unchecked Sendable {
         writeSharedBool(nil, forKey: legacyProfilesEnabledKey)
         writeSharedBool(nil, forKey: firstRunSetupKey)
         removeShared(forKey: parentalPINKey)
-        didMigrateShared = false
-    }
-
-    public func resetForSyncErasure() throws {
-        lock.lock(); defer { lock.unlock() }
-        let keys = sharedMigrationMembershipKeys(for: loadProfilesLocked())
-            .union([profilesKey, legacyAskOnStartupKey, legacyProfilesEnabledKey, firstRunSetupKey, parentalPINKey])
-        for key in keys.sorted() {
-            if let secureStore { try secureStore.removeValue(for: key) }
-            defaults.removeObject(forKey: key)
-        }
-        for key in [activeProfileIDKey, lastUsedKey, rootNamespaceOwnerKey, pendingSharedMembershipKeysKey] {
-            defaults.removeObject(forKey: key)
-        }
         didMigrateShared = false
     }
 
@@ -539,12 +523,6 @@ public final class ProfileStore: ProfilePersisting, @unchecked Sendable {
 @Observable
 public final class ProfilesModel {
     public private(set) var profiles: [Profile]
-    /// A last-known profile held during split cloud delivery must not recreate
-    /// its deleted cloud record while the remaining roster is still arriving.
-    public var profilesForSync: [Profile] { profiles.filter { $0.pendingSyncedDeletion != true } }
-    public var pendingSyncedDeletionProfileIDs: Set<String> {
-        Set(profiles.filter { $0.pendingSyncedDeletion == true }.map(\.id))
-    }
     private var accountSelections: [String: [String]] = [:]
     public private(set) var unconfirmedAccountSelectionProfileIDs: Set<String> = []
 
@@ -642,7 +620,7 @@ public final class ProfilesModel {
         // was already reading. No keys move; only the question "who owns them"
         // stops being recomputed from list position.
         if let stored = store.rootNamespaceOwnerID(),
-           migrated.contains(where: { $0.id == stored && $0.pendingSyncedDeletion != true }) {
+           migrated.contains(where: { $0.id == stored }) {
             self.rootNamespaceOwnerID = stored
         } else if store.rootNamespaceOwnerID() == nil {
             let inherited = migrated.first(where: { $0.id == ProfileStore.defaultProfileID })
@@ -874,9 +852,6 @@ public final class ProfilesModel {
         profile.replaceKidsProfile(with: isKidsProfile)
         profiles.append(profile)
         profiles.sort { $0.createdAt < $1.createdAt }
-        if profiles.contains(where: { $0.pendingSyncedDeletion == true }) {
-            applySyncedProfileDTOs([:], deletions: [])
-        }
         store.saveProfiles(profiles)
         if !activeAccountIDs.isEmpty {
             setActiveAccountIDs(activeAccountIDs, for: profile.id)
@@ -943,97 +918,12 @@ public final class ProfilesModel {
         refreshAccountSelections()
     }
 
-    /// Apply profiles arriving from ongoing CloudKit sync. Unlike `importProfiles`
-    /// (pairing), this UPDATES every existing profile by id — INCLUDING the shared
-    /// default profile — so an edit to the default's name/avatar/color on one device
-    /// converges on the others. New ids are added. Nothing is removed here (profile
-    /// deletions propagate separately). The record-level last-writer-wins in the
-    /// sync mirror already decided the winner, so applying the incoming value is
-    /// safe: a stale remote never reaches this method (its snapshot is unchanged).
-    public func mergeSyncedProfiles(_ incoming: [Profile]) {
-        guard !incoming.isEmpty else { return }
-        var byID: [String: Profile] = [:]
-        var order: [String] = []
-        for p in profiles {
-            if byID[p.id] == nil { order.append(p.id) }
-            byID[p.id] = p
-        }
-        var changed = false
-        for p in incoming {
-            if byID[p.id] != p { changed = true }   // add or update (default included)
-            if byID[p.id] == nil { order.append(p.id) }
-            byID[p.id] = p
-        }
-        guard changed else { return }
-        profiles = order.compactMap { byID[$0] }
-        profiles.sort { $0.createdAt < $1.createdAt }
-        store.saveProfiles(profiles)
-        refreshAccountSelections()
-    }
-
     /// V3 exact apply: merge incoming cosmetic profile DTOs (upserts) and apply
     /// deletions, in one pass. Merging preserves every DEVICE-LOCAL field (Plex Home /
     /// Seerr / bindings) — only name/avatar/color/createdAt travel — so a re-capture
     /// reproduces the exact same canonical bytes (the round-trip invariant). The
     /// original/default profile follows the same deletion rules as every other
     /// profile. A last-known deletion waits for the rest of a split cloud roster.
-    public func applySyncedProfileDTOs(_ upserts: [String: ProfileSyncDTO], deletions: Set<String>) {
-        // Captured before the apply, so the fall-through below can tell whether
-        // the profile leaving was a restricted one.
-        let outgoingActive = activeProfile
-        let deletions = deletions.union(profiles.filter { $0.pendingSyncedDeletion == true }.map(\.id))
-        var byID: [String: Profile] = [:]
-        var order: [String] = []
-        for p in profiles {
-            if byID[p.id] == nil { order.append(p.id) }
-            byID[p.id] = p
-        }
-        var changed = false
-        for (id, dto) in upserts {
-            guard !deletions.contains(id) else { continue }
-            if let existing = byID[id] {
-                let merged = dto.merged(into: existing)
-                if merged != existing { byID[id] = merged; changed = true }
-            } else {
-                byID[id] = dto.makeProfile(); order.append(id); changed = true
-            }
-        }
-        for id in deletions {
-            if byID[id] != nil { byID[id] = nil; changed = true }
-        }
-        guard changed else { return }
-        var next = order.compactMap { byID[$0] }
-        next.sort { $0.createdAt < $1.createdAt }
-        if next.isEmpty {
-            next = profiles.map {
-                var profile = $0
-                profile.pendingSyncedDeletion = true
-                return profile
-            }
-            LiveTVSourceDiagnostics.shared.record(
-                .profileDeletionDeferred, counts: [.profiles: next.count]
-            )
-        } else {
-            preserveHouseholdPIN(in: &next)
-        }
-        profiles = next
-        if let owner = rootNamespaceOwnerID, deletions.contains(owner) {
-            rootNamespaceOwnerID = nil
-        }
-        store.saveProfiles(profiles)
-        for id in deletions {
-            LiveTVSourceDiagnostics.shared.record(
-                .profileRemoved, identities: [.profile: id], flags: [.capture: false]
-            )
-        }
-        refreshAccountSelections()
-        if !profiles.contains(where: { $0.id == activeProfileID }) {
-            activeProfileID = fallbackProfile(leaving: outgoingActive)?.id
-                ?? ProfileStore.defaultProfileID
-            store.setActiveProfileID(activeProfileID)
-        }
-    }
-
     /// Updates an existing profile's editable fields in place.
     public func update(_ profile: Profile) {
         guard let idx = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
@@ -1088,11 +978,6 @@ public final class ProfilesModel {
     /// interfere.
     public func resetToPristineDefaultForDebugging() {
         store.resetForDebugging()
-        reloadPristineDefault()
-    }
-
-    public func resetToPristineDefaultAfterSyncErasure() throws {
-        try store.resetForSyncErasure()
         reloadPristineDefault()
     }
 

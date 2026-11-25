@@ -3,7 +3,6 @@ import CoreModels
 import CoreSecureStore
 import CryptoKit
 import FeatureAuth
-import FeatureSyncCloud
 import Foundation
 import XCTest
 @testable import AppShelliOS
@@ -31,79 +30,6 @@ final class LiveTVLastSeenErasureEntryPointTests: XCTestCase {
         XCTAssertFalse(fixture.app.profiles.firstRunProfileSetupComplete)
     }
 
-    func testHouseholdErasureErasesSnapshotsAndKeysBeforeFailingFirstRunReset() async throws {
-        let fixture = try await makeFixture()
-        let oldProfileIDs = fixture.app.profiles.profiles.map(\.id)
-        // Prevent the second cleanup in resetToFirstRunForDebugging from masking
-        // a missing erase in performCloudSyncErasure. No accounts/providers exist.
-        fixture.accountSecrets.rejectAccountRosterRemoval = true
-        fixture.app.cloudServerErasureForTesting = { .completed }
-
-        await fixture.app.eraseCloudSyncData().value
-
-        XCTAssertEqual(fixture.app.cloudSyncStatus.recoveryResult, .failed)
-        XCTAssertTrue(fixture.accountSecrets.didRejectAccountRosterRemoval)
-        XCTAssertNotNil(fixture.app.accountError)
-        XCTAssertEqual(fixture.app.profiles.profiles.map(\.id), oldProfileIDs)
-        try fixture.assertErased()
-    }
-
-    func testHouseholdErasureCompletesFirstRunResetAndPreservesUnrelatedCatalogKey() async throws {
-        let fixture = try await makeFixture()
-        fixture.app.cloudServerErasureForTesting = { .completed }
-
-        await fixture.app.eraseCloudSyncData().value
-
-        XCTAssertEqual(fixture.app.cloudSyncStatus.recoveryResult, .completed)
-        try fixture.assertErased()
-        XCTAssertEqual(fixture.app.profiles.profiles.count, 1)
-        XCTAssertTrue(Set(fixture.profileIDs).isDisjoint(with: fixture.app.profiles.profiles.map(\.id)))
-        XCTAssertFalse(fixture.app.profiles.firstRunProfileSetupComplete)
-    }
-
-    func testHouseholdErasureRefusesKidsProfileWithoutDeletingSnapshotsOrKeys() async throws {
-        let fixture = try await makeFixture()
-        var active = fixture.app.profiles.activeProfile
-        active.isKids = true
-        fixture.app.profiles.update(active)
-        fixture.app.cloudServerErasureForTesting = {
-            XCTFail("An unauthorized profile must not reach the remote erasure boundary")
-            return .completed
-        }
-
-        await fixture.app.eraseCloudSyncData().value
-
-        XCTAssertEqual(fixture.app.cloudSyncStatus.recoveryResult, .unavailable)
-        try fixture.assertRetained()
-    }
-
-    func testFailedRemoteHouseholdErasureDoesNotDeleteSnapshotsOrKeys() async throws {
-        let fixture = try await makeFixture()
-        fixture.app.cloudServerErasureForTesting = { .failed }
-
-        await fixture.app.eraseCloudSyncData().value
-
-        XCTAssertEqual(fixture.app.cloudSyncStatus.recoveryResult, .failed)
-        try fixture.assertRetained()
-    }
-
-    func testHouseholdErasureRechecksAuthorizationBeforeLocalDeletion() async throws {
-        let fixture = try await makeFixture()
-        let app = fixture.app
-        app.cloudServerErasureForTesting = { [weak app] in
-            guard let app else { return .failed }
-            var active = app.profiles.activeProfile
-            active.isKids = true
-            app.profiles.update(active)
-            return .completed
-        }
-
-        await app.eraseCloudSyncData().value
-
-        XCTAssertEqual(app.cloudSyncStatus.recoveryResult, .interrupted)
-        try fixture.assertRetained()
-    }
-
     private func makeFixture() async throws -> LastSeenErasureFixture {
         try requireOwnedSimulator()
         let directory = try XCTUnwrap(LiveTVLastSeenStore.defaultDirectory())
@@ -120,9 +46,6 @@ final class LiveTVLastSeenErasureEntryPointTests: XCTestCase {
         let evicted = profiles.add(name: "Fixture evicted", avatarSymbol: "person", colorIndex: 1)
         profiles.select(active.id)
         profileStore.setFirstRunProfileSetupComplete(true)
-        let flag = SyncSetupFeatureFlag()
-        flag.prepareForLaunch(hasExistingInstallation: false)
-        flag.isEnabled = false
         let accountSecrets = ErasureAccountSecrets()
         let app = PlozziOSAppModel(
             appAdmissionStore: AppAdmissionStore(defaults: defaults),
@@ -143,7 +66,6 @@ final class LiveTVLastSeenErasureEntryPointTests: XCTestCase {
         XCTAssertFalse(app.profiles.activeProfile.isKids)
         XCTAssertTrue(app.profiles.firstRunProfileSetupComplete)
         XCTAssertFalse(app.managementRequiresParentalPIN)
-        XCTAssertFalse(SyncSetupFeatureFlag().allowsAutomaticSync)
         await app.ensureTrackersScopedToActiveProfile()
         try await fixture.seed()
         return fixture

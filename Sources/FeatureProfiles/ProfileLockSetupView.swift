@@ -19,8 +19,6 @@ public struct ProfileLockSetupView: View {
     /// Offered when the profile plays as a Plex Home user that already asks for a
     /// PIN, so one entry can satisfy both.
     private let offersPlexPINReuse: Bool
-    /// Whether the lock will reach the user's other devices. Drives the caveat.
-    private let syncEnabled: Bool
     private let validatePlexPIN: (String) async -> PlexPINValidationResult
     private let onComplete: (ProfileLock) -> Void
     private let onCancel: () -> Void
@@ -28,7 +26,6 @@ public struct ProfileLockSetupView: View {
     public init(
         profile: Profile,
         offersPlexPINReuse: Bool = false,
-        syncEnabled: Bool = true,
         validatePlexPIN: @escaping (String) async -> PlexPINValidationResult = {
             _ in .unavailable
         },
@@ -37,7 +34,6 @@ public struct ProfileLockSetupView: View {
     ) {
         self.profile = profile
         self.offersPlexPINReuse = offersPlexPINReuse
-        self.syncEnabled = syncEnabled
         self.validatePlexPIN = validatePlexPIN
         self.onComplete = onComplete
         self.onCancel = onCancel
@@ -73,7 +69,7 @@ public struct ProfileLockSetupView: View {
             name: Text(verbatim: profile.name),
             errorMessage: errorMessage,
             isSubmitting: isValidatingPlexPIN,
-            footnote: syncEnabled ? nil : ProfileLockCopy.lockIsDeviceOnly,
+            footnote: nil,
             onSubmit: submit,
             onCancel: onCancel
         ) {

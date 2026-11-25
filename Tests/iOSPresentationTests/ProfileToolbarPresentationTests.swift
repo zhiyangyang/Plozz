@@ -60,7 +60,7 @@ final class ProfileToolbarPresentationTests: XCTestCase {
                     PlozziOSTabShell(
                         appModel: app, homeViewModelBox: homeBox, onAddServer: {},
                         showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                        deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                        systemColorScheme: .dark
                     )
                 } else {
                     TabView {

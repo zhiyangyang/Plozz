@@ -13,8 +13,4 @@ public protocol MediaAliasResolving: Sendable {
         preferredAliasID: MediaAliasID?
     ) async throws -> MediaAliasID
     func enrich(aliasID: MediaAliasID, with evidence: MediaAliasEvidence) async throws
-    func mergeRemote(
-        records: [MediaAliasSyncDTO],
-        deletedAliasIDs: Set<MediaAliasID>
-    ) async throws
 }

@@ -469,7 +469,7 @@ public final class HeroSettingsModel {
         settings.applyingDiscoveryPolicy(allowed: allowsDiscovery)
     }
 
-    /// Read the live profile so local edits and incoming household sync apply immediately.
+    /// Read the live profile so local edits apply immediately.
     public func setDiscoveryPolicy(_ allowed: @escaping @MainActor () -> Bool) {
         discoveryAllowed = allowed
     }

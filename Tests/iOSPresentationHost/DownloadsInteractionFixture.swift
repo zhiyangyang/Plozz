@@ -15,8 +15,6 @@ struct DownloadsInteractionFixture: View {
     @State private var sidebar = PlozziOSSidebarGeometryModel()
 
     init() {
-        let sync = SyncSetupFeatureFlag()
-        sync.isEnabled = false
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         let app = PlozziOSAppModel(accountStore: accounts)
         if ProcessInfo.processInfo.arguments.contains("--download-details") {

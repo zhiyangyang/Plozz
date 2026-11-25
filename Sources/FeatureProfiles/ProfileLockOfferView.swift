@@ -15,7 +15,6 @@ import SwiftUI
 /// them makes the two screens feel unrelated.
 public struct ProfileLockOfferView: View {
     private let profile: Profile
-    private let syncEnabled: Bool
     private let validatePlexPIN: (String) async -> PlexPINValidationResult
     private let onComplete: (ProfileLock) -> Void
     private let onSkip: () -> Void
@@ -25,7 +24,6 @@ public struct ProfileLockOfferView: View {
 
     public init(
         profile: Profile,
-        syncEnabled: Bool,
         validatePlexPIN: @escaping (String) async -> PlexPINValidationResult = {
             _ in .unavailable
         },
@@ -33,7 +31,6 @@ public struct ProfileLockOfferView: View {
         onSkip: @escaping () -> Void
     ) {
         self.profile = profile
-        self.syncEnabled = syncEnabled
         self.validatePlexPIN = validatePlexPIN
         self.onComplete = onComplete
         self.onSkip = onSkip
@@ -46,7 +43,6 @@ public struct ProfileLockOfferView: View {
                 ProfileLockSetupView(
                     profile: profile,
                     offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
-                    syncEnabled: syncEnabled,
                     validatePlexPIN: validatePlexPIN,
                     onComplete: onComplete,
                     // Backing out of the keypad returns to the offer rather than

@@ -176,8 +176,6 @@ struct LiveTVSourcesRuntimeHost<Content: View>: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .plozzLiveTVPortableStateDidChange)
             .receive(on: DispatchQueue.main), perform: restoreChangedSources)
-        .onReceive(NotificationCenter.default.publisher(for: .plozzLiveTVPortableStateDidApply)
-            .receive(on: DispatchQueue.main), perform: restoreChangedSources)
     }
 
     private func restoreChangedSources(_ notification: Notification) {

@@ -127,26 +127,6 @@ final class ProfileLockTests: XCTestCase {
 
     /// A lock that stayed on one device wouldn't be a lock — the same profile is
     /// one tap away on the iPhone. So it has to survive the sync DTO round trip.
-    func testLockSurvivesTheProfileSyncDTO() throws {
-        var profile = Profile(name: "Brando")
-        profile.lock = ProfileLock.make(pin: "5309", iterations: fastIterations)
-
-        let restored = ProfileSyncDTO(profile: profile).makeProfile()
-        XCTAssertEqual(restored.lock, profile.lock)
-        XCTAssertTrue(try XCTUnwrap(restored.lock).matches(pin: "5309"))
-    }
-
-    func testMergingASyncedLockOntoALocalProfile() throws {
-        var remote = Profile(id: "p1", name: "Brando")
-        remote.lock = ProfileLock.make(pin: "5309", iterations: fastIterations)
-        // Local copy has device-local Plex state the merge must preserve.
-        var local = Profile(id: "p1", name: "Brando", plexHomeUserID: "home-1")
-
-        local = ProfileSyncDTO(profile: remote).merged(into: local)
-        XCTAssertEqual(local.lock, remote.lock)
-        XCTAssertEqual(local.plexHomeUserID, "home-1")
-    }
-
     /// Removing a lock on one device must clear it everywhere, not be ignored as
     /// "no value sent".
     ///
@@ -154,33 +134,11 @@ final class ProfileLockTests: XCTestCase {
     /// field's revision — because that's what the app does. An earlier version
     /// stood in a peer that had simply never had a lock, which is a different
     /// thing entirely: see the companion test below.
-    func testClearingALockPropagatesThroughTheDTO() throws {
-        var local = Profile(id: "p1", name: "Brando")
-        local.replaceLock(with: ProfileLock.make(pin: "5309", iterations: fastIterations))
-
-        var remote = local
-        remote.replaceLock(with: nil)
-
-        local = ProfileSyncDTO(profile: remote).merged(into: local)
-        XCTAssertNil(local.lock)
-    }
-
     /// A device that never knew about the lock must NOT clear it.
     ///
     /// This is the whole point of `ProfileLockRevision`: "no value sent" and
     /// "deliberately removed" look identical on the wire, and treating the first
     /// as the second lets a stale peer unlock a profile by renaming it.
-    func testAPeerThatNeverHadTheLockCannotClearIt() throws {
-        var local = Profile(id: "p1", name: "Brando")
-        local.replaceLock(with: ProfileLock.make(pin: "5309", iterations: fastIterations))
-
-        var oblivious = Profile(id: "p1", name: "Renamed")
-        oblivious.lock = nil
-
-        local = ProfileSyncDTO(profile: oblivious).merged(into: local)
-        XCTAssertEqual(local.name, "Renamed")
-        XCTAssertNotNil(local.lock, "A stale record must not unlock a profile")
-    }
 }
 
 /// The restriction half: a Kids Profile hides the shared settings so a child in
@@ -220,55 +178,14 @@ final class KidsProfileTests: XCTestCase {
         XCTAssertFalse(json.contains("isKidsProfile"), json)
     }
 
-    func testFlagSurvivesTheSyncRoundTrip() {
-        var profile = Profile(name: "Kid")
-        profile.isKids = true
-
-        let restored = ProfileSyncDTO(profile: profile).makeProfile()
-        XCTAssertTrue(restored.isKids, "a restriction that stayed on one device wouldn't restrict anything")
-    }
-
-    func testMergingPreservesDeviceLocalStateWhileApplyingTheFlag() {
-        var remote = Profile(id: "p1", name: "Kid")
-        remote.isKids = true
-        var local = Profile(id: "p1", name: "Kid", plexHomeUserID: "home-1")
-
-        local = ProfileSyncDTO(profile: remote).merged(into: local)
-        XCTAssertTrue(local.isKids)
-        XCTAssertEqual(local.plexHomeUserID, "home-1")
-    }
-
     /// Lifting the restriction on one device must lift it everywhere.
     ///
     /// A real lift goes through `isKids`, which advances the field's revision.
-    func testClearingTheFlagPropagates() {
-        var local = Profile(id: "p1", name: "Kid")
-        local.isKids = true
-
-        var remote = local
-        remote.isKids = false
-
-        local = ProfileSyncDTO(profile: remote).merged(into: local)
-        XCTAssertFalse(local.isKids)
-    }
-
     /// A device that never knew the profile was restricted must NOT lift it.
     ///
     /// Worse than the lock case: the Kids flag is what makes the Parental PIN
     /// gate apply at all, so a stale record clearing it un-restricts a child
     /// everywhere rather than merely losing a preference.
-    func testAPeerThatNeverKnewCannotLiftTheRestriction() {
-        var local = Profile(id: "p1", name: "Kid")
-        local.isKids = true
-
-        var oblivious = Profile(id: "p1", name: "Renamed")
-        oblivious.isKidsProfile = nil
-
-        local = ProfileSyncDTO(profile: oblivious).merged(into: local)
-        XCTAssertEqual(local.name, "Renamed")
-        XCTAssertTrue(local.isKids, "A stale record must not un-restrict a child")
-    }
-
     /// The two features are independent: a Kids Profile is normally left UNLOCKED
     /// (the child has to be able to get in) while the grown-ups' profiles carry
     /// the locks.
@@ -318,21 +235,4 @@ final class ProfileSetupGateTests: XCTestCase {
         XCTAssertFalse(json.contains("isAwaitingSetup"), json)
     }
 
-    /// Synced so a half-created profile doesn't start importing on a second
-    /// device while the first is still choosing its servers.
-    func testFlagSurvivesTheSyncRoundTrip() {
-        var profile = Profile(name: "New")
-        profile.needsSetup = true
-        XCTAssertTrue(ProfileSyncDTO(profile: profile).makeProfile().needsSetup)
-    }
-
-    func testCompletingSetupPropagatesThroughTheDTO() {
-        var local = Profile(id: "p1", name: "New")
-        local.needsSetup = true
-
-        var remoteDone = Profile(id: "p1", name: "New")
-        remoteDone.needsSetup = false
-        local = ProfileSyncDTO(profile: remoteDone).merged(into: local)
-        XCTAssertFalse(local.needsSetup)
-    }
 }

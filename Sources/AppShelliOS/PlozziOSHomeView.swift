@@ -55,7 +55,6 @@ struct PlozziOSHomeLoadID: Equatable {
 struct PlozziOSHomeEmptyState: View {
     let hasAccounts: Bool
     let onAddSource: () -> Void
-    var onReceiveSetup: (() -> Void)?
     var isOfflineMode = false
 
     private var title: LocalizedStringResource {
@@ -106,13 +105,6 @@ struct PlozziOSHomeEmptyState: View {
                             }
                             .plozzPageActionButton()
                             .accessibilityIdentifier("home-add-source")
-                            if let onReceiveSetup, PlozzCustomization.supportsSyncSetup {
-                                Button(action: onReceiveSetup) {
-                                    Text("Set Up from Another Device")
-                                        .plozzPageActionLabel()
-                                }
-                                .plozzPageActionButton(role: .secondary)
-                            }
                         }
                         .frame(maxWidth: 320)
                     }

@@ -646,7 +646,6 @@ final class UpcomingCaptureState {
         let provider = UpcomingCaptureProvider()
         let account = Account(id: "upcoming-capture", from: provider.session)
         let defaults = UserDefaults(suiteName: "UpcomingCapture.\(UUID().uuidString)")!
-        SyncSetupFeatureFlag().isEnabled = false
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         app = PlozziOSAppModel(accountStore: accounts, profileStore: ProfileStore(defaults: defaults))
         let profile = app.profiles.add(name: "Preview", isAwaitingSetup: false)
@@ -693,7 +692,7 @@ final class UpcomingCaptureState {
         var shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
             showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-            deferredPairingURL: .constant(nil), systemColorScheme: .dark
+            systemColorScheme: .dark
         )
         shell.upcomingFeedLoader = { progress in
             if ProcessInfo.processInfo.arguments.contains("--capture-progressive") {

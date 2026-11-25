@@ -9,7 +9,6 @@ import FeatureLiveTV
 import FeatureMusic
 import FeatureProfiles
 import FeatureSettings
-import FeatureSyncSetup
 import Foundation
 import SwiftUI
 import UIKit
@@ -38,36 +37,10 @@ public struct PlozziOSRootView: View {
     @State private var providerSetupRouter = ManagedProviderSetupRouter()
     @State private var iptvSetup: ManagedProviderSetupRouter.Request?
     @State private var showingSettings = false
-    /// Owned here rather than in the tab shell so `receivePairingURL` can see
-    /// whether it is up before asking for another sheet.
     @State private var showingProfileSwitcher = false
     @State private var isSelectingLaunchProfile = false
-    /// A pairing link that arrived while a sheet was open — see
-    /// `receivePairingURL`.
-    @State private var deferredPairingURL: URL?
     @State private var downloadNotifications = PlozziOSDownloadNotificationNavigation.shared
     @State private var notificationDismissals: Set<NotificationPresentation> = []
-    /// A synced server the user tapped "Set Up" on, used to pre-fill the Add Server
-    /// sheet so they only have to sign in.
-    @State private var serverSetupSeed: SyncedAccountDescriptor?
-    /// Action chosen in the new-server prompt, run after the prompt sheet dismisses so
-    /// we never stack two sheets in the same runloop.
-    @State private var serverPromptFollowUp: ServerPromptFollowUp?
-    /// Drives the "set up from another device" pairing flow launched from the prompt,
-    /// carrying which server the user wants signed in (nil = not pairing).
-    @State private var pairingServer: SyncedAccountDescriptor?
-    /// Cold-launch offers exclude servers explicitly deferred to Settings.
-    @State private var showDetectedCover = false
-    @State private var detectedSetupServers: [SyncedAccountDescriptor] = []
-    /// Set true once we've decided about the detected cover for this launch (shown it,
-    /// or the short cold-launch window elapsed), so it never re-pops mid-session.
-    @State private var coldLaunchDetectionHandled = false
-    /// Defer launching the receive/pairing flow until the detected cover has fully
-    /// dismissed, so two full-screen covers never race in the same runloop.
-    @State private var detectedFollowUpReceive = false
-    /// Drives the unrestricted receive/pairing flow launched from the detected-setup
-    /// page (brings the whole household over from the detected device).
-    @State private var showReceiveFromDetected = false
     @State private var settingsShellIdentity: (profileID: String, value: String)?
     private var releaseNotes: ReleaseNotesModel { .shared }
 
@@ -115,56 +88,16 @@ public struct PlozziOSRootView: View {
                 }
                 .environment(\.themePalette, resolvedPalette)
                 .environment(\.colorScheme, resolvedPalette.isLight ? .light : .dark)
-            } else if appModel.syncSetup.needsOnboardingChoice {
-                ICloudOnboardingView(onChoice: appModel.completeICloudOnboarding)
-                    .environment(\.themePalette, resolvedPalette)
-                    .environment(\.colorScheme, resolvedPalette.isLight ? .light : .dark)
-            } else if appModel.initialSetupRestoration.phase != .hidden {
-                ICloudRestorationView(
-                    phase: appModel.initialSetupRestoration.phase,
-                    activity: appModel.initialSetupRestoration.activity
-                        ?? (appModel.providerCredentialSync.isRestoringSignIn ? .signingInToServers : nil),
-                    onRetry: appModel.restoreInitialICloudSetup,
-                    onSetUpManually: appModel.setUpManuallyAfterICloudRestore
-                )
-                .environment(\.themePalette, resolvedPalette)
-                .environment(\.colorScheme, resolvedPalette.isLight ? .light : .dark)
             } else {
                 appContent
-                    .task { consumeDeferredPairingURL() }
             }
-        }
-        .signInSyncPermission(
-            appModel.providerCredentialSync.publicationPermission,
-            canPresent: setupPresentationReady && appModel.isActiveProfileAuthorized
-                && !appModel.managementRequiresParentalPIN && !appModel.profiles.activeProfile.needsSetup
-                && !needsDiagnosticConsent && !appModel.syncSetup.needsOnboardingChoice
-                && appModel.initialSetupRestoration.phase == .hidden
-                && !appModel.isSettingsPresented && !releaseNotes.hasPendingStartupNotes
-                && appModel.pendingSyncSetupOffer == nil,
-            sourceNames: { $0.accounts.map { "\($0.server.name) — \($0.userName)" }.joined(separator: "\n") }
-        ) { request, allow in
-            if appModel.providerCredentialSync.resolvePublicationPermission(request, allow: allow) {
-                appModel.scheduleCloudPublish()
-            } else {
-                appModel.transientStatusPresenter.present(
-                    icon: "exclamationmark.triangle", text: "Couldn't save sign-in sync permission.")
-            }
-        }
-        .onChange(
-            of: appModel.isActiveProfileAuthorized && !appModel.profiles.activeProfile.needsSetup
-                && !appModel.isOfflineMode && appModel.initialSetupRestoration.phase == .hidden,
-            initial: true
-        ) { _, ready in
-            if ready { appModel.continueManualICloudSetupIfReady() }
         }
         .onOpenURL { url in
-            if ExternalPlaybackRuntime.shared.receive(url) { return }
-            receivePairingURL(url)
+            _ = ExternalPlaybackRuntime.shared.receive(url)
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL {
-                receivePairingURL(url)
+                _ = ExternalPlaybackRuntime.shared.receive(url)
             }
         }
     }
@@ -209,7 +142,6 @@ public struct PlozziOSRootView: View {
                     onAddServer: showAddServer,
                     showingSettings: $showingSettings,
                     showingProfileSwitcher: $showingProfileSwitcher,
-                    deferredPairingURL: $deferredPairingURL,
                     onNotificationPresentationDismissed: { notificationDismissals.remove($0) },
                     systemColorScheme: systemColorScheme
                 )
@@ -250,10 +182,9 @@ public struct PlozziOSRootView: View {
                 appModel: appModel, onCancel: downloadNotifications.cancelPending
             )
         }
-        // Setup that was abandoned part-way — quit mid-flow, or arrived over sync
-        // from a device where it was never finished. The gate is persisted, so a
-        // profile left behind it never imports a watchlist at all; resuming asks
-        // the question that was never answered.
+        // Setup that was abandoned part-way — quit mid-flow. The gate is persisted,
+        // so a profile left behind it never imports a watchlist at all; resuming
+        // asks the question that was never answered.
         //
         // Only the launch-origin case presents here. Creating a profile happens
         // inside the Settings sheet and is presented from there instead — a cover
@@ -264,82 +195,17 @@ public struct PlozziOSRootView: View {
             set: { if !$0 { appModel.cancelProfileOnboarding() } }
         )) {
             PlozziOSProfileOnboardingCover(appModel: appModel)
-                .interactiveDismissDisabled(appModel.initialSetupRestoration.isManualSetupPending)
         }
         .task { appModel.resumeProfileOnboardingIfNeeded() }
         .liveChannelSystemOverlays()
         .onAppear { PlozziOSScreenshotSeed.applyIfRequested(to: appModel) }
         .background(PlozziOSCrashScreenObserver(controller: appModel.crashReportingController))
-        .task {
-            // Detect on cold launch: fire immediately if the pending set is already
-            // warm, and close the cold-launch window after a short grace period so a
-            // later (mid-session) detection uses the drawer instead of this cover.
-            considerColdLaunchDetection()
-            try? await Task.sleep(for: .seconds(8))
-            coldLaunchDetectionHandled = true
-        }
-        .onChange(of: appModel.pendingServersNeedingSetup.map(\.id)) { _, _ in
-            considerColdLaunchDetection()
-        }
     }
 
     private var setupPresentationContent: some View {
         profileAccessContent
-        .plozzFullScreenCover(isPresented: $showDetectedCover, onDismiss: {
-            if detectedFollowUpReceive {
-                detectedFollowUpReceive = false
-                showReceiveFromDetected = true
-            }
-        }) {
-            PlozziOSDetectedSetupView(
-                appModel: appModel,
-                servers: detectedSetupServers,
-                onSetUpFromDevice: {
-                    detectedFollowUpReceive = true
-                    showDetectedCover = false
-                },
-                onSetUpLater: {
-                    appModel.deferDetectedSetup(detectedSetupServers.map(\.id))
-                    showDetectedCover = false
-                }
-            )
-        }
         .background {
             PlozziOSScenePhaseEffects(appModel: appModel)
-        }
-        .modifier(PlozziOSSyncSetupOfferPresenter(
-            appModel: appModel,
-            canPresent: PlozzCustomization.supportsSyncSetup
-                && setupPresentationReady && !releaseNotes.hasPendingStartupNotes
-                && appModel.isActiveProfileAuthorized && !appModel.managementRequiresParentalPIN
-        ))
-        .plozzSheet(item: serverPromptBinding, onDismiss: consumeServerPromptFollowUp) { descriptor in
-            SyncedServerSetupPrompt(
-                descriptor: descriptor,
-                palette: resolvedPalette,
-                onSignIn: {
-                    serverPromptFollowUp = .signIn(descriptor)
-                    appModel.clearPendingSyncedServerPrompt()
-                },
-                onUseOtherDevice: {
-                    serverPromptFollowUp = .pairDevice(descriptor)
-                    appModel.clearPendingSyncedServerPrompt()
-                },
-                onNotNow: {
-                    serverPromptFollowUp = nil
-                    appModel.clearPendingSyncedServerPrompt()
-                }
-            )
-        }
-        .plozzFullScreenCover(item: $pairingServer) { descriptor in
-            PlozziOSSyncSetupReceiveView(appModel: appModel, requestedServer: descriptor) {
-                pairingServer = nil
-            }
-        }
-        .plozzFullScreenCover(isPresented: $showReceiveFromDetected) {
-            PlozziOSSyncSetupReceiveView(appModel: appModel) {
-                showReceiveFromDetected = false
-            }
         }
         .background { AppBackground(palette: resolvedPalette) }
         .id(presentationShellIdentity)
@@ -364,7 +230,6 @@ public struct PlozziOSRootView: View {
         // Outside the profile-scoped identity, inside its shared environment:
         // changing accounts must not tear down the surface collecting their PIN.
         .plozzFullScreenCover(isPresented: $showingProfileSwitcher, onDismiss: {
-            consumeDeferredPairingURL()
             notificationDismissals.remove(.profileSwitcher)
         }) {
             PlozziOSProfileSelectionView(
@@ -475,17 +340,15 @@ public struct PlozziOSRootView: View {
         .plozzSheet(
             isPresented: $showingAddServer,
             onDismiss: {
-                serverSetupSeed = nil
                 iptvSetup = nil
                 appModel.finishManagedServerPresentation()
-                consumeDeferredPairingURL()
                 notificationDismissals.remove(.addServer)
             }
         ) {
             AddServerView(
                 appModel: appModel,
-                initialProvider: iptvSetup == nil ? serverSetupSeed?.provider : .iptv,
-                initialAddress: serverSetupSeed?.candidateBaseURLs.first?.absoluteString ?? "",
+                initialProvider: iptvSetup == nil ? nil : .iptv,
+                initialAddress: "",
                 initialIPTVPlaylist: iptvSetup?.playlist, initialIPTVAccount: iptvSetup?.account,
                 initialIPTVMode: iptvSetup?.mode ?? .playlist
             )
@@ -544,22 +407,6 @@ public struct PlozziOSRootView: View {
             legacySettings: { appModel.settings.playback.settings.externalPlayer },
             onProgress: { try await appModel.finishExternalPlayback($0) }
         )
-        .plozzSheet(item: pendingPairingBinding) { pairing in
-            Group {
-                if let invite = SyncSetupSourceInvite.decode(pairing.invite) {
-                    PlozziOSSyncSetupReceiveView(
-                        appModel: appModel, sourceInvite: invite,
-                        onClose: { appModel.pendingPairingInvite = nil }
-                    )
-                } else {
-                    PlozziOSSyncSetupSendFlow(
-                        appModel: appModel,
-                        request: .link(pairing.invite),
-                        onClose: { appModel.pendingPairingInvite = nil }
-                    )
-                }
-            }
-        }
         .environment(\.themePalette, resolvedPalette)
         .environment(\.gradientBackgroundsEnabled, appModel.settings.theme.gradientEnabled)
     }
@@ -596,7 +443,7 @@ public struct PlozziOSRootView: View {
     }
 
     private var releaseNotesStartupReady: Bool {
-        setupPresentationReady && appModel.pendingSyncSetupOffer == nil
+        setupPresentationReady
     }
 
     private var setupPresentationReady: Bool {
@@ -606,20 +453,14 @@ public struct PlozziOSRootView: View {
             && (!appModel.requiresLaunchProfileSelection
                 || appModel.didCompleteLaunchProfileSelection)
             && appModel.pendingFirstRunStep == nil
-            && !showDetectedCover
-            && coldLaunchDetectionHandled
             && !showingSettings
             && !showingProfileSwitcher
             && !showingAddServer
-            && pairingServer == nil
-            && !showReceiveFromDetected
             && appModel.lockedSwitch == nil
             && appModel.parentalSwitch == nil
             && appModel.plexHomeUsers.pendingPlexPINRequest == nil
             && appModel.pendingIdentityAccount == nil
             && appModel.pendingLibrarySelection == nil
-            && appModel.pendingSyncedServerPrompt == nil
-            && appModel.pendingPairingInvite == nil
     }
 
     private var showsLaunchProfilePicker: Bool {
@@ -737,37 +578,6 @@ public struct PlozziOSRootView: View {
         appModel.allowsStandalonePlayback && !appModel.admissionContext.hasMediaAccounts
     }
 
-    /// Takes a pairing link, waiting for an open sheet to close first.
-    ///
-    /// A link can arrive while the app is already foreground with Settings or the
-    /// profile picker up. The pairing sheet lives on the root, and one requested
-    /// from under an open sheet is the arrangement SwiftUI drops — silently, and
-    /// with `pendingPairingInvite` left set so it is never re-requested, which
-    /// means the link simply does nothing until relaunch.
-    private func receivePairingURL(_ url: URL) {
-        guard !needsDiagnosticConsent, !appModel.syncSetup.needsOnboardingChoice,
-              appModel.initialSetupRestoration.phase == .hidden else {
-            deferredPairingURL = url
-            return
-        }
-        guard showingSettings || showingProfileSwitcher || showingAddServer else {
-            appModel.handleIncomingURL(url)
-            return
-        }
-        deferredPairingURL = url
-        showingSettings = false
-        showingProfileSwitcher = false
-        showingAddServer = false
-    }
-
-    /// Raises a link parked by `receivePairingURL` now that the sheet that was
-    /// covering the root has actually gone.
-    private func consumeDeferredPairingURL() {
-        guard let url = deferredPairingURL else { return }
-        deferredPairingURL = nil
-        appModel.handleIncomingURL(url)
-    }
-
     enum NotificationPresentation: Hashable {
         case settings, profileSwitcher, addServer
     }
@@ -804,19 +614,7 @@ public struct PlozziOSRootView: View {
             presentationIsAvailable: notificationDismissals.isEmpty
                 && !showingSettings && !appModel.isSettingsPresented
                 && !showingProfileSwitcher && !showingAddServer
-                && !showDetectedCover && !showReceiveFromDetected && pairingServer == nil
-                && appModel.pendingPairingInvite == nil
                 && !releaseNotes.hasPendingStartupNotes
-                && appModel.pendingSyncedServerPrompt == nil
-        )
-    }
-
-    private var pendingPairingBinding: Binding<PendingPairing?> {
-        Binding(
-            get: { appModel.pendingPairingInvite.map(PendingPairing.init(invite:)) },
-            set: { newValue in
-                if newValue == nil { appModel.pendingPairingInvite = nil }
-            }
         )
     }
 
@@ -829,52 +627,7 @@ public struct PlozziOSRootView: View {
         showingAddServer = true
     }
 
-    /// Adopt a server synced from another device: open the Add Server sheet pre-filled
-    /// with its provider + address, so the user only has to sign in.
-    private func setUpPendingSyncedServer(_ descriptor: SyncedAccountDescriptor) {
-        serverSetupSeed = descriptor
-        showAddServer()
-    }
 
-    /// Presentation binding for the one-time new-server prompt. Clearing it (a button
-    /// tap or a swipe-down) dismisses the sheet.
-    private var serverPromptBinding: Binding<SyncedAccountDescriptor?> {
-        Binding(
-            // Suppress the mid-session drawer while the full-page "we found your setup"
-            // cover is (or is about to be) presented at cold launch, so the two don't
-            // fight over the same server.
-            get: {
-                (appModel.isSettingsPresented || showDetectedCover || detectedFollowUpReceive)
-                    ? nil : appModel.pendingSyncedServerPrompt
-            },
-            set: { if $0 == nil { appModel.clearPendingSyncedServerPrompt() } }
-        )
-    }
-
-    private func considerColdLaunchDetection() {
-        guard !coldLaunchDetectionHandled else { return }
-        let offers = appModel.pendingSetupOffers
-        guard !offers.isEmpty else { return }
-        coldLaunchDetectionHandled = true
-        detectedSetupServers = offers
-        // The cover supersedes the drawer for these servers this launch.
-        appModel.clearPendingSyncedServerPrompt()
-        showDetectedCover = true
-    }
-
-    /// Run the action chosen in the prompt once its sheet has fully dismissed. A
-    /// swipe-to-dismiss leaves `serverPromptFollowUp == nil`, which behaves like
-    /// "Not Now" (the server still lives under Settings ▸ iCloud Sync).
-    private func consumeServerPromptFollowUp() {
-        guard let follow = serverPromptFollowUp else { return }
-        serverPromptFollowUp = nil
-        switch follow {
-        case .signIn(let descriptor):
-            setUpPendingSyncedServer(descriptor)
-        case .pairDevice(let descriptor):
-            pairingServer = descriptor
-        }
-    }
 }
 
 /// Keeps scene-environment invalidation out of the full app root. Process
@@ -888,7 +641,6 @@ private struct PlozziOSScenePhaseEffects: View {
             .onChange(of: scenePhase, initial: true) { _, newPhase in
                 if newPhase == .active {
                     appModel.accountsProviders.retryUnconfirmedCredentials()
-                    appModel.syncCloudOnForeground()
                 }
             }
             .onChange(of: appModel.isActiveProfileAuthorized) { _, authorized in
@@ -898,11 +650,6 @@ private struct PlozziOSScenePhaseEffects: View {
                 appModel.retryWatchOutboxIfAllowed()
             }
     }
-}
-
-private struct PendingPairing: Identifiable {
-    let invite: String
-    var id: String { invite }
 }
 
 enum PlozziOSDestination: Identifiable, Hashable {
@@ -1128,20 +875,10 @@ struct PlozziOSTabShell: View {
     /// A direct Settings selection waits for that sheet to finish dismissing.
     @State private var pendingSwitchProfileID: String?
 
-    /// Raises a link parked by `PlozziOSRootView.receivePairingURL` now that the
-    /// sheet that was covering the root has actually gone.
-    private func consumeDeferredPairingURL() {
-        guard let url = deferredPairingURL else { return }
-        deferredPairingURL = nil
-        appModel.handleIncomingURL(url)
-    }
     let appModel: PlozziOSAppModel
     let onAddServer: () -> Void
     @Binding var showingSettings: Bool
     @Binding var showingProfileSwitcher: Bool
-    /// A pairing link parked until this shell's sheets have closed — see
-    /// `PlozziOSRootView.receivePairingURL`.
-    @Binding var deferredPairingURL: URL?
     let onNotificationPresentationDismissed: (PlozziOSRootView.NotificationPresentation) -> Void
     let systemColorScheme: ColorScheme
     let onLiveTVActivityChanged: (Bool) -> Void
@@ -1153,7 +890,6 @@ struct PlozziOSTabShell: View {
         onAddServer: @escaping () -> Void,
         showingSettings: Binding<Bool>,
         showingProfileSwitcher: Binding<Bool>,
-        deferredPairingURL: Binding<URL?>,
         onNotificationPresentationDismissed:
             @escaping (PlozziOSRootView.NotificationPresentation) -> Void = { _ in },
         systemColorScheme: ColorScheme
@@ -1164,7 +900,6 @@ struct PlozziOSTabShell: View {
         self.onAddServer = onAddServer
         _showingSettings = showingSettings
         _showingProfileSwitcher = showingProfileSwitcher
-        _deferredPairingURL = deferredPairingURL
         self.onNotificationPresentationDismissed = onNotificationPresentationDismissed
         self.systemColorScheme = systemColorScheme
         let visible = Self.configuredDestinations(appModel: appModel)
@@ -1946,7 +1681,6 @@ struct PlozziOSTabShell: View {
                     ? lastContentDestination
                     : fallback)
             }
-            consumeDeferredPairingURL()
             onNotificationPresentationDismissed(.settings)
         }) {
             PlozziOSSettingsView(
@@ -3055,21 +2789,17 @@ private struct PlozziOSHomeLandingView: View {
     let viewModel: HomeViewModel
     let onAddServer: () -> Void
     let onShowSettings: () -> Void
-    @State private var showingReceive = false
 
     var body: some View {
         if appModel.accounts.isEmpty {
             PlozziOSHomeEmptyState(
                 hasAccounts: false, onAddSource: onAddServer,
-                onReceiveSetup: { showingReceive = true }, isOfflineMode: appModel.isOfflineMode
+                isOfflineMode: appModel.isOfflineMode
             )
             .navigationTitle(navigationTitles(NavigationLibraryLayout.homeKey, default: Text("Home")))
             .toolbarTitleDisplayMode(isOverflowDestination ? .inline : .large)
             .toolbar {
                 PlozziOSSettingsToolbarItem(action: onShowSettings)
-            }
-            .plozzFullScreenCover(isPresented: $showingReceive) {
-                PlozziOSSyncSetupReceiveView(appModel: appModel) { showingReceive = false }
             }
         } else {
             PlozziOSHomeView(
@@ -3151,7 +2881,6 @@ struct PlozziOSProfileAccessGateView: View {
                 ProfileLockPINView(
                     profile: lockRequest.target,
                     errorMessage: lockRequest.error,
-                    isSyncEnabled: SyncSetupFeatureFlag().isEnabled,
                     sequenceStep: expectsTwoPINs
                         ? .init(current: 1, total: 2)
                         : nil,

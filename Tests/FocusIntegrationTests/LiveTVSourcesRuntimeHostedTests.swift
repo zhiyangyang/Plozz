@@ -170,7 +170,6 @@ final class LiveTVSourcesRuntimeHostedTests: XCTestCase {
         try await waitUntil { runtime.isCurrent && runtime.catalog.catalog.channels.count == 1 }
         configuration.servers[0].name = "Synced IPTV"
         try fixture.store.save(configuration)
-        NotificationCenter.default.post(name: .plozzLiveTVPortableStateDidApply, object: fixture.profileID)
         try await waitUntil {
             runtime.isCurrent && runtime.catalog.imports.configuration.servers == configuration.servers
                 && runtime.catalog.catalog.channels.count == 1
@@ -193,7 +192,6 @@ final class LiveTVSourcesRuntimeHostedTests: XCTestCase {
         configuration.syncCheckpoint = .init(profileID: fixture.profileID, accountEpoch: "sync-generation")
         try fixture.store.save(configuration)
         NotificationCenter.default.post(name: .plozzLiveTVPortableStateDidChange, object: fixture.profileID)
-        NotificationCenter.default.post(name: .plozzLiveTVPortableStateDidApply, object: fixture.profileID)
         NotificationCenter.default.post(name: .plozzLiveTVPortableStateDidChange, object: "another-profile")
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertTrue(runtime.isCurrent, "No Retry or navigation should be needed after a sync checkpoint.")

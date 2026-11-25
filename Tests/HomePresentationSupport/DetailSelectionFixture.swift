@@ -37,7 +37,6 @@ struct DetailSelectionFixture: View {
         let primary = providers[0]
         var seed = primary.seed
         seed.sources = providers.map { $0.source(for: $0.seed) }
-        SyncSetupFeatureFlag().isEnabled = false
         let store = AccountStore(secureStore: InMemorySecureStore())
         let model = PlozziOSAppModel(accountStore: store, profileStore: ProfileStore(defaults: .standard))
         let profile = model.profiles.add(name: "Selection fixture", isAwaitingSetup: false)

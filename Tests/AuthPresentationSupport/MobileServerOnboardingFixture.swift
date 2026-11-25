@@ -18,12 +18,10 @@ struct MobileServerOnboardingFixture: View {
     @State private var completedIDs: [String] = []
     @State private var showingSetup = true
     @State private var showingSourceChooser = false
-    @State private var showingTransfer = false
 
     init(page: String, presentsAsSheet: Bool = false) {
         self.page = page
         self.presentsAsSheet = presentsAsSheet
-        SyncSetupFeatureFlag().isEnabled = false
         let defaults = UserDefaults(suiteName: "MobileOnboarding.\(UUID().uuidString)")!
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         let model = PlozziOSAppModel(accountStore: accounts, profileStore: ProfileStore(defaults: defaults))
@@ -102,16 +100,12 @@ struct MobileServerOnboardingFixture: View {
                     } else {
                         PlozziOSHomeEmptyState(
                             hasAccounts: page == "home-empty",
-                            onAddSource: { showingSourceChooser = true },
-                            onReceiveSetup: page == "home-new" ? { showingTransfer = true } : nil
+                            onAddSource: { showingSourceChooser = true }
                         )
                     }
                 }
                 .plozzSheet(isPresented: $showingSourceChooser) {
                     addServer().presentationSizing(.page)
-                }
-                .plozzFullScreenCover(isPresented: $showingTransfer) {
-                    PlozziOSSyncSetupReceiveView(appModel: appModel) { showingTransfer = false }
                 }
             }
         default:

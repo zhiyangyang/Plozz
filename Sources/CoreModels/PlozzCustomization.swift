@@ -4,8 +4,8 @@ import Foundation
 ///
 /// These are keyed to the app's bundle identifier rather than a compile-time
 /// constant so package tests and the canonical app keep their normal behaviour.
-/// The custom app keeps the feature modules linked (which keeps upstream merges
-/// small) but never exposes or activates these features at runtime.
+/// The custom app keeps the remaining optional feature modules linked but never
+/// exposes or activates them at runtime.
 public enum PlozzCustomization {
     /// The identity used by the personalized iPad build. A suffix (for example
     /// `--branded` builds) still counts as the custom app.
@@ -17,8 +17,6 @@ public enum PlozzCustomization {
 
     public static let isCustomBuild = isCustom(bundleIdentifier: Bundle.main.bundleIdentifier)
 
-    public static var supportsCloudSync: Bool { !isCustomBuild }
-    public static var supportsSyncSetup: Bool { !isCustomBuild }
     public static var supportsTrackers: Bool { !isCustomBuild }
 
     /// The personal build opens a library directly on its Browse grid. Library
@@ -116,17 +114,8 @@ public enum PlozzCustomization {
         switch page {
         case .trackers:
             return supportsTrackers
-        case .sync:
-            return supportsSyncSetup
         default:
             return true
         }
-    }
-
-    /// Writes the cloud-off defaults before the app constructs its models, so
-    /// first launch cannot present an iCloud prompt or start initial restoration.
-    public static func applyLaunchDefaultsIfNeeded() {
-        guard isCustomBuild else { return }
-        SyncSetupFeatureFlag().disableCloudFeatures()
     }
 }

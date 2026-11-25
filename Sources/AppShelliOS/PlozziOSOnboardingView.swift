@@ -3,15 +3,13 @@ import CoreModels
 import CoreUI
 import SwiftUI
 
-/// iOS/iPadOS first-run onboarding — mirrors the tvOS entry: the branded Plozz
-/// logo + "Free forever and open source." tagline, a direct provider chooser
-/// and a "Set up from another device" button.
+/// iOS/iPadOS first-run onboarding: the branded Plozz logo + "Free forever and
+/// open source." tagline and a direct provider chooser.
 @MainActor
 struct PlozziOSOnboardingView: View {
     @Environment(\.themePalette) private var palette
     let appModel: PlozziOSAppModel
     @State private var addProvider: OnboardingProvider?
-    @State private var showReceive = false
     @State private var showAddShare = false
 
     var body: some View {
@@ -23,9 +21,6 @@ struct PlozziOSOnboardingView: View {
                         Spacer(minLength: geo.size.height * (AppReleaseChannel.current.isBeta ? 0.02 : 0.08))
                         header
                         providerList
-                        if PlozzCustomization.supportsSyncSetup {
-                            receiveButton
-                        }
                         Spacer(minLength: 32)
                     }
                     .frame(maxWidth: 640)
@@ -37,9 +32,6 @@ struct PlozziOSOnboardingView: View {
         }
         .plozzFullScreenCover(item: $addProvider) { wrapped in
             AddServerView(appModel: appModel, initialProvider: wrapped.kind)
-        }
-        .plozzFullScreenCover(isPresented: $showReceive) {
-            PlozziOSSyncSetupReceiveView(appModel: appModel) { showReceive = false }
         }
         .plozzFullScreenCover(isPresented: $showAddShare) {
             PlozziOSUnifiedAddShareView(appModel: appModel)
@@ -71,17 +63,6 @@ struct PlozziOSOnboardingView: View {
         }
     }
 
-    private var receiveButton: some View {
-        Button {
-            showReceive = true
-        } label: {
-            Label("Set Up from Another Device", systemImage: "qrcode")
-                .plozzPageActionLabel()
-        }
-        .plozzPageActionButton(role: .secondary)
-        .controlSize(.large)
-        .tint(palette.accent)
-    }
 }
 
 /// Identifiable wrapper so a chosen provider can drive `.fullScreenCover(item:)`.

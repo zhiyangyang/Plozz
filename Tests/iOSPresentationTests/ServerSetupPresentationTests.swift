@@ -2,7 +2,6 @@
 import CoreModels
 import CoreUI
 import FeatureAuth
-import FeatureSyncSetup
 import SwiftUI
 import UIKit
 import Vision
@@ -123,7 +122,6 @@ final class ServerSetupPresentationTests: XCTestCase {
                     let image = try await render(
                         PlozziOSHomeEmptyState(
                             hasAccounts: hasAccounts, onAddSource: {},
-                            onReceiveSetup: hasAccounts ? nil : {}
                         )
                         .background(light ? ThemePalette.light.backgroundBase : ThemePalette.dark.backgroundBase)
                         .environment(\.themePalette, light ? ThemePalette.light : .dark),
@@ -152,7 +150,6 @@ final class ServerSetupPresentationTests: XCTestCase {
                 let image = try await render(
                     PlozziOSHomeEmptyState(
                         hasAccounts: hasAccounts, onAddSource: {},
-                        onReceiveSetup: hasAccounts ? nil : {}
                     )
                     .background(light ? ThemePalette.light.backgroundBase : ThemePalette.dark.backgroundBase)
                     .environment(\.themePalette, light ? ThemePalette.light : .dark)
@@ -365,175 +362,6 @@ final class ServerSetupPresentationTests: XCTestCase {
         }
     }
 
-    func testSentSetupKeepsDoneVisibleAndAllProfilesReachable() async throws {
-        let url = try XCTUnwrap(URL(string: "https://fixture.example.test"))
-        let accounts = (0..<25).map { index in
-            Account(
-                id: "account-\(index)",
-                server: MediaServer(
-                    id: "server-\(index)", name: "Server \(index) with a long library name",
-                    baseURL: url, provider: index.isMultiple(of: 2) ? .plex : .jellyfin
-                ),
-                userID: "viewer", userName: "Viewer", deviceID: "fixture"
-            )
-        }
-        let profiles = (0..<40).map { Profile(id: "profile-\($0)", name: "Viewer \($0)") }
-        for (size, typeSize) in [
-            (CGSize(width: 320, height: 568), DynamicTypeSize.large),
-            (.init(width: 844, height: 390), .accessibility5),
-            (.init(width: 768, height: 1024), .large)
-        ] {
-            let image = try await render(
-                SyncSetupSentSuccessView(accounts: accounts, profiles: profiles, onDone: {})
-                    .environment(\.themePalette, ThemePalette.dark)
-                    .environment(\.dynamicTypeSize, typeSize),
-                size: size, light: false
-            ) { window in
-                let scroll = try XCTUnwrap(self.scrollViews(in: window).first)
-                XCTAssertGreaterThan(scroll.contentSize.height, scroll.bounds.height)
-                XCTAssertLessThanOrEqual(scroll.contentSize.width, scroll.bounds.width + 1)
-                let start = try self.capture(window)
-                XCTAssertTrue(try self.recognize(start).contains("Done"))
-                self.attach(start, name: "Sent setup top \(size) \(typeSize)")
-                try await self.scrollToBottom(scroll, in: window)
-            }
-            let text = try recognize(image).joined(separator: " ")
-            XCTAssertTrue(text.contains("Done"), text)
-            XCTAssertTrue(text.contains("39"), text)
-            XCTAssertFalse(text.contains("…"), text)
-            attach(image, name: "Sent setup bottom \(size) \(typeSize)")
-        }
-    }
-
-    func testTVSourceLinkOpensReceivingInstructionsOnPhoneAndPad() async throws {
-        let app = PlozziOSAppModel()
-        let invite = SyncSetupSourceInvite()
-        XCTAssertTrue(app.handleIncomingURL(try XCTUnwrap(URL(string: invite.encoded()))))
-        XCTAssertEqual(app.pendingPairingInvite, invite.encoded())
-        XCTAssertFalse(app.handleIncomingURL(try XCTUnwrap(URL(string: "https://example.com/pair#invalid"))))
-        XCTAssertEqual(app.pendingPairingInvite, invite.encoded())
-        defer { app.pendingPairingInvite = nil }
-        for size in [CGSize(width: 320, height: 568), CGSize(width: 768, height: 1024)] {
-            let image = try await render(
-                PlozziOSSyncSetupReceiveView(appModel: app, sourceInvite: invite, onClose: {})
-                    .environment(\.themePalette, ThemePalette.dark),
-                size: size, light: false
-            )
-            let text = try recognize(image).joined(separator: " ")
-            XCTAssertTrue(text.contains("Check your Apple TV"), text)
-            XCTAssertTrue(text.contains("matching code"), text)
-            XCTAssertTrue(text.contains("Cancel"), text)
-            XCTAssertFalse(text.contains("Scan this QR"), text)
-            attach(image, name: "TV source scan \(size)")
-        }
-    }
-
-    func testExpiredTVSourceLinkAsksForANewScanWithoutOfferingBrokenRetry() async throws {
-        let app = PlozziOSAppModel()
-        let invite = SyncSetupSourceInvite(now: Date().addingTimeInterval(-300))
-        let image = try await render(
-            PlozziOSSyncSetupReceiveView(appModel: app, sourceInvite: invite, onClose: {})
-                .environment(\.themePalette, ThemePalette.light),
-            size: .init(width: 390, height: 844), light: true
-        )
-        let text = try recognize(image).joined(separator: " ")
-        XCTAssertTrue(text.contains("expired"), text)
-        XCTAssertTrue(text.contains("Scan a new code"), text)
-        XCTAssertTrue(text.contains("Cancel"), text)
-        XCTAssertFalse(text.contains("Try Again"), text)
-        attach(image, name: "Expired TV source scan")
-    }
-
-    func testReceivedSetupKeepsContinueVisibleWithManyServersAndProfiles() async throws {
-        let accounts = (0..<25).flatMap { server in
-            (0..<3).map { user in
-                SyncedAccountDescriptor(
-                    id: "server-\(server)-user-\(user)", provider: .jellyfin,
-                    serverID: "server-\(server)",
-                    serverName: String(format: "Server %02d with a long household library name", server),
-                    userID: "user-\(user)", userName: "Household viewer number \(user)",
-                    candidateBaseURLs: [URL(string: "https://fixture.example.test")!],
-                    originDeviceName: "Test TV", originDeviceKind: "tv"
-                )
-            }
-        }
-        let profiles = (0..<40).map {
-            Profile(id: "profile-\($0)", name: $0 == 39 ? "Last Profile" : "A household profile with a long name \($0)")
-        }
-        let cases: [(CGSize, DynamicTypeSize, LayoutDirection)] = [
-            (.init(width: 320, height: 568), .large, .leftToRight),
-            (.init(width: 390, height: 844), .large, .leftToRight),
-            (.init(width: 430, height: 932), .large, .leftToRight),
-            (.init(width: 844, height: 390), .large, .leftToRight),
-            (.init(width: 768, height: 1024), .large, .leftToRight),
-            (.init(width: 320, height: 568), .accessibility3, .leftToRight),
-            (.init(width: 844, height: 390), .accessibility5, .leftToRight),
-            (.init(width: 320, height: 568), .large, .rightToLeft)
-        ]
-        for (size, typeSize, direction) in cases {
-            let summary = PlozziOSSyncSetupSummary(
-                serverGroups: SyncedServerAccountGroup.groups(from: accounts),
-                pendingIDs: [accounts[0].id], profiles: profiles, onContinue: {}
-            )
-            let image = try await render(
-                NavigationStack {
-                    summary
-                        .navigationTitle("Set Up This Device")
-                        .navigationBarTitleDisplayMode(.inline)
-                }
-                .environment(\.themePalette, ThemePalette.dark)
-                .environment(\.dynamicTypeSize, typeSize)
-                .environment(\.layoutDirection, direction),
-                size: size, light: false
-            ) { window in
-                let scroll = try XCTUnwrap(self.scrollViews(in: window).first)
-                XCTAssertGreaterThan(scroll.contentSize.height, scroll.bounds.height)
-                XCTAssertLessThanOrEqual(scroll.contentSize.width, scroll.bounds.width + 1)
-                let start = try self.capture(window)
-                let button = try self.continueFrame(in: start, size: size)
-                XCTAssertTrue(window.bounds.inset(by: window.safeAreaInsets).contains(button))
-                XCTAssertNotNil(window.hitTest(CGPoint(x: button.midX, y: button.midY), with: nil))
-                self.attach(start, name: "Large setup top \(size) \(typeSize) \(direction)")
-                try await self.scrollToBottom(scroll, in: window)
-                let bottom = try self.capture(window)
-                let metrics = XCTAttachment(string: """
-                    size=\(size), type=\(typeSize), content=\(scroll.contentSize), bounds=\(scroll.bounds),
-                    inset=\(scroll.adjustedContentInset), offset=\(scroll.contentOffset),
-                    windowFrame=\(scroll.convert(scroll.bounds, to: window))
-                    """)
-                metrics.name = "Summary scroll metrics \(size) \(typeSize)"
-                metrics.lifetime = .keepAlways
-                self.add(metrics)
-                let buttonAfterScrolling = try self.continueFrame(in: bottom, size: size)
-                XCTAssertEqual(buttonAfterScrolling.midY, button.midY, accuracy: 3)
-                let text = try self.recognize(bottom).joined(separator: " ")
-                XCTAssertTrue(text.contains("iCloud"), "The final help text must be reachable: \(text)")
-                XCTAssertFalse(text.contains("…"), "Content must wrap rather than truncate: \(text)")
-            }
-            attach(image, name: "Large setup bottom \(size) \(typeSize) \(direction)")
-        }
-    }
-
-    func testEmptyAndSmallReceivedSetupsKeepThePrimaryActionReachable() async throws {
-        for count in [0, 1] {
-            let profiles = (0..<count).map { Profile(id: "profile-\($0)", name: "Viewer") }
-            let image = try await render(
-                NavigationStack {
-                    PlozziOSSyncSetupSummary(
-                        serverGroups: [], pendingIDs: [], profiles: profiles, onContinue: {}
-                    )
-                    .navigationTitle("Set Up This Device")
-                    .navigationBarTitleDisplayMode(.inline)
-                }.environment(\.themePalette, ThemePalette.light),
-                size: .init(width: 320, height: 568), light: true
-            )
-            let text = try recognize(image).joined(separator: " ")
-            XCTAssertTrue(text.contains("Start Watching"), text)
-            XCTAssertTrue(text.contains("all set"), text)
-            attach(image, name: "Small setup - \(count) profiles")
-        }
-    }
-
     private func scrollViews(in view: UIView) -> [UIScrollView] {
         (view as? UIScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews(in: $0) }
     }
@@ -572,32 +400,6 @@ final class ServerSetupPresentationTests: XCTestCase {
         let rect = result.boundingBox
         return CGRect(x: rect.minX * size.width, y: (1 - rect.maxY) * size.height,
                       width: rect.width * size.width, height: rect.height * size.height)
-    }
-
-    func testTransferButtonRemainsReadableWithSettingsForegroundInEveryTheme() async throws {
-        let descriptor = SyncedAccountDescriptor(
-            id: "share", provider: .mediaShare, serverID: "files",
-            serverName: "Documents (WebDAV)", userID: "viewer", userName: "Viewer",
-            candidateBaseURLs: [URL(string: "https://files.example.test/Documents")!],
-            originDeviceName: "Test TV", originDeviceKind: "tv"
-        )
-        for (name, palette) in [("dark", ThemePalette.dark), ("black", .pureBlack), ("light", .light)] {
-            let image = try await render(
-                SyncedServerSetupPrompt(
-                    descriptor: descriptor, palette: palette,
-                    onSignIn: {}, onUseOtherDevice: {}, onNotNow: {}
-                )
-                .foregroundStyle(palette.primaryText)
-                .environment(\.themePalette, palette)
-                .background(palette.cardSurface),
-                size: CGSize(width: 390, height: 430), light: palette.isLight
-            )
-            let text = try recognize(image).joined(separator: " ")
-            XCTAssertTrue(text.contains("Auto Sign In"), "\(name): \(text)")
-            XCTAssertTrue(text.contains("Sign In Manually"), "\(name): \(text)")
-            XCTAssertTrue(text.contains("Not Now"), "\(name): \(text)")
-            attach(image, name: "Server setup - \(name)")
-        }
     }
 
     func testProviderPickerNeverUsesIntrinsicLogoSizeInNativeForm() async throws {

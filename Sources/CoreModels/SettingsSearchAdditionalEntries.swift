@@ -232,8 +232,6 @@ extension SettingsSearchCatalog {
               keywords: "account profile sources libraries watching as server user"),
         .init("cross-server-watch-sync", page: .trackers, title: "Sync watch state across servers",
               keywords: "watch state synchronize watched progress across servers"),
-        .init("icloud-sync", page: .sync, title: "iCloud Sync",
-              keywords: "iCloud sync synchronize backup settings devices household"),
         .init("metadata-order-mode", page: .metadata, title: "Order",
               keywords: "metadata providers priority information artwork source"),
         .init("metadata-provider-priority-enabled", page: .metadata, title: "Provider priority",

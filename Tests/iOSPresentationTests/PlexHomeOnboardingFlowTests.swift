@@ -19,7 +19,7 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         )
         let original = app.profiles.activeProfile
         XCTAssertFalse(original.needsSetup)
-        app.resumeProfileOnboardingIfNeeded(manualICloudSetup: true)
+        app.resumeProfileOnboardingIfNeeded()
         XCTAssertEqual(app.profileOnboardingID, original.id)
         XCTAssertEqual(app.profileOnboardingStep, .libraries)
         XCTAssertEqual(app.profiles.activeProfile, original)

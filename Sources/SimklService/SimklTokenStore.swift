@@ -18,14 +18,14 @@ public protocol SimklTokenStoring: Sendable {
 /// Keychain-backed token store for Simkl, on the shared synced box so this
 /// sign-in reaches the account's other devices.
 public final class KeychainSimklTokenStore: SimklTokenStoring, @unchecked Sendable {
-    private let box: SyncedTokenBox<SimklTokens>
+    private let box: TrackerTokenBox<SimklTokens>
 
     public init(
         service: String = "com.plozz.app.tokens",
         account: String = "simkl.oauth",
         namespace: String? = nil
     ) {
-        box = SyncedTokenBox(
+        box = TrackerTokenBox(
             service: service,
             account: account,
             namespace: namespace

@@ -42,7 +42,6 @@ public struct LiveTVLibraryRuntimeView<Content: View>: View {
 
 private struct LiveTVLibraryRuntimeHost<Content: View>: View {
     @State private var runtime: LiveTVLibraryRuntime
-    @State private var pendingPortableChanges = false
     @State private var pendingAutomaticChanges = false
     @State private var libraryChangeRevision = 0
     @Environment(\.scenePhase) private var scenePhase
@@ -86,21 +85,9 @@ private struct LiveTVLibraryRuntimeHost<Content: View>: View {
                 guard runtime.automaticChannelsEnabled else { return }
                 libraryChangeRevision &+= 1
             }
-            .onReceive(NotificationCenter.default.publisher(for: .plozzLiveTVPortableStateDidApply)) { notification in
-                guard notification.object as? String == runtime.profileID else { return }
-                if LiveTVPlaybackIdentityHold.isHeld(profileID: runtime.profileID) {
-                    pendingPortableChanges = true
-                } else {
-                    runtime.applyPortableChanges()
-                }
-            }
             .onReceive(NotificationCenter.default.publisher(for: .plozzLiveTVPlaybackIdentityDidBecomeIdle)) { notification in
                 guard notification.object as? String == runtime.profileID,
                       !LiveTVPlaybackIdentityHold.isHeld(profileID: runtime.profileID) else { return }
-                if pendingPortableChanges {
-                    pendingPortableChanges = false
-                    runtime.applyPortableChanges()
-                }
                 if pendingAutomaticChanges {
                     pendingAutomaticChanges = false
                     requestAutomaticRefresh(force: true)

@@ -45,7 +45,7 @@ final class HomeModelLifetimeTests: XCTestCase {
             PlozziOSTabShell(
                 appModel: app, homeViewModelBox: box, onAddServer: {},
                 showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                systemColorScheme: .dark
             ).sharedHomeViewModel
         }
         await app.ensureTrackersScopedToActiveProfile()
@@ -107,7 +107,7 @@ final class HomeModelLifetimeTests: XCTestCase {
                 PlozziOSTabShell(
                     appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
                     showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                    deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                    systemColorScheme: .dark
                 )
                 .environment(app)
                 .environment(HeroTrailerController())
@@ -179,7 +179,7 @@ final class HomeModelLifetimeTests: XCTestCase {
                 PlozziOSTabShell(
                     appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
                     showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                    deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                    systemColorScheme: .dark
                 )
                 .environment(app)
                 .environment(HeroTrailerController())
@@ -221,7 +221,6 @@ final class HomeModelLifetimeTests: XCTestCase {
                 appModel: app, homeViewModelBox: box, onAddServer: {},
                 showingSettings: .constant(index.isMultiple(of: 2)),
                 showingProfileSwitcher: .constant(false),
-                deferredPairingURL: .constant(nil),
                 systemColorScheme: index.isMultiple(of: 2) ? .dark : .light
             )
             models.append(shell.sharedHomeViewModel)
@@ -244,7 +243,7 @@ final class HomeModelLifetimeTests: XCTestCase {
             PlozziOSTabShell(
                 appModel: app, homeViewModelBox: box, onAddServer: {},
                 showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                systemColorScheme: .dark
             ).sharedHomeViewModel
         }
         let first = model()

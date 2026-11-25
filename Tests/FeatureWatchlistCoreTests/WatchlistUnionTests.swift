@@ -1146,47 +1146,12 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
     }
 }
 
-/// What reaches CloudKit, and what the one-shot migration keeps.
+/// What the durable watchlist records, and what the one-shot migration keeps.
 @MainActor
 final class WatchlistNativeRetirementTests: XCTestCase {
     /// Only what the viewer asked for syncs. A title that is here purely because
     /// a server lists it must never become a record on another device, where
     /// that server may not even be signed in.
-    func testSyncCapturesExplicitIntentOnly() throws {
-        let model = WatchlistModel()
-        let owned = MediaAliasID()
-        let fromServer = MediaAliasID()
-        let destination = WatchlistDestinationID(rawValue: "plex")!
-        try model.activate(profileID: "p")
-        try model.add(profileID: "p", aliasID: owned, kind: .movie)
-
-        var nativeView = NativeWatchlistView()
-        nativeView.applySuccess(
-            destinationID: destination,
-            entries: [
-                NativeWatchlistEntry(aliasID: fromServer, kind: .movie, index: 0)!
-            ]
-        )
-        XCTAssertTrue(model.union(
-            profileID: "p",
-            nativeView: nativeView,
-            aliasSnapshot: .empty,
-            enabledDestinationIDs: [destination]
-        ).contains(aliasID: fromServer))
-
-        let records = try model.captureSyncRecords(profileID: "p")
-
-        XCTAssertEqual(records.count, 1)
-        XCTAssertNotNil(records[WatchlistMediaStateRecordKey(
-            profileID: "p",
-            aliasID: owned
-        ).recordName])
-        XCTAssertNil(records[WatchlistMediaStateRecordKey(
-            profileID: "p",
-            aliasID: fromServer
-        ).recordName])
-    }
-
     /// The migration drops what the import wrote and nothing else.
     ///
     /// `.legacyHomeSeed` stays because it came from the old cached Home row, not

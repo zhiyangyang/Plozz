@@ -20,7 +20,6 @@ struct ContinueWatchingDetailsFixture: View {
     @State private var contentRefreshCoordinator = ContentRefreshCoordinator(profile: .iOS)
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         // Harness upgrade (evidence work, not product change): the phone wires PERSISTENT
         // home stores (RootView.swift:751-752); the fixture used in-memory ones plus a random
@@ -108,7 +107,7 @@ struct ContinueWatchingDetailsFixture: View {
                 PlozziOSTabShell(
                     appModel: appModel, homeViewModelBox: homeViewModelBox,
                     onAddServer: {}, showingSettings: .constant(false),
-                    showingProfileSwitcher: .constant(false), deferredPairingURL: .constant(nil),
+                    showingProfileSwitcher: .constant(false),
                     systemColorScheme: .dark
                 )
             } else {
@@ -179,7 +178,7 @@ private struct HarnessForegroundSessionDriver: View {
 }
 
 /// Evidence-only harness driver (not product code): the phone's foreground sync path
-/// (`PlozziOSAppModel+CloudSync` → `refreshActiveProfileConfiguration`) REPLACES
+/// (`PlozziOSAppModel` → `refreshActiveProfileConfiguration`) REPLACES
 /// `appModel.settings` and reloads accounts + identity index while Home is on screen.
 /// No harness stage reproduced that, so the simulator could never show the "another
 /// render of Home appears, then reflows a few times" signature. Gated behind

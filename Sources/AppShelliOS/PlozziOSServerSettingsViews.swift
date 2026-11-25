@@ -4,7 +4,6 @@ import CoreModels
 import CoreNetworking
 import CoreUI
 import FeatureSettings
-import FeatureSyncSetup
 import SwiftUI
 
 struct PlozziOSServersSettingsView: View {
@@ -104,7 +103,6 @@ private struct PlozziOSServerSettingsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedProviderSetupRouter) private var providerSetupRouter
     @State private var confirmRemoveServer = false
-    @State private var confirmRemoveEverywhere = false
     @State private var selectedAccountID: String?
 
     private var group: ServerAccountGroup? {
@@ -197,35 +195,14 @@ private struct PlozziOSServerSettingsDetailView: View {
             isPresented: $confirmRemoveServer,
             titleVisibility: .visible
         ) {
-            if appModel.offersRemoveEverywhere {
-                Button("Remove Everywhere", role: .destructive) { confirmRemoveEverywhere = true }
-                Button("Remove from This \(deviceName)", role: .destructive) {
-                    for account in group?.accounts ?? [] {
-                        appModel.removeAccount(id: account.id)
-                    }
-                }
-            } else {
-                Button("Remove Server", role: .destructive) {
-                    for account in group?.accounts ?? [] {
-                        appModel.removeAccount(id: account.id)
-                    }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(appModel.offersRemoveEverywhere
-                 ? "Remove it from all your devices, or just this \(deviceName)?"
-                 : "Signs everyone out and removes this server.")
-        }
-        .alert("Remove from all devices?", isPresented: $confirmRemoveEverywhere) {
-            Button("Remove Everywhere", role: .destructive) {
+            Button("Remove Server", role: .destructive) {
                 for account in group?.accounts ?? [] {
-                    appModel.removeAccountEverywhere(id: account.id)
+                    appModel.removeAccount(id: account.id)
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("“\(group?.serverName ?? "This server")” will also be removed from your other devices signed in to iCloud.")
+            Text("Signs everyone out and removes this server.")
         }
     }
 }

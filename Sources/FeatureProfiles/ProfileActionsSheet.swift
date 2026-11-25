@@ -15,7 +15,6 @@ import SwiftUI
 /// two surfaces can't drift.
 public struct ProfileActionsSheet: View {
     private let profile: Profile
-    private let syncEnabled: Bool
     private let offersPlexPINReuse: Bool
     private let hasParentalPIN: Bool
     /// Whether the escalation-capable actions are withheld. Required rather than
@@ -34,7 +33,6 @@ public struct ProfileActionsSheet: View {
 
     public init(
         profile: Profile,
-        syncEnabled: Bool,
         offersPlexPINReuse: Bool = false,
         hasParentalPIN: Bool,
         restrictedActionsSealed: Bool,
@@ -51,7 +49,6 @@ public struct ProfileActionsSheet: View {
         onClose: @escaping () -> Void
     ) {
         self.profile = profile
-        self.syncEnabled = syncEnabled
         self.offersPlexPINReuse = offersPlexPINReuse
         self.hasParentalPIN = hasParentalPIN
         self.restrictedActionsSealed = restrictedActionsSealed
@@ -88,7 +85,6 @@ public struct ProfileActionsSheet: View {
             ProfileLockSetupView(
                 profile: profile,
                 offersPlexPINReuse: offersPlexPINReuse,
-                syncEnabled: syncEnabled,
                 validatePlexPIN: validatePlexPIN,
                 onComplete: { lock in
                     onSetLock(lock)
@@ -119,8 +115,7 @@ public struct ProfileActionsSheet: View {
                     header
                     ProfileActionsList(
                         profile: profile,
-                        syncEnabled: syncEnabled,
-                        offersPlexPINReuse: offersPlexPINReuse,
+                                offersPlexPINReuse: offersPlexPINReuse,
                         hasParentalPIN: hasParentalPIN,
                 restrictedActionsSealed: restrictedActionsSealed,
                         onEditAppearance: onEditAppearance,

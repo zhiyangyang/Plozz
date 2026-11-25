@@ -210,8 +210,7 @@ struct PlozziOSProfileOnboardingCover: View {
                 if let profile = appModel.profileBeingOnboarded {
                     ProfileLockOfferView(
                         profile: profile,
-                        syncEnabled: SyncSetupFeatureFlag().isEnabled,
-                        validatePlexPIN: {
+                                                validatePlexPIN: {
                             await appModel.plexHomeUsers.validatePlexPIN(
                                 $0,
                                 forProfile: profile.id

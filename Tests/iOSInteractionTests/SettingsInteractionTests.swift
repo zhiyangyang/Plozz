@@ -1243,7 +1243,7 @@ final class SettingsInteractionTests: XCTestCase {
             XCTAssertTrue(app.buttons["English"].waitForExistence(timeout: 3), app.debugDescription)
             app.buttons["English"].tap()
             XCTAssertTrue(categoryButton("Language").isHittable)
-            for title in ["Sources", "Profiles", "Parental PIN", "Seerr", "iCloud Sync", "Metadata Providers", "Downloads"] {
+            for title in ["Sources", "Profiles", "Parental PIN", "Metadata Providers", "Downloads"] {
                 let row = button(title)
                 reveal(row, settingsMenu: true)
                 XCTAssertTrue(row.isHittable)
@@ -1583,97 +1583,6 @@ final class SettingsInteractionTests: XCTestCase {
         library.tap()
         XCTAssertTrue(app.navigationBars["Libraries"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.staticTexts["Enter the Parental PIN"].exists)
-    }
-
-    func testSyncBreakdownAndReviewPreview() {
-        openSettingsPage("iCloud Sync", verifyTitleLayout: false, arguments: ["--sync-breakdown-fixture"])
-        let troubleshooting = button("Troubleshooting")
-        reveal(troubleshooting)
-        troubleshooting.tap()
-        XCTAssertTrue(app.navigationBars["Troubleshooting"].waitForExistence(timeout: 5))
-        let settings = app.descendants(matching: .any)["cloud-sync-category-settings"].firstMatch
-        XCTAssertTrue(settings.waitForExistence(timeout: 5))
-        capture("sync-data-breakdown")
-        let erase = app.buttons["cloud-sync-erase"]
-        reveal(erase)
-        capture("sync-troubleshooting-recovery")
-        erase.tap()
-        let proceed = app.buttons["cloud-sync-erase-continue"]
-        XCTAssertTrue(proceed.waitForExistence(timeout: 5))
-        XCTAssertEqual(proceed.label, "Erase Sync Data…")
-        XCTAssertTrue(app.staticTexts["From iCloud"].exists)
-        XCTAssertTrue(app.staticTexts["From this device"].exists)
-        XCTAssertTrue(app.staticTexts["Not affected"].exists)
-        XCTAssertFalse(app.staticTexts["Start over with iCloud Sync"].exists)
-        capture("sync-erasure-review")
-        revealSyncErasureControl(proceed)
-        capture("sync-erasure-review-actions")
-    }
-
-    func testSyncTroubleshootingIsPublicWithSyncOffAndBothCancellationsAreSafe() {
-        openSettingsPage("iCloud Sync", verifyTitleLayout: false)
-        XCTAssertFalse(app.buttons["Turn Off Developer Mode"].exists)
-        let troubleshooting = button("Troubleshooting")
-        reveal(troubleshooting)
-        troubleshooting.tap()
-        XCTAssertTrue(app.navigationBars["Troubleshooting"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Refresh Breakdown"].exists)
-        XCTAssertFalse(app.buttons["cloud-sync-reload"].isEnabled)
-        let erase = app.buttons["cloud-sync-erase"]
-        reveal(erase)
-        erase.tap()
-        XCTAssertTrue(app.buttons["cloud-sync-erase-continue"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.alerts.firstMatch.exists)
-        let cancel = app.buttons["cloud-sync-erase-cancel"]
-        revealSyncErasureControl(cancel)
-        cancel.tap()
-        XCTAssertTrue(app.buttons["cloud-sync-erase-continue"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Troubleshooting"].waitForExistence(timeout: 5))
-        reveal(erase)
-        erase.tap()
-        let proceed = app.buttons["cloud-sync-erase-continue"]
-        revealSyncErasureControl(proceed)
-        proceed.tap()
-        let alert = app.alerts["Erase sync data?"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        capture("sync-erasure-final-confirmation")
-        alert.buttons["Cancel"].tap()
-        XCTAssertTrue(proceed.isEnabled)
-        cancel.tap()
-        XCTAssertTrue(proceed.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Troubleshooting"].waitForExistence(timeout: 5))
-    }
-
-    func testSyncErasureFinalConfirmationInvokesOnlyOnce() {
-        app.launchArguments = ["--sync-erasure-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        app.buttons["Review Erasure"].tap()
-        let proceed = app.buttons["cloud-sync-erase-continue"]
-        revealSyncErasureControl(proceed)
-        proceed.tap()
-        let alert = app.alerts["Erase sync data?"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        alert.buttons["Cancel"].tap()
-        proceed.tap()
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        alert.buttons["cloud-sync-erase-final"].firstMatch.tap()
-        XCTAssertTrue(proceed.waitForExistence(timeout: 5))
-        XCTAssertFalse(proceed.isEnabled)
-        app.buttons["cloud-sync-erase-cancel"].tap()
-        XCTAssertTrue(proceed.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["fixture-erasure-count"].label, "Erasures: 1")
-    }
-
-    func testSyncErasureCannotStartWithoutAuthorization() {
-        app.launchArguments = ["--sync-erasure-fixture", "--sync-erasure-denied", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        app.buttons["Review Erasure"].tap()
-        let proceed = app.buttons["cloud-sync-erase-continue"]
-        revealSyncErasureControl(proceed)
-        XCTAssertFalse(proceed.isEnabled)
-        app.buttons["cloud-sync-erase-cancel"].tap()
-        XCTAssertTrue(proceed.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["fixture-erasure-count"].label, "Erasures: 0")
     }
 
     func testMetadataArtworkLinkReturnsWithoutStackingDuplicatePages() {
@@ -2073,7 +1982,7 @@ final class SettingsInteractionTests: XCTestCase {
         for title in [
             "Playback", "Subtitles", "Live TV", "Libraries", "Appearance", "Screens & Navigation",
             "Trackers", "Customize Home", "App navigation", "Detail Page", "Theme", "Spoiler Protection", "Circadian Mode",
-            "Profiles", "Sources", "Downloads", "Seerr", "Metadata Providers", "Help & Diagnostics", "Attributions"
+            "Profiles", "Sources", "Downloads", "Metadata Providers", "Help & Diagnostics", "Attributions"
         ] {
             openSettingsPage(title)
             app.terminate()
@@ -3051,14 +2960,6 @@ final class SettingsInteractionTests: XCTestCase {
         row.tap()
         XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 3), app.debugDescription)
         if verifyTitleLayout { assertInlineTitle(title, centered: title != "Customize Home") }
-    }
-
-    private func revealSyncErasureControl(_ element: XCUIElement) {
-        for _ in 0..<8 {
-            if element.isHittable { return }
-            app.scrollViews["cloud-sync-erase-review"].swipeUp()
-        }
-        XCTAssertTrue(element.isHittable, app.debugDescription)
     }
 
     private func assertInlineTitle(_ title: String, centered: Bool = true) {

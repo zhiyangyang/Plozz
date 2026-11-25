@@ -23,7 +23,6 @@ struct SearchKeyboardInteractionFixture: View {
     }
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         let defaults = UserDefaults(suiteName: "SearchKeyboardFixture.\(UUID().uuidString)")!
         let model = PlozziOSAppModel(accountStore: accounts, profileStore: ProfileStore(defaults: defaults))

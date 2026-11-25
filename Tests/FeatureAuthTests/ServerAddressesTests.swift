@@ -86,17 +86,6 @@ final class ServerAddressesTests: XCTestCase {
                        "http://192.168.1.50:8090")
     }
 
-    func testOldMetadataDecodesAndApprovedAliasesStayOutOfSync() throws {
-        let original = account()
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(original.server)) as? [String: Any])
-        object.removeValue(forKey: "alternateConnectionURLs")
-        let restored = try JSONDecoder().decode(MediaServer.self, from: JSONSerialization.data(withJSONObject: object))
-        XCTAssertNil(restored.alternateConnectionURLs)
-        var updated = original
-        updated.server.alternateConnectionURLs = [URL(string: "http://192.168.1.50:8096")!]
-        XCTAssertEqual(SyncedAccountDescriptor(account: updated), SyncedAccountDescriptor(account: original))
-    }
-
     func testCancelledRevokedOrRemovedAccountCannotSaveAfterVerificationReturns() async throws {
         for change in ["cancel", "permission", "remove"] {
             let saved = account()

@@ -290,7 +290,7 @@ enum OfflinePopulatedReview {
         let shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
             onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-            deferredPairingURL: .constant(nil), systemColorScheme: .dark
+            systemColorScheme: .dark
         )
         let home = shell.sharedHomeViewModel
         await home.load()
@@ -391,7 +391,7 @@ enum OfflinePopulatedReview {
         let reentryHome = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
             onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-            deferredPairingURL: .constant(nil), systemColorScheme: .dark
+            systemColorScheme: .dark
         ).sharedHomeViewModel
         await reentryHome.load()
         check("watchlist survives profile and mode transitions",

@@ -196,8 +196,7 @@ final class ProfileActionsPresentationTests: XCTestCase {
         error: LocalizedStringResource? = nil
     ) -> some View {
         let actions = ProfileActionsList(
-            profile: profile ?? self.profile, syncEnabled: false,
-            offersPlexPINReuse: true, hasParentalPIN: true,
+            profile: profile ?? self.profile,             offersPlexPINReuse: true, hasParentalPIN: true,
             restrictedActionsSealed: restricted, groupsActions: true,
             automaticSignIn: AutomaticSignInSettings(isEnabled: .constant(false), error: error),
             onEditAppearance: {}, onSetLock: { _ in }, onSetKids: { _ in },

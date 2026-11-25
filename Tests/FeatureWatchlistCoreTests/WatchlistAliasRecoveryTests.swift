@@ -72,29 +72,6 @@ final class WatchlistAliasRecoveryTests: XCTestCase {
         }
     }
 
-    func testReplayedNativeImportStaysEvidenceAndPreservesSyncRoundTrip() throws {
-        let model = WatchlistModel()
-        try model.activate(profileID: "p")
-        try model.retireNativeImports(profileID: "p")
-        let imported = try intent(origin: .nativeImport, rank: 0)
-        let key = WatchlistMediaStateRecordKey(profileID: "p", aliasID: imported.aliasID)
-        let bytes = try XCTUnwrap(CanonicalJSON.encode(WatchlistIntentSyncDTO(intent: imported)))
-        _ = try model.applyRemoteSyncRecords(profileID: "p", changes: [key: bytes])
-        XCTAssertEqual(try model.captureSyncRecords(profileID: "p")[key.recordName], bytes)
-        XCTAssertTrue(model.union(
-            profileID: "p", nativeView: .empty, aliasSnapshot: .empty, enabledDestinationIDs: []
-        ).orderedEntries.isEmpty)
-        let destination = try XCTUnwrap(WatchlistDestinationID(rawValue: "silo"))
-        var native = NativeWatchlistView()
-        native.applySuccess(destinationID: destination, entries: [
-            try XCTUnwrap(NativeWatchlistEntry(aliasID: imported.aliasID, kind: .series, index: 0))
-        ])
-        XCTAssertTrue(model.union(
-            profileID: "p", nativeView: native, aliasSnapshot: .empty,
-            enabledDestinationIDs: [destination]
-        ).contains(aliasID: imported.aliasID))
-    }
-
     private func intent(origin: WatchlistIntentOrigin, rank: UInt64) throws -> WatchlistIntent {
         try XCTUnwrap(WatchlistIntent(
             aliasID: MediaAliasID(), kind: .series, desiredState: .present,

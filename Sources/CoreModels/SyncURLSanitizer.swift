@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Sync URL sanitizer (strip credentials before anything is synced)
 //
-// CloudKit records must NEVER carry a token/secret. Several URLs the app stores —
+// Persisted records must NEVER carry a token/secret. Several URLs the app stores —
 // most notably Jellyfin avatar image URLs — embed the bearer token as a query
 // parameter (`?api_key=…`) or occasionally as URL user-info (`user:pass@host`).
 // If such a URL were placed in a synced descriptor or profile record it would

@@ -51,41 +51,6 @@ final class MediaShareAccountConfigurationServiceTests: XCTestCase {
         )
     }
 
-    func testSyncedLibraryConfigurationPreservesLocalAuthorizationAndSelection() throws {
-        let store = try makeStore()
-        let service = MediaShareAccountConfigurationService(accountStore: store)
-        let prepared = try service.saveSMB(
-            host: "nas.local", port: nil, share: "Media",
-            username: "viewer", password: "local-password", displayName: "Media"
-        )
-        let original = try XCTUnwrap(store.loadAccounts().first)
-        let credential = try store.mediaShareCredential(for: original.id)
-        store.setActiveAccountIDs([])
-        var descriptor = SyncedAccountDescriptor(account: original)
-        descriptor.serverName = "Anime"
-        descriptor.mediaShareLibraryConfiguration = MediaShareLibraryConfiguration(
-            name: "Anime", contentType: .tvShows, isAnime: true
-        )
-        descriptor.candidateBaseURLs = [try XCTUnwrap(URL(string: "smb://peer-only/Other"))]
-
-        XCTAssertTrue(try store.updateMediaShareLibrary(from: descriptor))
-
-        var expected = original
-        expected.server.name = descriptor.serverName
-        expected.server.mediaShareLibraryConfiguration = descriptor.mediaShareLibraryConfiguration
-        let updated = try XCTUnwrap(store.loadAccounts().first)
-        XCTAssertEqual(updated, expected)
-        XCTAssertEqual(updated.id, prepared.account.id)
-        XCTAssertEqual(try store.mediaShareCredential(for: original.id), credential)
-        XCTAssertEqual(store.activeAccountIDs(), [])
-        XCTAssertFalse(try store.updateMediaShareLibrary(from: descriptor))
-        XCTAssertTrue(SyncedAccountDescriptor(account: updated).semanticallyEqualForSync(to: descriptor))
-
-        descriptor.id = "not-authorized-here"
-        XCTAssertFalse(try store.updateMediaShareLibrary(from: descriptor))
-        XCTAssertEqual(store.loadAccounts(), [expected])
-    }
-
     func testSaveFTPAndImplicitFTPSPersistExpectedSecurityMaterial() throws {
         let store = try makeStore()
         let service = MediaShareAccountConfigurationService(accountStore: store)

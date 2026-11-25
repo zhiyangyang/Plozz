@@ -28,16 +28,6 @@ struct ServerDetailView: View {
     /// Drives the "Remove Server" confirmation (multi-account servers only).
     @State private var confirmRemoveServer = false
 
-    /// Drives the second "remove from all devices?" confirmation for the household
-    /// tombstone, captured so its accounts + name survive the first sheet dismissing.
-    @State private var everywhereRemoval: EverywhereRemoval?
-
-    private struct EverywhereRemoval: Identifiable {
-        let id = UUID()
-        let serverName: String
-        let accounts: [Account]
-    }
-
     private struct PendingSignOut: Identifiable {
         let id: String
         let account: Account
@@ -73,8 +63,8 @@ struct ServerDetailView: View {
                             .tvOSFocusSection()
                     }
                 } else {
-                    // Safety net if the group vanishes while viewing (e.g. a remote
-                    // "Remove Everywhere" landed): offer a working way back.
+                    // Safety net if the group vanishes while viewing: offer a
+                    // working way back.
                     VStack(alignment: .leading, spacing: 16) {
                         SettingsPageHeader(SettingsCopy.sources)
                         Text("This server is no longer signed in.")
@@ -98,37 +88,13 @@ struct ServerDetailView: View {
             ),
             presenting: pendingSignOut
         ) { pending in
-            if context.offersRemoveEverywhere {
-                Button("Remove Everywhere", role: .destructive) {
-                    everywhereRemoval = EverywhereRemoval(
-                        serverName: pending.serverName, accounts: [pending.account])
-                }
-                Button("Remove from This Apple TV", role: .destructive) {
-                    context.onRemoveAccount(pending.account)
-                    if pending.isLastAccount { dismiss() }
-                }
-            } else {
-                Button(signOutPrimaryLabel(pending), role: .destructive) {
-                    context.onRemoveAccount(pending.account)
-                    if pending.isLastAccount { dismiss() }
-                }
+            Button(signOutPrimaryLabel(pending), role: .destructive) {
+                context.onRemoveAccount(pending.account)
+                if pending.isLastAccount { dismiss() }
             }
             Button("Cancel", role: .cancel) {}
         } message: { pending in
-            Text(context.offersRemoveEverywhere
-                 ? "Remove it from all your devices, or just this Apple TV?"
-                 : signOutMessage(for: pending))
-        }
-        .alert(item: $everywhereRemoval) { removal in
-            Alert(
-                title: Text("Remove from all devices?"),
-                message: Text("“\(removal.serverName)” will also be removed from your other devices signed in to iCloud."),
-                primaryButton: .destructive(Text("Remove Everywhere")) {
-                    for account in removal.accounts { context.onRemoveAccountEverywhere(account) }
-                    dismiss()   // the server is gone → return to the Servers list
-                },
-                secondaryButton: .cancel()
-            )
+            Text(signOutMessage(for: pending))
         }
     }
 
@@ -348,26 +314,13 @@ struct ServerDetailView: View {
                     .font(.callout.weight(.semibold))
             }
             .alert("Remove \(group.serverName)?", isPresented: $confirmRemoveServer) {
-                if context.offersRemoveEverywhere {
-                    Button("Remove Everywhere", role: .destructive) {
-                        everywhereRemoval = EverywhereRemoval(
-                            serverName: group.serverName, accounts: group.accounts)
-                    }
-                    Button("Remove from This Apple TV", role: .destructive) {
-                        for account in group.accounts { context.onRemoveAccount(account) }
-                        dismiss()   // server gone → back to the Servers list
-                    }
-                } else {
-                    Button("Remove Server", role: .destructive) {
-                        for account in group.accounts { context.onRemoveAccount(account) }
-                        dismiss()
-                    }
+                Button("Remove Server", role: .destructive) {
+                    for account in group.accounts { context.onRemoveAccount(account) }
+                    dismiss()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(context.offersRemoveEverywhere
-                     ? "Remove it from all your devices, or just this Apple TV?"
-                     : "This signs everyone out of \(group.serverName) on this Apple TV. Any profile will need to sign in again to use it.")
+                Text("This signs everyone out of \(group.serverName) on this Apple TV. Any profile will need to sign in again to use it.")
             }
         }
     }

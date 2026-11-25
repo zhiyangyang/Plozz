@@ -6,7 +6,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
     func testSettingsFirstEntryPrefersContentAndBackRestoresSource() throws {
         #if targetEnvironment(simulator)
         for style in ["tabBar", "rail", "sidebar"] {
-            let app = try launchSettings(style: style, syncEnabled: false)
+            let app = try launchSettings(style: style)
             defer { app.terminate() }
             let appearance = section("appearance", in: app)
             try focus(appearance, in: app)
@@ -498,7 +498,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
     }
 
     func testAutomaticVersionHelpDoesNotSelectAutomatic() throws {
-        let app = try launchSettings(style: "tabBar", syncEnabled: false)
+        let app = try launchSettings(style: "tabBar")
         defer { app.terminate() }
         try focus(section("playback", in: app), in: app)
         XCUIRemote.shared.press(.select)
@@ -555,7 +555,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
     }
 
     private func verifyGeneralSourceEntryPoints(style: String) throws {
-        let app = try launchSettings(style: style, syncEnabled: false)
+        let app = try launchSettings(style: style)
         defer { app.terminate() }
         for (route, identifier) in [
             ("servers", "sources-add-source"),
@@ -612,7 +612,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
     func testInlineSearchKeepsQueryAndReturnsToCardInPinnedNavigation() throws {
         for style in ["rail", "sidebar"] {
-            let app = try launchSettings(style: style, syncEnabled: false)
+            let app = try launchSettings(style: style)
             defer { app.terminate() }
             let search = app.textFields["settings-section-search"]
             try focus(search, in: app)
@@ -670,7 +670,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
     }
 
     func testSearchSuggestionLandsOnSubtitleSizeAndRestoresResultFocus() throws {
-        let app = try launchSettings(style: "tabBar", syncEnabled: false)
+        let app = try launchSettings(style: "tabBar")
         defer { app.terminate() }
         let search = app.textFields["settings-section-search"]
         try focus(search, in: app)
@@ -896,7 +896,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
     func testSharedTrailerPolicyKeepsThemeMusicAndIndependentHomeAutoplay() throws {
         #if targetEnvironment(simulator)
-        let app = try launchSettings(style: "tabBar", syncEnabled: false)
+        let app = try launchSettings(style: "tabBar")
         defer { app.terminate() }
         try focus(section("screensNavigation", in: app), in: app)
         XCUIRemote.shared.press(.select)
@@ -939,7 +939,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
     func testDetailSizingCannotBeSkippedBetweenBackAndBackground() throws {
         #if targetEnvironment(simulator)
-        let app = try launchSettings(style: "tabBar", syncEnabled: false)
+        let app = try launchSettings(style: "tabBar")
         defer { app.terminate() }
         try focus(section("screensNavigation", in: app), in: app)
         XCUIRemote.shared.press(.select)
@@ -1306,34 +1306,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         #endif
     }
 
-    func testDeviceSetupOpensAndReturnsToICloudSettings() throws {
-        #if targetEnvironment(simulator)
-        let app = try launchSettings()
-        defer { app.terminate() }
-        try focus(section("syncSetup", in: app), in: app)
-        XCUIRemote.shared.press(.select)
-        for attempt in 1...2 {
-            let setup = app.buttons.containing(.staticText, identifier: "Set Up Another Device").firstMatch
-            XCTAssertTrue(setup.waitForExistence(timeout: 5), app.debugDescription)
-            try focus(setup, in: app)
-            XCUIRemote.shared.press(.select)
-            let heading = app.staticTexts["Set up another device"]
-            XCTAssertTrue(heading.waitForExistence(timeout: 5), app.debugDescription)
-            let disappeared = XCTNSPredicateExpectation(
-                predicate: NSPredicate { _, _ in !heading.exists }, object: nil
-            )
-            XCTAssertEqual(XCTWaiter.wait(for: [disappeared], timeout: 2), .timedOut,
-                           "Setup must not disappear without user input.")
-            capture("device-setup-open-\(attempt)", in: app)
-            XCUIRemote.shared.press(.menu)
-            XCTAssertTrue(setup.waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(heading.exists)
-        }
-        #else
-        throw XCTSkip("Simulator-only setup presentation review.")
-        #endif
-    }
-
     func testSettingsMenusShareWholeRowFocusAndRestoreChoices() throws {
         #if targetEnvironment(simulator)
         let app = try launchSettings()
@@ -1426,7 +1398,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
         for (index, name) in [
             "subtitles", "liveTV", "myLibraries", "appearance", "screensNavigation", "integrations",
-            "servers", "profile", "parentalPIN", "seerr", "syncSetup", "metadata", "help"
+            "servers", "profile", "parentalPIN", "seerr", "metadata", "help"
         ].enumerated() {
             let target = section(name, in: app)
             XCTAssertTrue(target.exists, "Missing Settings section: \(name)")
@@ -2092,7 +2064,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
             for personal in ["appearance", "screensNavigation", "language"] {
                 XCTAssertTrue(section(personal, in: app).exists)
             }
-            for household in ["metadata", "servers", "profile", "parentalPIN", "seerr", "syncSetup"] {
+            for household in ["metadata", "servers", "profile", "parentalPIN", "seerr"] {
                 XCTAssertFalse(section(household, in: app).exists)
             }
             try focus(section("screensNavigation", in: app), in: app)
@@ -2843,7 +2815,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
     func testHeroEditorsRemainInsideTheSettingsPane() throws {
         #if targetEnvironment(simulator)
-        let app = try launchSettings(style: "tabBar", syncEnabled: false)
+        let app = try launchSettings(style: "tabBar")
         try focus(section("screensNavigation", in: app), in: app)
         XCUIRemote.shared.press(.select)
         try focus(app.buttons["settings-page-customize-home"], in: app)
@@ -3608,8 +3580,7 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
 
     private func launchSettings(
         style: String = "rail", profile: String = "Alex", kids: String = "off",
-        diagnostics: Bool = false, sources: Bool = false, settingsFromStartupPicker: Bool = false,
-        syncEnabled: Bool = true
+        diagnostics: Bool = false, sources: Bool = false, settingsFromStartupPicker: Bool = false
     ) throws -> XCUIApplication {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PLOZZ_SETTINGS_REVIEW"] == "1",
@@ -3628,7 +3599,6 @@ final class SettingsWorkspaceRemoteTests: XCTestCase {
         }
         if diagnostics { app.launchEnvironment["PLZHFOCUS"] = "1" }
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        if !syncEnabled { app.launchArguments += ["-com.plozz.syncSetup.enabled", "NO"] }
         app.launch()
         let declineDiagnostics = app.buttons.matching(NSPredicate(format: "label == %@", "Don't Share")).firstMatch
         if declineDiagnostics.waitForExistence(timeout: 2) {

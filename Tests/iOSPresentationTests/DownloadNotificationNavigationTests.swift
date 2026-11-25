@@ -427,7 +427,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
             PlozziOSTabShell(
                 appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
                 showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-                deferredPairingURL: .constant(nil), systemColorScheme: .dark
+                systemColorScheme: .dark
             )
             .environment(app)
             .environment(HeroTrailerController())

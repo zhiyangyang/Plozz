@@ -42,8 +42,7 @@ struct DiscReviewFixture: View {
         let isHome: Bool
         @State private var trailer = HeroTrailerController()
         @State private var appModel: PlozziOSAppModel = {
-            SyncSetupFeatureFlag().isEnabled = false
-            let defaults = UserDefaults(suiteName: "DiscReview.\(UUID().uuidString)")!
+                let defaults = UserDefaults(suiteName: "DiscReview.\(UUID().uuidString)")!
             let model = PlozziOSAppModel(
                 accountStore: AccountStore(secureStore: InMemorySecureStore()),
                 profileStore: ProfileStore(defaults: defaults)

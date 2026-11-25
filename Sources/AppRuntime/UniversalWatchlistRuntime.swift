@@ -263,8 +263,6 @@ public protocol UniversalWatchlistHost: AnyObject {
     var universalWatchlistShouldResumeAuthentication: Bool { get set }
     var universalWatchlistIdentityUpdateTask: Task<Void, Never>? { get set }
 
-    func scheduleCloudPublish()
-
     /// Live account-level plex.tv tokens for Discover, read at the moment of use
     /// by the watchlist destinations.
     var plexDiscoverTokens: PlexDiscoverTokenBox { get }
@@ -422,7 +420,6 @@ public extension UniversalWatchlistHost {
             )
             if retired > 0 {
                 PlozzLog.app.info("Watchlist retired imported intents count=\(retired)")
-                scheduleCloudPublish()
             }
             try await mediaAliasLedger.activate(profileID: profileID)
             try await seedLegacyUniversalWatchlist()
@@ -1031,7 +1028,6 @@ public extension UniversalWatchlistHost {
                 )
             }
             announceUniversalWatchlistDidChange()
-            scheduleCloudPublish()
             return true
         } catch {
             PlozzLog.app.error("Watchlist local mutation failed")
@@ -1101,8 +1097,7 @@ public extension UniversalWatchlistHost {
                     profileID: profileID,
                     aliasIDs: legacyAliasIDs
                 ) > 0 {
-                    scheduleCloudPublish()
-                }
+                    }
                 try universalWatchlist
                     .markLegacyPresentationArtworkScrubbed(
                         profileID: profileID
@@ -1138,7 +1133,6 @@ public extension UniversalWatchlistHost {
             profileID: profileID,
             aliasIDs: aliasesToScrub
         ) > 0 {
-            scheduleCloudPublish()
         }
         try universalWatchlist.seedLegacyIfNeeded(
             profileID: profileID,
@@ -1474,8 +1468,7 @@ public extension UniversalWatchlistHost {
                             "Watchlist native re-add acknowledgement failed"
                         )
                     }
-                    scheduleCloudPublish()
-                } catch {
+                    } catch {
                     let latest = universalWatchlist.activeSnapshot
                         .intentsByAliasID[aliasID]
                     if latest?.changedAt == supersededIntent?.changedAt,
@@ -1526,9 +1519,6 @@ public extension UniversalWatchlistHost {
                     presentation: currentIntent.presentation
                 )
                 confirmedRemovalCount += 1
-                // Persisted intent must reach peers even if a newer refresh
-                // supersedes this one during the fan-out actor hops below.
-                scheduleCloudPublish()
             } catch {
                 PlozzLog.app.error(
                     "Watchlist confirmed native removal failed to persist"
@@ -1809,7 +1799,6 @@ public extension UniversalWatchlistHost {
                     profileID: profileID, aliasSnapshot: mediaAliasLedger.activeSnapshot
                 )
                 HandoffDiagnostics.emit("watchlist legacy identities restored count=\(restored)")
-                scheduleCloudPublish()
             }
         } catch {
             PlozzLog.app.error("Unable to restore missing legacy watchlist identities")

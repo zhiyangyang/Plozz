@@ -252,7 +252,7 @@ private struct DialogPresentationFixture: View {
             .plozzSheet(item: $probe.profile, onDismiss: { probe.dismissals += 1 }) { _ in
                 ProfileActionsSheet(
                     profile: .init(id: "dialog-fixture", name: "Sample profile", avatarSymbol: "person.fill"),
-                    syncEnabled: false, hasParentalPIN: false, restrictedActionsSealed: false,
+                    hasParentalPIN: false, restrictedActionsSealed: false,
                     onEditAppearance: {}, onSetLock: { _ in }, onSetKids: { _ in },
                     onDelete: {}, onClose: { probe.profile = nil }
                 )

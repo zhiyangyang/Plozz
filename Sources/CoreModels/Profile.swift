@@ -27,9 +27,6 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     public var colorIndex: Int
     /// When the profile was created — used for stable ordering.
     public var createdAt: Date
-    /// Local recovery marker when a cloud deletion arrives before its replacement
-    /// profile. Retained across restart, but excluded from ProfileSyncDTO.
-    var pendingSyncedDeletion: Bool? = nil
     /// Optional `Account.id` this profile is *backed by* (e.g. a signed-in Plex
     /// or Jellyfin account). Seeds the name/avatar and narrows the active set;
     /// `nil` for a plain app-owned profile.
@@ -97,22 +94,17 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     /// the profile, which is the right default and the only behaviour that
     /// existed before.
     ///
-    /// Holds a salted verifier, never the PIN — see `ProfileLock`. It rides the
-    /// synced profile record deliberately: a lock that only exists on the Apple
-    /// TV is not a lock, because the same profile is one tap away on the iPhone.
-    /// The flip side is that with iCloud Sync off it *is* device-only, which the
-    /// setup screen says out loud.
+    /// Holds a salted verifier, never the PIN — see `ProfileLock`. The lock is
+    /// stored with this device's profile record and never leaves the device.
     public var lock: ProfileLock?
     /// Field-level conflict revision for `lock`. See `ProfileLockRevision`.
     public var lockRevision: ProfileLockRevision?
 
     /// The household's Parental PIN, carried on the household's FIRST profile.
     ///
-    /// It rides a profile record because there is no household-level sync record,
-    /// and adding a `SyncRecordKind` would be unsafe: an older peer can't parse an
-    /// unknown kind, drops it from its captured set, and capture is authoritative
-    /// — so the first old device to sync would delete the household's PIN.
-    /// Deleting that anchor moves the revisioned PIN to the first survivor.
+    /// It lives with a profile record rather than a separate household file so a
+    /// single store owns the roster and its protection. Deleting that anchor
+    /// moves the revisioned PIN to the first survivor.
     ///
     /// Read it through ``ProfilesModel/parentalPIN``; nothing should reach for
     /// this field directly.
@@ -291,7 +283,7 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     /// in has nothing to import from, so it can't leak and mustn't gate; the
     /// question stays on the record and starts gating the moment it arrives.
     /// Callers must also narrow to providers that support identity selection:
-    /// sync records questions for unknown accounts that may arrive as non-Plex.
+    /// the stored roster may contain unknown accounts that arrive as non-Plex.
     public func awaitsIdentity(amongAccounts accountIDs: some Collection<String>) -> Bool {
         let pending = pendingIdentityAccountIDs
         guard !pending.isEmpty else { return false }

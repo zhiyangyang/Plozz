@@ -92,18 +92,14 @@ public final class AccountsProvidersModel {
     /// fires at the end, after the new set is known) because an invalidation must
     /// happen even if the recompute below returns early.
     public var onAccountsInvalidated: @MainActor () -> Void = {}
-    @ObservationIgnored private let removedAccountIDs: () -> Set<String>
-
     public init(
         accountStore: AccountPersisting,
         registry: ProviderRegistry,
-        profilesModel: ProfilesModel,
-        removedAccountIDs: @escaping () -> Set<String> = { RemovedAccountsStore().removedIDs }
+        profilesModel: ProfilesModel
     ) {
         self.accountStore = accountStore
         self.registry = registry
         self.profilesModel = profilesModel
-        self.removedAccountIDs = removedAccountIDs
         let token = NotificationCenter.default.addObserver(
             forName: LiveTVSourceDiagnostics.snapshotRequested, object: nil, queue: .main
         ) { [weak self] _ in
@@ -524,14 +520,7 @@ public final class AccountsProvidersModel {
     public func reloadAccounts(updatingServerAddressesFor addressAccountID: String? = nil) {
         profilesModel.retryUnconfirmedAccountSelections()
         liveTVAuthorizationCache = [:]
-        let removed = removedAccountIDs()
-        for account in accountStore.loadAccounts() where removed.contains(account.id) {
-            do { try accountStore.remove(id: account.id) }
-            catch { PlozzLog.auth.error("Household account removal is pending local credential storage recovery") }
-        }
-        // Receipt of a household revocation denies use even if Keychain deletion
-        // must be retried on a later reload.
-        let updated = accountStore.loadAccounts().filter { !removed.contains($0.id) }
+        let updated = accountStore.loadAccounts()
         if let addressAccountID,
            let account = updated.first(where: { $0.id == addressAccountID }),
            accounts.map({ old in
@@ -645,22 +634,6 @@ public final class AccountsProvidersModel {
                 )
             }
         }
-    }
-
-    public func applySyncedMediaShareLibraries(_ descriptors: [SyncedAccountDescriptor]) {
-        let localShareIDs = Set(accounts.filter { $0.server.provider == .mediaShare }.map(\.id))
-        var updated = false
-        for descriptor in descriptors
-        where descriptor.provider == .mediaShare && localShareIDs.contains(descriptor.id) {
-            do {
-                if try accountStore.updateMediaShareLibrary(from: descriptor) {
-                    updated = true
-                }
-            } catch {
-                PlozzLog.sync.error("Could not apply synced share library \(descriptor.id): \(error)")
-            }
-        }
-        if updated { reloadAccounts() }
     }
 
     /// Retries credentials whose launch-time Keychain read failed, without

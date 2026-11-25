@@ -95,7 +95,6 @@ struct HomeHeroInteractionFixture: View {
     }
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         if ProcessInfo.processInfo.arguments.contains("--hero-native-chrome") {
             let size = CGSize(width: 900, height: 1200)
             let image = UIGraphicsImageRenderer(size: size).image { context in

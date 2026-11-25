@@ -88,7 +88,7 @@ final class OfflineModePresentationTests: XCTestCase {
         let shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
             onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
-            deferredPairingURL: .constant(nil), systemColorScheme: .dark
+            systemColorScheme: .dark
         )
         let online = shell.sharedHomeViewModel
         await app.setOfflineMode(true)

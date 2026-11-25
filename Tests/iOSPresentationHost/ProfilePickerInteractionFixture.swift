@@ -13,8 +13,6 @@ struct ProfilePickerInteractionFixture: View {
     private let arguments = ProcessInfo.processInfo.arguments
 
     init() {
-        let sync = SyncSetupFeatureFlag()
-        sync.isEnabled = false
         let model = PlozziOSAppModel()
         let names = ["Alex", "Sam", "Jamie"]
         profiles = names.enumerated().map { index, name in
@@ -69,7 +67,6 @@ struct ProfileSelectionInteractionFixture: View {
     }
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         defaults = UserDefaults(suiteName: "ProfileSelectionFixture.\(UUID())")!
         let store = ProfileStore(defaults: defaults)
         let profiles = ProfilesModel(store: store)

@@ -14,7 +14,6 @@ struct PlexUserChooserInteractionFixture: View {
     private static let usesProfilePicker = ProcessInfo.processInfo.arguments.contains("--pending-profile-chooser")
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         let defaults = UserDefaults(suiteName: "PlexUserChooserFixture.\(UUID())")!
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         let account = Account(

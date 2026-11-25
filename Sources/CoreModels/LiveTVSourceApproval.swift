@@ -289,12 +289,7 @@ public final class LiveTVSourceApprovalStore: @unchecked Sendable {
 /// Install at the source-store composition boundary so even editing an address
 /// away and back, deleting/reusing an ID, or a stale settings scene cannot revive
 /// an earlier grant. Failed saves may revoke a grant, but can never broaden it.
-public protocol LiveTVPortableSourcesStoring: LiveTVSourcesStoring {
-    func loadSyncConfiguration() throws -> LiveTVSourcesConfiguration
-    func applySyncedConfiguration(_ configuration: LiveTVSourcesConfiguration) throws
-}
-
-public final class LiveTVApprovalAwareSourcesStore: LiveTVPortableSourcesStoring, @unchecked Sendable {
+public final class LiveTVApprovalAwareSourcesStore: LiveTVSourcesStoring, @unchecked Sendable {
     private let underlying: any LiveTVSourcesStoring
     private let approvals: LiveTVSourceApprovalStore
     private let suppression: LiveTVServerEnrollmentSuppressionStore
@@ -317,26 +312,6 @@ public final class LiveTVApprovalAwareSourcesStore: LiveTVPortableSourcesStoring
             configuration.servers[index].isEnabled = false
         }
         return configuration
-    }
-
-    public func loadSyncConfiguration() throws -> LiveTVSourcesConfiguration {
-        try underlying.load()
-    }
-
-    /// Remote enablement never clears an independent removal marker. Its explicit
-    /// server-enrollment record does that; this preserves either delivery order.
-    public func applySyncedConfiguration(_ configuration: LiveTVSourcesConfiguration) throws {
-        Self.lock.lock()
-        defer { Self.lock.unlock() }
-        LiveTVSourceDiagnostics.shared.configuration(
-            configuration, namespace: approvals.namespace, event: .syncMutation
-        )
-        try configuration.validate()
-        let previous = try underlying.load()
-        try approvals.invalidateChangedSources(previous: previous, updated: configuration)
-        try suppression.prepareChange(previous: previous, updated: configuration, fromSync: true)
-        try underlying.save(configuration)
-        NotificationCenter.default.post(name: .plozzLiveTVPortableStateDidChange, object: approvals.profileID)
     }
 
     public func save(_ configuration: LiveTVSourcesConfiguration) throws {

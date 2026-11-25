@@ -79,7 +79,6 @@ struct WatchlistFeedbackFixture: View {
     private let item = MediaItem(id: "haptic-fixture", title: "Watchlist feedback", kind: .movie)
 
     init() {
-        SyncSetupFeatureFlag().isEnabled = false
         _appModel = State(initialValue: PlozziOSAppModel())
     }
 

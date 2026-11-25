@@ -16,7 +16,6 @@ import SwiftUI
 struct ProfileLockSetupPage: View {
     let context: SettingsContext
     let profileID: String
-    let syncEnabled: Bool
 
     @SettingsPageDismiss private var dismiss
 
@@ -30,7 +29,6 @@ struct ProfileLockSetupPage: View {
                 ProfileLockSetupView(
                     profile: profile,
                     offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
-                    syncEnabled: syncEnabled,
                     validatePlexPIN: { await context.validatePlexPIN($0, profileID) },
                     onComplete: { lock in
                         context.onSetProfileLock(profileID, lock)

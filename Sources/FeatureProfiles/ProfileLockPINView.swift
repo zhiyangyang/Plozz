@@ -26,7 +26,6 @@ import SwiftUI
 public struct ProfileLockPINView: View {
     private let profile: Profile
     private let errorMessage: LocalizedStringResource?
-    private let isSyncEnabled: Bool
     private let sequenceStep: PINSequenceStep?
     private let isSubmitting: Bool
     private let onSubmit: (String) async -> Void
@@ -34,14 +33,9 @@ public struct ProfileLockPINView: View {
     @Environment(\.pinProfileTransition) private var profileTransition
     @State private var submission: Task<Void, Never>?
 
-    /// - Parameter isSyncEnabled: whether these settings currently reach the
-    ///   user's other devices. Drives the caveat: with Sync off the lock only
-    ///   exists here, and the same profile is unlocked everywhere else. Passed in
-    ///   rather than read here so this stays a view over its inputs.
     public init(
         profile: Profile,
         errorMessage: LocalizedStringResource?,
-        isSyncEnabled: Bool,
         sequenceStep: PINSequenceStep? = nil,
         isSubmitting: Bool = false,
         onSubmit: @escaping (String) async -> Void,
@@ -49,7 +43,6 @@ public struct ProfileLockPINView: View {
     ) {
         self.profile = profile
         self.errorMessage = errorMessage
-        self.isSyncEnabled = isSyncEnabled
         self.sequenceStep = sequenceStep
         self.isSubmitting = isSubmitting
         self.onSubmit = onSubmit
@@ -63,7 +56,7 @@ public struct ProfileLockPINView: View {
             showsLock: true,
             errorMessage: errorMessage,
             isSubmitting: isSubmitting || submission != nil,
-            footnote: isSyncEnabled ? nil : ProfileLockCopy.lockIsDeviceOnly,
+            footnote: nil,
             sequenceStep: sequenceStep,
             onSubmit: { pin in
                 guard submission == nil, !isSubmitting else { return }

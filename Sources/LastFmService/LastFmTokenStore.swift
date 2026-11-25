@@ -20,14 +20,14 @@ public protocol LastFmTokenStoring: Sendable {
 /// Keychain-backed token store for LastFm, on the shared synced box so this
 /// sign-in reaches the account's other devices.
 public final class KeychainLastFmTokenStore: LastFmTokenStoring, @unchecked Sendable {
-    private let box: SyncedTokenBox<LastFmTokens>
+    private let box: TrackerTokenBox<LastFmTokens>
 
     public init(
         service: String = "com.plozz.app.tokens",
         account: String = "lastfm.session",
         namespace: String? = nil
     ) {
-        box = SyncedTokenBox(
+        box = TrackerTokenBox(
             service: service,
             account: account,
             namespace: namespace

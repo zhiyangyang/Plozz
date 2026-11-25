@@ -29,8 +29,6 @@ public protocol AccountPersisting: Sendable {
     func remove(id: String) throws
     func clearAll() throws
     func recoverCredentialMutations() throws
-    @discardableResult
-    func updateMediaShareLibrary(from descriptor: SyncedAccountDescriptor) throws -> Bool
     func updateServerAddresses(expected: Account, alternatives: [URL]) throws
     func updateServerMetadata(expected: Account, server: MediaServer) throws
 }
@@ -54,10 +52,6 @@ public extension AccountPersisting {
     }
     @discardableResult
     func retryUnconfirmedCredentials() -> Bool { false }
-    @discardableResult
-    func updateMediaShareLibrary(from descriptor: SyncedAccountDescriptor) throws -> Bool {
-        throw AccountStoreError.metadataUpdatesUnavailable
-    }
 }
 
 public enum AccountStoreError: Error, Equatable, Sendable {
@@ -603,31 +597,6 @@ public final class AccountStore: AccountPersisting, RotatingCredentialStoring, @
             credential: credential,
             generatedPrivateKey: generatedPrivateKey
         )
-    }
-
-    /// Applies only share presentation/classification metadata. Never imports a
-    /// peer's endpoint, identity, authorization, or active-account selection.
-    @discardableResult
-    public func updateMediaShareLibrary(from descriptor: SyncedAccountDescriptor) throws -> Bool {
-        guard descriptor.provider == .mediaShare else { return false }
-        Self.processMutationLock.lock()
-        defer { Self.processMutationLock.unlock() }
-        lock.lock()
-        defer { lock.unlock() }
-        var accounts = try persistedAccountsLockedThrowing()
-        guard let index = accounts.firstIndex(where: {
-            $0.id == descriptor.id
-                && $0.server.provider == .mediaShare
-                && $0.server.id == descriptor.serverID
-        }) else { return false }
-        guard accounts[index].server.name != descriptor.serverName
-            || accounts[index].server.mediaShareLibraryConfiguration != descriptor.mediaShareLibraryConfiguration
-        else { return false }
-        accounts[index].server.name = descriptor.serverName
-        accounts[index].server.mediaShareLibraryConfiguration = descriptor.mediaShareLibraryConfiguration
-        try saveAccountsLocked(accounts)
-        invalidateCredentialCacheAfterMutationLocked()
-        return true
     }
 
     public func remove(id: String) throws {

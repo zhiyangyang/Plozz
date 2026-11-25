@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Evidence, not intent. It records what a server said, and nothing about what
 /// the viewer wants — which is why it lives here rather than in the durable
-/// ledger, and why nothing in this file is ever published to CloudKit.
+/// ledger, and why nothing in this file is ever published off-device.
 public struct NativeWatchlistEntry: Codable, Hashable, Sendable {
     public let aliasID: MediaAliasID
     public let kind: MediaItemKind

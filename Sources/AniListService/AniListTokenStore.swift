@@ -18,14 +18,14 @@ public protocol AniListTokenStoring: Sendable {
 /// Keychain-backed token store for AniList, on the shared synced box so this
 /// sign-in reaches the account's other devices.
 public final class KeychainAniListTokenStore: AniListTokenStoring, @unchecked Sendable {
-    private let box: SyncedTokenBox<AniListTokens>
+    private let box: TrackerTokenBox<AniListTokens>
 
     public init(
         service: String = "com.plozz.app.tokens",
         account: String = "anilist.oauth",
         namespace: String? = nil
     ) {
-        box = SyncedTokenBox(
+        box = TrackerTokenBox(
             service: service,
             account: account,
             namespace: namespace

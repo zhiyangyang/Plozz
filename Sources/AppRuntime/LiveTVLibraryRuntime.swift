@@ -173,18 +173,6 @@ public final class LiveTVLibraryRuntime {
         }
     }
 
-    public func applyPortableChanges() {
-        do {
-            if try definitionsStore.load() != service.definitions {
-                retry()
-            }
-        } catch {
-            acceptedAuthorization = nil
-            loadIssue = .storageFailed
-            PlozzLog.app.error("Live TV shared library definitions could not be read")
-        }
-    }
-
     public func prepareForEditing() async throws {
         guard authorizationID != nil, service.isLoaded else {
             throw loadIssue ?? LibraryChannelError.authorizationChanged

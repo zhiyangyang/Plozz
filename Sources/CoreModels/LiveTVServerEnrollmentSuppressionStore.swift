@@ -1,5 +1,9 @@
 import Foundation
 
+private enum LiveTVPortableStateError: Error, Equatable, Sendable {
+    case invalidRecord, unsupportedVersion, tooLarge
+}
+
 /// Explicit per-profile discovery decisions. A removed source must not return
 /// merely because its still-signed-in server reports Live TV again.
 public final class LiveTVServerEnrollmentSuppressionStore: @unchecked Sendable {

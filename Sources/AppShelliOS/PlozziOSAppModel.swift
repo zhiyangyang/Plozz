@@ -12,8 +12,6 @@ import FeatureHomeCore
 import FeatureLiveTVCore
 import FeatureProfiles
 import FeatureSettings
-import FeatureSyncSetup
-import FeatureSyncCloud
 import FeatureWatchlistCore
 import Foundation
 import MALService
@@ -238,220 +236,6 @@ final class PlozziOSAppModel {
     let transientStatusPresenter = TransientStatusPresenter()
     let universalWatchlist: WatchlistModel
     let runtimeFeatureFlags: RuntimeFeatureFlags
-    /// Cross-device Sync & Setup (feature-flagged; OFF by default).
-    let syncSetup: SyncSetupService
-
-    /// CloudKit "Stage 1" auto-sync of the NON-SECRET household config across this
-    /// Apple ID's devices, multiplexed with the durable media identity/state channel
-    /// onto the SAME `CKSyncEngine` (Apple permits exactly one active engine per
-    /// private database — see `CloudConfigSyncService`'s multiplexing doc comment).
-    /// Lazily built so its config<->apply closures can capture `self`. Gated on
-    /// `SyncSetupFeatureFlag`; a no-op until enabled. See
-    /// `PlozziOSAppModel+CloudSync`.
-    @ObservationIgnored
-    private(set) lazy var cloudSync: CloudConfigSyncService? = Self.makeCloudSync(for: self)
-
-    #if DEBUG
-    /// Replaces only the remote request in hosted tests; local erasure and the
-    /// profile/parental authorization checks still execute in the real entry point.
-    @ObservationIgnored
-    var cloudServerErasureForTesting: (@MainActor @Sendable () async -> CloudSyncRecoveryResult)?
-    #endif
-
-    @ObservationIgnored
-    private(set) lazy var liveTVPortableSync: LiveTVPortableSyncBridge? =
-        Self.makeLiveTVPortableSync(profiles: profiles)
-    @ObservationIgnored
-    var liveTVPortableSyncLifecycle: LiveTVPortableSyncLifecycle?
-
-    /// Debounces bursts of local config edits into a single cloud publish.
-    @ObservationIgnored
-    var cloudPublishTask: Task<Void, Never>?
-
-    @ObservationIgnored
-    lazy var portableCredentialPublisher = Self.makePortableCredentialPublisher()
-
-    @ObservationIgnored
-    lazy var providerCredentialSync = ProviderCredentialSync(
-        accounts: accountStore,
-        enabled: { SyncSetupFeatureFlag().allowsAutomaticSync && !OfflineMode.shared.isEnabled },
-        canRestore: { [weak self] in self?.managementRequiresParentalPIN == false },
-        didRestore: { [weak self] in
-            guard let self else { return }
-            reloadAccountsAndCrashContext()
-            clearFirstRunStepIfHouseholdSetUp()
-            refreshPendingSyncedServers()
-        },
-        onProgress: { [weak self] in self?.initialSetupRestoration.recordProgress() })
-
-    /// A same-Apple-ID device is asking to be set up; drives a one-tap source-side
-    /// confirmation before any credential is pushed (nil = no pending offer).
-    var pendingSyncSetupOffer: SyncPairingRendezvous?
-
-    /// Servers synced from other devices that this device isn't signed into yet — shown
-    /// so the user can sign in / pair to use them here (parity with tvOS).
-    var pendingSyncedServers: [SyncedAccountDescriptor] = []
-
-    /// A newly-synced server from another device, queued for a one-time "set it up
-    /// here?" prompt (nil = nothing to prompt). Nudged only once per server; drives the
-    /// root alert. Parity with tvOS `cloudSyncUI.pendingServerPrompt`.
-    var pendingSyncedServerPrompt: SyncedAccountDescriptor?
-
-    /// Offers the user declined this session, so they aren't re-prompted.
-    @ObservationIgnored
-    var dismissedSyncSetupOfferKeys: Set<String> = []
-
-    /// Observable CloudKit sync status for the Sync & Setup page.
-    let cloudSyncStatus = CloudSyncStatus()
-    let initialSetupRestoration = InitialSetupRestoration()
-
-    /// Persist a setup received over pairing: create accounts from the descriptors,
-    /// store their transferred tokens in the Keychain, and refresh providers so the
-    /// device is immediately signed in (no native sign-in needed).
-    ///
-    /// - Parameter restrictToAccountID: when set (a per-server "set up with other
-    ///   device" request), ONLY that account is applied and no profiles/settings are
-    ///   imported — even if the source sent the whole household (e.g. an older source,
-    ///   or a manual QR/code pairing that couldn't carry the request). This makes the
-    ///   receiver the source of truth for its own intent, so a single-server request
-    ///   can never silently sign the device into servers it didn't ask for.
-    @discardableResult
-    func applyReceivedSetup(
-        _ received: SyncSetupService.ReceivedSetup,
-        restrictToAccountID: String? = nil
-    ) -> SyncSetupService.ApplyOutcome {
-        // Captured BEFORE markFirstRunProfileSetupComplete below: whether this
-        // receiver had already completed setup (used to guard its own default
-        // profile from being clobbered by the incoming default).
-        let receiverWasConfigured = profiles.firstRunProfileSetupComplete
-        var pendingStore = PendingSyncedServersStore()
-        received.retainPendingServers(in: &pendingStore, restrictToAccountID: restrictToAccountID)
-        // Per-server request → never import profiles (the user only wanted one server).
-        let incomingProfiles = restrictToAccountID == nil ? received.config.profiles.map(\.profile) : []
-        if !incomingProfiles.isEmpty {
-            profiles.importProfiles(incomingProfiles)
-        }
-        // Reinstall each transferred profile's per-profile settings under the
-        // matching namespace on this device (default profile → nil namespace). Skipped
-        // entirely for a per-server request (no profiles come along).
-        for snap in (restrictToAccountID == nil ? received.config.profileSettings : []) {
-            guard let profile = profiles.profiles.first(where: { $0.id == snap.profileID }) else { continue }
-            ProfileSettingsTransfer.apply(
-                snap.entries,
-                namespace: profile.settingsNamespace(isDefault: profiles.isDefault(profile))
-            )
-        }
-        let descByID = Dictionary(received.config.accounts.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        let secretByID = Dictionary((received.secrets?.accounts ?? []).map { ($0.accountID, $0) }, uniquingKeysWith: { a, _ in a })
-        let shareByID = Dictionary((received.secrets?.shares ?? []).map { ($0.accountID, $0) }, uniquingKeysWith: { a, _ in a })
-        // Track credentialed accounts we ATTEMPT (expected to sign in without a tap)
-        // vs those that actually persisted, so the caller can gate success and
-        // surface any that failed. Intentional skips (device-local SSH key, no URL)
-        // are NOT counted as expected — they were never going to work here.
-        var expected = 0, added = 0
-        var failedAccountIDs: [String] = []
-        for auth in received.application.authorizedAuthorizations
-        where restrictToAccountID == nil || auth.id == restrictToAccountID {
-            guard let desc = descByID[auth.id] else { continue }
-            if let secret = secretByID[auth.id], secret.provider.permitsCredentialTransfer {
-                expected += 1
-                let baseURL = desc.candidateBaseURLs.first ?? URL(string: secret.trustedOrigin) ?? URL(string: "https://localhost")!
-                let server = MediaServer(id: desc.serverID, name: desc.serverName, baseURL: baseURL,
-                                         provider: desc.provider,
-                                         connectionURLs: desc.candidateBaseURLs.isEmpty ? nil : desc.candidateBaseURLs)
-                let account = Account(id: desc.id, server: server, userID: desc.userID, userName: desc.userName,
-                                      avatarURL: desc.avatarURL, deviceID: secret.deviceID)
-                do {
-                    try accountStore.add(account, token: secret.token)
-                    added += 1
-                } catch {
-                    failedAccountIDs.append(desc.id)
-                    PlozzLog.auth.error("Sync setup: failed to add transferred account \(desc.id): \(error.localizedDescription)")
-                }
-            } else if let share = shareByID[auth.id] {
-                // Media share: rebuild the account + reinstall its credential envelope.
-                guard let baseURL = desc.candidateBaseURLs.first else {
-                    PlozzLog.auth.error("Sync setup: share \(desc.id) has no reachable URL — skipping (re-add it on this device)")
-                    continue
-                }
-                guard let envelope = try? MediaShareCredentialCodec.decodeVersioned(share.credentialEnvelope) else {
-                    PlozzLog.auth.error("Sync setup: share \(desc.id) credential envelope failed to decode — skipping")
-                    continue
-                }
-                if case .generatedKey = envelope.authentication {
-                    // Defense in depth: an older sender may still ship a generated-key
-                    // envelope whose SSH key never travelled. Don't claim success —
-                    // leave it for manual re-add (not counted as an expected success).
-                    PlozzLog.auth.error("Sync setup: share \(desc.id) uses a device-local SSH key — skipping (re-add it on this device)")
-                    continue
-                }
-                expected += 1
-                let server = MediaServer(id: desc.serverID, name: desc.serverName, baseURL: baseURL,
-                                         provider: .mediaShare,
-                                         connectionURLs: desc.candidateBaseURLs.isEmpty ? nil : desc.candidateBaseURLs,
-                                         mediaShareLibraryConfiguration: desc.mediaShareLibraryConfiguration)
-                let account = Account(id: desc.id, server: server, userID: desc.userID, userName: desc.userName,
-                                      avatarURL: desc.avatarURL, deviceID: accountStore.deviceID())
-                do {
-                    try accountStore.addMediaShare(account, credential: envelope, generatedPrivateKey: nil)
-                    added += 1
-                } catch {
-                    failedAccountIDs.append(desc.id)
-                    PlozzLog.auth.error("Sync setup: failed to add transferred share \(desc.id): \(error.localizedDescription)")
-                }
-            }
-        }
-        let outcome = SyncSetupService.ApplyOutcome(
-            expectedCredentialed: expected, addedCredentialed: added,
-            failedAccountIDs: failedAccountIDs, importedProfiles: incomingProfiles.count
-        )
-        accountsProviders.reloadAccounts()
-        // Transactional gate: if we were meant to sign accounts in but NONE stuck,
-        // don't declare setup complete — leave the device in onboarding so the
-        // caller can show an error and the user can retry. Profiles already imported
-        // are harmless and idempotent on retry.
-        if outcome.isTotalCredentialFailure {
-            reloadAccountsAndCrashContext()
-            PlozzLog.auth.error("Sync setup: all \(expected) credentialed account(s) failed to persist — not completing setup")
-            return outcome
-        }
-        // Apply each transferred profile's explicit server membership (which
-        // accounts it watches). Filter to accounts present in this transfer, and
-        // don't clobber a configured receiver's own default-profile choice — the
-        // same guard importProfiles uses so a "bring my setup here" transfer never
-        // rewrites an existing device's default.
-        let receivedAccountIDs = Set(received.config.accounts.map(\.id))
-        for (pid, ids) in (restrictToAccountID == nil ? received.config.profileMemberships : [:]) {
-            guard profiles.profiles.contains(where: { $0.id == pid }) else { continue }
-            if pid == ProfileStore.defaultProfileID, receiverWasConfigured { continue }
-            let usable = ids.filter { receivedAccountIDs.contains($0) }
-            // Storing an EMPTY set would read as "this profile chose to watch
-            // nothing" and blank its Home. An empty result here just means the
-            // sender's servers didn't all come across, which is not a choice the
-            // user made — clear the membership instead, which means "watches
-            // whatever the household has".
-            if usable.isEmpty, !ids.isEmpty {
-                profiles.clearActiveAccountIDs(for: pid)
-            } else {
-                profiles.setActiveAccountIDs(usable, for: pid)
-            }
-        }
-        // Mirror the tvOS receiver: complete first-run so the app never bounces
-        // back to onboarding, refresh providers + identity index, and republish
-        // presence.
-        profiles.markFirstRunProfileSetupComplete()
-        reloadAccountsAndCrashContext()
-        identityIndex.warmIdentityIndex()
-        // Rebuild the active profile's settings model so freshly-applied
-        // preferences take effect immediately.
-        selectProfile(profiles.activeProfileID)
-        // Pairing is an explicit consent to share this household, so turn on
-        // cross-device CloudKit sync (idempotent; a no-op if already on).
-        setSyncSetupEnabled(true)
-        refreshPendingSyncedServers()
-        PlozzLog.auth.info("Sync setup applied: added \(added)/\(expected) account(s), \(incomingProfiles.count) profile(s), \(failedAccountIDs.count) failed")
-        return outcome
-    }
     let authenticatedHTTPResolver: ManagedAuthenticatedHTTPResolver
     let mediaShareRuntime: DefaultMediaShareRuntime
 
@@ -525,10 +309,6 @@ final class PlozziOSAppModel {
     /// Drives the app to a named screen for an automated capture run. Inert unless
     /// the capture environment seeded this launch — see ``PlozziOSScreenshotSeed``.
     let screenshotDirector = PlozziOSScreenshotDirector()
-    /// A pairing invite captured from a Sync & Setup universal link
-    /// (`https://plozz.app/pair#…`). The invite type selects receiving from a TV
-    /// or the existing send flow; either direction requires its own confirmation.
-    var pendingPairingInvite: String?
     @ObservationIgnored
     private(set) var plexHomeUsers: PlexHomeUsersModel!
     @ObservationIgnored
@@ -631,8 +411,7 @@ final class PlozziOSAppModel {
             makeWatchlistFailureFeedback: { [unowned self] in self.makeLibraryActionFeedback(onCompletion: .error) }
         )
 
-    /// Internal (not private) so the KeychainSync extension in another file can read
-    /// tokens / add accounts for iCloud-Keychain auto-connect.
+    /// The shared account store used by provider services and app extensions.
     let accountStore: AccountPersisting
     private let durableLocalStateStore: DurableLocalStateStore?
     private let mediaShareAccountService: MediaShareAccountService
@@ -786,9 +565,6 @@ final class PlozziOSAppModel {
         if offline { accountsProviders.localProviders = [:] }
         let shareScanStatus = ShareScanStatusModel()
         let trackerNamespace = profiles.activeNamespace
-        if PlozzCustomization.supportsTrackers {
-            TraktSharedRefreshBootstrap.install()
-        }
         let traktService = TraktServiceFactory.make(namespace: trackerNamespace)
         let simklService = SimklServiceFactory.make(namespace: trackerNamespace)
         let wetrakrService = WetrakrServiceFactory.make(namespace: trackerNamespace)
@@ -866,42 +642,6 @@ final class PlozziOSAppModel {
         self.mediaShareRescanService = MediaShareRescanService(
             accountsProviders: accountsProviders
         )
-        self.syncSetup = SyncSetupService(
-            deviceID: { accountStore.deviceID() },
-            deviceName: {
-                // UIDevice.name is a generic model name on iOS 16+ without a special
-                // entitlement, so recover the owner-given name from the host name
-                // ("Brando's iPad" → host "Brandos-iPad") the same way tvOS does.
-                // Non-blocking: never reads ProcessInfo.hostName on the main thread
-                // (that reverse-DNS call hangs launch + prompts for local network).
-                DeviceDisplayName.current(fallback: UIDevice.current.name)
-            },
-            isConfigured: { !accountsProviders.accounts.isEmpty },
-            configProvider: {
-                let memberships = try profiles.confirmedAccountMemberships()
-                return .init(
-                    accounts: accountsProviders.accounts,
-                    profiles: profiles.profiles,
-                    profileSettings: profiles.profiles.map { p in
-                        ProfileSettingsSnapshot(
-                            profileID: p.id,
-                            entries: ProfileSettingsTransfer.capture(
-                                namespace: p.settingsNamespace(isDefault: profiles.isDefault(p))
-                            )
-                        )
-                    },
-                    // Carry each profile's EXPLICIT server-membership choice (only
-                    // profiles that chose one; a profile that never chose is absent,
-                    // preserving the unset/empty/subset tri-state on the receiver).
-                    profileMemberships: memberships
-                )
-            },
-            secretsProvider: { [accountsProviders, accountStore] in
-                PlozziOSAppModel.buildSecretsBundle(accounts: accountsProviders.accounts, accountStore: accountStore)
-            }
-        )
-        // Keep the non-secret presence beacon fresh for same-Apple-ID devices.
-        self.syncSetup.publishPresence()
         self.plexHomeUsers = PlexHomeUsersModel(
             accountsProviders: accountsProviders,
             profilesModel: profiles,
@@ -918,9 +658,6 @@ final class PlozziOSAppModel {
         )
         accountsProviders.tokenResolver = { [weak self] accountID in
             self?.plexHomeUsers.resolvedToken(for: accountID)
-        }
-        accountsProviders.onLocalAccountAuthentication = { [weak self] accountID in
-            self?.providerCredentialSync.didAuthenticateLocally(accountID: accountID)
         }
         accountsProviders.onAccountsInvalidated = { [weak self] in
             self?.mediaItemActionHandler.invalidateAccountCaches()
@@ -1021,8 +758,6 @@ final class PlozziOSAppModel {
             await prepareUniversalWatchlist()
         }
         applyCrashReportingPreference()
-        // Bring up CloudKit config auto-sync (no-op unless the Sync & Setup flag is
-        // on) and start observing local config changes to publish them.
         if PlozzCustomization.supportsTrackers {
             self.traktService.onConnectionAvailable = { [weak self] in
                 Task { await self?.resumeUniversalWatchlistAuthentication() }
@@ -1035,7 +770,6 @@ final class PlozziOSAppModel {
             }
         }
         prepareMediaAliasLedger()
-        startCloudSyncIfEnabled()
         observeApplicationScenes()
         // The tvOS root prewarms this before exposing Home; the iOS shell learned
         // to paint the snapshot but kept its first read on the main thread. Decode
@@ -1070,17 +804,12 @@ final class PlozziOSAppModel {
         identityIndex.reset()
         if enabled {
             accountsProviders.localProviders = [:]
-            providerCredentialSync.cancel()
-            cloudPublishTask?.cancel()
-            portableCredentialPublisher.cancelPendingPublication()
-            await cloudSync?.deactivateAndCancel()
             await mediaShareWorkScope.synchronize()
             await downloads.suspendForOfflineMode()
             await OfflineNetworkSession.cancelRequests()
         } else {
             accountsProviders.localProviders = nil
             plexHomeUsers.beginExplicitProfileActivation()
-            startCloudSyncIfEnabled()
         }
         refreshOfflineProviders()
         accountsProviders.registry.invalidateCache()
@@ -1266,7 +995,6 @@ final class PlozziOSAppModel {
         sceneSessionIDs = sceneSessionIDs.filter { connected.contains($0.key) }
         if let transition = applicationLifecycle.replaceScenes(scenes) {
             applicationIsActive = transition.isActive
-            if !transition.isActive { portableCredentialPublisher.cancelPendingPublication() }
             if transition.isActive { retryWatchOutboxIfAllowed() }
         }
     }
@@ -1334,26 +1062,10 @@ final class PlozziOSAppModel {
         accountStore.deviceID()
     }
 
-    /// Handle an incoming URL (custom scheme or universal link). Returns true if it
-    /// was a recognized Sync & Setup pairing link and has been captured for
-    /// presentation via `pendingPairingInvite`.
-    @discardableResult
-    func handleIncomingURL(_ url: URL) -> Bool {
-        guard PlozzCustomization.supportsSyncSetup else { return false }
-        guard SyncPairingInvite.decode(url.absoluteString) != nil
-            || SyncSetupSourceInvite.decode(url.absoluteString) != nil else { return false }
-        // Following a pairing link sends this household's servers, profiles and
-        // credentials to the device that produced it, and that device opens in a
-        // grown-up profile — so it's withheld inside an enforced Kids Profile.
-        guard !managementRequiresParentalPIN else { return false }
-        pendingPairingInvite = url.absoluteString
-        return true
-    }
-
     /// Debug-only: clear all accounts + profiles so the app returns to the
-    /// first-run / onboarding empty state (used to test Sync & Setup receive).
+    /// first-run / onboarding empty state.
     @discardableResult
-    func resetToFirstRunForDebugging(afterSyncErasure: Bool = false) -> Bool {
+    func resetToFirstRunForDebugging() -> Bool {
         do {
             try accountStore.clearAll()
         } catch {
@@ -1361,18 +1073,6 @@ final class PlozziOSAppModel {
             accountError = error.localizedDescription
             return false
         }
-        // Clear cross-device sync state too, so a debug reset is a truly clean slate
-        // for re-testing "new server from another device": pull each account's
-        // iCloud-Keychain portable credential (stops auto-connect) and wipe the
-        // pending/ignored/prompted bookkeeping for synced servers.
-        for account in accountsProviders.accounts { removePortableCredential(account.id) }
-        var pendingSynced = PendingSyncedServersStore()
-        pendingSynced.removeAll()
-        var removedSynced = RemovedAccountsStore()
-        removedSynced.removeAll()
-        HouseholdDevicesStore().removeAll()
-        pendingSyncedServers = []
-        pendingSyncedServerPrompt = nil
         accountsProviders.reloadAccounts()
         guard accountsProviders.accounts.isEmpty else { return false }
         do {
@@ -1386,18 +1086,15 @@ final class PlozziOSAppModel {
         }
         plexHomeUsers.resetAllForDebug()
         do {
-            if afterSyncErasure { try profiles.resetToPristineDefaultAfterSyncErasure() }
-            else { profiles.resetToPristineDefaultForDebugging() }
+            profiles.resetToPristineDefaultForDebugging()
         } catch {
             PlozzLog.sync.error("First-run reset could not remove every profile")
             accountError = error.localizedDescription
             return false
         }
-        resetLiveTVPortableSync()
         if accountsProviders.accounts.isEmpty { appAdmission.resetForDebugging() }
         pendingLibrarySelection = nil
         pendingFirstRunStep = nil
-        pendingPairingInvite = nil
         // Bypass the lock gate deliberately: this is the debug "reset to first
         // run" path and it has just wiped the profiles back to a pristine default.
         performSelectProfile(profiles.activeProfileID)
@@ -1536,7 +1233,7 @@ final class PlozziOSAppModel {
     /// Resuming asks the question that was never answered: importing anyway is
     /// the leak the gate exists to prevent, and clearing it without asking is the
     /// same thing by another route.
-    func resumeProfileOnboardingIfNeeded(manualICloudSetup: Bool = false) {
+    func resumeProfileOnboardingIfNeeded() {
         // `profileOnboardingID` — not just the step — because creation claims the
         // id and origin synchronously and only raises the step a runloop turn
         // later (so the editor sheet can close first). Switching into the new
@@ -1548,7 +1245,7 @@ final class PlozziOSAppModel {
         guard profileOnboardingStep == nil, profileOnboardingID == nil,
               pendingFirstRunStep == nil, plexHomeUsers.pendingPlexUserSelection == nil,
               pendingLibrarySelection == nil else { return }
-        guard profiles.activeProfile.needsSetup || manualICloudSetup else { return }
+        guard profiles.activeProfile.needsSetup else { return }
         profileOnboardingID = profiles.activeProfileID
         profileOnboardingStep = .libraries
     }
@@ -1575,10 +1272,6 @@ final class PlozziOSAppModel {
         } else {
             profileOnboardingStep = nil
             profileOnboardingID = nil
-            if id == profiles.activeProfileID, profiles.profiles.contains(where: { $0.id == id }) {
-                initialSetupRestoration.completeManualSetup(for: id)
-                continueManualICloudSetupIfReady()
-            }
         }
     }
 
@@ -3012,9 +2705,6 @@ final class PlozziOSAppModel {
             for session in sessions {
                 let registration = try accountStore.registerAuthenticatedSession(session)
                 let account = registration.account
-                // A (re)added server clears any household-removal tombstone for it.
-                clearRemovalTombstone(for: account.id)
-                providerCredentialSync.didAuthenticateLocally(accountID: account.id)
                 if registration.previousAccount == nil || activateIPTVAccount {
                     try accountsProviders.includeIPTVAccountInActiveProfile(account)
                     addedLiveTV = addedLiveTV || account.server.provider == .iptv
@@ -3194,8 +2884,6 @@ final class PlozziOSAppModel {
             appliesPlexIdentityAfterLibrarySelection = false
             plexHomeUsers.ensurePlexIdentityForActiveProfile()
         }
-        initialSetupRestoration.completeManualSetup(for: profiles.activeProfileID)
-        continueManualICloudSetupIfReady()
     }
 
     private func preparePostSignInOnboarding(
@@ -3269,13 +2957,6 @@ final class PlozziOSAppModel {
             if let shareAccountKey {
                 mediaShareAccountService.invalidate(shareAccountKey: shareAccountKey)
             }
-            // Drop this device's iCloud-Keychain portable credential for the account,
-            // so a deleted server doesn't silently auto-reconnect on the next launch
-            // (and isn't re-offered to the user's other devices). Without this, sync's
-            // auto-connect immediately re-adds the account the user just removed.
-            removePortableCredential(id)
-            var pending = PendingSyncedServersStore()
-            pending.ignore(id)
             accountError = nil
         } catch {
             accountError = error.localizedDescription
@@ -3487,7 +3168,7 @@ final class PlozziOSAppModel {
 
     /// Dismiss any queued first-run onboarding step once the household is known to be
     /// already set up (e.g. profiles arrived via sync after a race queued the step).
-    /// Lives here (not the CloudSync extension) so it can touch `private(set)` state.
+    /// Lives here so it can touch `private(set)` state.
     func clearFirstRunStepIfHouseholdSetUp() {
         if pendingFirstRunStep != nil, profiles.firstRunProfileSetupComplete {
             pendingFirstRunStep = nil

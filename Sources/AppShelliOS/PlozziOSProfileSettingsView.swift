@@ -44,8 +44,7 @@ struct PlozziOSProfileSettingsView: View {
             if let profile {
                 ProfileActionsList(
                     profile: profile,
-                    syncEnabled: SyncSetupFeatureFlag().isEnabled,
-                    offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
+                                        offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
                     hasParentalPIN: appModel.profiles.parentalPIN != nil,
                     // Sealed only when this profile is BOTH a Kids Profile
                     // and the one currently open: a grown-up editing a
@@ -123,8 +122,7 @@ struct PlozziOSProfileSettingsView: View {
                 ProfileLockSetupView(
                     profile: profile,
                     offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
-                    syncEnabled: SyncSetupFeatureFlag().isEnabled,
-                    validatePlexPIN: {
+                                        validatePlexPIN: {
                         await appModel.plexHomeUsers.validatePlexPIN($0, forProfile: profileID)
                     },
                     onComplete: { lock in

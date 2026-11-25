@@ -21,7 +21,6 @@ struct OfflineModeReviewFixture: View {
             _app = State(initialValue: model)
             return
         }
-        SyncSetupFeatureFlag().isEnabled = false
         UserDefaults.standard.set(true, forKey: OfflineMode.preferenceKey)
         OfflineMode.shared.setEnabled(true)
         let defaults = UserDefaults(suiteName: populated ? "OfflinePopulatedReview" : "OfflineReview.\(UUID())")!

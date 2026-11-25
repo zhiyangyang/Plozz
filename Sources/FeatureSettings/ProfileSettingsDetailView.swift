@@ -23,9 +23,6 @@ import SwiftUI
 struct ProfileSettingsDetailView: View {
     let context: SettingsContext
     let profileID: String
-    /// Whether these settings currently reach the user's other devices, so a lock
-    /// set here can say when it's device-only.
-    let syncEnabled: Bool
 
     @SettingsPageDismiss private var dismiss
 
@@ -92,7 +89,6 @@ struct ProfileSettingsDetailView: View {
     private func actionsPanel(_ profile: Profile) -> some View {
             ProfileActionsList(
             profile: profile,
-            syncEnabled: syncEnabled,
             offersPlexPINReuse: profile.playsAsPINProtectedPlexUser,
             hasParentalPIN: context.hasParentalPIN,
             // Sealed only when this profile is BOTH a Kids Profile and the
