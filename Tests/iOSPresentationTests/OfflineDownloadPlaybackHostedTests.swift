@@ -55,7 +55,7 @@ final class OfflineDownloadPlaybackHostedTests: XCTestCase {
         XCTAssertEqual(fixtureDuration.seconds, 24, accuracy: 0.1)
         try FileManager.default.removeItem(at: nativeFixture)
         let requests = OfflineValidationRequests()
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             let path = request.split(separator: " ").dropFirst().first.map(String.init) ?? ""
             if path.hasSuffix(".srt") {
                 let language = path.contains("french") ? "French" : "English"

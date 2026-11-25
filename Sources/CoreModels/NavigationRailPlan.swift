@@ -6,7 +6,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
     case home
     case search
     case watchlist
-    case liveTV
     case music
     case settings
     /// A single library, addressed by its ``AggregatedLibrary/key``.
@@ -20,7 +19,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case .home: return "home"
         case .search: return "search"
         case .watchlist: return "watchlist"
-        case .liveTV: return "liveTV"
         case .music: return "music"
         case .settings: return "settings"
         case .allLibraries: return "allLibraries"
@@ -33,7 +31,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case "home": self = .home
         case "search": self = .search
         case "watchlist": self = .watchlist
-        case "liveTV": self = .liveTV
         case "music": self = .music
         case "settings": self = .settings
         case "allLibraries": self = .allLibraries
@@ -93,7 +90,6 @@ public enum NavigationDestinationDefaults {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.watchlistKey
         ]
-        keys.append(NavigationLibraryLayout.liveTVKey)
         keys.append(NavigationLibraryLayout.searchKey)
         if hasMusic { keys.append(NavigationLibraryLayout.musicKey) }
         keys.append(NavigationLibraryLayout.settingsKey)
@@ -149,15 +145,13 @@ public enum NavigationDestinationDefaults {
                 NavigationLibraryLayout.homeKey,
                 NavigationLibraryLayout.collectionsKey,
                 NavigationLibraryLayout.watchlistKey,
-                        NavigationLibraryLayout.downloadsKey,
+                NavigationLibraryLayout.downloadsKey,
                 NavigationLibraryLayout.searchKey,
-                NavigationLibraryLayout.liveTVKey,
                 NavigationLibraryLayout.settingsKey,
             ]
         }
         var keys = iOSDefaultVisibleKeys + [
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.liveTVKey,
             NavigationLibraryLayout.settingsKey,
         ]
         return keys
@@ -313,7 +307,6 @@ public enum NavigationRailPlan {
         case NavigationLibraryLayout.homeKey: return .home
         case NavigationLibraryLayout.searchKey: return .search
         case NavigationLibraryLayout.watchlistKey: return .watchlist
-        case NavigationLibraryLayout.liveTVKey: return .liveTV
         case NavigationLibraryLayout.musicKey: return .music
         case NavigationLibraryLayout.settingsKey: return .settings
         case NavigationLibraryLayout.allLibrariesKey: return .allLibraries
@@ -327,7 +320,6 @@ public enum NavigationRailPlan {
         case .home: return NavigationLibraryLayout.homeKey
         case .search: return NavigationLibraryLayout.searchKey
         case .watchlist: return NavigationLibraryLayout.watchlistKey
-        case .liveTV: return NavigationLibraryLayout.liveTVKey
         case .music: return NavigationLibraryLayout.musicKey
         case .settings: return NavigationLibraryLayout.settingsKey
         case .allLibraries: return NavigationLibraryLayout.allLibrariesKey

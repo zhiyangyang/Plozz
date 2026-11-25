@@ -238,8 +238,9 @@ public enum PlozzAttributions {
             title: "OMDb & AniList",
             detail:
                 "Additional ratings are sourced from the OMDb API (omdbapi.com) and "
-                + "AniList (https://anilist.co). AniList also provides anime metadata "
-                + "and Discovery data. Neither endorses or is affiliated "
+                + "AniList (https://anilist.co). Anime identifiers are sourced from "
+                + "MyAnimeList (https://myanimelist.net). AniList also provides anime "
+                + "metadata and Discovery data. None endorses or is affiliated "
                 + "with Plozz.",
             licenses: [.init("API", family: .api)]
         ),

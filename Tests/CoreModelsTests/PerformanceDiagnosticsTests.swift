@@ -89,11 +89,11 @@ final class PerformanceDiagnosticsTests: XCTestCase {
         old.finish(.failed, networkCode: -1001)
         XCTAssertNil(diagnostics.snapshot())
         diagnostics.start()
-        let current = try XCTUnwrap(diagnostics.begin(.playlistImport, provider: .iptv))
+        let current = try XCTUnwrap(diagnostics.begin(.homeFetch, provider: .plex))
         old.finish(.failed)
         let snapshot = try XCTUnwrap(diagnostics.snapshot())
         XCTAssertEqual(snapshot.active.count, 1)
-        XCTAssertEqual(snapshot.active.first?.operation, .playlistImport)
+        XCTAssertEqual(snapshot.active.first?.operation, .homeFetch)
         XCTAssertTrue(snapshot.recent.isEmpty)
         XCTAssertTrue(snapshot.slow.isEmpty)
         XCTAssertEqual(snapshot.maxActive, 1)
@@ -187,7 +187,7 @@ final class PerformanceDiagnosticsTests: XCTestCase {
     func testConcurrentFinishesHaveOneOutcomeAndCompletion() throws {
         let diagnostics = PerformanceDiagnostics()
         diagnostics.start()
-        let span = try XCTUnwrap(diagnostics.begin(.playlistFetch))
+        let span = try XCTUnwrap(diagnostics.begin(.serverRequest))
         DispatchQueue.concurrentPerform(iterations: 100) { index in
             span.finish(index.isMultiple(of: 2) ? .cancelled : .failed)
         }
@@ -251,7 +251,7 @@ final class PerformanceDiagnosticsTests: XCTestCase {
         let diagnostics = PerformanceDiagnostics()
         DispatchQueue.concurrentPerform(iterations: 1_000) { _ in
             diagnostics.start()
-            let span = diagnostics.begin(.liveTVRefresh)
+            let span = diagnostics.begin(.search)
             diagnostics.stop()
             diagnostics.start()
             span?.finish(.failed)

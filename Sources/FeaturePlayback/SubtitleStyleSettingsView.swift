@@ -5,7 +5,6 @@ import SwiftUI
 
 public struct SubtitleStyleSettingsView: View {
     @Binding private var style: SubtitleStyle
-    private let isLiveTV: Bool
     private let initialPage: SettingsSearchSubtitlePage
     @Environment(SettingsSearchRequest.self) private var searchRequest: SettingsSearchRequest?
     @State private var controls = PlayerControlsModel()
@@ -14,19 +13,18 @@ public struct SubtitleStyleSettingsView: View {
     @State private var previewOptions = SubtitlePreviewOptions()
 
     public init(
-        style: Binding<SubtitleStyle>, isLiveTV: Bool = false,
+        style: Binding<SubtitleStyle>,
         initialPage: SettingsSearchSubtitlePage = .appearance
     ) {
         _style = style
-        self.isLiveTV = isLiveTV
-        self.initialPage = isLiveTV && initialPage == .dual ? .appearance : initialPage
+        self.initialPage = initialPage
     }
 
     public var body: some View {
         GeometryReader { geometry in
             let context = SubtitleStyleEditingContext(
                 controls: controls, style: $style, secondaryPreview: secondaryPreview,
-                offersDualSubtitles: !isLiveTV, showsASSOverride: !isLiveTV
+                offersDualSubtitles: true, showsASSOverride: true
             )
             let width = max(geometry.size.width, geometry.size.height)
             let reference = CGSize(width: width, height: width * 9 / 16)
@@ -61,12 +59,12 @@ public struct SubtitleStyleSettingsView: View {
         .onAppear {
             guard !prepared else { return }
             prepared = true
-            secondaryVisible = !isLiveTV && style.secondary != nil
+            secondaryVisible = style.secondary != nil
         }
     }
 
     private var pageTitle: LocalizedStringResource {
-        isLiveTV ? "Customize Live TV subtitles" : "Customize subtitle style"
+        "Customize subtitle style"
     }
 
 

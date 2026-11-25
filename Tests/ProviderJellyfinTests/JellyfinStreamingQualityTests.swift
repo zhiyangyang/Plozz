@@ -667,7 +667,7 @@ final class JellyfinStreamingQualityTests: XCTestCase {
         }
     }
 
-    func testPerRequestProfileCannotChangeOtherPlaybackOrLiveTVDefaults() {
+    func testPerRequestProfileCannotChangeOtherPlaybackDefaults() {
         let original = JellyfinCapabilityProfile.appleTV()
         let limited = original.applying(.init(quality: .hd720, codec: .preferH264))
         XCTAssertEqual(limited.maxStreamingBitrate, 2_000_000)

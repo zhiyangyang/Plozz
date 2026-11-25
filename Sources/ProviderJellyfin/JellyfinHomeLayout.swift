@@ -108,8 +108,7 @@ extension JellyfinProvider {
             do {
                 try Task.checkCancellation()
                 if allowedParents == nil, limit > 0, !excludingLibraryIDs.isEmpty,
-                   section.libraryID == nil, section.kind != .libraries, section.kind != .liveTV,
-                   !(section.kind == .recordings && section.id.hasPrefix("web:")) {
+                   section.libraryID == nil, section.kind != .libraries {
                     do {
                         allowedParents = .success(try await homeVisibleParents(excluding: excludingLibraryIDs))
                     } catch {
@@ -133,7 +132,7 @@ extension JellyfinProvider {
         section: ServerHomeSection, limit: Int, excludingLibraryIDs: Set<String>,
         allowedParents: Result<[String?], AppError>?, isPreview: Bool = true
     ) async throws -> [MediaItem] {
-        guard limit > 0, section.kind != .libraries, section.kind != .liveTV,
+        guard limit > 0, section.kind != .libraries,
               section.libraryID.map({ !excludingLibraryIDs.contains($0) }) ?? true else { return [] }
         let boundedLimit = section.kind == .continueWatching || !isPreview ? limit : min(limit, 100)
         if section.id.hasPrefix("emby:") {
@@ -156,15 +155,6 @@ extension JellyfinProvider {
             return Array(result.prefix(boundedLimit))
         }
         guard section.id.hasPrefix("web:") else { throw AppError.invalidResponse }
-        if section.kind == .recordings {
-            // Recordings has no library filter or reliable root-library attribution.
-            // Do not let this unscoped endpoint bypass a hidden library.
-            guard excludingLibraryIDs.isEmpty else { return [] }
-            let items = try await client.activeHomeRecordings(
-                userID: session.userID, limit: boundedLimit
-            )
-            return Array(items.filter(Self.isHomeVideo).prefix(boundedLimit)).map(map(item:))
-        }
         let parents = try await homeParents(
             for: section, excluding: excludingLibraryIDs, allowedParents: allowedParents
         )
@@ -220,7 +210,7 @@ extension JellyfinProvider {
         _ preferences: HomeDisplayPreferencesDto, views: [BaseItemDto]
     ) -> ServerHomeLayout {
         let defaults = [
-            "smalllibrarytiles", "resume", "resumeaudio", "resumebook", "livetv",
+            "smalllibrarytiles", "resume", "resumeaudio", "resumebook", "none",
             "nextup", "latestmedia", "none", "none", "none"
         ]
         var layout = ServerHomeLayout(
@@ -237,8 +227,6 @@ extension JellyfinProvider {
             case "smalllibrarytiles", "librarybuttons", "folders": kind = .libraries
             case "resume": kind = .continueWatching
             case "nextup": kind = .nextUp
-            case "livetv": kind = .liveTV
-            case "activerecordings": kind = .recordings
             case "resumeaudio":
                 layout.omitsMusic = true
                 continue
@@ -288,11 +276,11 @@ extension JellyfinProvider {
             let videoTypes: Set<String> = ["movie", "series", "season", "episode", "video"]
             guard !(music || reading) || !itemTypes.isDisjoint(with: videoTypes) else { continue }
             guard !section.Id.isEmpty, seen.insert(section.Id).inserted else { continue }
+            // Live TV collections are not supported, so skip their sections.
+            guard !collections.contains("livetv"),
+                  itemTypes.isDisjoint(with: ["tvchannel", "program"]) else { continue }
             let kind: ServerHomeSection.Kind
-            if collections.contains("livetv")
-                || !itemTypes.isDisjoint(with: ["tvchannel", "program"]) {
-                kind = .liveTV
-            } else if sectionType == "userviews"
+            if sectionType == "userviews"
                         || (!itemTypes.isEmpty && itemTypes.isSubset(of: ["collectionfolder", "userview"])) {
                 kind = .libraries
             } else if sectionType == "resume" || section.Query?.IsResumable == true {

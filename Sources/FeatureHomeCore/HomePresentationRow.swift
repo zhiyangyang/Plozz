@@ -5,7 +5,6 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
     public enum Source: Equatable, Sendable {
         case home(HomeRow)
         case library(HomeLibrarySectionGroup.Row)
-        case liveTV([HomeLiveTVChannel])
     }
 
     public let choice: HomeRowChoice
@@ -31,23 +30,15 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
             return (loadedItemThreshold.map { row.section.items.count > $0 } ?? row.section.hasMore)
                 && !row.section.items.isEmpty && !row.isLoading
                 && row.failure == nil && row.issue == nil
-        case .liveTV:
-            return false
         }
-    }
-
-    public static func hasLiveTVRows(
-        _ liveTV: HomeLiveTVSnapshot, visibility: HomeLibraryVisibility
-    ) -> Bool {
-        !resolve(rows: [], content: .init(), visibility: visibility, liveTV: liveTV).isEmpty
     }
 
     public static func displayState(
         _ state: LoadState<HomeViewModel.Content>,
-        liveTV: HomeLiveTVSnapshot, visibility: HomeLibraryVisibility
+        visibility: HomeLibraryVisibility
     ) -> LoadState<HomeViewModel.Content> {
         if case .empty = state,
-           !resolve(rows: [], content: .init(), visibility: visibility, liveTV: liveTV).isEmpty {
+           !resolve(rows: [], content: .init(), visibility: visibility).isEmpty {
             return .loaded(.init())
         }
         return state
@@ -55,7 +46,6 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
 
     public static func resolve(
         rows: [HomeRow], content: HomeViewModel.Content, visibility: HomeLibraryVisibility,
-        liveTV: HomeLiveTVSnapshot = .empty,
         presentation: LibraryPresentationSettings = .default,
         showsEmptySectionMessages: Bool = true,
         serverInfo: [String: SourceServerInfo] = [:],
@@ -88,9 +78,6 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
             return Self(choice: choice, source: .home(row))
         }
         var available = rows.filter { $0.kind != .libraries }.compactMap(entry)
-        if !liveTV.channels.isEmpty, let choice = shared.first(where: { $0.id == .liveTV }) {
-            available.append(Self(choice: choice, source: .liveTV(liveTV.channels)))
-        }
         if visibility.usesIndividualHomeRows {
             for group in content.librarySections where visibility.isEnabled(group.library.key) {
                 for var row in group.rows {
@@ -203,7 +190,6 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
                     browseItem = row.browseItem
                     style = row.section.style
                     collectionCardStyle = row.collectionCardStyle
-                case .liveTV: continue
                 }
             }
             available.removeAll { $0.id == issue.id }
@@ -229,8 +215,6 @@ public struct HomePresentationRow: Identifiable, Equatable, Sendable {
             case var .home(row):
                 row.customTitle = name
                 return Self(choice: choice, source: .home(row))
-            case .liveTV:
-                return Self(choice: choice, source: entry.source)
             case let .library(row):
                 var section = row.section.resolvingCollectionCovers(presentation.collectionCoverLayout(
                     at: LibraryPresentationSettings.collectionCoverAddress(for: entry.id)

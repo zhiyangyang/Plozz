@@ -80,12 +80,12 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         XCTAssertEqual(model.visibility.rowSections(choices: choices).enabled, [
             .global(.continueWatching), .global(.watchlist), .global(.recentlyAdded),
             .server(accountID: "a", section: "picks"), .server(accountID: "b", section: "latest"),
-            .liveTV, .libraries
+            .libraries
         ])
         model.useRowDefaults(.combined)
         XCTAssertEqual(model.visibility.rowSections(choices: choices).enabled, [
             .global(.continueWatching), .global(.watchlist),
-            .global(.recentlyAdded), .liveTV, .libraries
+            .global(.recentlyAdded), .libraries
         ])
     }
 
@@ -400,7 +400,7 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
             mode: .server, order: [watching, latest, watchlist]
         )
         rows.apply(
-            .init(enabled: [watchlist, watching], disabled: [latest, .libraries, .liveTV]),
+            .init(enabled: [watchlist, watching], disabled: [latest, .libraries]),
             choices: HomeRowChoice.shared
         )
         XCTAssertEqual(rows.defaults, .custom)

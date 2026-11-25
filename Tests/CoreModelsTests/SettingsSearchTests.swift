@@ -44,8 +44,7 @@ final class SettingsSearchTests: XCTestCase {
             "bottom of screen": "subtitle-reference",
             "vertical offset": "subtitle-position",
             "position on screen": "subtitle-position",
-            "auto move away from controls": "subtitle-avoid-controls",
-            "live auto move away from controls": "live-subtitle-avoid-controls"
+            "auto move away from controls": "subtitle-avoid-controls"
         ]
         for (query, id) in queries {
             XCTAssertEqual(index.results(for: query).first?.id, id, query)
@@ -160,26 +159,6 @@ final class SettingsSearchTests: XCTestCase {
         for source in HeroDiscoverySource.allCases {
             XCTAssertNotNil(SettingsSearchCatalog.entry(id: "hero-discovery-\(source.rawValue)"))
         }
-    }
-
-    func testLiveSubtitleStylesReuseAnchorsWithoutOfferingDualTracks() {
-        let regular = SettingsSearchCatalog.entries.filter {
-            $0.page == .subtitleStyle && $0.subtitlePage != .dual && $0.id != "file-ass-override"
-        }
-        let live = SettingsSearchCatalog.entries.filter { $0.page == .liveSubtitleStyle }
-        XCTAssertEqual(live.count, regular.count)
-        for entry in regular {
-            let variant = SettingsSearchCatalog.entry(id: "live-\(entry.id)")
-            XCTAssertEqual(variant?.anchorID, entry.anchorID)
-            XCTAssertEqual(variant?.subtitlePage, entry.subtitlePage)
-            XCTAssertEqual(variant?.platform, entry.platform)
-            XCTAssertEqual(variant?.minimumOSVersion, entry.minimumOSVersion)
-        }
-        XCTAssertFalse(live.contains { $0.subtitlePage == .dual })
-        XCTAssertEqual(SettingsSearchCatalog.entry(id: "file-ass-override")?.subtitlePage, .formatting)
-        XCTAssertNil(SettingsSearchCatalog.entry(id: "live-file-ass-override"))
-        XCTAssertEqual(index.results(for: "live subtitles size").first?.id, "live-subtitle-size")
-        XCTAssertEqual(index.results(for: "subtitle size").first?.id, "subtitle-size")
     }
 
     func testCustomQualityKeepsNetworkContextsDistinct() {

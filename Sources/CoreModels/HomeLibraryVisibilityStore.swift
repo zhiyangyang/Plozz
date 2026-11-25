@@ -327,8 +327,8 @@ public final class HomeLibraryVisibilityModel {
         if resolved.mode == .combined {
             let shared = HomeRowChoice.shared.map(\.id)
             let native = resolved.serverRows.map(\.id).filter { !shared.contains($0) }
-            resolved.order = shared.filter { $0 != .libraries && $0 != .liveTV }
-                + native + [.libraries, .liveTV]
+            resolved.order = shared.filter { $0 != .libraries }
+                + native + [.libraries]
         } else if !resolved.fallbackAccountIDs.isEmpty {
             resolved.mode = .providerFallback
         } else {

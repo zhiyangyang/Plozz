@@ -4,7 +4,6 @@ import CoreModels
 import CoreNetworking
 import CoreUI
 import FeatureHomeCore
-import FeatureLiveTV
 import FeatureMusic
 import FeatureProfiles
 import FeatureSettings
@@ -30,11 +29,9 @@ public struct PlozziOSRootView: View {
     @State private var contentRefreshCoordinator = ContentRefreshCoordinator(profile: .iOS)
     @State private var heroTrailerController = HeroTrailerController()
     @State private var themeMusicController = ThemeMusicController()
-    @State private var isLiveTVSelected = false
     @State private var sidebarGeometry = PlozziOSSidebarGeometryModel()
     @State private var showingAddServer = false
     @State private var providerSetupRouter = ManagedProviderSetupRouter()
-    @State private var iptvSetup: ManagedProviderSetupRouter.Request?
     @State private var showingSettings = false
     @State private var showingProfileSwitcher = false
     @State private var isSelectingLaunchProfile = false
@@ -91,12 +88,12 @@ public struct PlozziOSRootView: View {
     }
 
     private var themeMusicAuthorization: ThemeMusicPlaybackAuthorization {
-        let scope = appModel.accountsProviders.liveTVAuthorizationID
+        let scope = appModel.accountsProviders.playbackAuthorizationID
         return ThemeMusicPlaybackAuthorization(
             id: appModel.isActiveProfileAuthorized ? scope : nil,
             provider: { accountID in
                 guard appModel.isActiveProfileAuthorized,
-                      appModel.accountsProviders.liveTVAuthorizationID == scope else { return nil }
+                      appModel.accountsProviders.playbackAuthorizationID == scope else { return nil }
                 return appModel.accountsProviders.homeAccounts.first { $0.account.id == accountID }?.provider
             }
         )
@@ -122,7 +119,6 @@ public struct PlozziOSRootView: View {
                 PlozziOSTabShell(
                     appModel: appModel,
                     homeViewModelBox: homeViewModelBox,
-                    onLiveTVActivityChanged: { isLiveTVSelected = $0 },
                     onAddServer: showAddServer,
                     showingSettings: $showingSettings,
                     showingProfileSwitcher: $showingProfileSwitcher,
@@ -153,12 +149,6 @@ public struct PlozziOSRootView: View {
             providerSetupRouter.reauthenticationAccount = nil
             contentRefreshCoordinator.reset()
         }
-        .onChange(of: providerSetupRouter.request?.id) { _, _ in
-            guard let request = providerSetupRouter.request else { return }
-            iptvSetup = request
-            providerSetupRouter.request = nil
-            showAddServer()
-        }
         // One opaque cover for profile PIN then Plex PIN. Separate presentations
         // briefly exposed the tab shell between them.
         .plozzFullScreenCover(isPresented: profileAccessGateBinding) {
@@ -181,7 +171,6 @@ public struct PlozziOSRootView: View {
             PlozziOSProfileOnboardingCover(appModel: appModel)
         }
         .task { appModel.resumeProfileOnboardingIfNeeded() }
-        .liveChannelSystemOverlays()
         .onAppear { PlozziOSScreenshotSeed.applyIfRequested(to: appModel) }
     }
 
@@ -286,15 +275,10 @@ public struct PlozziOSRootView: View {
             presenter: appModel.transientStatusPresenter,
             palette: resolvedPalette
         )
-        .guidePreparationOverlay(
-            model: appModel.guidePreparation, presenter: appModel.transientStatusPresenter,
-            palette: resolvedPalette
-        )
         .offlineStatusOverlay(appModel: appModel, palette: resolvedPalette, isEnabled: !showsLaunchProfilePicker)
         .environment(appModel)
         .environment(appModel.settings.navigation)
         .environment(appModel.settings.homeVisibility)
-        .environment(appModel.guidePreparation)
         .background { PlozziOSMusicLifecycle(appModel: appModel) }
         .environment(heroTrailerController)
         .themeMusicScope(
@@ -302,7 +286,7 @@ public struct PlozziOSRootView: View {
             model: appModel.settings.themeMusic,
             background: appModel.settings.heroBackground.settings,
             isBlocked: heroTrailerController.isPlaying || heroTrailerController.isPlaybackSuppressed
-                || isLiveTVSelected || appModel.music?.player.controller.hasActivePlayback == true,
+                || appModel.music?.player.controller.hasActivePlayback == true,
             detailAllowed: !appModel.isSettingsPresented && !showingProfileSwitcher
                 && appModel.isActiveProfileAuthorized,
             authorization: themeMusicAuthorization,
@@ -323,17 +307,14 @@ public struct PlozziOSRootView: View {
         .plozzSheet(
             isPresented: $showingAddServer,
             onDismiss: {
-                iptvSetup = nil
                 appModel.finishManagedServerPresentation()
                 notificationDismissals.remove(.addServer)
             }
         ) {
             AddServerView(
                 appModel: appModel,
-                initialProvider: iptvSetup == nil ? nil : .iptv,
-                initialAddress: "",
-                initialIPTVPlaylist: iptvSetup?.playlist, initialIPTVAccount: iptvSetup?.account,
-                initialIPTVMode: iptvSetup?.mode ?? .playlist
+                initialProvider: nil,
+                initialAddress: ""
             )
                 .plozzSheetSize(.page)
         }
@@ -419,7 +400,6 @@ public struct PlozziOSRootView: View {
 
     private var setupPresentationReady: Bool {
         appModel.canEnterApp
-            && !appModel.pendingStandaloneLiveTVEntry
             && !appModel.mustChooseProfile
             && (!appModel.requiresLaunchProfileSelection
                 || appModel.didCompleteLaunchProfileSelection)
@@ -627,7 +607,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
     case home
     case collections
     case watchlist
-    case liveTV
     case downloads
     case music
     case search
@@ -642,7 +621,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .home: "home"
         case .collections: "collections"
         case .watchlist: "watchlist"
-        case .liveTV: "liveTV"
         case .downloads: "downloads"
         case .music: "music"
         case .search: "search"
@@ -657,7 +635,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case "home": self = .home
         case "collections": self = .collections
         case "watchlist": self = .watchlist
-        case "liveTV": self = .liveTV
         case "downloads": self = .downloads
         case "music": self = .music
         case "search": self = .search
@@ -681,7 +658,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .collections: "Collections"
         case .watchlist:
             PlozzCustomization.isCustomBuild ? "Favorites" : "Watchlist"
-        case .liveTV: "Live TV"
         case .downloads: "Downloads"
         case .music: "Music"
         case .search: "Search"
@@ -701,7 +677,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .home: "house"
         case .collections: "rectangle.stack"
         case .watchlist: PlozzCustomization.isCustomBuild ? "heart" : "bookmark"
-        case .liveTV: "antenna.radiowaves.left.and.right"
         case .downloads: "arrow.down.circle"
         case .music: "music.note"
         case .search: "magnifyingglass"
@@ -771,7 +746,6 @@ struct PlozziOSTabShell: View {
     @State private var hasVisibleSettingsNavigationEntry = false
     @State private var hasVisibleBottomTabBar = false
     @State private var lastContentDestination: PlozziOSDestination = .home
-    @State private var retainsExplicitLiveTVEntry = false
     @State private var retainsExplicitHomeEntry = false
     @State private var retainsExplicitWatchlistEntry = false
     @State private var retainsExplicitDownloadEntry = false
@@ -800,12 +774,10 @@ struct PlozziOSTabShell: View {
     @Binding var showingProfileSwitcher: Bool
     let onNotificationPresentationDismissed: (PlozziOSRootView.NotificationPresentation) -> Void
     let systemColorScheme: ColorScheme
-    let onLiveTVActivityChanged: (Bool) -> Void
 
     init(
         appModel: PlozziOSAppModel,
         homeViewModelBox: LazyViewState<HomeViewModel>,
-        onLiveTVActivityChanged: @escaping (Bool) -> Void = { _ in },
         onAddServer: @escaping () -> Void,
         showingSettings: Binding<Bool>,
         showingProfileSwitcher: Binding<Bool>,
@@ -815,7 +787,6 @@ struct PlozziOSTabShell: View {
     ) {
         self.appModel = appModel
         self.homeViewModelBox = homeViewModelBox
-        self.onLiveTVActivityChanged = onLiveTVActivityChanged
         self.onAddServer = onAddServer
         _showingSettings = showingSettings
         _showingProfileSwitcher = showingProfileSwitcher
@@ -823,15 +794,7 @@ struct PlozziOSTabShell: View {
         self.systemColorScheme = systemColorScheme
         let visible = Self.configuredDestinations(appModel: appModel)
         let initial: PlozziOSDestination
-        initial = AppAdmissionNavigation.initialSelection(
-            current: .home,
-            visible: visible,
-            liveTV: .liveTV,
-            fallback: .settings,
-            admission: appModel.admissionContext,
-            hasPendingLiveTVEntry: appModel.pendingStandaloneLiveTVEntry,
-            prefersLiveTV: Self.navigationAvailability(appModel: appModel).prefersLiveTV
-        )
+        initial = visible.contains(.home) ? .home : (visible.first ?? .settings)
         _selectedDestination = State(initialValue: initial)
         _lastContentDestination = State(initialValue: initial)
     }
@@ -856,7 +819,6 @@ struct PlozziOSTabShell: View {
                 case NavigationLibraryLayout.homeKey: return .home
                 case NavigationLibraryLayout.collectionsKey: return .collections
                 case NavigationLibraryLayout.watchlistKey: return .watchlist
-                case NavigationLibraryLayout.liveTVKey: return .liveTV
                 case NavigationLibraryLayout.searchKey: return .search
                 case NavigationLibraryLayout.downloadsKey: return .downloads
                 case NavigationLibraryLayout.musicKey: return .music
@@ -940,12 +902,7 @@ struct PlozziOSTabShell: View {
         if retainsExplicitWatchlistEntry, !configured.contains(.watchlist) {
             configured.append(.watchlist)
         }
-        let destinations = AppAdmissionNavigation.destinations(
-            configured,
-            liveTV: .liveTV,
-            includesExplicitEntry: (appModel.allowsStandalonePlayback && appModel.pendingStandaloneLiveTVEntry)
-                || retainsExplicitLiveTVEntry
-        )
+        let destinations = configured
         // SwiftUI's adaptive tab controller asserts if two UITab objects end up
         // sharing one hosting controller. Duplicate destination values are the
         // easiest way to create that state while tabs are being dragged or the
@@ -961,10 +918,7 @@ struct PlozziOSTabShell: View {
     }
 
     private var effectiveSelectedDestination: PlozziOSDestination {
-        if appModel.pendingStandaloneLiveTVEntry && appModel.allowsStandalonePlayback {
-            return .liveTV
-        }
-        return resolvedDestination(selectedDestination)
+        resolvedDestination(selectedDestination)
     }
 
     private var destinationSelection: Binding<PlozziOSDestination> {
@@ -996,14 +950,6 @@ struct PlozziOSTabShell: View {
         // The system owns tab switching. Keeping this synchronous preserves the
         // native instant switch and avoids a timed blank frame between tabs.
         selectedDestination = resolved
-    }
-
-    private func consumeStandaloneEntryIfNeeded() {
-        guard appModel.pendingStandaloneLiveTVEntry, appModel.allowsStandalonePlayback else { return }
-        retainsExplicitLiveTVEntry = true
-        selectDestination(.liveTV)
-        lastContentDestination = .liveTV
-        appModel.consumeStandaloneLiveTVEntryIntent()
     }
 
     private var tabDestinationKey: String {
@@ -1055,9 +1001,6 @@ struct PlozziOSTabShell: View {
     private func destinationContent(
         for destination: PlozziOSDestination, keepsNavigationBar: Bool = false
     ) -> some View {
-        if appModel.isOfflineMode && (destination == .liveTV) {
-            PlozziOSOfflineUnavailableView()
-        } else {
         switch destination {
         case .music:
             if let music = appModel.music {
@@ -1110,43 +1053,6 @@ struct PlozziOSTabShell: View {
             )
             .plozziOSItemNavigation(appModel: appModel)
             .toolbarBackground(.hidden, for: .navigationBar)
-        case .liveTV:
-            PlozziOSLiveTVDestination(
-                isActive: effectiveSelectedDestination == .liveTV && !isShowingMorePage,
-                profileID: appModel.profiles.activeProfileID,
-                preferencesNamespace: appModel.profiles.activeNamespace,
-                playbackOrientation: appModel.settings.playback.settings.orientation,
-                accountsProviders: appModel.accountsProviders,
-                authenticatedHTTPResolver: appModel.authenticatedHTTPResolver,
-                connectServer: onAddServer,
-                onShowSettings: showSettings,
-                didConfigurePlaylist: {
-                    _ = appModel.recordSuccessfulIPTVSetup()
-                },
-                completeLibraryChannelPlayback: { [appModel,
-                    profileID = appModel.profiles.activeProfileID,
-                    namespace = appModel.profiles.activeNamespace] item, token in
-                    try Task.checkCancellation()
-                    guard appModel.profiles.activeProfileID == profileID,
-                          appModel.profiles.activeNamespace == namespace,
-                          LibraryChannelHistorySettings.shared(namespace: namespace).authorizationID == token,
-                          let accountID = item.sourceAccountID,
-                          appModel.accountsProviders.resolvedActiveAccounts.contains(where: {
-                              $0.account.id == accountID
-                          }) else { throw LibraryChannelError.authorizationChanged }
-                    try appModel.completeLibraryChannelPlayback(for: item, authorizationID: token)
-                },
-                isProfileAuthorized: { [appModel] in appModel.isLiveTVProfileAuthorized },
-                restoreDestination: { [profileID = appModel.profiles.activeProfileID] in
-                    guard appModel.isLiveTVProfileAuthorized,
-                          appModel.profiles.activeProfileID == profileID,
-                          tabDestinations.contains(.liveTV) else { return false }
-                    selectDestination(.liveTV)
-                    return effectiveSelectedDestination == .liveTV && !isShowingMorePage
-                }
-            )
-            .environment(appModel.profiles)
-            .plozziOSItemNavigation(appModel: appModel)
         case .downloads:
             PlozziOSDestinationView(
                 destination: .downloads,
@@ -1203,7 +1109,6 @@ struct PlozziOSTabShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { AppBackground(palette: palette) }
-        }
         }
     }
 
@@ -1332,7 +1237,6 @@ struct PlozziOSTabShell: View {
             // idle for roughly a second after the snapshot was already available.
             // The Home view calls the same idempotent method on appearance.
             guard effectiveSelectedDestination == .home,
-                  !appModel.pendingStandaloneLiveTVEntry,
                   appModel.allowsHomeContentLoading else { return }
             await sharedHomeViewModel.loadIfNeeded(
                 for: appModel.settings.homeVisibility.visibility,
@@ -1368,13 +1272,6 @@ struct PlozziOSTabShell: View {
         .task(id: homeContentIdentity, priority: .utility) {
             await refreshNavigationLibraries()
         }
-        .liveTVGuideAutoUpdate(
-            accountIDs: appModel.accountsProviders.activeAccountIDs.sorted(),
-            authorizationID: appModel.accountsProviders.liveTVAuthorizationID,
-            isAuthorized: tabDestinations.contains(.liveTV) && appModel.isLiveTVProfileAuthorized,
-            namespace: appModel.profiles.activeNamespace,
-            resolver: appModel.accountsProviders.liveTVProviderResolver()
-        )
     }
 
     private var usesOpaqueBottomBar: Bool {
@@ -1403,23 +1300,8 @@ struct PlozziOSTabShell: View {
     }
 
     private func refreshNavigationLibraries() async {
-        let navigation = appModel.settings.navigation
-        let accounts = appModel.accountsProviders.homeAccounts
-        let accountIDs = Set(accounts.map(\.account.id))
-        let resolvesInitialCatalogue = !accountIDs.isEmpty
-            && accounts.allSatisfy { $0.account.server.provider == .iptv }
-            && !navigation.discoveredAccountIDs.isSuperset(of: accountIDs)
         guard await appModel.refreshNavigationLibraries(),
-              appModel.settings.navigation === navigation else { return }
-        if resolvesInitialCatalogue, !hasChosenNavigationDestination,
-           navigation.discoveredAccountIDs.isSuperset(of: accountIDs) {
-            selectDestination(AppAdmissionNavigation.initialSelection(
-                current: .home, visible: tabDestinations, liveTV: .liveTV, fallback: .settings,
-                admission: appModel.admissionContext,
-                hasPendingLiveTVEntry: appModel.pendingStandaloneLiveTVEntry,
-                prefersLiveTV: Self.navigationAvailability(appModel: appModel).prefersLiveTV
-            ))
-        }
+              appModel.settings.navigation === appModel.settings.navigation else { return }
     }
 
     var body: some View {
@@ -1448,18 +1330,6 @@ struct PlozziOSTabShell: View {
             guard appModel.music?.authorizationID != nil else { return }
             openDestination(.music)
         }
-        .homeLiveTVScope(
-            profileID: appModel.profiles.activeProfileID,
-            namespace: appModel.profiles.activeNamespace,
-            accounts: appModel.accountsProviders,
-            isAuthorized: { appModel.isLiveTVProfileAuthorized },
-            navigate: {
-                guard appModel.isLiveTVProfileAuthorized else { return false }
-                retainsExplicitLiveTVEntry = true
-                openDestination(.liveTV)
-                return true
-            }
-        )
         .environment(appModel.profiles)
         .onChange(
             of: PlozziOSDownloadNotificationNavigation.shared.presentation?.id, initial: true
@@ -1469,11 +1339,7 @@ struct PlozziOSTabShell: View {
                   navigation.claimTabSelection(profileID: appModel.profiles.activeProfileID) else { return }
             retainsExplicitDownloadEntry = true
             downloadNavigationID = navigation.presentation?.id
-            _ = appModel.consumeStandaloneLiveTVEntryIntent()
             openDestination(.downloads)
-        }
-        .onChange(of: appModel.pendingStandaloneLiveTVEntry, initial: true) { _, _ in
-            consumeStandaloneEntryIfNeeded()
         }
         .onChange(of: tabDestinationKey, initial: true) { _, _ in
             if !hasChosenNavigationDestination,
@@ -1487,21 +1353,12 @@ struct PlozziOSTabShell: View {
         .onChange(of: isShowingMorePage) { _, showingMore in
             if showingMore { heroTrailerController.stop() }
         }
-        .onChange(of: effectiveSelectedDestination == .liveTV && !isShowingMorePage, initial: true) { _, active in
-            onLiveTVActivityChanged(active)
-        }
-        .onDisappear { onLiveTVActivityChanged(false) }
         .onChange(of: selectedDestination, initial: true) { _, destination in
             MainThreadStallProbe.context = destination.diagnosticCategory
             if destination == .settings {
                 showSettings()
             } else {
                 lastContentDestination = destination
-            }
-            if destination == .liveTV {
-                heroTrailerController.stop()
-            } else {
-                retainsExplicitLiveTVEntry = false
             }
             if destination != .home { retainsExplicitHomeEntry = false }
             if destination != .watchlist { retainsExplicitWatchlistEntry = false }
@@ -2338,8 +2195,6 @@ private struct PlozziOSDestinationView: View {
                 onlyMovies: PlozzCustomization.favoritesOnlyMovies()
             )
             .id(activeAccountsIdentity)
-        case .liveTV, .collections, .library, .allLibraries, .music:
-            EmptyView()
         case .search:
             PlozziOSSearchView(
                 appModel: appModel,
@@ -2356,6 +2211,8 @@ private struct PlozziOSDestinationView: View {
             )
                 .id(appModel.profiles.activeProfileID)
         case .settings:
+            EmptyView()
+        case .collections, .allLibraries, .library, .music:
             EmptyView()
         }
     }

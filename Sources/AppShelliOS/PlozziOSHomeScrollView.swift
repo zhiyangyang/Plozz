@@ -12,8 +12,6 @@ extension HomePresentationRow {
         case let .library(row):
             row.failure == nil && row.issue == nil && !row.section.items.isEmpty
                 && (!row.isLoading || row.collectionCardStyle == .featured)
-        case let .liveTV(channels):
-            !channels.isEmpty
         }
     }
 }

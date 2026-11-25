@@ -158,7 +158,7 @@ final class PlaybackReadAheadRemoteTests: XCTestCase {
         XCTAssertTrue(waitUntil { self.hasFocus(row) })
         XCTAssertEqual(row.value as? String, "45 seconds")
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Compact Live TV buffer selection"
+        attachment.name = "Compact video buffer selection"
         attachment.lifetime = .keepAlways
         add(attachment)
         app.terminate()

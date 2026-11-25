@@ -3,7 +3,7 @@ import XCTest
 
 final class ProfileSettingsCategoryTests: XCTestCase {
     func testProfileCategoriesHaveOneCrossPlatformOrder() {
-        var expected: [ProfileSettingsCategory] = [.playback, .subtitles, .liveTV, .libraries]
+        var expected: [ProfileSettingsCategory] = [.playback, .subtitles, .libraries]
         #if os(iOS)
         expected.append(.downloads)
         #endif

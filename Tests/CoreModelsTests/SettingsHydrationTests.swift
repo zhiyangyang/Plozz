@@ -34,19 +34,15 @@ final class SettingsHydrationTests: XCTestCase {
         let defaults = try XCTUnwrap(WriteCountingDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = SubtitleStyleStore(defaults: defaults, namespace: "viewer")
-        for liveStyle: SubtitleStyle? in [nil, .default] {
-            let expected = SubtitleStylePreferences(base: .profileDefault, liveTV: liveStyle)
-            store.save(expected)
-            defaults.resetWrites()
-            let model = SubtitleStyleModel(store: store)
-            XCTAssertEqual(defaults.writes, 0)
-            XCTAssertEqual(store.load(), expected)
-            XCTAssertEqual(model.liveTVStyle, liveStyle)
-            model.style.fontScale = 1.25
-            XCTAssertGreaterThan(defaults.writes, 0)
-            XCTAssertEqual(store.load().base.fontScale, 1.25)
-            XCTAssertEqual(store.load().liveTV, liveStyle)
-        }
+        let expected = SubtitleStylePreferences(base: .profileDefault)
+        store.save(expected)
+        defaults.resetWrites()
+        let model = SubtitleStyleModel(store: store)
+        XCTAssertEqual(defaults.writes, 0)
+        XCTAssertEqual(store.load(), expected)
+        model.style.fontScale = 1.25
+        XCTAssertGreaterThan(defaults.writes, 0)
+        XCTAssertEqual(store.load().base.fontScale, 1.25)
     }
 }
 

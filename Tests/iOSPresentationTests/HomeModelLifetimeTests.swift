@@ -150,7 +150,7 @@ final class HomeModelLifetimeTests: XCTestCase {
         XCTFail("Settings tab visibility did not become \(visible).")
     }
 
-    func testTabShellProvidesProfilesToHomeLiveTVScopeOnPhoneAndTablet() async throws {
+    func testTabShellProvidesProfilesToHomeOnPhoneAndTablet() async throws {
         let app = PlozziOSAppModel()
         let original = app.profiles.activeProfileID
         let profile = app.profiles.add(name: "Home environment fixture")
@@ -201,7 +201,7 @@ final class HomeModelLifetimeTests: XCTestCase {
             window.layoutIfNeeded()
             if let tabs = tabController(in: host), tabs.view.window === window { return }
         } while ContinuousClock.now < deadline
-        XCTFail("The tab shell must render its profile-dependent Live TV scope.")
+        XCTFail("The tab shell must render its profile-dependent Home scope.")
     }
 
     private func tabController(in controller: UIViewController) -> UITabBarController? {

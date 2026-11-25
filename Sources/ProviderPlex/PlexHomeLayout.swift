@@ -136,7 +136,7 @@ extension PlexProvider {
     public func serverHomeItems(
         section: ServerHomeSection, limit: Int, excludingLibraryIDs: Set<String>
     ) async throws -> [MediaItem] {
-        guard limit > 0, section.kind != .libraries, section.kind != .liveTV,
+        guard limit > 0, section.kind != .libraries,
               section.libraryID.map({ !excludingLibraryIDs.contains($0) }) ?? true else { return [] }
         let boundedLimit = min(limit, 100)
         if section.id == "plex:continueWatching" {
@@ -171,7 +171,7 @@ extension PlexProvider {
         var librarySections: [String: [ServerHomeSection]] = [:]
         var seen = Set<String>()
         for section in sections where seen.insert(section.id).inserted {
-            if limit > 0, section.kind != .libraries, section.kind != .liveTV,
+            if limit > 0, section.kind != .libraries,
                section.id != "plex:continueWatching",
                let libraryID = section.libraryID, !excludingLibraryIDs.contains(libraryID) {
                 if librarySections[libraryID] == nil { libraryOrder.append(libraryID) }

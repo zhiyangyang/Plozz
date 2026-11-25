@@ -53,7 +53,7 @@ public struct ProviderBrandMark: View {
         case .emby: "EmbyLogo"
         case .silo: "SiloLogo"
         case .subsonic: "NavidromeLogo"
-        case .mediaShare, .iptv: ""
+        case .mediaShare: ""
         }
     }
 
@@ -74,7 +74,7 @@ public struct ProviderBrandMark: View {
     private var systemSymbolName: String? {
         switch provider {
         case .mediaShare: "externaldrive.connected.to.line.below.fill"
-        case .iptv: "antenna.radiowaves.left.and.right"
+
         case .jellyfin, .plex, .emby, .silo, .subsonic: nil
         }
     }
@@ -89,7 +89,7 @@ public struct ProviderBrandMark: View {
 
     public var body: some View {
         #if canImport(UIKit)
-        if provider == .iptv, let siteURL {
+        if false, let siteURL {
             ProviderSiteIcon(url: siteURL, size: size) { brandMark }
         } else {
             brandMark
@@ -169,7 +169,6 @@ public struct ProviderBrandMark: View {
             // Neutral teal — reads as "storage/network", clearly not a Plex/
             // Jellyfin brand color, matching its second-class standing.
             return Color(red: 0x2A / 255, green: 0xA8 / 255, blue: 0x9E / 255)
-        case .iptv:
             return Color(red: 0xF0 / 255, green: 0x63 / 255, blue: 0x74 / 255)
         }
     }
@@ -191,8 +190,7 @@ public struct ProviderBrandMark: View {
                 return Color(red: 0.10, green: 0.35, blue: 0.65)
             case .mediaShare:
                 return Color(red: 0.08, green: 0.46, blue: 0.43)
-            case .iptv:
-                return Color(red: 0xB8 / 255, green: 0x31 / 255, blue: 0x47 / 255)
+                    return Color(red: 0xB8 / 255, green: 0x31 / 255, blue: 0x47 / 255)
             }
         }
 
@@ -211,7 +209,6 @@ public struct ProviderBrandMark: View {
             return Color(red: 0.4, green: 0.7, blue: 1)
         case .mediaShare:
             return Color(red: 0.36, green: 0.82, blue: 0.77)
-        case .iptv:
             return Color(red: 0xFF / 255, green: 0x8F / 255, blue: 0x9F / 255)
         }
     }

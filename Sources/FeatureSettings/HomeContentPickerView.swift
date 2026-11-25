@@ -103,7 +103,7 @@ struct HomeContentPickerView: View {
             guard let account = accounts.first(where: { $0.account.id == accountID }) else { return nil }
             let feed: HomeContentSource.Feed
             if let server = choice.serverRow {
-                guard ![.libraries, .liveTV].contains(server.section.kind) else { return nil }
+                guard server.section.kind != .libraries else { return nil }
                 feed = .server(server.section)
             } else if let library = choice.library, case let .library(_, section) = choice.id {
                 feed = .recommendation(sectionID: section, kind: library.library.kind)

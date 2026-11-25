@@ -34,34 +34,4 @@ private struct PlaybackReadAheadHelp: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 }
-
-public struct LivePlaybackBufferControl: View {
-    @AppStorage private var selection: LivePlaybackBuffer
-
-    public init(defaults: UserDefaults = .standard) {
-        _selection = AppStorage(
-            wrappedValue: LivePlaybackBuffer.default,
-            LivePlaybackBufferStore.storageKey,
-            store: defaults
-        )
-    }
-
-    public var body: some View {
-        SettingsSectionGroup {
-            Picker("Live TV buffer", selection: $selection) {
-                ForEach(LivePlaybackBuffer.allCases, id: \.self) {
-                    Text($0.title).tag($0)
-                }
-            }
-            .accessibilityIdentifier("live-playback-buffer")
-        } footer: {
-            help
-        }
-    }
-
-    private var help: some View {
-        Text("More buffering can reduce interruptions, but adds live delay and may slow channel changes.")
-            .fixedSize(horizontal: false, vertical: true)
-    }
-}
 #endif

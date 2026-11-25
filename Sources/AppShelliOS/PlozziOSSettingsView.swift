@@ -4,7 +4,6 @@ import CoreModels
 import CoreNetworking
 import CoreUI
 import FeaturePlayback
-import FeatureLiveTV
 import FeatureAuth
 import FeatureProfiles
 import FeatureSettings
@@ -16,7 +15,6 @@ struct PlozziOSSettingsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showingAddServer = false
     @State private var providerSetupRouter = ManagedProviderSetupRouter()
-    @State private var iptvSetup: ManagedProviderSetupRouter.Request?
     /// A server we're signing an ADDITIONAL user into, so the Add Server sheet
     /// opens pre-filled with it instead of at the provider chooser.
     @State private var addUserServer: MediaServer?
@@ -87,27 +85,13 @@ struct PlozziOSSettingsView: View {
             providerSetupRouter.addressAccount = nil
             providerSetupRouter.reauthenticationAccount = nil
         }
-        .onChange(of: appModel.liveTVAdmissionDiagnostic, initial: true) { _, diagnostic in
-            HandoffDiagnostics.emit("SOURCES event=appAdmission \(diagnostic)")
-        }
-        .onChange(of: providerSetupRouter.request?.id) { _, _ in
-            guard let request = providerSetupRouter.request else { return }
-            iptvSetup = request
-            providerSetupRouter.request = nil
-            showAddServer()
-        }
         .scrollContentBackground(.hidden)
         .background { SettingsPageBackground() }
         .transientStatusOverlay(
             presenter: appModel.transientStatusPresenter,
             palette: palette
         )
-        .guidePreparationOverlay(
-            model: appModel.guidePreparation, presenter: appModel.transientStatusPresenter,
-            palette: palette
-        )
         .offlineStatusOverlay(appModel: appModel, palette: palette)
-        .environment(appModel.guidePreparation)
         .environment(\.themePalette, palette)
         .environment(\.colorScheme, palette.isLight ? .light : .dark)
         .tint(palette.primaryText)
@@ -116,15 +100,12 @@ struct PlozziOSSettingsView: View {
             onDismiss: {
                 appModel.finishManagedServerPresentation()
                 addUserServer = nil
-                iptvSetup = nil
             }
         ) {
             AddServerView(
                 appModel: appModel,
-                initialProvider: iptvSetup == nil ? addUserServer?.provider : .iptv,
-                initialAddress: addUserServer?.baseURL.absoluteString ?? "",
-                initialIPTVPlaylist: iptvSetup?.playlist, initialIPTVAccount: iptvSetup?.account,
-                initialIPTVMode: iptvSetup?.mode ?? .playlist
+                initialProvider: addUserServer?.provider,
+                initialAddress: addUserServer?.baseURL.absoluteString ?? ""
             )
                 .plozzSheetSize(.page)
         }
@@ -384,25 +365,6 @@ private struct PlozziOSProfileSettingsPage: View {
                 behavior: appModel.settings.subtitleBehavior, policy: appModel.settings.subtitlePolicy,
                 style: appModel.settings.subtitleStyle
             )
-        case .liveTV:
-            LiveTVSettingsView(
-                store: LiveTVViewSettingsStore(namespace: appModel.profiles.activeNamespace),
-                preferencesStore: LiveTVPreferencesStore(namespace: appModel.profiles.activeNamespace),
-                sourceManagement: { preferences in
-                    AnyView(PlozziOSLiveTVSourcesDestination(
-                        profileID: appModel.profiles.activeProfile.id,
-                        preferencesNamespace: appModel.profiles.activeNamespace,
-                        accountsProviders: appModel.accountsProviders, profiles: appModel.profiles,
-                        connectServer: onAddServer,
-                        didConfigurePlaylist: { _ = appModel.recordSuccessfulIPTVSetup() },
-                        isPresented: isPresented,
-                        isProfileAuthorized: { [appModel] in appModel.isLiveTVProfileAuthorized },
-                        settingsPreferences: preferences
-                    ))
-                },
-                searchPage: searchPage ?? .liveTV
-            )
-            .id(appModel.profiles.activeProfile.id)
         case .libraries:
             PlozziOSMyLibrariesSettingsView(
                 appModel: appModel, onAddServer: onAddServer, onAddUser: onAddUser
@@ -1409,13 +1371,7 @@ private struct PlozziOSSettingsSearchDestination: View {
         unlockedProfileID == appModel.profiles.activeProfileID
     }
 
-    private var needsSeparateSubtitleStyle: Bool {
-        entry.page == .liveSubtitleStyle && !appModel.settings.subtitleStyle.usesSeparateLiveTVStyle
-    }
-
-    private var targetID: String {
-        needsSeparateSubtitleStyle ? "live-subtitle-style" : entry.anchorID
-    }
+    private var targetID: String { entry.anchorID }
 
     var body: some View {
         Group {
@@ -1497,15 +1453,6 @@ private struct PlozziOSSettingsSearchDestination: View {
         case .subtitleStyle:
             @Bindable var style = appModel.settings.subtitleStyle
             SubtitleStyleSettingsView(style: $style.style, initialPage: entry.subtitlePage)
-        case .liveSubtitleStyle:
-            if needsSeparateSubtitleStyle {
-                profilePage(.subtitles)
-            } else {
-                @Bindable var style = appModel.settings.subtitleStyle
-                SubtitleStyleSettingsView(
-                    style: $style.resolvedLiveTVStyle, isLiveTV: true, initialPage: entry.subtitlePage
-                )
-            }
         case .theme:
             profilePage(.appearance)
         case .cards:
@@ -1570,7 +1517,6 @@ private struct PlozziOSSettingsSearchDestination: View {
                 )
             )
             .id(ObjectIdentifier(appModel.settings.libraryPresentation))
-        case .liveTV, .liveTVSources, .liveTVGuide, .liveTVVisibility: profilePage(.liveTV)
         case .language: profilePage(.language)
         case .downloads: profilePage(.downloads)
         case .profiles:
@@ -2504,8 +2450,6 @@ struct PlozziOSPlaybackSettingsView: View {
             }
             PlaybackReadAheadControl()
                 .settingsSearchAnchor("read-ahead")
-            LivePlaybackBufferControl()
-                .settingsSearchAnchor("live-buffer")
             DefaultVideoZoomControl(model: model)
             SettingsSectionGroup {
                 Picker("Auto-hide controls", selection: $model.settings.controlsAutoHide) {
@@ -2753,7 +2697,6 @@ private struct PlozziOSSubtitleSettingsView: View {
     @Bindable var policy: SubtitlePolicyModel
     @Bindable var style: SubtitleStyleModel
     @State private var showsSubtitleStyle = false
-    @State private var showsLiveSubtitleStyle = false
 
     private static let policyCategories: [SubtitleContentCategory] =
         [.movie, .tvShow, .anime]
@@ -2767,23 +2710,6 @@ private struct PlozziOSSubtitleSettingsView: View {
                 .settingsActionRow()
                 .accessibilityIdentifier("subtitle-style")
             }
-            SettingsSectionGroup("Live TV subtitle style") {
-                SettingsDescribedControl {
-                    Toggle("Use a separate style for Live TV", isOn: $style.usesSeparateLiveTVStyle)
-                } description: {
-                    Text("Use the same subtitle appearance everywhere, or choose a separate look for Live TV.")
-                }
-                .settingsSearchAnchor("live-subtitle-style")
-                if style.usesSeparateLiveTVStyle {
-                    Button { showsLiveSubtitleStyle = true } label: {
-                        SettingsDisclosureLabel { Text("Customize Live TV subtitles") }
-                    }
-                    .settingsActionRow()
-                    .accessibilityIdentifier("live-subtitle-style")
-                }
-            }
-            .settingsSearchGroup(["live-subtitle-style"])
-
             SettingsSectionGroup("Behavior") {
                 // Set separately, "Everything else" takes over the one mode,
                 // so it isn't shown twice.
@@ -2874,9 +2800,6 @@ private struct PlozziOSSubtitleSettingsView: View {
         .navigationTitle("Subtitles")
         .navigationDestination(isPresented: $showsSubtitleStyle) {
             SubtitleStyleSettingsView(style: $style.style)
-        }
-        .navigationDestination(isPresented: $showsLiveSubtitleStyle) {
-            SubtitleStyleSettingsView(style: $style.resolvedLiveTVStyle, isLiveTV: true)
         }
     }
 

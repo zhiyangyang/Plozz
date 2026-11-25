@@ -2,7 +2,28 @@ import Foundation
 
 /// Closed vocabulary only; never retain a URL, header, title, or error description.
 public struct PlaybackFailureDiagnostic: Codable, Equatable, Sendable {
-    public enum Layer: String, Codable, Sendable { case iptvProxy, liveEngine, plexLiveTune }
+    public enum Reason: String, Codable, Sendable {
+        case invalidInput, authentication, expired, unsupported, malformed, empty, storage, tooLarge
+        case fileUnavailable, network, timeout, offline, invalidResponse, notFound, rateLimited
+        case redirectBlocked, guideInsteadOfPlaylist, accessDenied, sourceChanged, cancelled, other
+    }
+
+    public enum Layer: String, Codable, Sendable {
+        case engine, plexTune
+
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            switch raw {
+            case "engine", "liveEngine", "iptvProxy": self = .engine
+            case "plexTune", "plexLiveTune": self = .plexTune
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: try decoder.singleValueContainer(),
+                    debugDescription: "Unknown playback failure layer: \(raw)"
+                )
+            }
+        }
+    }
     public enum Content: String, Codable, Sendable { case live, onDemand }
     public enum Stage: String, Codable, Sendable { case response, body, manifest, load, playback, audioSession }
     public enum Format: String, Codable, Sendable {
@@ -83,7 +104,7 @@ public struct PlaybackFailureDiagnostic: Codable, Equatable, Sendable {
     public let layer: Layer
     public let content: Content
     public let stage: Stage
-    public let reason: IPTVSetupDiagnostic.Failure.Reason
+    public let reason: PlaybackFailureDiagnostic.Reason
     public let engineFailure: EngineFailure
     public let domain: Domain
     public let code: Int?
@@ -163,7 +184,7 @@ public final class PlaybackFailureAttempt: @unchecked Sendable {
 
     @discardableResult
     public func fail(
-        stage: PlaybackFailureDiagnostic.Stage, reason: IPTVSetupDiagnostic.Failure.Reason = .other,
+        stage: PlaybackFailureDiagnostic.Stage, reason: PlaybackFailureDiagnostic.Reason = .other,
         engineFailure: PlaybackFailureDiagnostic.EngineFailure = .none,
         domain: PlaybackFailureDiagnostic.Domain = .none, code: Int? = nil,
         httpStatus: Int? = nil, format: PlaybackFailureDiagnostic.Format = .unknown,

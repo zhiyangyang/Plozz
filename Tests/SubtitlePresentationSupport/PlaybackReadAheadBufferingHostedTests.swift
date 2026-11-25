@@ -34,7 +34,7 @@ final class PlaybackReadAheadBufferingHostedTests: XCTestCase {
 
     private func exercise(url: URL, size: Int, preference: PlaybackReadAhead) async throws -> Result {
         let gate = SourceGate()
-        let server = try IPTVTestHTTPServer(beforeBodyChunk: { try await gate.wait() }) { request in
+        let server = try LocalTestHTTPServer(beforeBodyChunk: { try await gate.wait() }) { request in
             Self.response(for: request, file: url, size: size)
         }
         addTeardownBlock { await server.stop() }
@@ -159,7 +159,7 @@ final class PlaybackReadAheadBufferingHostedTests: XCTestCase {
 
     private nonisolated static func response(
         for request: String, file: URL, size: Int
-    ) -> IPTVTestHTTPServer.Response {
+    ) -> LocalTestHTTPServer.Response {
         let header = request.components(separatedBy: "\r\n").first {
             $0.lowercased().hasPrefix("range: bytes=")
         }

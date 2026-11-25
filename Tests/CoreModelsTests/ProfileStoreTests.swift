@@ -312,7 +312,6 @@ final class ProfilesModelTests: XCTestCase {
         for _ in 0..<20 {
             XCTAssertEqual(model.activeAccountIDs(for: id, fallback: ["household"]), [])
             XCTAssertEqual(model.storedActiveAccountIDs(for: id), [])
-            _ = LiveTVSourceApprovalContext(profiles: model)
         }
         XCTAssertEqual(secure.reads, reads)
         XCTAssertThrowsError(try model.confirmedAccountMemberships())
@@ -402,7 +401,6 @@ final class ProfilesModelTests: XCTestCase {
         for _ in 0..<20 {
             XCTAssertEqual(model.activeAccountIDs(for: model.activeProfileID, fallback: []), ["account"])
             XCTAssertEqual(model.storedActiveAccountIDs(for: model.activeProfileID), ["account"])
-            _ = LiveTVSourceApprovalContext(profiles: model)
         }
         XCTAssertEqual(secure.reads, reads)
 

@@ -44,7 +44,7 @@ final class PlozziOSMusicRuntime {
 
     static func authorizationID(appModel: PlozziOSAppModel) -> String? {
         guard appModel.isActiveProfileAuthorized, !appModel.isOfflineMode else { return nil }
-        return appModel.accountsProviders.liveTVAuthorizationID + "|"
+        return appModel.accountsProviders.playbackAuthorizationID + "|"
             + appModel.settings.homeVisibility.visibility.disabledKeys.sorted().joined(separator: "|")
     }
 }

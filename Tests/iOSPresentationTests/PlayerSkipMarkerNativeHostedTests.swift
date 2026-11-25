@@ -52,8 +52,7 @@ final class PlayerSkipMarkerNativeHostedTests: XCTestCase {
                 let retained: [CGFloat] = width == 240 ? [0.4, 0.75] : [0.25, 0.28125, 0.4, 0.55, 0.58125, 0.75]
                 let suppressed: [CGFloat] = width == 240 ? [0.25, 0.28125, 0.55, 0.58125, 0.85, 0.855] : [0.85, 0.855]
                 for (name, height) in [
-                    ("touch", CGFloat(8)), ("dragging-track", CGFloat(20)),
-                    ("live-touch", CGFloat(8)), ("live-dragging", CGFloat(20))
+                    ("touch", CGFloat(8)), ("dragging-track", CGFloat(20))
                 ] {
                     let plain = try XCTUnwrap(probe.frames["\(name)-plain"])
                     let marked = try XCTUnwrap(probe.frames["\(name)-marked"])
@@ -162,10 +161,6 @@ private struct NativeSeekTrackFixture: View {
             touchTrack(segments: segments).recordNativeTrack("touch-marked", probe: probe)
             expandedTrack(segments: []).recordNativeTrack("dragging-track-plain", probe: probe)
             expandedTrack(segments: segments).recordNativeTrack("dragging-track-marked", probe: probe)
-            liveTrack(marked: false, scrubbing: false).recordNativeTrack("live-touch-plain", probe: probe)
-            liveTrack(marked: true, scrubbing: false).recordNativeTrack("live-touch-marked", probe: probe)
-            liveTrack(marked: false, scrubbing: true).recordNativeTrack("live-dragging-plain", probe: probe)
-            liveTrack(marked: true, scrubbing: true).recordNativeTrack("live-dragging-marked", probe: probe)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.15, green: 0.35, blue: 0.6))
@@ -190,24 +185,6 @@ private struct NativeSeekTrackFixture: View {
         .frame(width: width, height: 44)
     }
 
-    private func liveTrack(marked: Bool, scrubbing: Bool) -> some View {
-        let origin = Date(timeIntervalSince1970: 36_000)
-        func program(_ start: TimeInterval, _ end: TimeInterval) -> LiveChannelProgramInfo {
-            .init(title: "Programme", start: origin.addingTimeInterval(start), end: origin.addingTimeInterval(end))
-        }
-        let layout = LiveChannelTimelineLayout(
-            now: origin.addingTimeInterval(100), program: program(marked ? 75 : 0, 100),
-            earlierPrograms: marked ? [
-                program(0, 25), program(25, 28.125), program(28.125, 40),
-                program(40, 55), program(55, 58.125), program(58.125, 75)
-            ] : [],
-            seekWindowSeconds: 100, behindLiveSeconds: (1 - progressFraction) * 100
-        )
-        return LiveChannelTouchTrack(
-            layout: layout, width: width, height: scrubbing ? 20 : 8, focused: false, scrubbing: scrubbing
-        )
-        .frame(width: width, height: 44)
-    }
 }
 
 private extension View {

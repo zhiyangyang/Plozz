@@ -9,72 +9,6 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         NavigationLibraryLayout.watchlistKey,
     ]
 
-    func testLiveOnlySourcesHideWatchlistWithoutChangingOtherMobileDefaults() {
-        for accounts in [[], [account("iptv", provider: .iptv)]] {
-            let facts = availability(accounts: accounts)
-            XCTAssertEqual(facts.automaticallyHiddenKeys, automaticKeys)
-            XCTAssertTrue(facts.prefersLiveTV)
-            let layout = NavigationLibraryLayout.default.resolvingAutomaticVisibility(
-                hidden: facts.automaticallyHiddenKeys
-            )
-            for keys in [
-                NavigationDestinationDefaults.compact(hasMusic: false),
-                NavigationDestinationDefaults.sidebar(visibleLibraries: [], hasMusic: false),
-                NavigationDestinationDefaults.rail(visibleLibraries: [], hasMusic: false),
-            ] {
-                XCTAssertEqual(NavigationRailPlan.destinations(
-                    visibleLibraries: [], layout: layout, availableKeys: keys
-                ), [.liveTV, .settings])
-            }
-            XCTAssertEqual(NavigationLibraryLayout.default.resolvingAutomaticVisibility(
-                hidden: NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(
-                    available: NavigationDestinationDefaults.iOS
-                )
-            ).sections(
-                available: NavigationDestinationDefaults.iOS, requiredEnabled: []
-            ).enabled, [
-                NavigationLibraryLayout.homeKey, NavigationLibraryLayout.downloadsKey,
-                NavigationLibraryLayout.searchKey
-            ])
-        }
-    }
-
-    func testIPTVMoviesOrSeriesEnableHomeAndSearch() {
-        for kind in [MediaItemKind.movie, .series] {
-            let facts = availability(
-                accounts: [account("iptv", provider: .iptv)],
-                libraries: [library("iptv", kind: kind)]
-            )
-            XCTAssertEqual(facts.automaticallyHiddenKeys, [NavigationLibraryLayout.watchlistKey])
-            XCTAssertFalse(facts.prefersLiveTV)
-        }
-    }
-
-    func testLiveOnlyIPTVStartsInLiveTVEvenWithDiscoveryConfigured() {
-        for discovery in [false, true] {
-            let facts = availability(accounts: [account("iptv", provider: .iptv)], discovery: discovery)
-            XCTAssertTrue(facts.prefersLiveTV)
-            XCTAssertEqual(facts.hasHomeContent, discovery)
-            XCTAssertEqual(AppAdmissionNavigation.initialSelection(
-                current: "home", visible: ["home", "liveTV", "settings"],
-                liveTV: "liveTV", fallback: "settings",
-                admission: AppAdmissionContext(hasMediaAccounts: true),
-                hasPendingLiveTVEntry: false, prefersLiveTV: facts.prefersLiveTV
-            ), "liveTV")
-        }
-        for kind in [MediaItemKind.movie, .series] {
-            XCTAssertFalse(availability(
-                accounts: [account("iptv", provider: .iptv)],
-                libraries: [library("iptv", kind: kind)], discovery: true
-            ).prefersLiveTV)
-        }
-        XCTAssertFalse(availability(
-            accounts: [account("iptv", provider: .iptv), account("media", provider: .jellyfin)],
-            discovery: true
-        ).prefersLiveTV)
-        XCTAssertFalse(availability(discovery: true).prefersLiveTV)
-    }
-
     func testUnresolvedMediaServerKeepsNavigationDuringLoadingAndOfflineStartup() {
         for provider in [ProviderKind.jellyfin, .plex, .emby] {
             let facts = availability(accounts: [account("server", provider: provider)])
@@ -83,19 +17,31 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         }
     }
 
+    func testResolvedLibraryEnablesHomeAndSearch() {
+        for kind in [MediaItemKind.movie, .series] {
+            let facts = availability(
+                accounts: [account("server", provider: .jellyfin)],
+                libraries: [library("server", kind: kind)]
+            )
+            XCTAssertEqual(facts.automaticallyHiddenKeys, [NavigationLibraryLayout.watchlistKey])
+            XCTAssertTrue(facts.hasHomeContent)
+            XCTAssertTrue(facts.hasSearchContent)
+        }
+    }
+
     @MainActor
-    func testMusicOnlyStartupNeverPrefersLiveTV() {
+    func testMusicOnlyStartupPrefersMusicWithoutHomeContent() {
         for discovery in [false, true] {
             let facts = availability(
                 accounts: [account("music", provider: .subsonic)], discovery: discovery
             )
-            XCTAssertFalse(facts.prefersLiveTV)
+            XCTAssertEqual(facts.automaticallyHiddenKeys, discovery
+                ? [NavigationLibraryLayout.watchlistKey] : automaticKeys)
             XCTAssertEqual(facts.prefersMusic, !discovery)
         }
         let mixed = availability(accounts: [
-            account("music", provider: .subsonic), account("iptv", provider: .iptv)
+            account("music", provider: .subsonic), account("server", provider: .jellyfin)
         ])
-        XCTAssertTrue(mixed.prefersLiveTV)
         XCTAssertFalse(mixed.prefersMusic)
     }
 
@@ -159,7 +105,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         var layout = NavigationLibraryLayout.default
         layout.apply(
             .init(
-                enabled: [NavigationLibraryLayout.settingsKey, NavigationLibraryLayout.liveTVKey],
+                enabled: [NavigationLibraryLayout.settingsKey],
                 disabled: available.filter { automaticKeys.contains($0) }
             ),
             available: available,
@@ -183,8 +129,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         layout.apply(
             .init(
                 enabled: [
-                    NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.watchlistKey,
-                    NavigationLibraryLayout.settingsKey,
+                    NavigationLibraryLayout.watchlistKey, NavigationLibraryLayout.settingsKey,
                 ],
                 disabled: [
                     NavigationLibraryLayout.homeKey, NavigationLibraryLayout.searchKey
@@ -220,46 +165,26 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         XCTAssertEqual(arranged.hiddenKeys, [NavigationLibraryLayout.searchKey])
     }
 
-    func testAccountBackedIPTVStartupPrefersLiveTVWithoutChangingAdmission() {
-        let admission = AppAdmissionContext(hasMediaAccounts: true)
-        XCTAssertTrue(admission.canEnterApp)
-        XCTAssertEqual(AppAdmissionNavigation.initialSelection(
-            current: "home", visible: ["watchlist", "liveTV", "settings"],
-            liveTV: "liveTV", fallback: "settings", admission: admission,
-            hasPendingLiveTVEntry: false, prefersLiveTV: true
-        ), "liveTV")
-        XCTAssertEqual(AppAdmissionNavigation.initialSelection(
-            current: "home", visible: ["home", "liveTV", "settings"],
-            liveTV: "liveTV", fallback: "settings", admission: admission,
-            hasPendingLiveTVEntry: false, prefersLiveTV: false
-        ), "home")
-        XCTAssertEqual(AppAdmissionNavigation.initialSelection(
-            current: "home", visible: ["watchlist", "settings"],
-            liveTV: "liveTV", fallback: "settings", admission: admission,
-            hasPendingLiveTVEntry: false, prefersLiveTV: true
-        ), "watchlist")
-    }
-
     @MainActor
     func testLibrarySnapshotsSurviveFailureButNotSuccessfulRemovalOrAccountRemoval() {
         let suite = "NavigationContentAvailabilityTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let snapshot = NavigationLibrariesSnapshotStore(defaults: defaults, namespace: "viewer")
-        snapshot.save([library("iptv")])
+        snapshot.save([library("server")])
         let model = NavigationStyleSettingsModel(
             store: NavigationStyleSettingsStore(defaults: defaults, namespace: "viewer"),
             layoutStore: NavigationLibraryLayoutStore(defaults: defaults, namespace: "viewer"),
             librariesSnapshotStore: snapshot
         )
-        XCTAssertEqual(model.contentLibraries, [library("iptv")])
-        model.updateContentLibraries([], accountIDs: ["iptv"], unreachableAccountIDs: ["iptv"])
-        XCTAssertEqual(model.contentLibraries, [library("iptv")])
+        XCTAssertEqual(model.contentLibraries, [library("server")])
+        model.updateContentLibraries([], accountIDs: ["server"], unreachableAccountIDs: ["server"])
+        XCTAssertEqual(model.contentLibraries, [library("server")])
         XCTAssertEqual(snapshot.load(), model.contentLibraries)
-        model.updateContentLibraries([], accountIDs: ["iptv"], unreachableAccountIDs: [])
+        model.updateContentLibraries([], accountIDs: ["server"], unreachableAccountIDs: [])
         XCTAssertTrue(model.contentLibraries.isEmpty)
-        XCTAssertEqual(model.discoveredAccountIDs, ["iptv"])
-        model.updateContentLibraries([library("iptv")], accountIDs: ["iptv"], unreachableAccountIDs: [])
+        XCTAssertEqual(model.discoveredAccountIDs, ["server"])
+        model.updateContentLibraries([library("server")], accountIDs: ["server"], unreachableAccountIDs: [])
         model.updateContentLibraries([], accountIDs: [], unreachableAccountIDs: [])
         XCTAssertTrue(model.contentLibraries.isEmpty)
         XCTAssertTrue(model.discoveredAccountIDs.isEmpty)
@@ -311,7 +236,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         _ accountID: String, kind: MediaItemKind = .movie, isMusic: Bool = false
     ) -> AggregatedLibrary {
         AggregatedLibrary(
-            accountID: accountID, accountName: accountID, serverName: "Server", providerKind: .iptv,
+            accountID: accountID, accountName: accountID, serverName: "Server", providerKind: .jellyfin,
             library: MediaLibrary(id: "movies", title: "Movies", kind: kind, isMusic: isMusic)
         )
     }

@@ -618,10 +618,6 @@ struct PlaybackDetailView: View {
             SettingsSplitRow(id: "read-ahead", title: "Video buffer") {
                 PlaybackReadAheadControl()
                     .settingsSearchAnchor("read-ahead")
-            }.labeledControl(),
-            SettingsSplitRow(id: "live-buffer", title: "Live TV buffer") {
-                LivePlaybackBufferControl()
-                    .settingsSearchAnchor("live-buffer")
             }.labeledControl()
         ]
     }
@@ -731,21 +727,8 @@ struct PlaybackDetailView: View {
                 title: "Subtitle style",
                 description: "Use the full player controls to customize subtitles, with a live preview."
             ) {
-                SettingsRouteLink("Customize subtitle style", value: SettingsRoute.subtitleStyle(liveTV: false))
+                SettingsRouteLink("Customize subtitle style", value: SettingsRoute.subtitleStyle)
             },
-            SettingsSplitRow(
-                id: "live-subtitle-style",
-                title: "Live TV subtitle style",
-                description: "Use the same subtitle appearance everywhere, or choose a separate look for Live TV."
-            ) {
-                SettingsControlRows {
-                    Toggle("Use a separate style for Live TV", isOn: $subtitleStyle.usesSeparateLiveTVStyle)
-                        .settingsSearchAnchor("live-subtitle-style")
-                    if subtitleStyle.usesSeparateLiveTVStyle {
-                        SettingsRouteLink("Customize Live TV subtitles", value: SettingsRoute.subtitleStyle(liveTV: true))
-                    }
-                }
-            }
         ]
     }
 

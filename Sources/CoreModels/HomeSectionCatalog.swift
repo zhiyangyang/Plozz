@@ -24,8 +24,8 @@ public struct HomeSectionCatalog: Equatable, Sendable {
         }
         var seen = Set<HomeRowID>()
         choices = (
-            shared.filter { $0.id != .libraries && $0.id != .liveTV }
-                + native + libraryRows + shared.filter { $0.id == .libraries || $0.id == .liveTV }
+            shared.filter { $0.id != .libraries }
+                + native + libraryRows + shared.filter { $0.id == .libraries }
         ).filter { seen.insert($0.id).inserted }
     }
 

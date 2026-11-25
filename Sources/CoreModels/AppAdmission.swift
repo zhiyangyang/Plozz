@@ -22,36 +22,8 @@ public struct AppAdmissionContext: Equatable, Sendable {
     }
 }
 
-/// Shared startup selection policy. An explicit entry can temporarily expose
-/// Live TV; a later launch respects the profile's configured destinations.
-public enum AppAdmissionNavigation {
-    public static func destinations<Destination: Equatable>(
-        _ configured: [Destination],
-        liveTV: Destination,
-        includesExplicitEntry: Bool
-    ) -> [Destination] {
-        guard includesExplicitEntry, !configured.contains(liveTV) else { return configured }
-        return [liveTV] + configured
-    }
-
-    public static func initialSelection<Destination: Equatable>(
-        current: Destination,
-        visible: [Destination],
-        liveTV: Destination,
-        fallback: Destination,
-        admission: AppAdmissionContext,
-        hasPendingLiveTVEntry: Bool,
-        prefersLiveTV: Bool = false
-    ) -> Destination {
-        if admission.explicitStandaloneChoice,
-           hasPendingLiveTVEntry || (!admission.hasMediaAccounts && visible.contains(liveTV)) {
-            return liveTV
-        }
-        if prefersLiveTV, visible.contains(liveTV) { return liveTV }
-        return visible.contains(current) ? current : (visible.first ?? fallback)
-    }
-}
-
+/// Shared startup selection policy. A later launch respects the profile's
+/// configured destinations.
 public protocol AppAdmissionStoring: Sendable {
     func loadStandaloneChoice() -> Bool
     func recordStandaloneChoice()
@@ -92,7 +64,6 @@ public final class AppAdmissionStore: AppAdmissionStoring, @unchecked Sendable {
 @Observable
 public final class AppAdmissionModel {
     public private(set) var explicitStandaloneChoice: Bool
-    public private(set) var pendingLiveTVEntry = false
     private let store: any AppAdmissionStoring
 
     public init(store: any AppAdmissionStoring = AppAdmissionStore()) {
@@ -112,18 +83,9 @@ public final class AppAdmissionModel {
         )
     }
 
-    /// Queue navigation before publishing admission. Consumption belongs to the
-    /// destination shell, after it has selected Live TV, not to profile setup.
-    @discardableResult
-    public func enterStandalonePlayback(isAvailable: Bool) -> Bool {
-        guard isAvailable else { return false }
-        guard !explicitStandaloneChoice else { return true }
-        pendingLiveTVEntry = true
-        return recordStandaloneChoice(isAvailable: isAvailable)
-    }
-
-    /// A successful, explicitly requested IPTV setup can retain admission
-    /// without re-entering onboarding or stealing the current destination.
+    /// A successful, explicitly requested standalone setup can retain
+    /// admission without re-entering onboarding or stealing the current
+    /// destination.
     @discardableResult
     public func recordStandaloneChoice(isAvailable: Bool) -> Bool {
         guard isAvailable else { return false }
@@ -134,16 +96,9 @@ public final class AppAdmissionModel {
     }
 
     @discardableResult
-    public func consumeLiveTVEntryIntent() -> Bool {
-        guard pendingLiveTVEntry else { return false }
-        pendingLiveTVEntry = false
-        return true
-    }
-
     /// Only the explicit "reset to first run" diagnostic action revokes this
     /// choice. Signing out, deleting sources, and switching profiles do not.
     public func resetForDebugging() {
-        pendingLiveTVEntry = false
         store.resetStandaloneChoiceForDebugging()
         explicitStandaloneChoice = false
     }

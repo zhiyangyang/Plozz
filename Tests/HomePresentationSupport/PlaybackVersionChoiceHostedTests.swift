@@ -54,7 +54,7 @@ final class PlaybackVersionChoiceHostedTests: XCTestCase {
         {"MediaSources":[\(mediaBrowserSources.joined(separator: ","))]}
         """
         let detailPath = kind == .plex ? "/library/metadata/42" : "/Users/fixture/Items/42"
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             let target = request.components(separatedBy: "\r\n").first?
                 .split(separator: " ").dropFirst().first?
                 .split(separator: "?").first.map(String.init)

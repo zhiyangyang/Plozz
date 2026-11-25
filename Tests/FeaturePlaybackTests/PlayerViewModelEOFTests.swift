@@ -161,7 +161,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         XCTAssertEqual(adjustment.finish(), -10)
     }
 
-    func testLiveTVAudioSyncPreservesItsLimitForPreviewAndCommit() async {
+    func testLiveAudioSyncPreservesItsLimitForPreviewAndCommit() async {
         let clock = AudioSyncTestClock()
         let editor = PlayerAudioSyncEditor(range: PlayerAudioSyncAdjustment.liveRange,
                                           sleep: { await clock.sleep(for: $0) })

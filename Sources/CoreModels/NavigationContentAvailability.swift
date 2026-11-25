@@ -1,12 +1,11 @@
 import Foundation
 
-/// Content facts, not visibility preferences. In particular an IPTV login alone
-/// says nothing about whether its catalogue contains movies or shows.
+/// Content facts, not visibility preferences. An unresolved server says
+/// nothing about whether its catalogue contains movies or shows.
 public struct NavigationContentAvailability: Equatable, Sendable {
     public let hasHomeContent: Bool
     public let hasSearchContent: Bool
     public let hasWatchlistItems: Bool
-    public let prefersLiveTV: Bool
     private let hasMusicOnlyAccount: Bool
 
     public init(
@@ -25,17 +24,14 @@ public struct NavigationContentAvailability: Equatable, Sendable {
                 && !$0.library.isMusic
         }
         // Keep established media navigation while an uncached server is loading
-        // or unreachable. Live-only IPTV must not invent a video library.
+        // or unreachable.
         let hasUnresolvedMediaServer = accounts.contains {
-            $0.server.provider != .iptv && $0.server.provider != .subsonic
+            $0.server.provider != .subsonic
                 && !discoveredAccountIDs.contains($0.id)
         }
         hasSearchContent = hasLibraries || hasUnresolvedMediaServer || hasDiscoverySearch
         hasHomeContent = hasSearchContent || accounts.contains { $0.server.provider == .plex }
         self.hasWatchlistItems = hasWatchlistItems
-        // Discovery can keep Home useful without making it the landing page for a live-only playlist.
-        prefersLiveTV = (!hasHomeContent && !hasMusicOnlyAccount)
-            || (!accounts.isEmpty && accounts.allSatisfy { $0.server.provider == .iptv } && !hasLibraries)
     }
 
     public var automaticallyHiddenKeys: Set<String> {

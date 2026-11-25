@@ -18,7 +18,6 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
     let libraryRequests = JellyfinDiscoveryRequests<[MediaLibrary]>()
     let collectionLibraryCache = MediaBrowserCollectionLibraryCache()
     let videoPlaylistCache = VideoPlaylistSnapshotCache()
-    let liveTVLeases = JellyfinLiveTVLeaseStore()
     private let serverRatingsReader = JellyfinServerRatings()
     let themeArchiveResolver: @Sendable (String?) async -> URL?
     private let authenticatedStreamProber: (any AuthenticatedHTTPStreamProbing)?

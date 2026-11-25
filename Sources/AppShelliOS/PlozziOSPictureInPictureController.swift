@@ -61,7 +61,7 @@ final class PlozziOSPictureInPictureController: NSObject, ObservableObject {
     private var restoreTimeout: Task<Void, Never>?
     private var restoreCompletion: ((Bool) -> Void)?
     private var reportedContinuation = false
-    private let externalPlaybackPolicy = LiveChannelExternalPlaybackPolicy()
+    private let externalPlaybackPolicy = AVPlayerExternalPlaybackPolicy()
     /// Set when the app goes to the background. Pulling down Control Center or
     /// a notification only makes the app inactive, so it does not count.
     private var leftApp = false

@@ -64,7 +64,7 @@ final class OfflineModePresentationTests: XCTestCase {
         XCTAssertTrue(app.isOfflineMode)
         XCTAssertTrue(OfflineMode.shared.isEnabled)
         XCTAssertNotNil(app.accountsProviders.localProviders)
-        XCTAssertFalse(app.isLiveTVProfileAuthorized)
+        XCTAssertFalse(app.isProfilePlaybackAuthorized)
     }
 
     func testDisabledFlagIgnoresSavedModeAndRefusesActivationWithoutErasingPreference() async throws {
@@ -407,7 +407,7 @@ final class OfflineModePresentationTests: XCTestCase {
         window.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
         await show(PlozziOSRootView(appModel: app).environment(\.horizontalSizeClass, .compact), in: window)
         capture(window, name: "offline-context-home-status")
-        for destination in ["discover", "liveTV"] {
+        for destination in ["discover"] {
             app.screenshotDirector.tab = destination
             await settle(window)
             capture(window, name: "offline-context-\(destination)")

@@ -532,7 +532,6 @@ final class PlexHomeLayoutTests: XCTestCase {
         let provider = PlexProvider(session: session(), http: stub)
         for section in [
             ServerHomeSection(id: "plex:1:movie.custom", kind: .recommendations, libraryID: "1"),
-            .init(id: "live", kind: .liveTV),
             .init(id: "libraries", kind: .libraries)
         ] {
             let items = try await provider.serverHomeItems(
@@ -634,8 +633,7 @@ final class PlexHomeLayoutTests: XCTestCase {
             .init(id: "plex:1:movie.recentlyadded.1", kind: .recentlyAdded, libraryID: "1"),
             .init(id: "plex:1:movie.custom", kind: .recommendations, libraryID: "1"),
             .init(id: "plex:2:movie.custom", kind: .recommendations, libraryID: "2"),
-            .init(id: "plex:3:movie.custom", kind: .recommendations, libraryID: "3"),
-            .init(id: "live", kind: .liveTV)
+            .init(id: "plex:3:movie.custom", kind: .recommendations, libraryID: "3")
         ]
         let first = await provider.serverHomeItems(sections: sections, limit: 8, excludingLibraryIDs: ["3"])
         XCTAssertEqual(Set(first.keys), Set(sections.map(\.id)))
@@ -648,7 +646,6 @@ final class PlexHomeLayoutTests: XCTestCase {
         XCTAssertEqual(successful.map(\.id), ["custom"])
         XCTAssertEqual(successful.first?.libraryID, "2")
         XCTAssertTrue(try XCTUnwrap(first[sections[3].id]).get().isEmpty)
-        XCTAssertTrue(try XCTUnwrap(first["live"]).get().isEmpty)
         XCTAssertEqual(stub.sentPaths, ["/hubs/promoted", "/hubs/promoted"])
 
         let recovered = await provider.serverHomeItems(
@@ -666,8 +663,7 @@ final class PlexHomeLayoutTests: XCTestCase {
         let provider: any MediaProvider = PlexProvider(session: session(), http: stub)
         let sections: [ServerHomeSection] = [
             .init(id: "plex:1:movie.custom", kind: .recommendations, libraryID: "1"),
-            .init(id: "libraries", kind: .libraries),
-            .init(id: "live", kind: .liveTV)
+            .init(id: "libraries", kind: .libraries)
         ]
         let hidden = await provider.serverHomeItems(sections: sections, limit: 8, excludingLibraryIDs: ["1"])
         let zeroLimit = await provider.serverHomeItems(sections: sections, limit: 0, excludingLibraryIDs: [])

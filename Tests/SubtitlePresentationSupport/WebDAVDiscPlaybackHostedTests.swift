@@ -326,7 +326,7 @@ final class WebDAVDiscPlaybackHostedTests: XCTestCase {
         let fixtureDirectories = directories
         let fixtureOverrides = overrides
         let reads = FixtureReads()
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             let target = String(request.split(separator: " ").dropFirst().first ?? "")
             let path = String(target.dropFirst("/dav".count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             if request.hasPrefix("OPTIONS ") { return .init(headers: ["DAV": "1, 2"]) }
@@ -485,7 +485,7 @@ final class WebDAVDiscPlaybackHostedTests: XCTestCase {
         """
         let aggregate = ProcessInfo.processInfo.environment["PLOZZ_WEBDAV_AGGREGATE_BANDWIDTH"] == "1"
         let pacer = aggregate && bodyDelay != .zero ? BodyChunkPacer(interval: bodyDelay) : nil
-        let server = try IPTVTestHTTPServer(beforeBodyChunk: {
+        let server = try LocalTestHTTPServer(beforeBodyChunk: {
             try await pacer?.wait()
         }) { request in
             if request.hasPrefix("OPTIONS ") {

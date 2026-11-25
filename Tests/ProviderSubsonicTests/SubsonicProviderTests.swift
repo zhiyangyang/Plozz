@@ -218,16 +218,7 @@ final class SubsonicProviderTests: XCTestCase {
         )
         XCTAssertFalse(availability.hasHomeContent)
         XCTAssertFalse(availability.hasSearchContent)
-        XCTAssertFalse(availability.prefersLiveTV)
         XCTAssertTrue(availability.prefersMusic)
-        var tvAccount = account
-        tvAccount.server.provider = .iptv
-        let mixed = NavigationContentAvailability(
-            accounts: [account, tvAccount], libraries: [], discoveredAccountIDs: [],
-            disabledLibraryKeys: [], hasDiscoverySearch: false, hasWatchlistItems: false
-        )
-        XCTAssertTrue(mixed.prefersLiveTV)
-        XCTAssertFalse(mixed.prefersMusic)
     }
 
     private func makeProvider(_ http: StubHTTP) throws -> SubsonicProvider {

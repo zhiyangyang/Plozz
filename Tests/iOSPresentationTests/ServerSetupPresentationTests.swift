@@ -16,7 +16,7 @@ final class ServerSetupPresentationTests: XCTestCase {
             context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
         }
         let data = try XCTUnwrap(artwork.pngData())
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             XCTAssertTrue(request.hasPrefix("GET /favicon.ico "))
             XCTAssertFalse(request.lowercased().contains("authorization:"))
             XCTAssertFalse(request.lowercased().contains("cookie:"))
@@ -30,7 +30,7 @@ final class ServerSetupPresentationTests: XCTestCase {
             let accounts = AccountStore(secureStore: InMemorySecureStore())
             try accounts.add(Account(
                 id: "fixture", server: .init(id: "fixture", name: "Example source",
-                baseURL: origin.appendingPathComponent("playlist.m3u"), provider: .iptv),
+                baseURL: origin.appendingPathComponent("playlist.m3u"), provider: .jellyfin),
                 userID: "viewer", userName: "Viewer", deviceID: "fixture"
             ), token: "fixture")
             accounts.setActiveAccountIDs([])
@@ -65,7 +65,7 @@ final class ServerSetupPresentationTests: XCTestCase {
                 let logoPixels = stride(from: 0, to: bytes.count, by: 4).filter {
                     bytes[$0] < 20 && bytes[$0 + 1] > 230 && bytes[$0 + 2] < 100
                 }.count
-                XCTAssertGreaterThan(logoPixels, 100, "Use the site's actual artwork, not the generic IPTV mark")
+                XCTAssertGreaterThan(logoPixels, 100, "Use the site's actual artwork, not the generic provider mark")
             }
             let requests = await server.requestCount
             XCTAssertGreaterThan(requests, 0)
@@ -78,7 +78,7 @@ final class ServerSetupPresentationTests: XCTestCase {
 
     func testUnavailableWebsiteLogoKeepsTheSharedProviderFallback() async throws {
         for status in [404, 200] {
-            let server = try IPTVTestHTTPServer { _ in
+            let server = try LocalTestHTTPServer { _ in
                 .init(data: Data("not an image".utf8), status: status)
             }
             do {
@@ -86,7 +86,7 @@ final class ServerSetupPresentationTests: XCTestCase {
                 var images: [CGImage] = []
                 for url in [Optional(origin), nil] {
                     images.append(try await render(
-                        ProviderBrandMark(provider: .iptv, size: 48, siteURL: url)
+                        ProviderBrandMark(provider: .jellyfin, size: 48, siteURL: url)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(.black),
                         size: .init(width: 160, height: 240), light: false
@@ -103,7 +103,7 @@ final class ServerSetupPresentationTests: XCTestCase {
                 }
                 XCTAssertGreaterThan(coralPixels(expected), 100)
                 XCTAssertEqual(coralPixels(actual), coralPixels(expected),
-                               "Missing or invalid website artwork must retain the shared IPTV mark")
+                               "Missing or invalid website artwork must retain the shared provider mark")
                 let requests = await server.requestCount
                 XCTAssertGreaterThan(requests, 0)
                 await server.stop()
@@ -272,7 +272,7 @@ final class ServerSetupPresentationTests: XCTestCase {
             (.init(width: 375, height: 1024), .accessibility3, false),
             (.init(width: 1024, height: 768), .large, true)
         ] {
-            for page in ["chooser", "password", "quick", "plex", "plex-servers", "silo", "iptv"] {
+            for page in ["chooser", "password", "quick", "plex", "plex-servers", "silo"] {
                 let image = try await render(
                     MobileServerOnboardingFixture(page: page)
                         .environment(\.themePalette, light ? ThemePalette.light : .dark)
@@ -287,9 +287,9 @@ final class ServerSetupPresentationTests: XCTestCase {
                     try await self.scrollToBottom(scroll, in: window)
                 }
                 let text = try recognize(image).joined(separator: " ")
-                let expected = ["chooser": "IPTV", "password": "Quick Connect",
+                let expected = ["chooser": "Jellyfin", "password": "Quick Connect",
                                 "quick": "Password", "plex": "approval", "plex-servers": "Continue",
-                                "silo": "Cancel", "iptv": "Cancel"][page]!
+                                "silo": "Cancel"][page]!
                 XCTAssertTrue(text.contains(expected), "\(page) at \(size): \(text)")
                 attach(image, name: "Onboarding-\(page)-bottom-\(size)-\(typeSize)")
             }

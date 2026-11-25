@@ -323,104 +323,6 @@ public struct PlexClient: Sendable {
         }
     }
 
-    func liveTVGet(path: String, query: [URLQueryItem] = []) async throws -> Data {
-        var liveHeaders = headers
-        liveHeaders["Cache-Control"] = "no-store"
-        let (data, response) = try await send(
-            Endpoint(
-                path: path, queryItems: query, headers: liveHeaders,
-                redirectPolicy: .sameOrigin
-            ),
-            preservingStatus: true
-        )
-        switch response.statusCode {
-        case 200..<300: return data
-        case 401: throw AppError.unauthorized
-        case 402: throw ServerLiveTVError.subscriptionRequired
-        case 403: throw ServerLiveTVError.permissionDenied
-        case 404: throw AppError.notFound
-        case 429: throw AppError.rateLimited(
-            retryAfter: response.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
-        )
-        default: throw AppError.invalidResponse
-        }
-    }
-
-    /// AV/FFmpeg resource requests resolve to a URL, not this client's headers.
-    /// Keep the same nonsecret client identity on the handed-off playlist.
-    var liveTVPlaybackIdentityQuery: [URLQueryItem] {
-        deviceProfile.headers().filter { $0.key.hasPrefix("X-Plex-") }
-            .sorted { $0.key < $1.key }
-            .map { URLQueryItem(name: $0.key, value: $0.value) }
-    }
-
-    /// Session requests deliberately do not use connection-failover retries:
-    /// a lost tune response may already have allocated a tuner on the server.
-    func liveTVSessionRequest(
-        path: String, method: HTTPMethod = .get,
-        query: [URLQueryItem] = [], playbackID: String,
-        diagnostic: PlaybackFailureAttempt? = nil
-    ) async throws -> Data {
-        guard UUID(uuidString: playbackID) != nil,
-              query.allSatisfy({
-                  !["session", "transcodesessionid", "x-plex-session-identifier"].contains($0.name.lowercased())
-                      || $0.value == playbackID
-              }) else {
-            throw AppError.invalidResponse
-        }
-        if path == "/video/:/transcode/universal/stop",
-           !query.contains(where: { $0.name == "session" && $0.value == playbackID }) {
-            throw AppError.invalidResponse
-        }
-        var liveHeaders = headers
-        liveHeaders["Cache-Control"] = "no-store"
-        liveHeaders["X-Plex-Session-Identifier"] = playbackID
-        let data: Data
-        let response: HTTPURLResponse
-        do {
-            (data, response) = try await http.sendRaw(
-                Endpoint(
-                    method: method, path: path, queryItems: query, headers: liveHeaders,
-                    redirectPolicy: .sameOrigin, allowsRequestCoalescing: false
-                ),
-                baseURL: await resolvedBaseURL()
-            )
-        } catch {
-            let nsError = error as NSError
-            if !(error is CancellationError), error as? AppError != .cancelled,
-               !(nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled) {
-                diagnostic?.fail(stage: .load, reason: .network,
-                                 domain: .init(nsError.domain), code: nsError.code)
-            }
-            throw error
-        }
-        if !(200..<300).contains(response.statusCode) {
-            let reason: IPTVSetupDiagnostic.Failure.Reason = switch response.statusCode {
-            case 401: .authentication
-            case 402, 403: .accessDenied
-            case 404: .notFound
-            case 429: .rateLimited
-            default: .other
-            }
-            diagnostic?.fail(stage: .response, reason: reason, httpStatus: response.statusCode,
-                             format: .init(mimeType: response.mimeType))
-        }
-        switch response.statusCode {
-        case 200..<300: return data
-        case 401: throw AppError.unauthorized
-        case 402: throw ServerLiveTVError.subscriptionRequired
-        case 403: throw ServerLiveTVError.permissionDenied
-        case 404: throw AppError.notFound
-        case 409, 423, 503: throw ServerLiveTVError.tunerUnavailable
-        case 429: throw AppError.rateLimited(
-            retryAfter: response.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
-        )
-        case 500 where path.hasSuffix("/tune"): throw ServerLiveTVError.tunerUnavailable
-        case 502, 504: throw AppError.serverUnreachable
-        default: throw AppError.invalidResponse
-        }
-    }
-
     /// Sends and decodes JSON, with the same self-healing retry as `send`.
     private func decode<T: Decodable>(_ type: T.Type, _ endpoint: Endpoint, using client: HTTPClient? = nil) async throws -> T {
         let (data, response) = try await send(endpoint, using: client)
@@ -2218,13 +2120,6 @@ public struct PlexClient: Sendable {
         return alwaysDecodableAudioCodecs.contains(codec) || ["ac3", "eac3", "ec3"].contains(codec)
     }
 
-    func canDirectPlayLiveTV(videoCodec: String?, audioCodec: String?) -> Bool {
-        guard let videoCodec, let audioCodec,
-              let codec = Self.directPlayVideoCodec(forPlexCodec: videoCodec),
-              codec == .h264 || codec == .hevc else { return false }
-        return capabilities.allowedDirectPlayVideoCodecs.contains(codec)
-            && Self.canDirectStreamAudio(codec: audioCodec)
-    }
 
     private func canDirectStreamVideo(media: PlexMedia, part: PlexPart) -> Bool {
         let stream = part.Stream?.first { $0.streamType == 1 }

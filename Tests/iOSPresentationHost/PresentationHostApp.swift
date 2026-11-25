@@ -4,8 +4,6 @@ import CoreModels
 import CoreUI
 import FeatureAuth
 @testable import FeatureHomeCore
-@testable import FeatureLiveTV
-import FeatureLiveTVCore
 import FeatureSettings
 @testable import AppShelliOS
 
@@ -108,7 +106,6 @@ struct PresentationHostApp: App {
         model.settings.subtitleBehavior.settings = .default
         model.settings.subtitlePolicy.overrides = [:]
         model.settings.subtitleStyle.style = .profileDefault
-        model.settings.subtitleStyle.usesSeparateLiveTVStyle = false
         model.settings.nightShift.settings = .default
         if ProcessInfo.processInfo.arguments.contains("--navigation-interaction-fixture") {
             var available = NavigationDestinationDefaults.iOS
@@ -128,20 +125,20 @@ struct PresentationHostApp: App {
                 }
                 enabled = [
                     NavigationLibraryLayout.homeKey, NavigationLibraryLayout.downloadsKey,
-                    NavigationLibraryLayout.watchlistKey, NavigationLibraryLayout.liveTVKey,
+                    NavigationLibraryLayout.watchlistKey,
                     NavigationLibraryLayout.searchKey
                 ] + (ProcessInfo.processInfo.arguments.contains("--all-libraries-fixture")
                      ? [NavigationLibraryLayout.allLibrariesKey] : [libraryKey])
             } else if ProcessInfo.processInfo.arguments.contains("--content-in-more") {
                 enabled = [
-                    NavigationLibraryLayout.homeKey, NavigationLibraryLayout.liveTVKey,
+                    NavigationLibraryLayout.homeKey,
                     NavigationLibraryLayout.settingsKey, NavigationLibraryLayout.watchlistKey,
                     NavigationLibraryLayout.searchKey, NavigationLibraryLayout.downloadsKey
                 ]
             } else if ProcessInfo.processInfo.arguments.contains("--profile-rail-fixture") {
                 enabled = [
                     NavigationLibraryLayout.homeKey, NavigationLibraryLayout.watchlistKey,
-                    NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.downloadsKey,
+                    NavigationLibraryLayout.downloadsKey,
                     NavigationLibraryLayout.searchKey
                 ]
             } else if ProcessInfo.processInfo.arguments.contains("--settings-in-more") {
@@ -268,8 +265,6 @@ struct PresentationHostApp: App {
                     .fixtureNavigationBarAxis()
             } else if ProcessInfo.processInfo.arguments.contains("--search-keyboard-fixture") {
                 SearchKeyboardInteractionFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--source-settings") {
-                SourceOnboardingFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--poster-zoom-fixture") {
                 PosterZoomFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--featured-card-fixture") {
@@ -297,10 +292,6 @@ struct PresentationHostApp: App {
                 PlexHomeOnboardingFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--plex-home-settings-onboarding-fixture") {
                 PlexHomeSettingsOnboardingFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--iptv-organization-fixture") {
-                IPTVOrganizationFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--category-search-fixture") {
-                LiveTVCategorySearchFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--watchlist-feedback-fixture") {
                 WatchlistFeedbackFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--touch-feedback-fixture") {
@@ -317,12 +308,6 @@ struct PresentationHostApp: App {
                 DownloadSelectionFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--downloads-interaction-fixture") {
                 DownloadsInteractionFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--iptv-removal-fixture") {
-                IPTVRemovalFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--source-retry-fixture") {
-                SourceRetryFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--iptv-setup-fixture") {
-                IPTVSetupFixture()
             } else if let interactionModel {
                 SettingsInteractionFixture(appModel: interactionModel)
             } else {
@@ -507,133 +492,6 @@ private struct CollectionSettingsProvider: MediaProvider, CapabilityReporting, S
     func releaseStreamingSession(_ request: PlaybackRequest) async {}
     func reportPlayback(_ progress: PlaybackProgress, event: PlaybackEvent) async throws {}
     func imageURL(itemID: String, kind: ImageKind, maxWidth: Int?) -> URL? { nil }
-}
-
-private struct SourceRetryFixture: View {
-    @State private var retries = 0
-    @State private var sources: LiveTVSourceManagementModel
-    @State private var imports: LiveTVPrototypeImportModel
-    @State private var catalog = LiveTVPrototypeModel(channels: [])
-    @State private var profiles: ProfilesModel
-    @State private var loader: Loader
-
-    init() {
-        let allowsChanges = ProcessInfo.processInfo.arguments.contains("--allow-source-changes")
-        let store = Store(allowsChanges: allowsChanges)
-        let loader = Loader()
-        _loader = State(initialValue: loader)
-        _sources = State(initialValue: LiveTVSourceManagementModel(store: store, canMutate: { allowsChanges }))
-        _imports = State(initialValue: LiveTVPrototypeImportModel(
-            configuration: store.load(), loader: loader
-        ))
-        let domain = "SourcesRetryInteractionFixture"
-        let defaults = UserDefaults(suiteName: domain)!
-        defaults.removePersistentDomain(forName: domain)
-        _profiles = State(initialValue: ProfilesModel(store: ProfileStore(defaults: defaults)))
-    }
-
-    var body: some View {
-        VStack {
-            NavigationStack {
-                LiveTVSourcesView(
-                    model: sources, imports: imports, refresh: {},
-                    refreshSource: {
-                        retries += 1
-                        try await imports.reloadSource($0, into: catalog)
-                    }
-                )
-            }
-            Text(verbatim: "Retries: \(retries)").accessibilityIdentifier("fixture-source-retries")
-            Button("Finish retry") { Task { await loader.finishRetry() } }
-                .accessibilityIdentifier("fixture-finish-retry")
-        }
-        .environment(profiles)
-        .environment(\.themePalette, .dark)
-        .environment(\.colorScheme, .dark)
-        .environment(\.locale, Locale(identifier: "en_US"))
-        .task { await imports.reload(into: catalog) }
-    }
-
-    private final class Store: LiveTVSourcesStoring, @unchecked Sendable {
-        private let lock = NSLock()
-        private let allowsChanges: Bool
-        private var configuration = LiveTVSourcesConfiguration(playlists: [.init(
-            id: "source", name: "Test playlist", playlistURL: URL(string: "https://example.test/list.m3u")!
-        )])
-
-        init(allowsChanges: Bool) { self.allowsChanges = allowsChanges }
-
-        func load() -> LiveTVSourcesConfiguration {
-            lock.withLock { configuration }
-        }
-
-        func save(_ configuration: LiveTVSourcesConfiguration) throws {
-            guard allowsChanges else { throw LiveTVSourcesStoreError.saveFailed }
-            lock.withLock { self.configuration = configuration }
-        }
-    }
-
-    private actor Loader: LiveTVSourceLoading {
-        private var loads = 0
-        private var completedRetries = 0
-
-        func finishRetry() { completedRetries += 1 }
-
-        func loadPlaylist(from url: URL) async throws -> LiveTVPlaylistImport {
-            loads += 1
-            let deadline = ContinuousClock.now.advanced(by: .seconds(30))
-            while completedRetries < loads - 1, ContinuousClock.now < deadline {
-                try await Task.sleep(for: .milliseconds(50))
-            }
-            throw LiveTVSourceImportError.downloadFailed
-        }
-        func loadGuide(
-            from url: URL, channels: [LiveTVPrototypeChannel], now: Date
-        ) async throws -> LiveTVGuideImport {
-            throw LiveTVSourceImportError.downloadFailed
-        }
-    }
-}
-
-private struct IPTVRemovalFixture: View {
-    private let session: UserSession
-
-    init() {
-        let arguments = ProcessInfo.processInfo.arguments
-        let playlistHeaders = arguments.contains("--playlist-headers")
-        let guideHeaders = arguments.contains("--guide-headers")
-        let address = URL(string: "https://playlist.example.test/channels.m3u")!
-        let guides = (1...4).map { URL(string: "https://guide.example.test/\($0).xml")! }
-        let headers = Dictionary(uniqueKeysWithValues: (1...3).map { ("X-Guide-\($0)", "fixture-\($0)") })
-        do {
-            let credential = try IPTVCredential(
-                mode: .playlist, address: address,
-                headers: playlistHeaders ? headers : [:], guideURL: guides[0],
-                additionalGuideURLs: playlistHeaders || guideHeaders ? [] : Array(guides.dropFirst()),
-                guideHeaders: guideHeaders ? headers : [:]
-            )
-            session = UserSession(
-                server: .init(id: "fixture", name: "Fixture playlist", baseURL: address, provider: .iptv),
-                userID: "fixture", userName: "IPTV", deviceID: "fixture",
-                accessToken: try credential.encoded()
-            )
-        } catch {
-            fatalError("Invalid IPTV removal fixture: \(error)")
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            IPTVSignInView(
-                deviceID: "fixture", reconnecting: session,
-                onAuthenticated: { _ in fatalError("The removal fixture must not connect.") },
-                onCancel: {}
-            )
-        }
-        .environment(\.locale, Locale(identifier: "en_US"))
-        .environment(\.themePalette, .dark)
-        .environment(\.plozzMetrics, .touch(density: .standard))
-    }
 }
 
 private struct SettingsInteractionFixture: View {

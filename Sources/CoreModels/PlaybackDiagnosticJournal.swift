@@ -12,7 +12,7 @@ public final class PlaybackDiagnosticJournal: @unchecked Sendable {
         case releaseStarted, releaseFinished, failureEvidence, mediaServicesRetry
     }
     public enum Source: String, Codable, Sendable {
-        case unknown, serverFile, serverHLS, localFile, assetPackage, networkFile, separateAudio, libraryChannel
+        case unknown, serverFile, serverHLS, localFile, assetPackage, networkFile, separateAudio
     }
     public enum Phase: String, Codable, Sendable {
         case idle, loading, playing, paused, seeking, rebuffering, stalled, ended, failed

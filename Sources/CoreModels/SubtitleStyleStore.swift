@@ -1,24 +1,17 @@
 import Foundation
 import Observation
 
-/// Profile appearance, optional library-category overrides, and an independent
-/// Live TV look. Live TV inherits the base until explicitly customized.
+/// Profile appearance with optional per-category overrides.
 public struct SubtitleStylePreferences: Codable, Equatable, Sendable {
     /// The profile-wide appearance, applied to any category without an override.
     public var base: SubtitleStyle
     /// Per-content-type appearance overrides. Empty today (global-only); a present
     /// entry replaces `base` whole for that category.
     public var overrides: [SubtitleContentCategory: SubtitleStyle]
-    public var liveTV: SubtitleStyle?
-
-    public var resolvedLiveTV: SubtitleStyle { base.applyingAppearance(liveTV) }
-
     public init(base: SubtitleStyle = .profileDefault,
-                overrides: [SubtitleContentCategory: SubtitleStyle] = [:],
-                liveTV: SubtitleStyle? = nil) {
+                overrides: [SubtitleContentCategory: SubtitleStyle] = [:]) {
         self.base = base
         self.overrides = overrides
-        self.liveTV = liveTV
     }
 
     /// The appearance for a category: its override if present, else the base.
@@ -28,7 +21,7 @@ public struct SubtitleStylePreferences: Codable, Equatable, Sendable {
 
     public static let `default` = SubtitleStylePreferences()
 
-    private enum CodingKeys: String, CodingKey { case base, overrides, liveTV }
+    private enum CodingKeys: String, CodingKey { case base, overrides }
 
     /// Tolerant decode so a blob written before `overrides` existed (or with a
     /// missing `base`) still decodes using the historical custom baseline.
@@ -37,7 +30,6 @@ public struct SubtitleStylePreferences: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.base = try c.decodeIfPresent(SubtitleStyle.self, forKey: .base) ?? .default
         self.overrides = try c.decodeIfPresent([SubtitleContentCategory: SubtitleStyle].self, forKey: .overrides) ?? [:]
-        self.liveTV = try c.decodeIfPresent(SubtitleStyle.self, forKey: .liveTV)
     }
 }
 
@@ -56,7 +48,6 @@ public final class SubtitleStyleStore: SubtitleStyleStoring, @unchecked Sendable
 
     /// The `UserDefaults` base key subtitle appearance persists under.
     public static let storageKey = "com.plozz.subtitleStyle"
-    public static let legacyLiveStyleStorageKey = "com.plozz.liveSubtitleStyle"
     public static let didChangeNotification = Notification.Name("com.plozz.subtitleStyle.changed")
 
     /// - Parameter namespace: per-profile scope. `nil` (the default/primary
@@ -66,7 +57,6 @@ public final class SubtitleStyleStore: SubtitleStyleStoring, @unchecked Sendable
         self.namespace = namespace
         self.key = SettingsKey.scoped(Self.storageKey, namespace: namespace)
         migrateFromLegacyIfNeeded()
-        migrateLegacyLiveStyleIfNeeded()
     }
 
     public func load() -> SubtitleStylePreferences {
@@ -93,25 +83,6 @@ public final class SubtitleStyleStore: SubtitleStyleStoring, @unchecked Sendable
         save(SubtitleStylePreferences(base: SubtitleStyle(from: legacy)))
     }
 
-    private func migrateLegacyLiveStyleIfNeeded() {
-        let legacyKey = SettingsKey.scoped(Self.legacyLiveStyleStorageKey, namespace: namespace)
-        guard let legacy = defaults.data(forKey: legacyKey) else { return }
-        do {
-            var preferences = try defaults.data(forKey: key).map {
-                try JSONDecoder().decode(SubtitleStylePreferences.self, from: $0)
-            } ?? .default
-            if preferences.liveTV == nil {
-                preferences.liveTV = try JSONDecoder().decode(SubtitleStyle.self, from: legacy)
-                let data = try JSONEncoder().encode(preferences)
-                defaults.set(data, forKey: key)
-                NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
-            }
-            // The canonical override wins, and disabling it must not revive the old key.
-            defaults.removeObject(forKey: legacyKey)
-        } catch {
-            NSLog("Plozz: could not migrate the legacy Live TV subtitle style; retained the original settings.")
-        }
-    }
 }
 
 // MARK: - Observable model
@@ -132,26 +103,6 @@ public final class SubtitleStyleModel {
     public private(set) var overrides: [SubtitleContentCategory: SubtitleStyle] {
         didSet { persist() }
     }
-    public var liveTVStyle: SubtitleStyle? {
-        didSet { persist() }
-    }
-
-    public var usesSeparateLiveTVStyle: Bool {
-        get { liveTVStyle != nil }
-        set {
-            if newValue {
-                if liveTVStyle == nil { liveTVStyle = style }
-            } else {
-                liveTVStyle = nil
-            }
-        }
-    }
-
-    public var resolvedLiveTVStyle: SubtitleStyle {
-        get { style.applyingAppearance(liveTVStyle) }
-        set { liveTVStyle = newValue }
-    }
-
     private let store: SubtitleStyleStoring
     @ObservationIgnored private var storeObserver: NSObjectProtocol?
     @ObservationIgnored private var applyingStoredValues = false
@@ -162,7 +113,6 @@ public final class SubtitleStyleModel {
         // Hydration must not invoke the optional property's persistence observer.
         self._style = prefs.base
         self._overrides = prefs.overrides
-        self._liveTVStyle = prefs.liveTV
         storeObserver = NotificationCenter.default.addObserver(
             forName: SubtitleStyleStore.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -182,19 +132,18 @@ public final class SubtitleStyleModel {
 
     private func persist() {
         guard !applyingStoredValues else { return }
-        store.save(SubtitleStylePreferences(base: style, overrides: overrides, liveTV: liveTVStyle))
+        store.save(SubtitleStylePreferences(base: style, overrides: overrides))
     }
 
     private func reloadStoredValues() {
         let preferences = store.load()
-        guard preferences.base != style || preferences.overrides != overrides || preferences.liveTV != liveTVStyle else {
+        guard preferences.base != style || preferences.overrides != overrides else {
             return
         }
         applyingStoredValues = true
         defer { applyingStoredValues = false }
         style = preferences.base
         overrides = preferences.overrides
-        liveTVStyle = preferences.liveTV
     }
 }
 

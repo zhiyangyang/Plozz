@@ -106,8 +106,8 @@ private struct PlozziOSOfflineStatusOverlay: ViewModifier {
     let isEnabled: Bool
 
     private var notice: PlozziOSOfflineModeModel.Notice? {
-        guard isEnabled, appModel.isOfflineModeAvailable, appModel.transientStatusPresenter.message == nil,
-              appModel.guidePreparation.notificationStatus == nil else { return nil }
+        guard isEnabled, appModel.isOfflineModeAvailable, appModel.transientStatusPresenter.message == nil
+        else { return nil }
         return appModel.offlineMode.notice
     }
 

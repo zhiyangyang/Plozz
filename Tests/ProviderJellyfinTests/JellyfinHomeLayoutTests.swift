@@ -240,7 +240,7 @@ final class JellyfinHomeLayoutTests: XCTestCase {
             let envelope = #"{"Items":\#(bare),"TotalRecordCount":2,"StartIndex":0}"#
             let paths = [
                 "/Users/selected-user/Items/Latest", "/Users/selected-user/Items/Resume", "/Shows/NextUp",
-                "/Users/selected-user/Sections/native/Items", "/LiveTv/Recordings",
+                "/Users/selected-user/Sections/native/Items",
                 "/Users/selected-user/Items", "/Movies/Recommendations"
             ]
             for path in paths {
@@ -264,7 +264,6 @@ final class JellyfinHomeLayoutTests: XCTestCase {
             _ = try await client.resumeItems(userID: "selected-user", limit: 60)
             _ = try await client.nextUpItems(userID: "selected-user", limit: 60)
             _ = try await client.nativeHomeItems(userID: "selected-user", sectionID: "native", limit: 60, parentID: nil)
-            _ = try await client.activeHomeRecordings(userID: "selected-user", limit: 60)
             _ = try await client.collectionMembers(userID: "selected-user", collectionID: "collection", page: .init())
             _ = try await client.movieRecommendations(userID: "selected-user", parentID: "movies", limit: 60)
             for path in paths {
@@ -349,7 +348,7 @@ final class JellyfinHomeLayoutTests: XCTestCase {
         let stub = StubHTTPClient()
         stub.stub(pathSuffix: "/DisplayPreferences/usersettings", json: preferences([
             "latestmedia", "resumebook", "resume", "resumeaudio", "librarybuttons",
-            "livetv", "nextup", "activerecordings"
+            "none", "nextup", "none"
         ]))
         stub.stub(pathSuffix: "/Users/selected-user/Views", json: views)
         let provider = JellyfinProvider(session: session(), accountID: "account-one", http: stub)
@@ -358,8 +357,7 @@ final class JellyfinHomeLayoutTests: XCTestCase {
 
         XCTAssertEqual(layout.source, .webPreferences)
         XCTAssertEqual(layout.sections.map(\.kind), [
-            .recentlyAdded, .recentlyAdded, .continueWatching, .libraries,
-            .liveTV, .nextUp, .recordings
+            .recentlyAdded, .recentlyAdded, .continueWatching, .libraries, .nextUp
         ])
         XCTAssertEqual(layout.sections.prefix(2).compactMap(\.libraryID), ["shows", "movies"])
         XCTAssertEqual(layout.sections.prefix(2).compactMap(\.title), ["Television", "Movies"])
@@ -506,16 +504,14 @@ final class JellyfinHomeLayoutTests: XCTestCase {
             .first { $0.name == "UserId" }?.value, "selected-user")
     }
 
-    func testLiveTVAndLibrariesNeverStartAHomeNetworkRequest() async throws {
+    func testLibrariesNeverStartAHomeNetworkRequest() async throws {
         let stub = StubHTTPClient()
         let provider = JellyfinProvider(session: session(), http: stub)
-        for kind: ServerHomeSection.Kind in [.liveTV, .libraries] {
-            let items = try await provider.serverHomeItems(
-                section: .init(id: "web:4:livetv", kind: kind),
-                limit: 12, excludingLibraryIDs: []
-            )
-            XCTAssertTrue(items.isEmpty)
-        }
+        let items = try await provider.serverHomeItems(
+            section: .init(id: "web:0:folders", kind: .libraries),
+            limit: 12, excludingLibraryIDs: []
+        )
+        XCTAssertTrue(items.isEmpty)
         XCTAssertTrue(stub.sentPaths.isEmpty)
     }
 
@@ -546,30 +542,6 @@ final class JellyfinHomeLayoutTests: XCTestCase {
         }
     }
 
-    func testActiveRecordingsUseDocumentedReadOnlyBoundedEndpoint() async throws {
-        let stub = StubHTTPClient()
-        stub.stub(pathSuffix: "/LiveTv/Recordings", json: #"{"Items":[{"Id":"recording","Type":"Movie"}]}"#)
-        let provider = JellyfinProvider(session: session(), http: stub)
-        let section = ServerHomeSection(id: "web:0:activerecordings", kind: .recordings)
-        let items = try await provider.serverHomeItems(section: section, limit: 7, excludingLibraryIDs: [])
-        XCTAssertEqual(items.map(\.id), ["recording"])
-        let query = try XCTUnwrap(stub.queryItems(forPathSuffix: "/LiveTv/Recordings"))
-        for item in [
-            URLQueryItem(name: "UserId", value: "selected-user"),
-            .init(name: "IsInProgress", value: "true"),
-            .init(name: "Limit", value: "7"),
-            .init(name: "EnableTotalRecordCount", value: "false")
-        ] {
-            XCTAssertTrue(query.contains(item))
-        }
-        let hidden = try await provider.serverHomeItems(
-            section: section, limit: 7, excludingLibraryIDs: ["movies"]
-        )
-        XCTAssertTrue(hidden.isEmpty)
-        XCTAssertEqual(stub.sentPaths, ["/LiveTv/Recordings"])
-        XCTAssertEqual(stub.sentMethods, [.get])
-    }
-
     func testEmbyNativeSectionsKeepServerOrderAndCustomNamesWithoutTitleClassification() async throws {
         let stub = StubHTTPClient()
         stub.stub(pathSuffix: "/Users/selected-user/HomeSections", json: """
@@ -592,15 +564,15 @@ final class JellyfinHomeLayoutTests: XCTestCase {
         let layout = try XCTUnwrap(response)
         XCTAssertEqual(layout.source, .server)
         XCTAssertEqual(layout.sections.map(\.id), [
-            "emby:mystery", "emby:resume", "emby:live", "emby:libraries", "emby:latestmedia_movies", "emby:another"
+            "emby:mystery", "emby:resume", "emby:libraries", "emby:latestmedia_movies", "emby:another"
         ])
         XCTAssertEqual(layout.sections.map(\.kind), [
-            .recommendations, .continueWatching, .liveTV, .libraries, .recentlyAdded, .recommendations
+            .recommendations, .continueWatching, .libraries, .recentlyAdded, .recommendations
         ])
         XCTAssertEqual(layout.sections.first?.title, "My selection")
         XCTAssertEqual(layout.sections.first?.libraryID, "movies")
-        XCTAssertEqual(layout.sections[4].title, "Fresh picks")
-        XCTAssertEqual(layout.sections[4].libraryID, "movies")
+        XCTAssertEqual(layout.sections[3].title, "Fresh picks")
+        XCTAssertEqual(layout.sections[3].libraryID, "movies")
         XCTAssertTrue(layout.sections[1].includesNextUp)
         XCTAssertTrue(layout.omitsMusic)
         XCTAssertTrue(layout.omitsReading)
@@ -632,11 +604,11 @@ final class JellyfinHomeLayoutTests: XCTestCase {
         let response = try await provider.serverHomeLayout()
         let layout = try XCTUnwrap(response)
         XCTAssertEqual(layout.sections.map(\.id), [
-            "emby:userviews", "emby:resume", "emby:onnow",
+            "emby:userviews", "emby:resume",
             "emby:latestmedia_movies", "emby:latestmedia_shows"
         ])
         XCTAssertEqual(layout.sections.map(\.kind), [
-            .libraries, .continueWatching, .liveTV, .recentlyAdded, .recentlyAdded
+            .libraries, .continueWatching, .recentlyAdded, .recentlyAdded
         ])
         XCTAssertTrue(layout.omitsMusic, "An audio section is omitted even without a music library.")
         XCTAssertFalse(layout.omitsReading)
@@ -919,8 +891,6 @@ final class JellyfinHomeLayoutTests: XCTestCase {
         }
         let noWork: [ServerHomeSection] = [
             .init(id: "web:0:folders", kind: .libraries),
-            .init(id: "web:4:livetv", kind: .liveTV),
-            .init(id: "web:7:activerecordings", kind: .recordings),
             .init(id: "web:6:latestmedia:movies", kind: .recentlyAdded, libraryID: "movies")
         ]
         let hidden = await provider.serverHomeItems(sections: noWork, limit: 8, excludingLibraryIDs: ["movies"])

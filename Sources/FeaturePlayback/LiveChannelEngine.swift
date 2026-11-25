@@ -111,11 +111,8 @@ public protocol LiveChannelEngine: VideoEngine {
     /// A scheduled media boundary resets tracks/cues, not the channel or decoder owner.
     var onProgrammeChanged: (@MainActor () -> Void)? { get set }
     var supportsConcurrentPlayback: Bool { get }
-    var recoverableProgrammeIssue: LibraryChannelError? { get }
-    var currentLibraryItem: LibraryChannelItem? { get }
     func configureLiveOutput(_ policy: LiveChannelOutputPolicy)
     func setWatching(_ isWatching: Bool)
-    func loadChannel(_ input: LiveChannelInput) async throws
     func loadLive(url: URL, httpHeaders: [String: String]) async
     func seekToLiveEdge() async
     /// A scrub preview `seconds` into the seekable window (from its oldest end),
@@ -133,8 +130,6 @@ public extension LiveChannelEngine {
     var livePlaybackFailureDiagnostic: PlaybackFailureDiagnostic? { nil }
     var isCapturingLiveFailureDiagnostic: Bool { false }
     var supportsConcurrentPlayback: Bool { false }
-    var recoverableProgrammeIssue: LibraryChannelError? { nil }
-    var currentLibraryItem: LibraryChannelItem? { nil }
     var onProgrammeChanged: (@MainActor () -> Void)? {
         get { nil }
         set {}
@@ -142,13 +137,5 @@ public extension LiveChannelEngine {
     func configureLiveOutput(_ policy: LiveChannelOutputPolicy) {}
     func setWatching(_ isWatching: Bool) {}
     func liveScrubThumbnail(secondsIntoWindow seconds: TimeInterval, maxWidth: Int) async -> CGImage? { nil }
-    func loadChannel(_ input: LiveChannelInput) async throws {
-        switch input {
-        case .stream(let url, let headers):
-            await loadLive(url: url, httpHeaders: headers)
-        case .libraryChannel:
-            throw LiveChannelInputError.unsupportedSource
-        }
-    }
 }
 #endif

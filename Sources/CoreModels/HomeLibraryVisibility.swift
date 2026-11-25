@@ -258,7 +258,7 @@ public struct HomeLibraryVisibility: Codable, Equatable, Sendable {
         switch id {
         case let .global(row): return isGlobalRowEnabled(row)
         case .libraries: return true
-        case .server, .liveTV, .section: return false
+        case .server, .section: return false
         case let .library(key, _):
             return !mergeLibrariesOnHome
                 && id.libraryKind.map { isLibraryRowEnabled(key, kind: $0) } == true

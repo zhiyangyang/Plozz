@@ -43,19 +43,9 @@
     "IOSProfileAvatarModePicker",
     "IOSProfileAvatarPicker",
     "IOSProfileColorSection",
-    "LibraryChannelManagementContent",
     "LibraryDisplaySettingsView",
     "LibraryNavigationSettingsView",
     "LibraryPresentationSettingsView",
-    "LiveTVAutomaticChannelsOverview",
-    "LiveTVAutomaticChannelsSection",
-    "LiveTVAutomaticChannelsToggle",
-    "LiveTVBrowsingSettingsSections",
-    "LiveTVChannelVisibilitySettings",
-    "LiveTVGuidePreferences",
-    "LiveTVPlaylistGuideSettings",
-    "LiveTVPlaylistSourceDetails",
-    "LiveTVServerSourceDetails",
     "MetadataDiagnosticsCachePanel",
     "MetadataSettingsDetailView",
     "MobileSubtitleBackgroundView",
@@ -138,19 +128,6 @@
     "Sources/CoreUI/PlaybackVersionPreferencePicker.swift",
     "Sources/CoreUI/ProfileSettingsCategory.swift",
     "Sources/FeatureAuth/ServerAddressesView.swift",
-    "Sources/FeatureLiveTV/LibraryChannelEditorView.swift",
-    "Sources/FeatureLiveTV/LiveTVAutomaticChannelsState.swift",
-    "Sources/FeatureLiveTV/LiveTVChannelOrganizationView.swift",
-    "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift",
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift",
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift",
-    "Sources/FeatureLiveTV/LiveTVImportedPlaylistEditor.swift",
-    "Sources/FeatureLiveTV/LiveTVPlaylistEditor.swift",
-    "Sources/FeatureLiveTV/LiveTVPrototypeControls.swift",
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift",
-    "Sources/FeatureLiveTV/LiveTVSourceAccessGate.swift",
-    "Sources/FeatureLiveTV/LiveTVSourceApprovalControl.swift",
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift",
     "Sources/FeaturePlayback/MobileSubtitleStyleEditor.swift",
     "Sources/FeaturePlayback/PlayerControls.swift",
     "Sources/FeaturePlayback/SubtitleStylePanel.swift",
@@ -175,7 +152,6 @@
     "Sources/FeatureSettings/HomeRowsSettingsView.swift",
     "Sources/FeatureSettings/HomeSectionSettingsViews.swift",
     "Sources/FeatureSettings/LibraryPresentationSettingsView.swift",
-    "Sources/FeatureSettings/LiveTVSettingsView.swift",
     "Sources/FeatureSettings/LosslessAudioControl.swift",
     "Sources/FeatureSettings/MetadataSettingsDetailView.swift",
     "Sources/FeatureSettings/MyLibrariesDetailView.swift",
@@ -202,8 +178,6 @@
     "DescribedSegmentedPicker",
     "FocusGatedSwitch",
     "HeaderReviewScoreCountPicker",
-    "LivePlaybackBufferControl",
-    "LiveTVGuideDaysPicker",
     "LosslessAudioControl",
     "MobileSubtitleSliderRow",
     "PlaybackReadAheadControl",
@@ -262,13 +236,6 @@
       "reason": "Reusable preference input; coverage belongs to each configured call site. Its internal control contract is checked separately.",
       "controls": {
         "Sources/FeatureSettings/ContentRatingToggle.swift|ContentRatingToggle|body|Toggle|<dynamic>": 1
-      }
-    },
-    "LivePlaybackBufferControl": {
-      "kind": "input",
-      "reason": "Reusable preference input; coverage belongs to each configured call site. Its internal control contract is checked separately.",
-      "controls": {
-        "Sources/FeatureSettings/PlaybackReadAheadControl.swift|LivePlaybackBufferControl|body|Picker|\"Live TV buffer\"": 1
       }
     },
     "PlaybackReadAheadControl": {
@@ -451,13 +418,6 @@
         "Sources/FeatureSettings/HomeSectionSettingsViews.swift|HomeCatalogStatus|body|Button|\"Retry\"": 1
       }
     },
-    "LiveTVHiddenChannelsFailureSection": {
-      "kind": "presentation",
-      "reason": "Loading failure and retry actions; no preference values.",
-      "controls": {
-        "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVHiddenChannelsFailureSection|body|Button|\"Retry\"": 1
-      }
-    },
     "MetadataDiagnosticsOverviewPanel": {
       "kind": "presentation",
       "reason": "Read-only metrics and explicit refresh; cache-budget inputs are separate.",
@@ -531,13 +491,6 @@
         "Sources/CoreUI/PlaybackVersionPreferencePicker.swift|PlaybackVersionPreferencePicker|body|Picker|\"Version selection\"": 1
       }
     },
-    "LiveTVGuideDaysPicker": {
-      "kind": "input",
-      "reason": "Reusable input renderer; configured call sites must carry coverage. The renderer's exact internal controls are separately checked.",
-      "controls": {
-        "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVGuideDaysPicker|body|SettingsOptionPicker|<dynamic>": 1
-      }
-    },
     "MobileSubtitleSliderRow": {
       "kind": "input",
       "reason": "Reusable input renderer; configured call sites must carry coverage. The renderer's exact internal controls are separately checked.",
@@ -559,93 +512,12 @@
         "Sources/CoreUI/SettingsPageHeader.swift|SettingsBackButton|button|Button|<dynamic>": 1
       }
     },
-    "LiveAudioSyncSheet": {
-      "kind": "presentation",
-      "reason": "Active-playback audio timing adjustment, not a Settings destination.",
-      "controls": {
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveAudioSyncSheet|body|Button|\"Done\"": 1,
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveAudioSyncSheet|body|Button|\"Reset\"": 1,
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveAudioSyncSheet|body|Stepper|<dynamic>": 1
-      }
-    },
-    "LiveSubtitleSettingsSheet": {
-      "kind": "presentation",
-      "reason": "Active-playback subtitle timing and style access, not a Settings destination.",
-      "controls": {
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveSubtitleSettingsSheet|body|Button|\"Done\"": 1,
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveSubtitleSettingsSheet|body|NavigationLink|\"Style\"": 1,
-        "Sources/FeaturePlayback/LiveSubtitleSettingsSheet.swift|LiveSubtitleSettingsSheet|body|Slider|<dynamic>": 1
-      }
-    },
     "PlayerZoomSettingsRows": {
       "kind": "presentation",
       "reason": "Contextual active-player zoom controls, not a Settings destination.",
       "controls": {
         "Sources/FeaturePlayback/PlayerZoomSettings.swift|PlayerZoomSettingsRows|body|Picker|\"Zoom Mode\"": 1,
         "Sources/FeaturePlayback/PlayerZoomSettings.swift|PlayerZoomSettingsRows|body|Stepper|<dynamic>": 1
-      }
-    },
-    "LiveTVChannelPreferencesView": {
-      "kind": "presentation",
-      "reason": "Individual channel metadata editing, not an app/profile setting; do not invent a current channel for search.",
-      "controls": {
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|Button|\"Move earlier\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|Button|\"Move later\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|Button|\"Save metadata\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|Button|\"Use source metadata\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|TextField|\"Category\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|TextField|\"Country\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|TextField|\"Language\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVChannelPreferencesView|body|TextField|\"Name\"": 1
-      }
-    },
-    "LiveTVFavoriteRecoveryPicker": {
-      "kind": "presentation",
-      "reason": "Explicit repair of a selected unavailable favorite, not a preference.",
-      "controls": {
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVFavoriteRecoveryPicker|body|Button|\"Restore favorite\"": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVFavoriteRecoveryPicker|body|Button|VStack(alignment: .leading, spacing: 8) { Text(channel.name) if let country = channel.country { Text(country).font(.caption).settingsRowSecondary() } }": 1,
-        "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVFavoriteRecoveryPicker|body|TextField|\"Find the same channel\"": 1
-      }
-    },
-    "LibraryChannelLibraryFields": {
-      "kind": "presentation",
-      "reason": "Inputs for a specific custom-channel recipe draft, not app/profile preferences.",
-      "controls": {
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelLibraryFields|body|SettingsCheckableRow|Text(verbatim: choice.name)": 1
-      }
-    },
-    "LibraryChannelRecipeFields": {
-      "kind": "presentation",
-      "reason": "Custom-channel creation/editing draft, not app/profile preferences.",
-      "controls": {
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Menu|SettingsMenuLabel(\"Icon\", value: iconTitle)": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Menu|SettingsMenuLabel(\"Order\", value: recipe.ordering.title)": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Picker|\"Icon\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Picker|\"Order\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|TextField|\"Channel name\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Toggle|\"Episodes\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRecipeFields|body|Toggle|\"Movies\"": 1
-      }
-    },
-    "LibraryChannelRuleFields": {
-      "kind": "presentation",
-      "reason": "Custom-channel scheduling/filter recipe draft, not app/profile preferences.",
-      "controls": {
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Allowed ratings\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Exclude movie or show titles\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Genres\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Include movie or show titles\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Schedule seed\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|TextField|\"Scheduling timezone\"": 1,
-        "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelRuleFields|body|Toggle|\"Include unrated titles\"": 1
-      }
-    },
-    "LiveTVSetupField": {
-      "kind": "presentation",
-      "reason": "Connection-setup field wrapper; search must not select or populate credentials.",
-      "controls": {
-        "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVSetupField|body|TextField|<dynamic>": 1
       }
     },
     "PasswordServerSignInView": {
@@ -688,16 +560,7 @@
       }
     }
   },
-  "derived_anchors": {
-    "entry.anchorID": "Live TV subtitle variants reuse the ordinary style anchors; exhaustive CoreModels tests verify the mapping and exclude dual subtitles.",
-    "card-focus": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "navigation-layout": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "home-row-style": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "showcase-discovery-row": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "prevent-exit": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "live-auto-preview": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface.",
-    "live-keep-watching": "Reviewed catalog destination; its source anchor was removed with the tvOS-only settings surface."
-  },
+  "derived_anchors": {},
   "exclusions": {
     "Sources/AppShelliOS/AddServerView.swift|AddServerView|body|Button|\"Cancel\"": {
       "count": 1,
@@ -934,11 +797,6 @@
       "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSMyLibrariesContent|libraryFailure|Button|\"Edit connection\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSMyLibrariesContent|libraryFailure|Button|\"Sign In Again\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -950,11 +808,6 @@
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift|PlozziOSServerSettingsDetailView|body|Button|\"Edit connection\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -1266,11 +1119,6 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSubtitleSettingsView|body|Button|SettingsDisclosureLabel { Text(\"Customize Live TV subtitles\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSubtitleSettingsView|body|Button|SettingsDisclosureLabel { Text(\"Customize subtitle style\") }": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
@@ -1287,11 +1135,6 @@
       "covered_by": [
         "subtitle-language"
       ]
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSubtitleSettingsView|body|Toggle|\"Use a separate style for Live TV\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSStreamingQuality.swift|PlozziOSAdvancedStreamingSettings|body|Button|if settings.codec == codec { Label { Text(codec.title) } icon: { Image(systemName: \"checkmark\") } } else { Text(codec.title) }": {
       "count": 1,
@@ -1368,261 +1211,6 @@
     "Sources/FeatureAuth/ServerAddressesView.swift|ServerSavedAddresses|body|Button|\"Remove\"": {
       "count": 2,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelCustomSection|body|Button|\"Delete channel\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelCustomSection|body|SettingsPageLink|SettingsDisclosureLabel { Label(\"Create custom channel\", systemImage: \"plus\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelCustomSection|body|SettingsPageLink|SettingsDisclosureLabel { Text(verbatim: channel.revisions.last?.recipe.name ?? \"\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LibraryChannelEditorView.swift|LibraryChannelEditorContent|body|Button|if model.currentPreview == nil { Label(\"Preview schedule\", systemImage: \"calendar\") } else { Label(\"Save channel\", systemImage: \"checkmark\") }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVAutomaticChannelsState.swift|LiveTVAutomaticChannelsOverview|body|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVAutomaticChannelsState.swift|LiveTVAutomaticChannelsSection|body|Button|if state.status == .ready { SettingsRowLabel(icon: nil, title: \"Refresh Plozz channels\") } else { SettingsRowLabel(icon: nil, title: \"Retry Plozz channels\") }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVUnavailableFavoritesView|body|Button|\"Remove favorite\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVUnavailableFavoritesView|body|Button|\"Review sources\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelPreferencesView.swift|LiveTVUnavailableFavoritesView|body|NavigationLink|\"Link to an imported channel\"": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanIssueContent|body|Button|\"Retry saving\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanProgressContent|body|Button|\"Cancel scan\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanResultRow|body|Button|\"Restore channel\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanResultsView|body|Button|\"Rescan channels\"": {
-      "count": 1,
-      "reason": "Transient scan-result filter and explicit repair actions.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanResultsView|body|Button|\"Restore hidden channels\"": {
-      "count": 1,
-      "reason": "Transient scan-result filter and explicit repair actions.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanResultsView|body|Toggle|\"Show hidden only\"": {
-      "count": 1,
-      "reason": "Transient scan-result filter and explicit repair actions.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanSourceActions|body|Button|if coordinator.hasResults(sourceID: sourceID) { SettingsRowLabel(icon: \"arrow.clockwise\", title: \"Rescan channels\") } else { SettingsRowLabel(icon: \"checkmark.magnifyingglass\", title: \"Scan channels\") }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanSourceActions|body|SettingsPageLink|SettingsRowLabel(icon: \"checklist\", title: \"Scan results\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVChannelScanViews.swift|LiveTVScanSourceActions|body|SettingsPageLink|SettingsRowLabel(icon: \"eye.slash\", title: \"Show hidden\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVChannelGuideMappingView|body|Button|\"Use automatic matching\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVChannelGuideMappingView|body|SettingsPageLink|SettingsRowLabel(icon: \"list.bullet\", title: Text(guide.source.name))": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVGuideMappingView|body|SettingsPageLink|SettingsRowLabel(icon: \"calendar\", title: Text(channel.name), trailing: { if imports.mappingOverrides[channel.id] != nil { Text(\"Manual\").settingsRowSecondary() } else { Text(\"Automatic\").settingsRowSecondary() } })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVGuideMappingView|body|TextField|\"Find channel\"": {
-      "count": 1,
-      "reason": "transient_filter: Search text in mapping editor.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVGuideStationPicker|body|Button|VStack(alignment: .leading) { Text(channel.name) if let identifier = channel.displayID { Text(identifier).font(.caption).settingsRowSecondary() } }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVGuideMappingView.swift|LiveTVGuideStationPicker|body|TextField|\"Find guide station\"": {
-      "count": 1,
-      "reason": "transient_filter: Search text in mapping editor.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVImportedPlaylistEditor.swift|LiveTVImportedPlaylistEditor|body|Button|LiveTVSetupActionLabel( title: fileURL == nil ? \"Choose M3U file\" : \"Choose another file\", symbol: \"doc\" )": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVImportedPlaylistEditor.swift|LiveTVImportedPlaylistEditor|body|Button|Text(original == nil ? LocalizedStringResource(\"Import playlist\") : LocalizedStringResource(\"Save source\")) .frame(maxWidth: .infinity)": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVPlaylistEditor.swift|LiveTVPlaylistEditor|body|Button|Group { if model.isChecking { Text(\"Cancel check\") } else if model.currentReview != nil { Text(\"Save source\") } else if isEditing { Text(\"Save changes\") } else { Text(SettingsCopy.addTVSource) } } .frame(maxWidth: .infinity)": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVGuideAddressEditor|body|Button|\"Remove guide\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVGuideAddressEditor|removeButton|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVGuideFields|body|Button|\"Move guide earlier\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVGuideFields|body|Button|\"Move guide later\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsPage.swift|LiveTVGuideFields|body|Button|LiveTVSetupActionLabel( title: guides.isEmpty ? \"Add guide\" : \"Add another guide\", symbol: \"plus\" )": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSettingsSourceList.swift|LiveTVSettingsSourceList|body|Button|Label { Text(SettingsCopy.addTVSource) } icon: { Image(systemName: \"plus\") }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourceApprovalControl.swift|LiveTVProfileSourceApprovalControl|body|Button|SettingsRowLabel(icon: \"lock\", title: \"Approve this source\")": {
-      "count": 1,
-      "reason": "authorization_action: Requires existing parental approval flow; never direct enablement.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourceApprovalControl.swift|LiveTVProfileSourceApprovalControl|body|Button|SettingsRowLabel(icon: \"lock.open\", title: \"Revoke source approval\")": {
-      "count": 1,
-      "reason": "authorization_action: Existing Kids source authorization workflow only.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistGuideSettings|body|SettingsPageLink|SettingsRowLabel( icon: \"person.crop.rectangle.badge.questionmark\", title: \"Review channel identities\", trailing: { Text(reviews.count, format: .number).settingsRowSecondary() } )": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistGuideSettings|body|SettingsPageLink|SettingsRowLabel(icon: \"link\", title: \"Correct guide mapping\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|Button|\"Remove source\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|Button|LiveTVSetupActionLabel(title: \"Connect as IPTV account\", symbol: \"person.crop.circle.badge.plus\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|Button|SettingsRowLabel(icon: \"trash\", title: \"Remove source\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|SettingsPageLink|SettingsRowLabel(icon: \"calendar\", title: \"Guide options\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|SettingsPageLink|SettingsRowLabel(icon: \"checkmark.circle\", title: \"Check channel availability\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|SettingsPageLink|SettingsRowLabel(icon: \"info.circle\", title: \"Source details\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVPlaylistSourceDetails|body|SettingsPageLink|SettingsRowLabel(icon: \"list.bullet.rectangle\", title: \"Playlist and guides\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceDetails|body|Button|\"Remove source\"": {
-      "count": 1,
-      "reason": "destructive_action: Keep confirmation and authorization.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceDetails|body|Button|SettingsRowLabel(icon: \"arrow.clockwise\", title: \"Refresh guide\")": {
-      "count": 1,
-      "reason": "Source-scoped guide refresh action; does not change a preference or source selection.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceDetails|body|Button|SettingsRowLabel(icon: \"trash\", title: \"Remove source\")": {
-      "count": 1,
-      "reason": "destructive_action: Keep confirmation and authorization.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceDetails|body|SettingsPageLink|SettingsRowLabel(icon: \"pencil\", title: \"Rename source\", trailing: { LiveTVSourceChevron() })": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceRename|body|Button|\"Save name\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVServerSourceRename|body|TextField|\"Source name\"": {
-      "count": 1,
-      "reason": "connection_metadata: Runtime source identity; may be reached through source editor, not indexed by value.",
-      "covered_by": []
-    },
-    "Sources/FeatureLiveTV/LiveTVSourcesView.swift|LiveTVSourceErrors|messages|Button|\"Retry\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
       "covered_by": []
     },
     "Sources/FeaturePlayback/MobileSubtitleStyleEditor.swift|MobileSubtitleDualView|body|Button|HStack { option.title Spacer() if option.isSelected { Image(systemName: \"checkmark\") } }": {
@@ -2295,54 +1883,6 @@
       "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVBrowsingSettingsSections|body|Picker|\"Channel order\"": {
-      "count": 1,
-      "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
-      "covered_by": [
-        "live-start",
-        "channel-order"
-      ]
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVBrowsingSettingsSections|body|Picker|\"Live TV opens to\"": {
-      "count": 1,
-      "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
-      "covered_by": [
-        "live-start",
-        "channel-order"
-      ]
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVChannelVisibilitySettings|body|SettingsPageLink|HiddenChannelsNavigationLabel(count: hiddenChannels.hiddenChannels.count)": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVGuidePreferences|body|Picker|\"Refresh while open\"": {
-      "count": 1,
-      "reason": "The contextual interval Picker edits the indexed Refresh while open row; live-guide-update owns search reveal and selection.",
-      "covered_by": [
-        "live-guide-update"
-      ]
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVHiddenChannelsListContent|body|Button|\"Reset category and region visibility\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVHiddenChannelsListContent|body|Button|\"Restore all\"": {
-      "count": 1,
-      "reason": "content_management_action: Runtime channel operation.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVHiddenChannelsListContent|body|Button|\"Restore\"": {
-      "count": 1,
-      "reason": "content_management_action: Runtime channel operation.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/LiveTVSettingsView.swift|LiveTVHiddenChannelsListContent|body|Button|\"Retry\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsCachePanel|body|Button|\"Cancel\"": {
       "count": 1,
       "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
@@ -2397,11 +1937,6 @@
       "covered_by": []
     },
     "Sources/FeatureSettings/MyLibrariesDetailView.swift|MyLibrariesContentView|librarySection|Button|Label(\"Retry\", systemImage: \"arrow.clockwise\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MyLibrariesDetailView.swift|MyLibrariesContentView|libraryStatusMessage|Button|\"Edit connection\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -2580,11 +2115,6 @@
       ]
     },
     "Sources/FeatureSettings/ProfileSetupLibrariesView.swift|ProfileSetupLibrariesView|doneBar|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|accountRow|Button|\"Edit connection\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []

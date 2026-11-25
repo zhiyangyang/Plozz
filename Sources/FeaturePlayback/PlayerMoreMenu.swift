@@ -6,7 +6,7 @@ import SwiftUI
 import UIKit
 
 public enum PlayerMenuDestination: String, Identifiable {
-    case subtitleSearch, subtitleAdvanced, audioSync, speed, zoom, quality, versions, multiview
+    case subtitleSearch, subtitleAdvanced, audioSync, speed, zoom, quality, versions
     case discMenu, discVideos, playVideo, discRegion
     public var id: Self { self }
 }
@@ -20,7 +20,7 @@ public enum PlayerMenuLayout: Equatable {
 }
 
 public enum PlayerMenuSection: String, CaseIterable, Identifiable {
-    case subtitles, audio, speed = "playback-speed", quality, multiview, zoom, versions, upscaling, fel
+    case subtitles, audio, speed = "playback-speed", quality, zoom, versions, upscaling, fel
     case discMenu, discVideos, playVideo, discRegion
     public var id: Self { self }
 
@@ -34,7 +34,6 @@ public enum PlayerMenuSection: String, CaseIterable, Identifiable {
         case .upscaling: "Upscaling"
         case .fel: "P7 FEL → P8.1 conversion"
         case .versions: "Version"
-        case .multiview: "Multiview"
         case .discMenu: "Disc menu"
         case .discVideos: "Disc videos"
         case .playVideo: "Play video"
@@ -115,12 +114,11 @@ public struct PlayerMoreMenuAvailability {
     public var quality: StreamingQuality?
     public var qualitySupport: StreamingQualitySupport
     public var versions: Bool
-    public var multiview: Bool
     public var disc: Disc?
 
     public init(
         maximumSpeed: Double? = nil, video: Bool = true, videoModel: PlayerVideoZoomModel? = nil, quality: StreamingQuality? = nil,
-        qualitySupport: StreamingQualitySupport = .standard, versions: Bool = false, multiview: Bool = false, disc: Disc? = nil
+        qualitySupport: StreamingQualitySupport = .standard, versions: Bool = false, disc: Disc? = nil
     ) {
         self.maximumSpeed = maximumSpeed
         self.video = video
@@ -128,7 +126,6 @@ public struct PlayerMoreMenuAvailability {
         self.quality = quality
         self.qualitySupport = qualitySupport
         self.versions = versions
-        self.multiview = multiview
         self.disc = disc
     }
 }
@@ -166,7 +163,6 @@ public enum PlayerMoreMenu {
             || model.engineCapabilities.contains(.audioDelay) { sections.append(.audio) }
         if availability.maximumSpeed != nil, model.engineCapabilities.contains(.playbackSpeed) { sections.append(.speed) }
         if availability.quality != nil { sections.append(.quality) }
-        if availability.multiview { sections.append(.multiview) }
         if availability.video && model.engineCapabilities.contains(.videoZoom) { sections.append(.zoom) }
         if availability.versions { sections.append(.versions) }
         if model.upscaling.isAvailable { sections.append(.upscaling) }
@@ -287,7 +283,6 @@ public enum PlayerMoreMenu {
             entries[.quality] = menu
         }
         if availability.versions { entries[.versions] = destination(PlayerMenuSection.versions.title, .versions) }
-        if availability.multiview { entries[.multiview] = destination(PlayerMenuSection.multiview.title, .multiview) }
         if let disc = availability.disc {
             if disc.canNavigate {
                 entries[.discMenu] = destination(PlayerMenuSection.discMenu.title, .discMenu)

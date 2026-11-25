@@ -44,7 +44,7 @@ final class FLACMusicPlaybackHostedTests: XCTestCase {
     func testHTTPFLACPlaysSeeksPausesAndAdvances() async throws {
         let standard = try Data(contentsOf: fixture("music-flac-16-44100"))
         let highResolution = try Data(contentsOf: fixture("music-flac-24-96000"))
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             let target = request.split(separator: " ").dropFirst().first.map(String.init) ?? ""
             let data = target.contains("24-96000") ? highResolution : standard
             let headers = ["Content-Type": "audio/flac", "Accept-Ranges": "bytes"]

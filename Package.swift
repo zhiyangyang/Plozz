@@ -47,7 +47,6 @@ let package = Package(
         .library(name: "ProviderJellyfin", targets: ["ProviderJellyfin"]),
         .library(name: "ProviderSilo", targets: ["ProviderSilo"]),
         .library(name: "ProviderSubsonic", targets: ["ProviderSubsonic"]),
-        .library(name: "ProviderIPTV", targets: ["ProviderIPTV"]),
         .library(name: "ProviderPlex", targets: ["ProviderPlex"]),
         .library(name: "ProviderShare", targets: ["ProviderShare"]),
         .library(name: "RatingsService", targets: ["RatingsService"]),
@@ -58,8 +57,6 @@ let package = Package(
         .library(name: "FeatureSearchCore", targets: ["FeatureSearchCore"]),
         .library(name: "FeaturePlayback", targets: ["FeaturePlayback"]),
         .library(name: "EnginePlozzigen", targets: ["EnginePlozzigen"]),
-        .library(name: "FeatureLiveTVCore", targets: ["FeatureLiveTVCore"]),
-        .library(name: "FeatureLiveTV", targets: ["FeatureLiveTV"]),
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
         .library(name: "FeatureProfiles", targets: ["FeatureProfiles"]),
         .library(name: "FeatureWatchlistCore", targets: ["FeatureWatchlistCore"]),
@@ -354,11 +351,6 @@ let package = Package(
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
         .target(
-            name: "ProviderIPTV",
-            dependencies: ["CoreModels", "CoreNetworking"],
-            linkerSettings: [.linkedLibrary("sqlite3")]
-        ),
-        .target(
             name: "ProviderPlex",
             dependencies: ["CoreModels", "CoreNetworking"]
         ),
@@ -393,7 +385,7 @@ let package = Package(
         ),
         .target(
             name: "FeatureAuthCore",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "ProviderJellyfin", "ProviderPlex", "ProviderSilo", "ProviderIPTV", "ProviderSubsonic"]
+            dependencies: ["CoreModels", "CoreNetworking", "CoreSecureStore", "ProviderJellyfin", "ProviderPlex", "ProviderSilo", "ProviderSubsonic"]
         ),
         .target(
             name: "FeatureAuth",
@@ -421,14 +413,6 @@ let package = Package(
         .target(
             name: "FeatureSearchCore",
             dependencies: ["CoreModels"]
-        ),
-        .target(
-            name: "FeatureLiveTVCore",
-            dependencies: ["CoreModels", "CoreNetworking"]
-        ),
-        .target(
-            name: "FeatureLiveTV",
-            dependencies: ["CoreModels", "CoreUI", "FeatureLiveTVCore"]
         ),
         .target(
             name: "FeatureSettings",
@@ -725,7 +709,6 @@ let package = Package(
                 // The universal watchlist runtime lives here so tvOS and iOS share
                 // one implementation instead of two 560-line copies.
                 "FeatureHomeCore",
-                "FeatureLiveTVCore",
                 "FeaturePlayback",
                 "FeatureWatchlistCore",
                 "MediaTransportCore",
@@ -739,7 +722,6 @@ let package = Package(
                 "ProviderSilo",
                 "ProviderSubsonic",
                 "ProviderPlex",
-                "ProviderIPTV",
                 "ProviderShare",
                 "CoreSecureStore",
             ]
@@ -778,7 +760,6 @@ let package = Package(
                 "FeatureDiscoveryCore",
                 "FeatureHomeCore",
                 "HeroUI",
-                "FeatureLiveTV",
                 "FeaturePlayback",
                 "FeatureProfiles",
                 "FeatureSearchCore",
@@ -875,10 +856,6 @@ let package = Package(
             dependencies: ["ProviderSubsonic", "CoreModels", "CoreNetworking"]
         ),
         .testTarget(
-            name: "ProviderIPTVTests",
-            dependencies: ["ProviderIPTV", "CoreModels", "CoreNetworking", "FeatureLiveTVCore", "TestSupportPerformance"]
-        ),
-        .testTarget(
             name: "ProviderPlexTests",
             dependencies: ["ProviderPlex", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
         ),
@@ -898,14 +875,6 @@ let package = Package(
         .testTarget(
             name: "FeatureSearchCoreTests",
             dependencies: ["FeatureSearchCore", "CoreModels"]
-        ),
-        .testTarget(
-            name: "FeatureLiveTVCoreTests",
-            dependencies: ["CoreModels", "FeatureLiveTVCore", "TestSupportPerformance"]
-        ),
-        .testTarget(
-            name: "FeatureLiveTVTests",
-            dependencies: ["FeatureLiveTV", "FeatureLiveTVCore"]
         ),
         .testTarget(
             name: "FeatureProfilesTests",

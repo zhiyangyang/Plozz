@@ -956,7 +956,7 @@ final class SettingsInteractionTests: XCTestCase {
 
     func testAdaptiveNavigationPageCaptures() {
         launchNavigation(settingsInMore: true)
-        for title in ["Home", "Watchlist", "Live TV", "Downloads", "Search", "Settings"] {
+        for title in ["Home", "Watchlist", "Downloads", "Search", "Settings"] {
             let tab = app.buttons[title].firstMatch
             if tab.waitForExistence(timeout: 2), tab.isHittable {
                 tab.tap()
@@ -1211,7 +1211,7 @@ final class SettingsInteractionTests: XCTestCase {
 
     func testRootOrganizationMatchesAcrossAdaptiveLayouts() {
         let titles = [
-            "Playback", "Subtitles", "Live TV", "Libraries", "Appearance",
+            "Playback", "Subtitles", "Libraries", "Appearance",
             "Screens & Navigation", "Language"
         ]
         for arguments in [[], ["--compact-settings"], ["--large-text"]] {
@@ -1970,7 +1970,7 @@ final class SettingsInteractionTests: XCTestCase {
 
     func testSettingsSectionsOpenTheirOwnDestinations() {
         for title in [
-            "Playback", "Subtitles", "Live TV", "Libraries", "Appearance", "Screens & Navigation",
+            "Playback", "Subtitles", "Libraries", "Appearance", "Screens & Navigation",
             "Customize Home", "App navigation", "Detail Page", "Theme", "Spoiler Protection", "Circadian Mode",
             "Profiles", "Sources", "Downloads", "Metadata Providers", "Help & Diagnostics", "Attributions"
         ] {
@@ -2349,39 +2349,6 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertEqual(ratings.value as? String, "1")
     }
 
-    func testSubtitleToggleInsertsOnlyItsOwnNavigationRow() {
-        openSettingsPage("Subtitles", verifyTitleLayout: false)
-        let liveStyle = app.switches["Use a separate style for Live TV"]
-        XCTAssertEqual(liveStyle.value as? String, "0")
-        tapNativeSwitch(liveStyle)
-        let liveLink = button("Customize Live TV subtitles")
-        XCTAssertTrue(liveLink.waitForExistence(timeout: 3), app.debugDescription)
-        XCTAssertTrue(button("Customize subtitle style").exists)
-        tapNativeSwitch(liveStyle)
-        XCTAssertFalse(liveLink.exists)
-        let hearing = app.buttons["subtitle-sdh"]
-        reveal(hearing)
-        let forced = button("Forced subtitles")
-        let forcedBefore = forced.label
-        hearing.tap()
-        capture("subtitle-search-menu")
-        XCTAssertTrue(app.buttons["Prefer SDH"].waitForExistence(timeout: 3), app.debugDescription)
-        app.buttons["Prefer SDH"].tap()
-        XCTAssertTrue(hearing.staticTexts["Prefer SDH"].exists)
-        XCTAssertEqual(forced.label, forcedBefore)
-        let fallback = app.staticTexts["Use SDH when available; otherwise use regular subtitles."]
-        reveal(fallback, fullyVisible: true)
-        XCTAssertTrue(fallback.isHittable)
-        reveal(hearing, fullyVisible: true)
-        hearing.tap()
-        app.buttons["Only SDH"].tap()
-        XCTAssertTrue(hearing.staticTexts["Only SDH"].exists)
-        let strict = app.staticTexts["Use only SDH. Leave subtitles off if unavailable."]
-        reveal(strict, fullyVisible: true)
-        XCTAssertTrue(strict.isHittable)
-        capture("subtitle-sdh-behavior")
-    }
-
     func testCircadianPictureMenusAndPreviewKeepSeparateActions() {
         openSettingsPage("Circadian Mode", verifyTitleLayout: false)
         tapNativeSwitch(app.switches["Circadian Mode"])
@@ -2403,23 +2370,6 @@ final class SettingsInteractionTests: XCTestCase {
         preview.tap()
         XCTAssertTrue(app.staticTexts["Simulated time"].waitForExistence(timeout: 3), app.debugDescription)
         XCTAssertFalse(app.buttons["Toasty"].exists)
-    }
-
-    func testLiveTVSegmentedPickerAndSwitchesRemainIndependent() {
-        openSettingsPage("Live TV", verifyTitleLayout: false)
-        let sort = app.segmentedControls.firstMatch
-        XCTAssertTrue(sort.waitForExistence(timeout: 3))
-        sort.buttons["Name"].tap()
-        XCTAssertTrue(sort.buttons["Name"].isSelected)
-        let preview = app.switches["Preview after watching"]
-        let recent = app.switches["Recently watched"]
-        let recentBefore = recent.value as? String
-        let previewBefore = preview.value as? String
-        capture("live-tv-native-switches")
-        tapNativeSwitch(preview)
-        XCTAssertNotEqual(preview.value as? String, previewBefore)
-        XCTAssertEqual(recent.value as? String, recentBefore)
-        XCTAssertTrue(sort.buttons["Name"].isSelected)
     }
 
     func testContinueWatchingRowOpensItsOwnSettings() {
@@ -2993,7 +2943,7 @@ final class SettingsInteractionTests: XCTestCase {
 
     private func categoryButton(_ title: String) -> XCUIElement {
         let identifiers = [
-            "Playback": "playback", "Subtitles": "subtitles", "Live TV": "liveTV",
+            "Playback": "playback", "Subtitles": "subtitles",
             "Libraries": "libraries", "Appearance": "appearance",
             "Screens & Navigation": "screensNavigation", "Language": "language"
         ]

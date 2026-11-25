@@ -260,7 +260,7 @@ final class HomeMetadataPerformanceTests: XCTestCase {
     }
 
     func testHomeSilentRefreshPublishesMetadataChangesForEveryBackend() async throws {
-        for kind: ProviderKind in [.plex, .jellyfin, .emby, .mediaShare, .iptv] {
+        for kind: ProviderKind in [.plex, .jellyfin, .emby, .mediaShare] {
             let fixture = try PublicationFixture(itemCount: 8, peoplePerItem: 4, kind: kind)
             try await fixture.load()
             var expected = fixture.snapshots[0]

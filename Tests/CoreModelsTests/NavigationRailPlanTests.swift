@@ -326,7 +326,6 @@ final class NavigationRailPlanTests: XCTestCase {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.watchlistKey,
         ]
-        expected.append(NavigationLibraryLayout.liveTVKey)
         expected += [
             NavigationLibraryLayout.searchKey,
             NavigationLibraryLayout.musicKey,
@@ -526,7 +525,6 @@ final class NavigationRailPlanTests: XCTestCase {
             NavigationLibraryLayout.allLibrariesKey,
             "a:1",
         ]
-        hidden.insert(NavigationLibraryLayout.liveTVKey)
         let layout = NavigationLibraryLayout(hiddenKeys: hidden)
         let libraries = [library("1", title: "Movies", account: "a")]
 
@@ -559,7 +557,6 @@ final class NavigationRailPlanTests: XCTestCase {
             .home, .search, .watchlist, .music, .settings, .allLibraries,
             .library("acct:lib:with:colons")
         ]
-        cases.append(.liveTV)
         for destination in cases {
             XCTAssertEqual(
                 NavigationRailDestination(storageValue: destination.storageValue),

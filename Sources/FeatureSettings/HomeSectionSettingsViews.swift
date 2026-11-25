@@ -197,7 +197,7 @@ extension HomeRowChoice {
         if let collectionSection {
             return collectionSection.localizedContentTitle.map(Text.init) ?? Text(verbatim: collectionSection.contentTitle)
         }
-        return id == .liveTV ? Text("All live sources") : Text("All libraries")
+        return Text("All libraries")
     }
 }
 

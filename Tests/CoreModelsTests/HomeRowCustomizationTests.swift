@@ -38,7 +38,6 @@ final class HomeRowCustomizationTests: XCTestCase {
                 [.jellyfin, .emby].contains(source.providerKind) && source.library.kind == .series
             )
         }
-        XCTAssertTrue(catalog.choices.contains { $0.id == .liveTV })
         XCTAssertTrue(catalog.choices.contains { $0.id == .libraries })
         XCTAssertFalse(catalog.choices.contains { $0.id == .library("mediaShare:shows", kind: .nextUp) })
     }
@@ -117,13 +116,13 @@ final class HomeRowCustomizationTests: XCTestCase {
         )
     }
 
-    func testBothPresetsPlaceLibrariesAfterLiveTVAndDiscoveredFallbackRows() {
+    func testBothPresetsPlaceLibrariesAfterDiscoveredFallbackRows() {
         let fallback = library("a", "movies")
         let fallbackID = HomeRowID.library(fallback.key, kind: .recentlyAdded)
         let choices = HomeRowChoice.shared + HomeRowChoice.baseRows(for: fallback)
         var single = HomeRowCustomization(defaults: .matchServer)
         single.resolvedDefaults = .init(
-            mode: .server, order: [.libraries, .global(.continueWatching), .liveTV]
+            mode: .server, order: [.libraries, .global(.continueWatching)]
         )
         var multiple = HomeRowCustomization(defaults: .matchServer)
         multiple.resolvedDefaults = .init(
@@ -132,11 +131,11 @@ final class HomeRowCustomizationTests: XCTestCase {
         var unsupported = HomeRowCustomization(defaults: .matchServer)
         unsupported.resolvedDefaults = .init(mode: .providerFallback)
         let common: [HomeRowID] = [
-            .global(.continueWatching), .global(.watchlist), .global(.recentlyAdded), .liveTV
+            .global(.continueWatching), .global(.watchlist), .global(.recentlyAdded)
         ]
         let cases: [(HomeRowCustomization, [HomeRowID])] = [
             (.init(defaults: .combined), common + [.libraries]),
-            (single, [.global(.continueWatching), .liveTV, .libraries]),
+            (single, [.global(.continueWatching), .libraries]),
             (multiple, common + [fallbackID, .libraries]),
             (unsupported, [.global(.continueWatching), .global(.watchlist), fallbackID, .libraries]),
             (.init(defaults: .matchServer),
@@ -173,11 +172,11 @@ final class HomeRowCustomizationTests: XCTestCase {
     func testVisibilityEditFreezesThePresentedPresetOrderInsteadOfServerLibraryPosition() {
         var customization = HomeRowCustomization(defaults: .matchServer)
         customization.resolvedDefaults = .init(
-            mode: .server, order: [.libraries, .global(.continueWatching), .liveTV]
+            mode: .server, order: [.libraries, .global(.continueWatching)]
         )
         customization.setVisible(false, for: .global(.continueWatching))
         XCTAssertEqual(customization.defaults, .custom)
-        XCTAssertEqual(customization.sections(choices: HomeRowChoice.shared).enabled, [.liveTV, .libraries])
+        XCTAssertEqual(customization.sections(choices: HomeRowChoice.shared).enabled, [.libraries])
     }
 
     func testDefaultLibraryPositionDoesNotEnableAServerHiddenLibraryRowOrRewriteOldOrders() {
@@ -272,7 +271,7 @@ final class HomeRowCustomizationTests: XCTestCase {
             var customization = HomeRowCustomization(
                 defaults: preset,
                 order: [.global(.continueWatching), next.id, latest, .libraries, libraryNext],
-                hidden: [libraryNext, .global(.watchlist), .global(.recentlyAdded), .liveTV],
+                hidden: [libraryNext, .global(.watchlist), .global(.recentlyAdded)],
                 shown: [.global(.continueWatching), next.id, latest, .libraries], serverRows: [next]
             )
             if preset == .matchServer {

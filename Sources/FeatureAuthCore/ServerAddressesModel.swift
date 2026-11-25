@@ -60,7 +60,7 @@ public final class ServerAddressesModel {
                 candidate.alternateConnectionURLs = nil
                 pairingServer = candidate
                 return
-            case .iptv, .mediaShare, .subsonic:
+            case .mediaShare, .subsonic:
                 throw AppError.invalidResponse
             }
             try requireCurrent(current)

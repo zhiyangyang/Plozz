@@ -26,7 +26,7 @@ final class ProfileNavigationInteractionTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["profile-toolbar-layout"].wait(
             for: \.label, toEqual: "vertical", timeout: 10
         ), "Run this case on a device with a native vertical toolbar.")
-        verifyPages(["Home", "Watchlist", "Live TV", "Downloads", "Search"], vertical: true)
+        verifyPages(["Home", "Watchlist", "Downloads", "Search"], vertical: true)
     }
 
     func testOrdinaryDevicesKeepTopRightProfilesAndInlineSearch() {

@@ -162,8 +162,6 @@ struct ServerDetailView: View {
             return "Each Silo connection uses the household profile selected during pairing. Its library access and watch history stay on Silo."
         case .subsonic:
             return "Music access and favorites belong to your server account."
-        case .iptv:
-            return "Your provider supplies channels, movies, and series. Watch history stays separate for each Plozz profile on this device."
         case .mediaShare:
             if transport == .nfs {
                 return "This NFS export connects without a sign-in — anyone on this Apple TV can browse it. Choose what shows on your Home under Libraries."
@@ -257,11 +255,6 @@ struct ServerDetailView: View {
             if account.server.provider.supportsAccountReauthentication, let providerSetupRouter {
                 Button("Sign In Again", systemImage: "arrow.clockwise") {
                     providerSetupRouter.reauthenticationAccount = account
-                }
-            }
-            if account.server.provider == .iptv, let providerSetupRouter {
-                Button("Edit connection", systemImage: "pencil") {
-                    providerSetupRouter.connectIPTV(account: account)
                 }
             }
             if account.id == context.activeAccountID {

@@ -407,7 +407,7 @@ final class LiveHLSScrubThumbnails {
 
     // MARK: Network
 
-    /// IPTV servers commonly answer only media players: identify as AVPlayer
+    /// Live HLS servers commonly answer only media players: identify as AVPlayer
     /// does unless the channel declared its own User-Agent.
     static let playerUserAgent: String = {
         // AVPlayer's own form: AppleCoreMedia/1.0.0.<build> (<device>; U; CPU OS <v> like Mac OS X; <locale>).

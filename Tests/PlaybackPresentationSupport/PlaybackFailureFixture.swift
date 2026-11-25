@@ -9,9 +9,6 @@ struct PlaybackFailureFixture: View {
     private var arguments: [String] { ProcessInfo.processInfo.arguments }
 
     private var report: PlaybackDiagnosticReport {
-        if arguments.contains("--failure-live") {
-            return .playback(.init(failure: .startupTimedOut))
-        }
         let error: StreamingQualityError = arguments.contains("--failure-long")
             ? .serverRefusal(
                 "Silo returned a different file than the selected version. Plozz stopped playback to avoid playing the wrong file.",

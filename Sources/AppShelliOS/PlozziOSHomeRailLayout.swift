@@ -13,7 +13,6 @@ struct PlozziOSHomeRowSlot<Content: View>: View {
     @ViewBuilder var content: Content
 
     private var isLibraryRow: Bool { presentation.id == .libraries }
-    private var isLiveTV: Bool { presentation.id == .liveTV }
     private var isContinueWatching: Bool { presentation.id == .global(.continueWatching) }
     private var showsSeriesArtwork: Bool { isContinueWatching && continueWatchingUsesSeriesArtwork }
     private var isFeatured: Bool { presentation.choice.collectionSection?.cardStyle == .featured }
@@ -23,7 +22,6 @@ struct PlozziOSHomeRowSlot<Content: View>: View {
         switch presentation.source {
         case let .home(row): return row.style == .landscape ? .landscape : .poster
         case let .library(row): return row.section.style == .landscape ? .landscape : .poster
-        case .liveTV: return .landscape
         }
     }
 
@@ -31,7 +29,6 @@ struct PlozziOSHomeRowSlot<Content: View>: View {
         switch presentation.source {
         case let .home(row): row.displayName
         case let .library(row): row.section.displayName
-        case .liveTV: presentation.choice.localizedTitle.map(Text.init) ?? Text(verbatim: presentation.choice.title)
         }
     }
 
@@ -39,7 +36,6 @@ struct PlozziOSHomeRowSlot<Content: View>: View {
         switch presentation.source {
         case let .home(row): row.failure != nil && row.items.isEmpty && row.libraries.isEmpty
         case let .library(row): row.issue != nil || row.failure != nil
-        case .liveTV: false
         }
     }
 
@@ -47,7 +43,7 @@ struct PlozziOSHomeRowSlot<Content: View>: View {
         PlozziOSHomeRailLayout(isContinueWatching: isContinueWatching && style == .landscape) { metrics in
             PlozziOSHomeRowFootprint(
                 metrics: metrics, title: title, style: style, captions: captions,
-                isLibraryRow: isLibraryRow, isLiveTV: isLiveTV, isFeatured: isFeatured,
+                isLibraryRow: isLibraryRow, isFeatured: isFeatured,
                 isContinueWatching: isContinueWatching, showsSeriesArtwork: showsSeriesArtwork
             )
             .environment(\.plozzShimmerEnabled, false)
@@ -85,7 +81,6 @@ private struct PlozziOSHomeRowFootprint: View {
     let style: PosterCardView.Style
     let captions: CardCaptionSettings
     let isLibraryRow: Bool
-    let isLiveTV: Bool
     let isFeatured: Bool
     let isContinueWatching: Bool
     let showsSeriesArtwork: Bool
@@ -120,10 +115,6 @@ private struct PlozziOSHomeRowFootprint: View {
                                 : metrics.density.iOSHomeLibraryWidth(horizontalSizeClass: sizeClass)
                         )
                         .environment(\.plozzCardCaptionSettings, captions)
-                    } else if isLiveTV {
-                        Color.clear.frame(height: metrics.cardSlotWidth(
-                            for: .landscape, cardStyle: cardStyle
-                        ) * 9 / 16)
                     } else {
                         SkeletonCardView(
                             style: style == .landscape ? .landscape : .poster,

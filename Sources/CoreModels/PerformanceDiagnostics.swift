@@ -8,8 +8,7 @@ public final class PerformanceDiagnostics: @unchecked Sendable {
 
     public enum Operation: String, Codable, Sendable {
         case homeLoad, homeFetch, homeMerge, homePublish, serverRequest, serverDecode
-        case shareScan, playlistFetch, playlistParse, playlistImport, playlistCommit, guideFetch
-        case liveTVRefresh, automaticChannels, search
+        case shareScan, search
 
         public var isHomePresentation: Bool {
             switch self {

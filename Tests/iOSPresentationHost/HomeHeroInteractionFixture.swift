@@ -283,7 +283,6 @@ private struct HeroInteractionNavigationChrome<Content: View>: View {
         if enabled {
             TabView(selection: $selection) {
                 Tab("Home", systemImage: "house", value: 0) { content }
-                Tab("Live TV", systemImage: "antenna.radiowaves.left.and.right", value: 1) { Text("Live TV fixture") }
                 Tab("Downloads", systemImage: "arrow.down.circle", value: 2) { Text("Downloads fixture") }
                 Tab("Search", systemImage: "magnifyingglass", value: 3, role: .search) { Text("Search fixture") }
             }

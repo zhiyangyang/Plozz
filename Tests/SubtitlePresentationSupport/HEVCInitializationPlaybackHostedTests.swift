@@ -14,7 +14,7 @@ final class HEVCInitializationPlaybackHostedTests: XCTestCase {
         let segment = try XCTUnwrap(Bundle(for: Self.self).url(
             forResource: "hevc-empty-sdtp-0", withExtension: "m4s", subdirectory: "Fixtures"
         ))
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             if request.contains("/master.m3u8") {
                 return .init(data: Data("""
                 #EXTM3U

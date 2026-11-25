@@ -38,7 +38,7 @@ struct ServerProviderChoices: View {
 
     var body: some View {
         SettingsSectionGroup {
-            ForEach([ProviderKind.jellyfin, .plex, .emby, .silo, .mediaShare, .iptv], id: \.self) { provider in
+            ForEach([ProviderKind.jellyfin, .plex, .emby, .silo, .mediaShare], id: \.self) { provider in
                 Button {
                     onSelect(provider)
                 } label: {

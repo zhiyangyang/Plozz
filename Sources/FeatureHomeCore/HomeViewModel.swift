@@ -384,7 +384,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
 
     public func presentationRows(
         rows: [HomeRow], content: Content, visibility: HomeLibraryVisibility,
-        liveTV: HomeLiveTVSnapshot = .empty, presentation: LibraryPresentationSettings = .default,
+        presentation: LibraryPresentationSettings = .default,
         showsEmptySectionMessages: Bool = true
     ) -> [HomePresentationRow] {
         let isStable = loadingRows.isEmpty && rowFailures.isEmpty
@@ -393,7 +393,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 revision: stateRevision,
                 rowKinds: rows.map(\.kind),
                 visibility: visibility,
-                liveTV: liveTV,
                 presentation: presentation,
                 showsEmptySectionMessages: showsEmptySectionMessages,
                 includesEmptyWatchlist: watchlistLoadingPlaceholderCount > 0
@@ -402,7 +401,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 return cache.rows
             }
             let resolved = HomePresentationRow.resolve(
-                rows: rows, content: content, visibility: visibility, liveTV: liveTV,
+                rows: rows, content: content, visibility: visibility,
                 presentation: presentation,
                 showsEmptySectionMessages: showsEmptySectionMessages,
                 serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
@@ -411,7 +410,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             return resolved
         }
         return HomePresentationRow.resolve(
-            rows: rows, content: content, visibility: visibility, liveTV: liveTV,
+            rows: rows, content: content, visibility: visibility,
             presentation: presentation,
             showsEmptySectionMessages: showsEmptySectionMessages,
             serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
@@ -429,7 +428,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         let revision: UInt64
         let rowKinds: [HomeRowKind]
         let visibility: HomeLibraryVisibility
-        let liveTV: HomeLiveTVSnapshot
         let presentation: LibraryPresentationSettings
         let showsEmptySectionMessages: Bool
         let includesEmptyWatchlist: Bool

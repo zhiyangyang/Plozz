@@ -173,7 +173,6 @@ public struct NavigationLibrariesDetailView: View {
                 symbolName: "square.stack.3d.up.fill"
             )
         ]
-        rows[NavigationLibraryLayout.liveTVKey] = .init(title: Text("Live TV"), symbolName: "antenna.radiowaves.left.and.right")
         if customBuild {
             rows[NavigationLibraryLayout.collectionsKey] = .init(
                 title: Text("Collections"), symbolName: "rectangle.stack"

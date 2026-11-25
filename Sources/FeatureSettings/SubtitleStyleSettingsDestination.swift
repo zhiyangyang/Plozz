@@ -7,14 +7,14 @@ import SwiftUI
 @MainActor
 @Observable
 public final class SubtitleStyleSettingsDestination {
-    @ObservationIgnored private let makeContent: (Binding<SubtitleStyle>, Bool) -> AnyView
+    @ObservationIgnored private let makeContent: (Binding<SubtitleStyle>) -> AnyView
 
-    public init(content: @escaping (Binding<SubtitleStyle>, Bool) -> AnyView) {
+    public init(content: @escaping (Binding<SubtitleStyle>) -> AnyView) {
         makeContent = content
     }
 
-    public func content(style: Binding<SubtitleStyle>, isLiveTV: Bool) -> AnyView {
-        makeContent(style, isLiveTV)
+    public func content(style: Binding<SubtitleStyle>) -> AnyView {
+        makeContent(style)
     }
 }
 #endif

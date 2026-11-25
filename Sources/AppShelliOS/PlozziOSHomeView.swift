@@ -66,7 +66,7 @@ struct PlozziOSHomeEmptyState: View {
         if isOfflineMode { return "Downloaded movies and episodes appear here." }
         return hasAccounts
             ? "Add media to a source, or connect another."
-            : "Connect a media server, network share, or IPTV provider."
+            : "Connect a media server or network share."
     }
 
     var body: some View {
@@ -120,7 +120,6 @@ struct PlozziOSHomeEmptyState: View {
 }
 
 struct PlozziOSHomeView: View {
-    @Environment(\.homeLiveTVSnapshot) private var liveTV
     @Environment(\.openWatchlist) private var openWatchlist
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -175,7 +174,7 @@ struct PlozziOSHomeView: View {
     /// frame trace (see the `HOMEFRAME` emit in `body`).
     private var frameTelemetryKey: String {  // l10n:content — PLZXFAN frame telemetry, never rendered
         let state = HomePresentationRow.displayState(
-            viewModel.state, liveTV: liveTV,
+            viewModel.state,
             visibility: appModel.settings.homeVisibility.visibility
         ).diagnosticName
         return "state=\(state) snapshot=\(viewModel.hasPersistedSnapshot) "
@@ -305,7 +304,7 @@ struct PlozziOSHomeView: View {
 
     var body: some View {
         let displayState = HomePresentationRow.displayState(
-            viewModel.state, liveTV: liveTV,
+            viewModel.state,
             visibility: appModel.settings.homeVisibility.visibility
         )
         let hasScrollingContent = switch displayState {
@@ -732,7 +731,7 @@ struct PlozziOSHomeView: View {
             isRunningOnMac: isRunningOnMac
         ) / 2
         let presentationRows = viewModel.presentationRows(
-            rows: rows, content: content, visibility: visibility.visibility, liveTV: liveTV,
+            rows: rows, content: content, visibility: visibility.visibility,
             presentation: appModel.settings.libraryPresentation.settings
         )
         let hasMedia = heroSlotState == .content || presentationRows.contains(where: \.showsHomeMedia)
@@ -818,13 +817,6 @@ struct PlozziOSHomeView: View {
                             watchlistLoadingPlaceholderCount:
                                 viewModel.watchlistLoadingPlaceholderCount,
                             onBrowse: browseAction(for: presentation)
-                        )
-                    case let .liveTV(channels):
-                        PlozziOSHomeMediaRail(
-                            title: presentation.choice.localizedTitle.map(Text.init) ?? Text(verbatim: presentation.choice.title),
-                            items: [], style: .landscape,
-                            appModel: appModel, liveChannels: channels,
-                            onNavigationInteraction: viewModel.noteHomeNavigationInteraction
                         )
                     case let .library(row):
                         PlozziOSHomeLibraryPresentationRow(
@@ -3005,7 +2997,6 @@ struct PlozziOSHomeMediaRail: View {
     /// Identify each card by its show — artwork plus logo — instead of by the
     /// item's own thumbnail.
     var showsSeriesArtwork: Bool = false
-    var liveChannels: [HomeLiveTVChannel] = []
     var browseItem: MediaItem? = nil
     var onBrowse: (() -> Void)? = nil
     var onNavigationInteraction: () -> Void = {}
@@ -3095,15 +3086,6 @@ struct PlozziOSHomeMediaRail: View {
                             )
                         )
                     }
-                }
-                ForEach(liveChannels) { channel in
-                    HomeLiveTVCard(
-                        channel: channel,
-                        width: metrics.cardSlotWidth(
-                            for: .landscape, cardStyle: cardStyle,
-                            showsSeriesArtwork: showsSeriesArtwork
-                        )
-                    )
                 }
             }
         }

@@ -4,7 +4,6 @@ import Foundation
 public enum HomeRowID: Hashable, Codable, Sendable {
     case global(HomeGlobalRow)
     case libraries
-    case liveTV
     case library(key: String, section: String)
     case server(accountID: String, section: String)
     case section(String)
@@ -27,7 +26,6 @@ public enum HomeRowID: Hashable, Codable, Sendable {
         switch self {
         case let .global(row): return "home-\(row.rawValue)"
         case .libraries: return "home-libraries"
-        case .liveTV: return "home-live-tv"
         case let .section(id): return "home-section-\(id)"
         case let .library(key, section):
             return "home-library-\(key.utf8.count):\(key)-\(section)"
@@ -73,8 +71,6 @@ public struct HomeRowChoice: Identifiable, Equatable, Sendable {
         } + [
             Self(id: .libraries, title: "Libraries", localizedTitle: "Libraries",
                  isProviderDefault: true),
-            Self(id: .liveTV, title: "Live TV", localizedTitle: "Live TV",
-                 isProviderDefault: false, isLegacyDefault: false)
         ]
     }
 
@@ -200,7 +196,7 @@ public struct HomeRowCustomization: Codable, Equatable, Sendable {
 
     private static func isCombinedRow(_ id: HomeRowID) -> Bool {
         switch id {
-        case .global, .libraries, .liveTV: return true
+        case .global, .libraries: return true
         case .library, .server, .section: return false
         }
     }

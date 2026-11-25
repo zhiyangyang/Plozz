@@ -9,12 +9,12 @@ import XCTest
 final class StreamingBufferingHostedTests: XCTestCase {
     func testOrdinaryServerHLSStartupTimeoutRecoversToDecodedVideo() async throws {
         let initialization = try XCTUnwrap(Bundle(for: Self.self).url(
-            forResource: "iptv-init", withExtension: "mp4", subdirectory: "Fixtures"
+            forResource: "init", withExtension: "mp4", subdirectory: "Fixtures"
         ))
         let segment = try XCTUnwrap(Bundle(for: Self.self).url(
-            forResource: "iptv-segment-0", withExtension: "m4s", subdirectory: "Fixtures"
+            forResource: "segment00", withExtension: "m4s", subdirectory: "Fixtures"
         ))
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             if request.contains(".m3u8") {
                 let media = request.contains("/initial.m3u8") ? "unresponsive.m4s" : "ready.m4s"
                 return .init(data: Data("""
@@ -175,12 +175,12 @@ final class StreamingBufferingHostedTests: XCTestCase {
 
     private func exercise(pauseBeforeStarting: Bool, rate: Double, useAether: Bool = false) async throws {
         let initialization = try XCTUnwrap(Bundle(for: Self.self).url(
-            forResource: "iptv-init", withExtension: "mp4", subdirectory: "Fixtures"
+            forResource: "init", withExtension: "mp4", subdirectory: "Fixtures"
         ))
         let segment = try XCTUnwrap(Bundle(for: Self.self).url(
-            forResource: "iptv-segment-0", withExtension: "m4s", subdirectory: "Fixtures"
+            forResource: "segment00", withExtension: "m4s", subdirectory: "Fixtures"
         ))
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             if request.contains("/media.m3u8") {
                 return .init(data: Data("""
                 #EXTM3U

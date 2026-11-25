@@ -1042,11 +1042,7 @@ final class PhysicalHomeRowsFirstTests: XCTestCase {
         rows.sort { $0.frame.minY < $1.frame.minY }
         let elements = descendants(root)
         let collections = elements.filter { $0.elementType == .collectionView }
-        let guideIdentifiers = elements.map(\.identifier).filter {
-            let identifier = $0.lowercased()
-            return identifier.contains("guide") || identifier.contains("live-tv") || identifier.contains("livetv")
-        }
-        event("\(phase) ax-structure collectionViews=\(collections.count) guideIdentifiers=\(guideIdentifiers)")
+        event("\(phase) ax-structure collectionViews=\(collections.count)")
         for collection in collections.prefix(12) {
             event("\(phase) native-collection identifier=\(collection.identifier.debugDescription) label=\(collection.label.debugDescription) frame=\(collection.frame)")
         }
@@ -1054,7 +1050,7 @@ final class PhysicalHomeRowsFirstTests: XCTestCase {
         let heroFocused = elements.contains { $0.identifier == heroID && containsFocus($0) }
         let focusedControl = elements.first { $0.elementType == .button && containsFocus($0) }
         let homeLabel = ProcessInfo.processInfo.environment["PLOZZ_HOME_NAVIGATION_LABEL"] ?? "Home"
-        let sidebarLabels: Set<String> = [homeLabel, "Search", "Watchlist", "Live TV", "Music", "Settings"]
+        let sidebarLabels: Set<String> = [homeLabel, "Search", "Watchlist", "Music", "Settings"]
         let sidebarButtons = elements.filter {
             $0.elementType == .button && sidebarLabels.contains($0.label)
                 && $0.frame.minX < root.frame.width * 0.10

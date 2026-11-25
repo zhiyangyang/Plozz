@@ -465,9 +465,6 @@ private struct MyLibrariesContentView: View {
                 if failure.requiresSignIn, let account,
                    account.server.provider.supportsAccountReauthentication, let providerSetupRouter {
                     Button("Sign In Again") { providerSetupRouter.reauthenticationAccount = account }
-                } else if failure.requiresSignIn, let account,
-                          account.server.provider == .iptv, let providerSetupRouter {
-                    Button("Edit connection") { providerSetupRouter.connectIPTV(account: account) }
                 } else {
                     Button { Task { await scope.reloadLibraries() } } label: {
                         Label("Retry", systemImage: "arrow.clockwise")

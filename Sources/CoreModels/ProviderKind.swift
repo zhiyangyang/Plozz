@@ -4,14 +4,13 @@ import Foundation
 ///
 /// Plozz supports **Jellyfin**, **Emby**, and **Plex** as first-class backends.
 /// backends. Everything above the provider layer talks to ``MediaProvider``, so
-/// adding a new backend (e.g. Overseerr) only requires a new conformer and a
+/// adding a new backend only requires a new conformer and a
 /// case here — no feature rewrites.
 public enum ProviderKind: String, Codable, Sendable, CaseIterable {
     case jellyfin
     case plex
     case emby
     case silo
-    case iptv
     /// A local network media share (SMB today). Deliberately **second-class**:
     /// there's no server doing library management, metadata, or watch-state, so
     /// Plozz scans the files itself and synthesises everything a first-class
@@ -26,7 +25,6 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable {
         case .plex: return "Plex"
         case .silo: return "Silo"
         case .subsonic: return "Navidrome (Subsonic)"
-        case .iptv: return "IPTV"
         case .mediaShare: return "Media Share"
         }
     }
@@ -47,7 +45,7 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable {
     public var metadataRichnessRank: Int {
         switch self {
         case .jellyfin, .emby, .plex, .silo, .subsonic: return 1
-        case .mediaShare, .iptv: return 0
+        case .mediaShare: return 0
         }
     }
 
@@ -60,7 +58,7 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable {
     public var supportsAccountReauthentication: Bool {
         switch self {
         case .jellyfin, .emby, .plex, .silo, .subsonic: true
-        case .iptv, .mediaShare: false
+        case .mediaShare: false
         }
     }
 
@@ -87,7 +85,7 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable {
     public var playbackInfoIsIdempotent: Bool {
         switch self {
         case .plex, .mediaShare, .subsonic: return true
-        case .jellyfin, .emby, .silo, .iptv: return false
+        case .jellyfin, .emby, .silo: return false
         }
     }
 }

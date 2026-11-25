@@ -4,7 +4,6 @@ import Foundation
 public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendable {
     case playback
     case subtitles
-    case liveTV
     case libraries
     #if os(iOS)
     case downloads
@@ -19,7 +18,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
         switch self {
         case .playback: "Playback"
         case .subtitles: "Subtitles"
-        case .liveTV: "Live TV"
         case .libraries: SettingsCopy.libraries
         #if os(iOS)
         case .downloads: "Downloads"
@@ -34,7 +32,6 @@ public enum ProfileSettingsCategory: String, CaseIterable, Identifiable, Sendabl
         switch self {
         case .playback: "play.rectangle"
         case .subtitles: "captions.bubble"
-        case .liveTV: "antenna.radiowaves.left.and.right"
         case .libraries: "rectangle.stack"
         #if os(iOS)
         case .downloads: "arrow.down.circle"

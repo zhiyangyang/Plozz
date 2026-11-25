@@ -28,10 +28,9 @@ final class JellyfinLibraryQueryTests: XCTestCase {
             _ = try await client.nextUpItems(userID: "user", limit: 20)
             _ = try await client.latestItems(userID: "user", limit: 20)
             _ = try await client.nativeHomeItems(userID: "user", sectionID: "recommendations", limit: 20, parentID: nil)
-            _ = try await client.activeHomeRecordings(userID: "user", limit: 20)
             _ = try await client.movieRecommendations(userID: "user", parentID: "movies", limit: 20)
             _ = try await client.libraryItems(userID: "user", ids: ["movie"])
-            XCTAssertEqual(http.sentQueryItems.count, 11)
+            XCTAssertEqual(http.sentQueryItems.count, 10)
             for query in http.sentQueryItems {
                 let fields = Set(try XCTUnwrap(query.first { $0.name.lowercased() == "fields" }?.value)
                     .split(separator: ",").map(String.init))

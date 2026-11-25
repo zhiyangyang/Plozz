@@ -11,7 +11,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
         defer { app.terminate() }
         let music = app.buttons["add-server-provider-subsonic"]
         XCTAssertTrue(music.waitForExistence(timeout: 5))
-        for provider in ["jellyfin", "plex", "emby", "silo", "mediaShare", "iptv"] {
+        for provider in ["jellyfin", "plex", "emby", "silo", "mediaShare"] {
             XCTAssertTrue(app.buttons["add-server-provider-\(provider)"].exists)
         }
         if !music.isHittable { app.swipeUp() }
@@ -108,7 +108,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
             add.tap()
             let share = app.buttons["add-server-provider-mediaShare"]
             XCTAssertTrue(share.waitForExistence(timeout: 5), page)
-            for provider in ["jellyfin", "plex", "emby", "silo", "iptv"] {
+            for provider in ["jellyfin", "plex", "emby", "silo"] {
                 XCTAssertTrue(app.buttons["add-server-provider-\(provider)"].exists, page)
             }
             attach(app, name: "Source-destination-\(page)")
@@ -161,8 +161,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
             "emby": ["Sign In"],
             "plex": ["Open Plex to link"],
             "plex-servers": ["Continue"],
-            "silo": ["Open Silo to approve", "Use another device"],
-            "iptv": ["Connect"]
+            "silo": ["Open Silo to approve", "Use another device"]
         ]
         for (page, expected) in [
             ("welcome", "Free forever and open source."),
@@ -174,7 +173,6 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
             ("plex", "ABCD"),
             ("plex-servers", "Home Server"),
             ("silo", "ABCD-EFGH"),
-            ("iptv", "Playlist"),
             ("share", "Enter an address manually")
         ] {
             let app = launch(page)
@@ -232,7 +230,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
     }
 
     func testEveryProviderCanGoBackThroughTheRealFlow() throws {
-        for provider in ["jellyfin", "emby", "silo", "plex", "iptv", "mediaShare"] {
+        for provider in ["jellyfin", "emby", "silo", "plex", "mediaShare"] {
             let app = launch("chooser")
             defer { app.terminate() }
             let choice = app.buttons["add-server-provider-\(provider)"]
@@ -275,7 +273,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
                 XCTAssertFalse(app.staticTexts["onboarding-completed"].exists)
             } else {
                 let expected = provider == "plex" ? app.buttons["Open Plex to link"]
-                    : provider == "iptv" ? app.buttons["Connect"] : app.buttons["Enter an address manually"]
+                    : app.buttons["Enter an address manually"]
                 XCTAssertTrue(expected.waitForExistence(timeout: 8))
                 attach(app, name: "Flow-\(provider)")
             }
@@ -287,7 +285,7 @@ final class MobileServerOnboardingInteractionTests: XCTestCase {
     }
 
     func testRootCancelAndSignInBackReturnToTheirOwnLevels() throws {
-        for page in ["flow", "silo-flow", "iptv", "share", "plex"] {
+        for page in ["flow", "silo-flow", "share", "plex"] {
             let app = launch(page)
             defer { app.terminate() }
             XCTAssertTrue(app.navigationBars.buttons["Cancel"].waitForExistence(timeout: 5))

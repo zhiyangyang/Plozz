@@ -139,17 +139,6 @@ private struct PlozziOSServerSettingsDetailView: View {
                     Text("Removing a sign-in affects every profile on this \(deviceName).")
                 }
 
-                if group.providerKind == .iptv, let providerSetupRouter {
-                    SettingsSectionGroup {
-                        ForEach(group.accounts) { account in
-                            Button("Edit connection", systemImage: "pencil") {
-                                providerSetupRouter.connectIPTV(account: account)
-                            }
-                            .settingsActionRow()
-                        }
-                    }
-                }
-
                 if [.jellyfin, .emby, .plex, .silo].contains(group.providerKind),
                    providerSetupRouter != nil {
                     SettingsSectionGroup("Connection addresses") {
@@ -410,9 +399,6 @@ private struct PlozziOSMyLibrariesContent: View {
             if failure.requiresSignIn, let account,
                account.server.provider.supportsAccountReauthentication, let providerSetupRouter {
                 Button("Sign In Again") { providerSetupRouter.reauthenticationAccount = account }
-            } else if failure.requiresSignIn, let account,
-                      account.server.provider == .iptv, let providerSetupRouter {
-                Button("Edit connection") { providerSetupRouter.connectIPTV(account: account) }
             } else {
                 Button { Task { await loadLibraries() } } label: {
                     Label("Retry", systemImage: "arrow.clockwise")

@@ -54,7 +54,7 @@ final class ManagedDownloadResumeTests: XCTestCase {
             UInt8(truncatingIfNeeded: $0 ^ ($0 >> 8) ^ ($0 >> 16))
         })
         let requests = ResumeRequestRecorder()
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             let range = request.components(separatedBy: "\r\n")
                 .first { $0.lowercased().hasPrefix("range:") }
             let offset = range.flatMap {

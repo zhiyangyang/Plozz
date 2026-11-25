@@ -5,7 +5,6 @@ import CoreUI
 import FeatureAuthCore
 import FeatureAuth
 import FeatureDiscoveryCore
-import FeatureLiveTV
 import ProviderPlex
 import ProviderSilo
 import SwiftUI
@@ -27,15 +26,10 @@ struct AddServerView: View {
     private let initialProvider: ProviderKind?
     private var startsAtProvider: Bool { initialProvider != nil }
     private let http: any HTTPClient
-    private let initialIPTVPlaylist: LiveTVPlaylistSource?
-    private let initialIPTVAccount: Account?
     private let initialProfileID: String
-    private let initialIPTVMode: IPTVCredential.Mode
 
     init(
         appModel: PlozziOSAppModel, initialProvider: ProviderKind? = nil, initialAddress: String = "",
-        initialIPTVPlaylist: LiveTVPlaylistSource? = nil, initialIPTVAccount: Account? = nil,
-        initialIPTVMode: IPTVCredential.Mode = .playlist,
         http: any HTTPClient = URLSessionHTTPClient(),
         discoveryModel: @MainActor (ProviderKind) -> ServerPickerViewModel = { ServerPickerViewModel(provider: $0) }
     ) {
@@ -45,10 +39,7 @@ struct AddServerView: View {
         _embyDiscovery = State(initialValue: discoveryModel(.emby))
         _siloDiscovery = State(initialValue: discoveryModel(.silo))
         self.initialProvider = initialProvider
-        self.initialIPTVPlaylist = initialIPTVPlaylist
-        self.initialIPTVAccount = initialIPTVAccount
         initialProfileID = appModel.profiles.activeProfileID
-        self.initialIPTVMode = initialIPTVMode
         // Pre-fill the address when adopting a server synced from another device, so
         // the user only has to sign in. Plex is account-based (no address field).
         _address = State(initialValue: initialProvider == .plex ? "" : initialAddress)
@@ -82,10 +73,6 @@ struct AddServerView: View {
         .onChange(of: appModel.profiles.activeProfileID) { _, profileID in
             if profileID != initialProfileID { dismiss() }
         }
-        .guidePreparationOverlay(
-            model: appModel.guidePreparation, presenter: appModel.transientStatusPresenter,
-            palette: palette
-        )
         .offlineStatusOverlay(appModel: appModel, palette: palette)
     }
 
@@ -98,32 +85,6 @@ struct AddServerView: View {
                     onAuthenticated: {
                         guard appModel.profiles.activeProfileID == initialProfileID else { throw AppError.cancelled }
                         guard appModel.persist([$0]) else { throw AppError.invalidResponse }
-                        dismiss()
-                    },
-                    onCancel: { dismiss() }
-                )
-            } else if provider == .iptv {
-                IPTVSignInView(
-                    deviceID: appModel.deviceID,
-                    address: initialIPTVPlaylist?.playlistURL.absoluteString ?? address,
-                    name: initialIPTVPlaylist?.name ?? "",
-                    guideAddress: initialIPTVPlaylist?.guideURLs.first?.absoluteString ?? "",
-                    guideURLs: initialIPTVPlaylist?.guideURLs ?? [],
-                    reconnecting: initialIPTVAccount.map {
-                        $0.session(token: appModel.accountStore.token(for: $0.id) ?? "")
-                    },
-                    initialMode: initialIPTVMode,
-                    showsCancelButton: false,
-                    onAuthenticated: {
-                        guard appModel.profiles.activeProfileID == initialProfileID,
-                              initialIPTVAccount.map({ previous in
-                                  appModel.accounts.contains {
-                                      $0.id == previous.id && $0.credentialRevision == previous.credentialRevision
-                                  }
-                              }) != false else { throw IPTVAuthViewModel.CompletionError.persistence }
-                        guard appModel.persist([$0], activateIPTVAccount: initialIPTVAccount == nil) else {
-                            throw IPTVAuthViewModel.CompletionError.persistence
-                        }
                         dismiss()
                     },
                     onCancel: { dismiss() }

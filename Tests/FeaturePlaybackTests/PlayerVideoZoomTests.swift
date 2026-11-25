@@ -569,12 +569,12 @@ final class PlayerVideoZoomTests: XCTestCase {
         XCTAssertEqual(PlaybackOptionsPane.rows(
             model: model, zoom: model.videoZoom, actions: actions, openScreen: { _ in }
         ).map(\.slot), [0], "Custom zoom must never add another parent row.")
-        let live = PlaybackOptionsPane.rows(
+        let withAdditionalRow = PlaybackOptionsPane.rows(
             model: model, zoom: model.videoZoom, actions: actions,
-            additionalRows: [.init(slot: PlaybackOptionsPane.multiviewSlot, title: "Multiview", kind: .action {})],
+            additionalRows: [.init(slot: 6, title: "Additional row", kind: .action {})],
             openScreen: { _ in }
         )
-        XCTAssertEqual(live.map(\.slot), [PlaybackOptionsPane.multiviewSlot, PlaybackOptionsPane.zoomSlot])
+        XCTAssertEqual(withAdditionalRow.map(\.slot), [6, PlaybackOptionsPane.zoomSlot])
     }
 
     func testCapabilityGatesAndSelectedSpeedFocus() {

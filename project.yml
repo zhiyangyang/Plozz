@@ -184,8 +184,6 @@ targets:
       - package: Plozz
         product: AppShelliOS
       - package: Plozz
-        product: FeatureLiveTV
-      - package: Plozz
         product: FeaturePlayback
       - package: Plozz
         product: EnginePlozzigen
@@ -203,19 +201,13 @@ targets:
       - path: Tests/HomePresentationSupport/ContentRefreshReturnFixture.swift
       - path: Tests/AuthPresentationSupport/MobileServerOnboardingFixture.swift
       - path: Tests/AuthPresentationSupport/OnboardingPreviewHTTP.swift
-      - path: Tests/FeatureLiveTVRemoteTests/SourceOnboardingFixture.swift
       - path: Tests/PlaybackPresentationSupport/PlaybackFailureFixture.swift
       - path: Tests/PlaybackPresentationSupport/DiscReviewFixture.swift
-      - path: Tests/LiveTVPresentationSupport/IPTVOrganizationFixture.swift
-      - path: Tests/LiveTVPresentationSupport/LiveTVCategorySearchFixture.swift
-      - path: Tests/ProviderIPTVTests/IPTVTestHTTPServer.swift
+      - path: Tests/PlaybackPresentationSupport/LocalTestHTTPServer.swift
       - path: Tests/SubtitlePresentationSupport/Fixtures/four-three.mp4
         buildPhase: resources
-      - path: Tests/SubtitlePresentationSupport/Fixtures/live-continuity.mp4
         buildPhase: resources
-      - path: Tests/SubtitlePresentationSupport/Fixtures/live-continuity-dim.mp4
         buildPhase: resources
-      - path: Tests/AuthPresentationSupport/IPTVSetupFixture.swift
       - path: App/Resources/Localizable.xcstrings
       - path: Tests/AuthPresentationSupport/ServerAddressNavigationFixture.swift
       - path: Tests/AuthPresentationSupport/PlexHomeOnboardingFixture.swift
@@ -265,6 +257,7 @@ targets:
       - path: Tests/FocusIntegrationTests/ContentRefreshSurfaceHostedTests.swift
       - path: Tests/PlaybackPresentationSupport/PlayerSongLayoutPreviewTests.swift
       - path: Tests/PlaybackPresentationSupport/PlayerContinueWatchingPresentationTests.swift
+      - path: Tests/PlaybackPresentationSupport/LocalTestHTTPServer.swift
       - path: Tests/CoreModelsTests/ContinueWatchingInPlayerSettingsTests.swift
       - path: Tests/FeaturePlaybackTests/ContinueWatchingSelectionTests.swift
       - path: Tests/CoreUITests/DetailInformationPreviewTests.swift
@@ -280,8 +273,6 @@ targets:
       - path: Tests/FeaturePlaybackTests/StreamingPlaybackTests.swift
       - path: Tests/FeaturePlaybackTests/SubtitleTrackControllerTests.swift
       - path: Tests/CoreModelsTests/SeriesTrackPreferenceStoreTests.swift
-      - path: Tests/FeatureLiveTVCoreTests/LiveTVPlaybackCoordinatorTests.swift
-      - path: Tests/FeatureLiveTVTests/LiveTVGuideRowLayoutTests.swift
       - path: Tests/CoreModelsTests/SettingsHydrationTests.swift
       - path: Tests/CoreModelsTests/DiscPlaybackTests.swift
       - path: Tests/CoreModelsTests/PlaybackOrientationSettingsTests.swift
@@ -290,14 +281,12 @@ targets:
       - path: Tests/CoreModelsTests/SettingsSearchTests.swift
       - path: Tests/CoreModelsTests/ProfileLockPresentationTests.swift
       - path: Tests/FeaturePlaybackTests/SubtitleOverlayGeometryTests.swift
-      - path: Tests/FocusIntegrationTests/LiveTVSourcesRuntimeHostedTests.swift
       - path: Tests/FocusIntegrationTests/DiagnosticRecordingStatusHostedTests.swift
       - path: Tests/FocusIntegrationTests/PINRequirementPresentationTests.swift
       - path: Tests/HomePresentationSupport
         excludes: ["ContentRefreshReturnFixture.swift", "ContentRefreshReturnInteractionTests.swift", "DetailSelectionFixture.swift", "DetailSelectionInteractionTests.swift"]
       - path: Tests/TestSupportPerformance
       - path: Tests/PerformancePresentationSupport
-      - path: Tests/ProviderIPTVTests/IPTVTestHTTPServer.swift
       - path: Tests/AppearancePresentationSupport
       - path: Tests/CoreUITests/DialogSurfaceTests.swift
       - path: Tests/AuthPresentationSupport
@@ -330,8 +319,6 @@ targets:
       - path: Tests/HomePresentationSupport/ContentRefreshReturnInteractionTests.swift
       - path: Tests/PlaybackPresentationSupport/PlaybackFailureInteractionTests.swift
       - path: Tests/PlaybackPresentationSupport/DiscReviewScreenshotTests.swift
-      - path: Tests/LiveTVPresentationSupport/IPTVOrganizationInteractionTests.swift
-      - path: Tests/LiveTVPresentationSupport/LiveTVCategorySearchInteractionTests.swift
       - path: Tests/HomeRemoteTests/ServerAddressNavigationInteractionTests.swift
       - path: Tests/HomeRemoteTests/PlexHomeOnboardingInteractionTests.swift
     settings:
@@ -370,11 +357,3 @@ schemes:
         PlozziOS: all
     run:
       config: Debug
-  PlozziOS Live TV Prototype:
-    build:
-      targets:
-        PlozziOS: all
-    run:
-      config: Debug
-      commandLineArguments:
-        --live-tv-prototype: true

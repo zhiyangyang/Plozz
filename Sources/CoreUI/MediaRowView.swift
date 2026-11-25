@@ -152,8 +152,6 @@ public struct MediaRowView: View {
     /// until enrichment has supplied those ids it has nothing to match on and
     /// both copies survive into the row.
     private let items: [MediaItem]
-    private let liveChannels: [HomeLiveTVChannel]
-    private let onLiveChannelFocused: ((HomeLiveTVChannel) -> Void)?
     private let presentation: Presentation
     private let artworkPolicy: CardArtworkPolicy
     private let spoilerSettings: SpoilerSettings
@@ -312,8 +310,6 @@ public struct MediaRowView: View {
         episodeEntry: MediaRowEpisodeEntry? = nil,
         playsOnSelect: Bool = false,
         showsResumeChip: Bool = false,
-        liveChannels: [HomeLiveTVChannel] = [],
-        onLiveChannelFocused: ((HomeLiveTVChannel) -> Void)? = nil,
         onPlay: ((MediaItem) -> Void)? = nil,
         onSeeAll: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
@@ -344,8 +340,6 @@ public struct MediaRowView: View {
             episodeEntry: episodeEntry,
             playsOnSelect: playsOnSelect,
             showsResumeChip: showsResumeChip,
-            liveChannels: liveChannels,
-            onLiveChannelFocused: onLiveChannelFocused,
             onPlay: onPlay,
             onSeeAll: onSeeAll,
             onSelect: onSelect
@@ -378,8 +372,6 @@ public struct MediaRowView: View {
         episodeEntry: MediaRowEpisodeEntry? = nil,
         playsOnSelect: Bool = false,
         showsResumeChip: Bool = false,
-        liveChannels: [HomeLiveTVChannel] = [],
-        onLiveChannelFocused: ((HomeLiveTVChannel) -> Void)? = nil,
         onPlay: ((MediaItem) -> Void)? = nil,
         onSeeAll: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
@@ -392,8 +384,6 @@ public struct MediaRowView: View {
         self.episodeEntry = episodeEntry
         let uniqueItems = Self.uniqued(items)
         self.items = uniqueItems
-        self.liveChannels = liveChannels
-        self.onLiveChannelFocused = onLiveChannelFocused
         self.presentation = presentation
         self.artworkPolicy = artworkPolicy
         self.spoilerSettings = spoilerSettings
@@ -572,7 +562,7 @@ public struct MediaRowView: View {
     }
 
     public var body: some View {
-        if !items.isEmpty || !liveChannels.isEmpty || loadingPlaceholderCount > 0 || episodeEntry != nil
+        if !items.isEmpty || loadingPlaceholderCount > 0 || episodeEntry != nil
             || onSeeAll != nil || onBrowse != nil {
             MediaRowSection(
                 title: title, leadingInset: leadingInset, spacing: layoutMetrics.sectionTitleSpacing,
@@ -614,14 +604,6 @@ public struct MediaRowView: View {
                                             .frame(width: cardSlotWidth)
                                             .opacity(episodeEntry == nil ? 1 : 0)
                                     }
-                                }
-                            }
-                            ForEach(liveChannels) { channel in
-                                HomeLiveTVCard(channel: channel, width: cardSlotWidth) { focused in
-                                    activity.pendingReport?.cancel()
-                                    activity.pendingReport = nil
-                                    onFocusEntered?()
-                                    onLiveChannelFocused?(focused)
                                 }
                             }
                     }

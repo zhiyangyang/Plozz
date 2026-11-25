@@ -98,7 +98,6 @@ public enum SettingsRoute: Hashable {
     case artwork
     case navigationLayout
     case profile
-    case liveTV
     /// Per-profile settings page (Everyone › Profiles › <name>).
     case profileSettings(profileID: String)
     /// The Parental PIN prompt that unseals a Kids Profile's restricted
@@ -125,7 +124,7 @@ public enum SettingsRoute: Hashable {
     case nightShift
     case playback
     case subtitles
-    case subtitleStyle(liveTV: Bool)
+    case subtitleStyle
     case spoilers
     case integrations
     case metadata
@@ -154,7 +153,7 @@ extension SettingsRoute {
         switch self {
         case .searchResult(let id):
             return SettingsSearchCatalog.entry(id: id).map {
-                $0.page == .subtitleStyle || $0.page == .liveSubtitleStyle || $0.page == .profileAppearance
+                $0.page == .subtitleStyle || $0.page == .profileAppearance
             } == true
         case .subtitleStyle, .profileAppearance, .profileLockSetup, .parentalPINSetup:
             return true

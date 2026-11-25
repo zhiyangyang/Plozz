@@ -38,8 +38,6 @@ enum HomeSectionIssueResolver {
                 reason = rowKind.flatMap { failures[$0] }.flatMap(failure)
             case .libraries:
                 reason = failures[.libraries].flatMap(failure)
-            case .liveTV:
-                return nil
             case let .server(id, _):
                 accountID = id
                 guard accounts.contains(where: { $0.account.id == id }) else { return nil }

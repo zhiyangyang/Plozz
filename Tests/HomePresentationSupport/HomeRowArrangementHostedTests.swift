@@ -196,7 +196,7 @@ final class HomeRowsFocusHost: UIHostingController<AnyView> {
 }
 @MainActor
 final class HomeRowArrangementHostedTests: XCTestCase {
-    func testHomeContinueWatchingDoesNotRenderRecentLiveChannels() async throws {
+    func testHomeContinueWatchingRendersOnlyMediaRows() async throws {
         let suite = "HomeContinueWatchingChannels.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -216,13 +216,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
         )
         await model.load()
         XCTAssertEqual(model.state.value?.continueWatching.map(\.id), ["resume-movie"])
-        let channel = HomeLiveTVChannel(
-            route: .init(
-                profileID: suite, channelID: "news", sourceID: "playlist",
-                sourceAuthorizationID: "approval", serverAuthorizationID: "servers"
-            ), name: "NEWS CHANNEL", sourceName: "Playlist", number: 1
-        )
-        let liveTV = HomeLiveTVSnapshot(recentChannels: [channel], channels: [channel])
         #if os(iOS)
         let app = PlozziOSAppModel(
             accountStore: AccountStore(secureStore: InMemorySecureStore()),
@@ -247,7 +240,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                 .environment(app)
                 .environment(HeroTrailerController())
                 .environment(\.horizontalSizeClass, width < 600 ? .compact : .regular)
-                .environment(\.homeLiveTVSnapshot, liveTV)
             } inspect: { window in
                 let text = try await self.capture(window, name: "Continue Watching without channels \(width)")
                 XCTAssertTrue(text.contains { $0.0.localizedCaseInsensitiveContains("Continue Watching") })
@@ -2668,7 +2660,7 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                 + "settings merge; the shared mark view is covered by CoreUI tests."
         )
         let sources: [(ProviderKind, MediaShareTransportKind?)] =
-            [ProviderKind.jellyfin, .plex, .emby, .silo, .iptv].map { ($0, nil) }
+            [ProviderKind.jellyfin, .plex, .emby, .silo].map { ($0, nil) }
             + MediaShareTransportKind.allCases.map { (.mediaShare, $0) }
             + [(.plex, nil)]
         let choices = sources.enumerated().map { index, source in

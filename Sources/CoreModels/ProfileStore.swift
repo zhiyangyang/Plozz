@@ -1029,9 +1029,6 @@ public final class ProfilesModel {
         if rootNamespaceOwnerID == id {
             rootNamespaceOwnerID = nil
         }
-        LiveTVSourceDiagnostics.shared.record(
-            .profileRemoved, identities: [.profile: id], flags: [.capture: true]
-        )
         if activeProfileID == id {
             activeProfileID = fallbackProfile(leaving: outgoing)?.id ?? ProfileStore.defaultProfileID
             store.setActiveProfileID(activeProfileID)

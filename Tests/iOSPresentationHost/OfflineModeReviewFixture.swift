@@ -80,7 +80,7 @@ struct OfflineModeReviewFixture: View {
         let available = NavigationDestinationDefaults.iOS
         let enabled = [
             NavigationLibraryLayout.homeKey,
-            NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.downloadsKey,
+            NavigationLibraryLayout.downloadsKey,
             NavigationLibraryLayout.searchKey
         ]
         model.settings.navigation.applyLibrarySections(

@@ -166,8 +166,6 @@ enum HomeRowBrowseFactory {
                     }
                 }
             }
-        case .liveTV:
-            break
         }
         let mergeSources = mergesSources
         let hidesWatched = isRecentlyAdded && visibility.hideWatchedRecentlyAdded

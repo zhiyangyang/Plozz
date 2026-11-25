@@ -304,7 +304,8 @@ public struct PlaybackDiagnostics: Equatable, Sendable {
         positionSeconds: Double? = nil,
         seekableStartSeconds: Double? = nil,
         seekableEndSeconds: Double? = nil,
-        playbackState: String? = nil
+        playbackState: String? = nil,
+        liveStream: LiveStreamFacts? = nil
     ) {
         self.resolution = resolution
         self.indicatedBitrate = indicatedBitrate
@@ -355,6 +356,7 @@ public struct PlaybackDiagnostics: Equatable, Sendable {
         self.seekableStartSeconds = seekableStartSeconds
         self.seekableEndSeconds = seekableEndSeconds
         self.playbackState = playbackState
+        self.liveStream = liveStream
     }
 }
 

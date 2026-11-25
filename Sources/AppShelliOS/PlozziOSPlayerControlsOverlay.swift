@@ -381,8 +381,6 @@ struct PlozziOSPlayerControlsOverlay: View {
             if let state = viewModel.videoEngine.discMenu {
                 viewModel.retryDiscMenu(region: state.region == 1 ? 2 : state.region == 2 ? 4 : 1)
             }
-        case .multiview:
-            PlozzLog.playback.error("VOD menu requested unavailable multiview destination.")
         }
     }
 

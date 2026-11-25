@@ -8,7 +8,6 @@ struct PlaybackOptionsPane: View {
     static let speedSlot = 2
     static let upscalingSlot = 4
     static let versionSlot = 5
-    static let multiviewSlot = 6
     static var customSlot: Int { modeSlot(.custom) }
 
     static func modeSlot(_ mode: PlayerVideoZoom.Mode) -> Int { 10 + mode.rawValue }

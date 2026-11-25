@@ -85,7 +85,7 @@ final class AppearanceConsistencyHostedTests: XCTestCase {
         defer { fixture.close() }
         let preview = logoImage(monochrome: false, color: .green)
         let bytes = try XCTUnwrap(preview.pngData())
-        let server = try IPTVTestHTTPServer { _ in
+        let server = try LocalTestHTTPServer { _ in
             .init(data: bytes, headers: ["Content-Type": "image/png"], headerDelay: .seconds(30))
         }
         addTeardownBlock { await server.stop() }
@@ -745,7 +745,7 @@ final class AppearanceConsistencyHostedTests: XCTestCase {
 
     private func servedLogo(color: UIColor) async throws -> URL {
         let bytes = try XCTUnwrap(logoImage(monochrome: false, color: color).pngData())
-        let server = try IPTVTestHTTPServer { _ in
+        let server = try LocalTestHTTPServer { _ in
             .init(data: bytes, headers: ["Content-Type": "image/png", "Cache-Control": "max-age=3600"])
         }
         addTeardownBlock { await server.stop() }

@@ -13,7 +13,6 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
     public let accountID: String
     public let credentialRevision: CredentialRevision
     let client: PlexClient
-    let liveTVLeases = PlexLiveTVLeaseStore()
     let playbackFailureDiagnostics: PlaybackFailureDiagnostics
     let libraryGenreCache = PlexLibraryGenreCache()
     private let extraWatchState: PlexExtraWatchState?

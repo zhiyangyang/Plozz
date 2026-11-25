@@ -18,7 +18,7 @@ extension PlozziOSAppModel {
                 return DetailPlaybackPreparationScope(
                     webDAVAccount: account,
                     profileID: self.profiles.activeProfileID,
-                    authorizationID: self.accountsProviders.liveTVAuthorizationID,
+                    authorizationID: self.accountsProviders.playbackAuthorizationID,
                     credentialRevision: self.accountsProviders.credentialRevision(account),
                     isAuthorized: self.isActiveProfileAuthorized
                 )

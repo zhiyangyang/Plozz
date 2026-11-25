@@ -15,7 +15,7 @@ final class PinnedNavigationBackTests: XCTestCase {
     func testBackFromOtherPinnedRootsOpensNavigationThenHomeThenExits() {
         for (root, title) in [
             ("watchlist", "Watchlist"), ("search", "Search"),
-            ("liveTV", "Live TV"), ("music", "Music"), ("settings", "Settings")
+            ("music", "Music"), ("settings", "Settings")
         ] {
             let app = launch(root: root)
             defer { app.terminate() }

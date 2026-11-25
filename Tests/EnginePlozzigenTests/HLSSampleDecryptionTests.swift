@@ -376,7 +376,7 @@ private final class LiveHLSScrubHTTPStub: URLProtocol, @unchecked Sendable {
         }
         if path == "redirected.m3u8" {
             if request.url!.host == "fixture.invalid" {
-                // A provider handing its master to a CDN, as some IPTV hosts do.
+                // A provider handing its master to a CDN, as some live HLS hosts do.
                 let destination = URL(string: "https://cdn.invalid/live/redirected.m3u8")!
                 let redirect = HTTPURLResponse(
                     url: request.url!, statusCode: 302, httpVersion: "HTTP/1.1",

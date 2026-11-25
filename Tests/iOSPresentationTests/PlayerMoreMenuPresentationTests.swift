@@ -51,10 +51,10 @@ final class PlayerMoreMenuPresentationTests: XCTestCase {
         let model = controls()
         model.playbackSpeed = 1.3
         let menu = PlayerMoreMenu.make(
-            model: model, availability: .init(maximumSpeed: 2, quality: .original, versions: true, multiview: true),
+            model: model, availability: .init(maximumSpeed: 2, quality: .original, versions: true),
             locale: .init(identifier: "en"), actions: .init()
         )
-        let commands = Set(["Search & Download…", "Advanced…", "Custom…", "Version", "Multiview"])
+        let commands = Set(["Search & Download…", "Advanced…", "Custom…", "Version"])
         func verify(_ menu: UIMenu) {
             XCTAssertNil(menu.image, "Navigation menus should not add decorative popup icons.")
             for child in menu.children {
@@ -131,7 +131,6 @@ final class PlayerMoreMenuPresentationTests: XCTestCase {
         try await waitUntil { rate.currentTitle == "1.25×" && rate.accessibilityValue == "1.25×" }
         let settings = try XCTUnwrap(buttons(in: host.view).first { $0.accessibilityIdentifier == "player-settings" })
         XCTAssertEqual(settings.accessibilityLabel, "Playback settings")
-        XCTAssertEqual(PlayerOptionsMenuButton.Kind.subtitles.symbol, LiveChannelTrackMenuKind.subtitles.icon)
         let settingsImage = try XCTUnwrap(settings.image(for: .normal))
         let adjustmentsImage = try XCTUnwrap(UIImage(
             systemName: "ellipsis", withConfiguration: UIImage.SymbolConfiguration(textStyle: .title3)
@@ -452,17 +451,17 @@ final class PlayerMoreMenuPresentationTests: XCTestCase {
         XCTAssertTrue(PlayerMoreMenu.sections(state.controls, availability: .init(quality: .original)).contains(.quality))
     }
 
-    func testLiveVideoUsesTheRealZoomOwnerAndMultiviewIsDeferred() throws {
+    func testVideoUsesTheRealZoomOwner() throws {
         let model = controls()
         let zoom = PlayerVideoZoomModel()
         var requested: PlayerMenuDestination?
         var actions = PlayerMoreMenuActions()
         actions.request = { requested = $0 }
         let menu = PlayerMoreMenu.make(
-            model: model, availability: .init(videoModel: zoom, multiview: true),
+            model: model, availability: .init(videoModel: zoom),
             locale: .init(identifier: "en"), settingsOnly: true, actions: actions
         )
-        XCTAssertEqual(visible(menu).map(\.title), ["Multiview", "Zoom"])
+        XCTAssertEqual(visible(menu).map(\.title), ["Zoom"])
         let video = try submenu("Zoom", in: menu)
         let choices = visible(video).compactMap { $0 as? UIAction }
         perform(choices[1])
@@ -470,8 +469,6 @@ final class PlayerMoreMenuPresentationTests: XCTestCase {
         XCTAssertEqual(model.videoZoom.settings.mode, .fit)
         perform(choices[3])
         XCTAssertEqual(requested, .zoom)
-        perform(try XCTUnwrap(visible(menu).first { $0.title == "Multiview" } as? UIAction))
-        XCTAssertEqual(requested, .multiview)
     }
 
     func testPresentationWaitsForDismissalAndResetRejectsStaleRequests() {

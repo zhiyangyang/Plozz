@@ -61,7 +61,7 @@ final class LargeNativeNavigationRemoteTests: XCTestCase {
         XCUIRemote.shared.press(.menu)
         let journal = app.staticTexts["native-tab-transition-journal"]
         XCTAssertTrue(journal.waitForExistence(timeout: 5))
-        for (title, key) in [("Watchlist", "watchlist"), ("Live TV", "liveTV"), ("Search", "search")] {
+        for (title, key) in [("Watchlist", "watchlist"), ("Search", "search")] {
             let before = journal.label.components(separatedBy: "\n").filter { $0 == "\(key):willAppear" }.count
             let selection = app.staticTexts["large-navigation-selection"]
             let previous = selection.label
@@ -164,7 +164,7 @@ final class LargeNativeNavigationRemoteTests: XCTestCase {
         defer { app.terminate() }
         XCTAssertTrue(app.buttons["large-navigation-content"].waitForExistence(timeout: 15))
         XCUIRemote.shared.press(.menu)
-        for title in ["Watchlist", "Live TV", "Search", "Music", "All Libraries", "Library 1", "Library 2", "Library 3"] {
+        for title in ["Watchlist", "Search", "Music", "All Libraries", "Library 1", "Library 2", "Library 3"] {
             let selection = app.staticTexts["large-navigation-selection"]
             let previous = selection.label
             XCUIRemote.shared.press(.right)
@@ -337,7 +337,7 @@ final class LargeNativeNavigationRemoteTests: XCTestCase {
             assertFocused(app.buttons["large-navigation-content"], in: app)
             XCUIRemote.shared.press(.menu)
             assertFocused(app.buttons["top-navigation-home"], in: app)
-            for key in ["watchlist", "liveTV", "search"] {
+            for key in ["watchlist", "search"] {
                 XCUIRemote.shared.press(.right)
                 assertFocused(app.buttons["top-navigation-\(key)"], in: app)
             }

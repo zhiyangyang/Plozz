@@ -7,7 +7,6 @@ import CoreUI
 import EnginePlozzigen
 import FeatureAuthCore
 import FeatureHomeCore
-import FeatureLiveTVCore
 import FeatureProfiles
 import FeatureSettings
 import FeatureWatchlistCore
@@ -68,14 +67,6 @@ final class PlozziOSAppModel {
     var isOfflineMode: Bool { offlineMode.isEnabled }
     var isChangingOfflineMode: Bool { offlineMode.isChanging }
     var offlineModeGeneration: Int { offlineMode.generation }
-    @ObservationIgnored lazy var guidePreparation = LiveTVGuidePreparationModel { [weak self] id in
-        guard let self, !self.mustChooseProfile, !self.activeProfileNeedsUnlock,
-              self.lockedSwitch == nil, self.parentalSwitch == nil,
-              self.plexHomeUsers.pendingPlexPINRequest == nil,
-              !self.accountsProviders.activeProfileAwaitsIdentity else { return nil }
-        return self.accountsProviders.liveTVProviderResolver()(id)
-    }
-
     static var isStandalonePlaybackAvailable: Bool {
         true
     }
@@ -88,19 +79,7 @@ final class PlozziOSAppModel {
     }
 
     var canEnterApp: Bool { admissionContext.canEnterApp }
-    var isLiveTVProfileAuthorized: Bool { isActiveProfileAuthorized && !isOfflineMode }
-
-    var liveTVAdmissionDiagnostic: String { // l10n:content - diagnostic log fields, never display copy.
-        guard HandoffDiagnostics.isEnabled else { return "" }
-        return "canEnter=\(canEnterApp) chooseProfile=\(mustChooseProfile)"
-            + " launchSelectionPending=\(requiresLaunchProfileSelection && !didCompleteLaunchProfileSelection)"
-            + " lockedSwitch=\(lockedSwitch != nil) parentalSwitch=\(parentalSwitch != nil)"
-            + " identitySelection=\(pendingIdentityAccount != nil) librarySelection=\(pendingLibrarySelection != nil)"
-            + " firstRun=\(pendingFirstRunStep != nil) profileOnboarding=\(profileOnboardingStep != nil)"
-            + " plexPIN=\(plexHomeUsers.pendingPlexPINRequest != nil) needsUnlock=\(activeProfileNeedsUnlock)"
-            + " identityPending=\(profiles.activeProfile.awaitsIdentity(amongAccounts: accountsProviders.activeAccountIDs))"
-            + " actionableIdentityPending=\(accountsProviders.activeProfileAwaitsIdentity)"
-    }
+    var isProfilePlaybackAuthorized: Bool { isActiveProfileAuthorized && !isOfflineMode }
 
     var isActiveProfileAuthorized: Bool {
         return canEnterApp && !mustChooseProfile
@@ -118,22 +97,6 @@ final class PlozziOSAppModel {
     }
     var allowsHomeContentLoading: Bool { allowsHomeContentAccess && !isSettingsPresented }
     var allowsStandalonePlayback: Bool { admissionContext.explicitStandaloneChoice }
-    var pendingStandaloneLiveTVEntry: Bool { appAdmission.pendingLiveTVEntry }
-
-    @discardableResult
-    func consumeStandaloneLiveTVEntryIntent() -> Bool {
-        appAdmission.consumeLiveTVEntryIntent()
-    }
-
-    /// Call only after a user-requested playlist/free-channel setup succeeds.
-    /// Records admission and reveals Live TV without changing the current destination.
-    @discardableResult
-    func recordSuccessfulIPTVSetup() -> Bool {
-        let accepted = appAdmission.recordStandaloneChoice(isAvailable: Self.isStandalonePlaybackAvailable)
-        if accepted { settings.navigation.showsLiveTV = true }
-        return accepted
-    }
-
     private struct HeroTrailerCacheEntry {
         let source: HeroTrailerSource?
         let expiresAt: Date
@@ -757,7 +720,6 @@ final class PlozziOSAppModel {
         offlineMode.generation &+= 1
         UserDefaults.standard.set(enabled, forKey: OfflineMode.preferenceKey)
         pendingDownloadSelection = nil
-        for account in accounts { guidePreparation.cancel(accountID: account.id) }
         identityIndex.reset()
         if enabled {
             accountsProviders.localProviders = [:]
@@ -809,21 +771,6 @@ final class PlozziOSAppModel {
 
     var accounts: [Account] {
         accountsProviders.accounts
-    }
-
-    /// Set setup and navigation intent before publishing admission so the root
-    /// can mount the right destination without an intermediate Home screen.
-    @discardableResult
-    func enterStandalonePlayback() -> Bool {
-        guard Self.isStandalonePlaybackAvailable,
-              pendingFirstRunStep == nil,
-              pendingLibrarySelection == nil,
-              plexHomeUsers.pendingPlexUserSelection == nil,
-              !isManagedServerPresentationActive else { return false }
-        if !profiles.firstRunProfileSetupComplete {
-            pendingFirstRunStep = .confirmProfile
-        }
-        return appAdmission.enterStandalonePlayback(isAvailable: Self.isStandalonePlaybackAvailable)
     }
 
     private func reloadAccountsAndHeroCache() {
@@ -1008,15 +955,6 @@ final class PlozziOSAppModel {
         }
         accountsProviders.reloadAccounts()
         guard accountsProviders.accounts.isEmpty else { return false }
-        do {
-            try LiveTVLastSeenStore.erase(
-                profileIDs: profiles.profiles.map(\.id), secureStore: LiveTVSourceStorage.catalogSecrets()
-            )
-        } catch {
-            PlozzLog.app.error("First-run reset could not erase Live TV last-seen rows")
-            accountError = error.localizedDescription
-            return false
-        }
         plexHomeUsers.resetAllForDebug()
         do {
             profiles.resetToPristineDefaultForDebugging()
@@ -1696,7 +1634,7 @@ final class PlozziOSAppModel {
         return PlaybackSession(
             profileID: profiles.activeProfileID,
             namespace: namespace,
-            serverAuthorization: accountsProviders.liveTVAuthorizationID,
+            serverAuthorization: accountsProviders.playbackAuthorizationID,
             serverScope: accountsProviders.watchMutationServerScope,
             primaryAccountID: accountsProviders.primaryActiveAccount?.id,
             initialSnapshot: identityIndex.identitySnapshotStore.current,
@@ -1708,7 +1646,7 @@ final class PlozziOSAppModel {
     func externalPlaybackContext() -> ExternalPlaybackContext {
         ExternalPlaybackContext(
             profileID: profiles.activeProfileID,
-            authorizationID: accountsProviders.liveTVAuthorizationID,
+            authorizationID: accountsProviders.playbackAuthorizationID,
             accounts: accountsProviders.resolvedActiveAccounts,
             isAuthorized: isActiveProfileAuthorized,
             resolver: authenticatedHTTPResolver,
@@ -1736,7 +1674,7 @@ final class PlozziOSAppModel {
 
     func isCurrentPlaybackSession(_ session: PlaybackSession) -> Bool {
         profiles.activeProfileID == session.profileID
-            && accountsProviders.liveTVAuthorizationID == session.serverAuthorization
+            && accountsProviders.playbackAuthorizationID == session.serverAuthorization
             && accountsProviders.watchMutationServerScope == session.serverScope
     }
 
@@ -1827,35 +1765,6 @@ final class PlozziOSAppModel {
                 }
             }
         }
-    }
-
-    /// Broadcast completion never owns an ordinary playback/resume session.
-    func completeLibraryChannelPlayback(for item: MediaItem, authorizationID: UUID) throws {
-        try Task.checkCancellation()
-        let profileID = profiles.activeProfileID
-        let namespace = profiles.activeNamespace
-        guard isLiveTVProfileAuthorized,
-              LibraryChannelHistorySettings.shared(namespace: namespace).authorizationID == authorizationID,
-              let accountID = item.sourceAccountID,
-              accountsProviders.resolvedActiveAccounts.contains(where: { $0.account.id == accountID })
-        else { throw LibraryChannelError.authorizationChanged }
-        let accountAuthorization = accountsProviders.liveTVAuthorizationID
-        guard let completion = WatchMutationFactory.libraryChannelCompletion(
-            item: item,
-            accountID: accountID,
-            additionalSources: identityIndex.identitySourcesProvider(item),
-            crossServerSync: settings.playback.settings.syncWatchAcrossServers
-        ) else { throw LibraryChannelError.mediaChanged }
-        let mutation = completion.requiringAuthorization(owner: self) { @MainActor owner in
-            owner.isLiveTVProfileAuthorized
-                && owner.profiles.activeProfileID == profileID
-                && owner.profiles.activeNamespace == namespace
-                && owner.accountsProviders.liveTVAuthorizationID == accountAuthorization
-                && LibraryChannelHistorySettings.shared(namespace: namespace).authorizationID == authorizationID
-                && owner.accountsProviders.resolvedActiveAccounts.contains { $0.account.id == accountID }
-        }
-        publishPlaybackMutation(mutation, item: item, watchedPercent: 100)
-        applyWatchMutation(mutation)
     }
 
     private func publishPlaybackMutation(
@@ -2508,22 +2417,15 @@ final class PlozziOSAppModel {
     }
 
     @discardableResult
-    func persist(_ sessions: [UserSession], activateIPTVAccount: Bool = false) -> Bool {
+    func persist(_ sessions: [UserSession]) -> Bool {
         do {
             let existingIDs = Set(accountsProviders.accounts.map(\.id))
             let isFirstRun = existingIDs.isEmpty
                 && !profiles.firstRunProfileSetupComplete
             var addedAccounts: [Account] = []
-            var addedLiveTV = false
-            var guideAccountIDs: [String] = []
             for session in sessions {
                 let registration = try accountStore.registerAuthenticatedSession(session)
                 let account = registration.account
-                if registration.previousAccount == nil || activateIPTVAccount {
-                    try accountsProviders.includeIPTVAccountInActiveProfile(account)
-                    addedLiveTV = addedLiveTV || account.server.provider == .iptv
-                    if account.server.provider == .iptv { guideAccountIDs.append(account.id) }
-                }
                 if registration.previousAccount == nil {
                     addedAccounts.append(account)
                 }
@@ -2535,10 +2437,8 @@ final class PlozziOSAppModel {
                 }
             } ?? false
             accountError = nil
-            if addedLiveTV { settings.navigation.showsLiveTV = true }
             reloadAccountsAndHeroCache()
             selectNewlyAddedUserIfNeeded(from: addedAccounts)
-            for id in guideAccountIDs { guidePreparation.start(accountID: id) }
             identityIndex.warmIdentityIndex()
             if isFirstRun, let account = addedAccounts.first {
                 profiles.seedDefaultProfileIdentity(

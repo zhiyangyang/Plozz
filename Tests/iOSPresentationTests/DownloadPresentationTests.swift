@@ -736,12 +736,13 @@ final class DownloadPresentationTests: XCTestCase {
         let suite = "EpisodeMenuSelection.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
+        let admission = AppAdmissionStore(defaults: defaults)
+        admission.recordStandaloneChoice()
         let app = PlozziOSAppModel(
-            appAdmissionStore: AppAdmissionStore(defaults: defaults),
+            appAdmissionStore: admission,
             profileStore: ProfileStore(defaults: defaults)
         )
         defer { app.downloads.beginProfileTransition() }
-        XCTAssertTrue(app.recordSuccessfulIPTVSetup())
         let profile = app.profiles.add(name: "Downloads", isAwaitingSetup: false)
         app.selectProfile(profile.id)
         XCTAssertTrue(app.isActiveProfileAuthorized)

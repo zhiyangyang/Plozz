@@ -27,8 +27,6 @@ final class SubtitleStyleSettingsTests: XCTestCase {
         XCTAssertFalse(expected.permitsFrameSubtitle)
         XCTAssertFalse(expected.resettingAppearance.permitsFrameSubtitle)
         XCTAssertTrue(SubtitleStyleStore(defaults: defaults, namespace: "two").load().base.permitsFrameSubtitle)
-        profile.liveTVStyle = .default
-        XCTAssertTrue(store.load().resolvedLiveTV.overridesASSStyling)
     }
 
     func testASSOverrideOnlyFlattensASSAndDoesNotDependOnMatching() throws {
@@ -59,7 +57,6 @@ final class SubtitleStyleSettingsTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: name) }
         let store = SubtitleStyleStore(defaults: defaults, namespace: "viewer")
         let profile = SubtitleStyleModel(store: store)
-        profile.usesSeparateLiveTVStyle = true
         let appearance = SystemCaptionAppearance(
             textColor: .init(red: 0.31, green: 0.43, blue: 0.57, alpha: 0.67),
             fontFamilyName: "Courier", fontDescriptor: UIFont(name: "Courier", size: 30)!.fontDescriptor,
@@ -94,7 +91,6 @@ final class SubtitleStyleSettingsTests: XCTestCase {
         XCTAssertEqual(store.load().base.fontScale, 0.74)
         XCTAssertEqual(store.load().base.textColor, appearance.textColor)
         XCTAssertEqual(store.load().base.fontDescriptor, context.effectiveStyle.fontDescriptor)
-        XCTAssertEqual(store.load().liveTV, .profileDefault)
         for value in [0.75, 0.76, 0.78, 0.82] { context.editSubtitleStyle { $0.fontScale = value } }
         XCTAssertEqual(writes, 5)
         XCTAssertEqual(profile.style.fontScale, 0.82)
@@ -206,13 +202,12 @@ final class SubtitleStyleSettingsTests: XCTestCase {
         XCTAssertEqual(options.backgroundPhase, 1, "Pausing or changing preview size must retain the current palette.")
     }
 
-    func testEditorUsesTheSameProfileStyleAndKeepsLiveTVSeparate() throws {
+    func testEditorUsesTheSameProfileStyle() throws {
         let name = "SubtitleStyleSettingsTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let store = SubtitleStyleStore(defaults: defaults, namespace: "viewer")
         let profile = SubtitleStyleModel(store: store)
-        profile.usesSeparateLiveTVStyle = true
         let controls = PlayerControlsModel()
         let context = SubtitleStyleEditingContext(
             controls: controls,
@@ -233,7 +228,6 @@ final class SubtitleStyleSettingsTests: XCTestCase {
         context.applySubtitleStyle(style)
         XCTAssertEqual(controls.subtitleStyle, style)
         XCTAssertEqual(store.load().base, style)
-        XCTAssertEqual(store.load().liveTV, .profileDefault)
         XCTAssertTrue(context.hasSecondarySubtitle)
         XCTAssertTrue(controls.secondarySubtitleOptions.isEmpty, "Previewing a second line must not invent a playback track.")
     }

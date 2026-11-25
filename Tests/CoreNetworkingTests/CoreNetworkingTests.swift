@@ -159,7 +159,7 @@ final class PlozzLogRedactionTests: XCTestCase {
         XCTAssertTrue(result.contains("keep=ok"))
     }
 
-    func testLiveSessionAndIPTVCredentialsAreRedactedRegardlessOfCase() throws {
+    func testLiveStreamSessionAndCredentialParametersAreRedactedRegardlessOfCase() throws {
         let url = try XCTUnwrap(URL(string:
             "https://example.invalid/LiveStreams/Close?LiveStreamId=live-value&LIVESTREAMID=other-live&PlaySessionId=session-value&OpenToken=open-value&USERNAME=user-value&Password=password-value&ChannelId=channel-keep"
         ))

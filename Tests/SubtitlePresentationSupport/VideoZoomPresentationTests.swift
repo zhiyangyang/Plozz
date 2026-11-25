@@ -112,41 +112,6 @@ final class VideoZoomPresentationTests: XCTestCase {
         }
         return nil
     }
-    func testLiveSubtitleViewportIsAttachedInFullscreenInlineAndMultiview() async throws {
-        try await waitUntil {
-            UIApplication.shared.connectedScenes.contains { $0.activationState == .foregroundActive }
-        }
-        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive })
-        let folder = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Fixtures", withExtension: nil))
-        for (expanded, multiview) in [(true, false), (false, false), (true, true)] {
-            let previous = scene.windows.first(where: \.isKeyWindow)
-            let window = UIWindow(windowScene: scene)
-            let engine = try PlozzigenVideoEngine()
-            let host = UIHostingController(rootView: LiveChannelPlayerView(
-                channelID: "picture-viewport", title: "Synthetic channel",
-                input: .stream(url: folder.appendingPathComponent("active-picture.mp4"), httpHeaders: [:]), logoURL: nil,
-                makeEngine: { engine }, onPreviousChannel: {}, onNextChannel: {},
-                isFavorite: false, canToggleFavorite: false, onToggleFavorite: {},
-                isExpanded: expanded, onExpandPreview: {}, isAudible: false, isMultiview: multiview,
-                trackPreferences: LiveChannelTrackPreferences()
-            ).environment(\.scenePhase, .active))
-            host.safeAreaRegions = []
-            window.rootViewController = host
-            window.makeKeyAndVisible()
-            defer {
-                window.isHidden = true
-                window.rootViewController = nil
-                engine.stop()
-                previous?.makeKeyAndVisible()
-            }
-            try await waitUntil {
-                window.layoutIfNeeded()
-                return self.presentationView(for: engine.makeVideoOutputView())?.subtitleViewport != nil
-            }
-        }
-    }
-
     func testActivePictureDetectionAndSeekOnNativeAndSoftwareRoutes() async throws {
         throw XCTSkip(
             "The hosted simulator does not settle active-picture detection across native "

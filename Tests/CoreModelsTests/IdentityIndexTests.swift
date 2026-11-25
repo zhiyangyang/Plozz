@@ -658,7 +658,7 @@ final class IdentityIndexTests: XCTestCase {
     func testCompleteCatalogIdentityOnlySkipsItsOwnForcedEnrichment() async {
         var complete = series("complete", account: "silo", tvdb: "7")
         complete.catalogIdentityIsComplete = true
-        let partial = series("partial", account: "iptv", tvdb: "8")
+        let partial = series("partial", account: "provider", tvdb: "8")
         XCTAssertFalse(partial.catalogIdentityIsComplete)
         let result = await IdentityEnrichment.prepare(
             [complete, partial], enrichIdentifiedItems: true

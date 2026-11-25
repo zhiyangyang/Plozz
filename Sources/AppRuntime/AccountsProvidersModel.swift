@@ -3,8 +3,6 @@ import Observation
 import CoreModels
 import CoreNetworking
 import FeatureAuthCore
-import CryptoKit
-import FeatureLiveTVCore
 import CoreSecureStore
 import CoreUI
 
@@ -67,10 +65,6 @@ public final class AccountsProvidersModel {
     /// media-share local-media context.
     @ObservationIgnored
     private let profilesModel: ProfilesModel
-    @ObservationIgnored
-    private var liveTVAuthorizationCache: [String: (fingerprint: String, digest: String)] = [:]
-    @ObservationIgnored private var sourceDiagnosticObserver: ObservationLease?
-
     /// The auth token to use for an account id, preferring an in-memory Plex
     /// Home-user override over the account's stored (admin) token. Injected so the
     /// hub doesn't own Plex-home-user state.
@@ -100,12 +94,6 @@ public final class AccountsProvidersModel {
         self.accountStore = accountStore
         self.registry = registry
         self.profilesModel = profilesModel
-        let token = NotificationCenter.default.addObserver(
-            forName: LiveTVSourceDiagnostics.snapshotRequested, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.captureLiveTVSourceDiagnostics() }
-        }
-        sourceDiagnosticObserver = ObservationLease(center: .default, token: token)
     }
 
     /// This device's stable client identifier.
@@ -173,139 +161,6 @@ public final class AccountsProvidersModel {
                 self.activeAccountIDs.contains($0.id) && $0.server.provider == .plex
             }.map(\.id)
         )
-    }
-
-    public var liveTVServerChoices: [LiveTVServerChoice] {
-        // Listing connected servers must not resolve credentials during a render.
-        // The resolver verifies access when the user checks or imports a server.
-        guard !accountSelectionIsUnavailable else { return [] }
-        return accounts.compactMap { account in
-            guard activeAccountIDs.contains(account.id),
-                  let kind = Self.liveTVKind(account.server.provider) else { return nil }
-            let name = account.server.name.isEmpty
-                ? (account.server.baseURL.host ?? kind.rawValue)
-                : account.server.name
-            return LiveTVServerChoice(
-                id: account.id, name: name, userName: account.userName, kind: kind
-            )
-        }
-    }
-
-    public var liveTVAuthorizationID: String {
-        let identities = accounts.filter { activeAccountIDs.contains($0.id) }
-            .map(liveTVAuthorizationID(for:)).sorted()
-        return profilesModel.activeProfileID + (localProviders == nil ? "|online|" : "|offline|")
-            + identities.joined(separator: "|")
-    }
-
-    /// Stable watch-state ownership. Unlike the live authorization fingerprint,
-    /// this survives token rotation and process restarts.
-    public var watchMutationServerScope: WatchMutationServerScope {
-        let primaryID = primaryActiveAccount?.id
-        return WatchMutationServerScope(
-            profile: profilesModel.activeProfile,
-            accounts: accounts.filter { activeAccountIDs.contains($0.id) || $0.id == primaryID }
-        )
-    }
-
-    public func requireWatchMutationServerScope(
-        _ scope: WatchMutationServerScope,
-        isPlexIdentityResolved: (String) -> Bool
-    ) throws {
-        guard profilesModel.activeProfileID == scope.profileID else {
-            throw WatchMutationServerScopeError.unavailable
-        }
-        let current = watchMutationServerScope
-        guard scope.accounts.allSatisfy({ expected in
-            current.accounts.contains(expected)
-                && (expected.providerKind != .plex || isPlexIdentityResolved(expected.accountID))
-        }) else {
-            throw WatchMutationServerScopeError.unavailable
-        }
-    }
-
-    public func isCurrentWatchMutationServerScope(
-        _ scope: WatchMutationServerScope?,
-        isPlexIdentityResolved: (String) -> Bool
-    ) -> Bool {
-        guard let scope else { return true }
-        do {
-            try requireWatchMutationServerScope(scope, isPlexIdentityResolved: isPlexIdentityResolved)
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    /// Validate and resolve without a suspension between them. The returned
-    /// provider therefore cannot belong to a replacement viewer, even if a
-    /// switch happens while the caller awaits this main-actor operation.
-    public func provider(
-        forWatchMutationAccountID accountID: String,
-        isPlexIdentityResolved: (String) -> Bool
-    ) -> (any MediaProvider)? {
-        if let scope = WatchMutationDeliveryAuthorization.current?.serverScope {
-            guard scope.accounts.contains(where: { $0.accountID == accountID }) else { return nil }
-            do {
-                try requireWatchMutationServerScope(scope, isPlexIdentityResolved: isPlexIdentityResolved)
-            } catch {
-                return nil
-            }
-        }
-        return provider(forAccountID: accountID)
-    }
-
-    public func liveTVProviderResolver() -> LiveTVServerProviderResolver {
-        let expectedProfile = profilesModel.activeProfileID
-        return { [weak self] accountID in
-            guard let self, self.profilesModel.activeProfileID == expectedProfile,
-                  !self.accountSelectionIsUnavailable,
-                  self.activeAccountIDs.contains(accountID),
-                  let account = self.accounts.first(where: { $0.id == accountID }),
-                  let kind = Self.liveTVKind(account.server.provider),
-                  let provider = self.provider(forAccountID: accountID) as? any ServerLiveTVProviding
-            else { return nil }
-            return LiveTVAuthorizedServerProvider(
-                accountID: accountID, authorizationID: self.liveTVAuthorizationID(for: account),
-                kind: kind, provider: provider, viewerScopeID: self.liveTVViewerScopeID(for: account)
-            )
-        }
-    }
-
-    private func liveTVViewerScopeID(for account: Account) -> String? {
-        let identity = WatchMutationServerScope.AccountIdentity(account: account, profile: profilesModel.activeProfile)
-        guard !identity.accountID.isEmpty, !identity.serverID.isEmpty, !identity.userID.isEmpty,
-              identity.plexHomeUserID?.isEmpty != true else { return nil }
-        let fields = [profilesModel.activeProfileID, identity.accountID, identity.downloadUserID]
-        let fingerprint = fields.map { "\($0.utf8.count):\($0)" }.joined()
-        return SHA256.hash(data: Data(fingerprint.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
-
-    private func liveTVAuthorizationID(for account: Account) -> String {
-        let fields = [
-            profilesModel.activeProfileID, account.id, account.server.id,
-            account.server.provider.rawValue, account.server.baseURL.absoluteString,
-            account.userID, account.deviceID, credentialRevision(account).rawValue.uuidString,
-            liveTVViewerScopeID(for: account) ?? "unscoped"
-        ] + (account.server.connectionURLs ?? []).map(\.absoluteString)
-        let fingerprint = fields.map { "\($0.utf8.count):\($0)" }.joined()
-        if let cached = liveTVAuthorizationCache[account.id],
-           cached.fingerprint.utf8.elementsEqual(fingerprint.utf8) {
-            return cached.digest
-        }
-        let digest = SHA256.hash(data: Data(fingerprint.utf8)).map { String(format: "%02x", $0) }.joined()
-        liveTVAuthorizationCache[account.id] = (fingerprint, digest)
-        return digest
-    }
-
-    private static func liveTVKind(_ kind: ProviderKind) -> LiveTVPrototypeSource? {
-        switch kind {
-        case .plex: .plex
-        case .jellyfin: .jellyfin
-        case .emby: .emby
-        case .iptv: .iptv
-        case .mediaShare, .silo, .subsonic: nil
-        }
     }
 
     /// The provider for the primary active account — the single-provider Home in
@@ -396,7 +251,7 @@ public final class AccountsProvidersModel {
     }
 
     /// Configured sources for navigation, not authorization to access their data.
-    /// Pending credentials must not turn a media profile into a Live-TV-only one.
+    /// Pending credentials must not turn a media profile into an empty one.
     public var navigationAccounts: [Account] {
         guard !watchesNothingByChoice, !accountSelectionIsUnavailable else { return [] }
         let active = accounts.filter { activeAccountIDs.contains($0.id) }
@@ -432,7 +287,7 @@ public final class AccountsProvidersModel {
         for account: Account,
         token: String
     ) -> ProviderResolutionContext {
-        let localMediaContext = [.mediaShare, .iptv, .plex].contains(account.server.provider)
+        let localMediaContext = [.mediaShare, .plex].contains(account.server.provider)
             ? LocalMediaContext(
                 accountID: account.id,
                 profileID: profilesModel.activeProfileID,
@@ -487,30 +342,86 @@ public final class AccountsProvidersModel {
         return householdActiveAccountIDs.filter { known.contains($0) }
     }
 
+    /// Stable authorization scope for device-local playback/session state.
+    /// Survives token rotation is intentionally NOT guaranteed: a credential
+    /// replacement should invalidate the scope.
+    public var playbackAuthorizationID: String {
+        let identities = accounts.filter { activeAccountIDs.contains($0.id) }
+            .map(authorizationIdentity(for:)).sorted()
+        return profilesModel.activeProfileID + (localProviders == nil ? "|online|" : "|offline|")
+            + identities.joined(separator: "|")
+    }
+
+    private func authorizationIdentity(for account: Account) -> String {
+        ([
+            account.id, account.server.id, account.server.provider.rawValue,
+            account.server.baseURL.absoluteString, account.userID, account.deviceID,
+            credentialRevision(account).rawValue.uuidString
+        ] + (account.server.connectionURLs ?? []).map(\.absoluteString)).joined(separator: ":")
+    }
+
+    /// Stable watch-state ownership. Unlike the live authorization fingerprint,
+    /// this survives token rotation and process restarts.
+    public var watchMutationServerScope: WatchMutationServerScope {
+        let primaryID = primaryActiveAccount?.id
+        return WatchMutationServerScope(
+            profile: profilesModel.activeProfile,
+            accounts: accounts.filter { activeAccountIDs.contains($0.id) || $0.id == primaryID }
+        )
+    }
+
+    public func requireWatchMutationServerScope(
+        _ scope: WatchMutationServerScope,
+        isPlexIdentityResolved: (String) -> Bool
+    ) throws {
+        guard profilesModel.activeProfileID == scope.profileID else {
+            throw WatchMutationServerScopeError.unavailable
+        }
+        let current = watchMutationServerScope
+        guard scope.accounts.allSatisfy({ expected in
+            current.accounts.contains(expected)
+                && (expected.providerKind != .plex || isPlexIdentityResolved(expected.accountID))
+        }) else {
+            throw WatchMutationServerScopeError.unavailable
+        }
+    }
+
+    public func isCurrentWatchMutationServerScope(
+        _ scope: WatchMutationServerScope?,
+        isPlexIdentityResolved: (String) -> Bool
+    ) -> Bool {
+        guard let scope else { return true }
+        do {
+            try requireWatchMutationServerScope(scope, isPlexIdentityResolved: isPlexIdentityResolved)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Validate and resolve without a suspension between them. The returned
+    /// provider therefore cannot belong to a replacement viewer, even if a
+    /// switch happens while the caller awaits this main-actor operation.
+    public func provider(
+        forWatchMutationAccountID accountID: String,
+        isPlexIdentityResolved: (String) -> Bool
+    ) -> (any MediaProvider)? {
+        if let scope = WatchMutationDeliveryAuthorization.current?.serverScope {
+            guard scope.accounts.contains(where: { $0.accountID == accountID }) else { return nil }
+            do {
+                try requireWatchMutationServerScope(scope, isPlexIdentityResolved: isPlexIdentityResolved)
+            } catch {
+                return nil
+            }
+        }
+        return provider(forAccountID: accountID)
+    }
+
     public func profileShowsPINLock(_ profile: Profile) -> Bool {
         let plexIDs = Set(accounts.filter { $0.server.provider == .plex }.map(\.id))
         return profile.showsPINLock(
             activePlexAccountIDs: Set(activeAccountIDs(forProfile: profile.id)).intersection(plexIDs)
         )
-    }
-
-    /// Explicitly adding IPTV includes it in this viewer's selection, not just the household fallback.
-    public func includeIPTVAccountInActiveProfile(_ account: Account) throws {
-        guard account.server.provider == .iptv else { return }
-        let profileID = profilesModel.activeProfileID
-        guard !accountSelectionIsUnavailable else {
-            PlozzLog.auth.error("IPTV setup could not read the current profile's server selection")
-            throw ProfilesModel.AccountSelectionError.unavailable
-        }
-        guard var selected = profilesModel.storedActiveAccountIDs(for: profileID),
-              !selected.contains(account.id) else { return }
-        selected.append(account.id)
-        profilesModel.setActiveAccountIDs(selected, for: profileID)
-        guard !accountSelectionIsUnavailable,
-              Set(profilesModel.storedActiveAccountIDs(for: profileID) ?? []) == Set(selected) else {
-            PlozzLog.auth.error("IPTV setup could not save the current profile's server selection")
-            throw ProfilesModel.AccountSelectionError.unavailable
-        }
     }
 
     /// Reloads accounts from the store and recomputes the active set for the
@@ -519,7 +430,6 @@ public final class AccountsProvidersModel {
     /// preferred-account keys.
     public func reloadAccounts(updatingServerAddressesFor addressAccountID: String? = nil) {
         profilesModel.retryUnconfirmedAccountSelections()
-        liveTVAuthorizationCache = [:]
         let updated = accountStore.loadAccounts()
         if let addressAccountID,
            let account = updated.first(where: { $0.id == addressAccountID }),
@@ -560,80 +470,7 @@ public final class AccountsProvidersModel {
         watchesNothingByChoice = resolved.isEmpty
             && !accountSelectionIsUnavailable
             && profilesModel.storedActiveAccountIDs(for: profilesModel.activeProfileID) != nil
-        recordLiveTVAccountState(.accountsReloaded)
         onActiveAccountsChanged(resolved, accounts)
-    }
-
-    private func recordLiveTVAccountState(_ event: LiveTVSourceDiagnostics.Event) {
-        let profileID = profilesModel.activeProfileID
-        let namespace = profilesModel.activeNamespace
-        let selected = profilesModel.storedActiveAccountIDs(for: profileID)
-        var identities: [LiveTVSourceDiagnostics.Identity: String] = [
-            .profile: profileID, .namespace: namespace ?? "default"
-        ]
-        identities[.rootNamespaceOwner] = profilesModel.rootNamespaceOwnerID
-        LiveTVSourceDiagnostics.shared.record(
-            event, identities: identities,
-            counts: [
-                .accounts: accounts.count, .activeAccounts: activeAccountIDs.count,
-                .selectedAccounts: selected?.count ?? 0,
-                .iptvAccounts: accounts.filter { $0.server.provider == .iptv }.count
-            ],
-            flags: [
-                .selectionUnavailable: accountSelectionIsUnavailable,
-                .explicitSelection: selected != nil,
-                .identityPending: profilesModel.activeProfile.awaitsIdentity(amongAccounts: activeAccountIDs),
-                .actionableIdentityPending: activeProfileAwaitsIdentity,
-                .defaultNamespace: namespace == nil,
-                .storageNamespaceMatches: namespace == LiveTVLibraryStorage.preferencesNamespace(
-                    profileID: profileID, profiles: profilesModel
-                )
-            ]
-        )
-        for account in accounts {
-            LiveTVSourceDiagnostics.shared.record(
-                .accountSnapshot, identities: [.profile: profileID, .account: account.id],
-                flags: [
-                    .active: activeAccountIDs.contains(account.id), .iptv: account.server.provider == .iptv,
-                    .plex: account.server.provider == .plex, .jellyfin: account.server.provider == .jellyfin,
-                    .emby: account.server.provider == .emby
-                ]
-            )
-        }
-    }
-
-    private func captureLiveTVSourceDiagnostics() {
-        recordLiveTVAccountState(.reportSnapshot)
-        let profileID = profilesModel.activeProfileID
-        let namespace = profilesModel.activeNamespace
-        let expected = LiveTVLibraryStorage.preferencesNamespace(profileID: profileID, profiles: profilesModel)
-        var namespaces = [namespace]
-        if expected != namespace { namespaces.append(expected) }
-        for namespace in namespaces {
-            do {
-                let configuration = try LiveTVSourceStorage.store(namespace: namespace).load()
-                LiveTVSourceDiagnostics.shared.configuration(configuration, namespace: namespace, event: .reportSnapshot)
-                let suppression = try LiveTVServerEnrollmentSuppressionStore(
-                    profileID: profileID, namespace: namespace
-                ).records()
-                LiveTVSourceDiagnostics.shared.record(
-                    .reportSnapshot, identities: [.profile: profileID, .namespace: namespace ?? "default"],
-                    counts: [.suppressedAccounts: suppression.values.filter { $0 }.count]
-                )
-                for (account, suppressed) in suppression.sorted(by: { $0.key < $1.key }).prefix(64) {
-                    LiveTVSourceDiagnostics.shared.record(
-                        .suppressionChanged,
-                        identities: [.profile: profileID, .namespace: namespace ?? "default", .account: account],
-                        flags: [.suppressed: suppressed]
-                    )
-                }
-            } catch {
-                LiveTVSourceDiagnostics.shared.record(
-                    .reportSnapshot, identities: [.profile: profileID, .namespace: namespace ?? "default"],
-                    flags: [.failed: true], reason: .storage, error: error
-                )
-            }
-        }
     }
 
     /// Retries credentials whose launch-time Keychain read failed, without

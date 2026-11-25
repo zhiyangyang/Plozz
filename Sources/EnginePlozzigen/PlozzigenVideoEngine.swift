@@ -57,6 +57,10 @@ struct PlozzigenLiveAttemptGate {
 /// protocol so it plugs into the existing `PlayerViewModel` / routing
 /// infrastructure without changes to the rest of the app.
 @MainActor
+public enum PlozzigenLiveSourceFormat: Sendable {
+    case transportStream, hls, other
+}
+
 public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     // MARK: - VideoEngine State
@@ -191,7 +195,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     public var liveSnapshot: LiveChannelEngineSnapshot {
         let phase: LiveChannelEnginePhase
         if case .failed = status { phase = .failed }
-        else if liveSourceProbe != nil { phase = .loading }
         else { phase = Self.livePhase(engine.playbackPhase) }
         let range: ClosedRange<TimeInterval>?
         if engine.videoRoute == .remoteBypass {
@@ -993,21 +996,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
         var stage: PlaybackFailureDiagnostic.Stage = .load
         do {
-            var sourceFormat: PlozzigenLiveSourceProbe.Format?
-            if PlozzigenLiveSourceProbe.isRequired(for: url) {
-                engine.stop(resetDisplayCriteria: false)
-                stage = .response
-                let probe = PlozzigenLiveSourceProbe()
-                liveSourceProbe = probe
-                defer {
-                    probe.cancel()
-                    if liveAttemptGate.accepts(liveGeneration) { liveSourceProbe = nil }
-                }
-                sourceFormat = try await probe.format(url: url, headers: httpHeaders)
-                guard liveAttemptGate.accepts(liveGeneration), !Task.isCancelled else { return }
-                stage = .load
-            }
-            var options = liveLoadOptions(httpHeaders: httpHeaders, url: url, sourceFormat: sourceFormat)
+            var options = liveLoadOptions(httpHeaders: httpHeaders, url: url)
             Self.applyLiveOutputPolicy(outputPolicy, to: &options)
             try await engine.load(url: url, options: options)
             guard liveAttemptGate.accepts(liveGeneration),
@@ -1181,7 +1170,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     func liveLoadOptions(
         httpHeaders: [String: String], url: URL? = nil,
-        sourceFormat: PlozzigenLiveSourceProbe.Format? = nil
+        sourceFormat: PlozzigenLiveSourceFormat? = nil
     ) -> LoadOptions {
         let buffer = liveBufferPreference()
         liveStartupBuffer = buffer
@@ -1194,7 +1183,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     nonisolated static func liveLoadOptions(
         httpHeaders: [String: String], url: URL? = nil,
-        sourceFormat: PlozzigenLiveSourceProbe.Format? = nil,
+        sourceFormat: PlozzigenLiveSourceFormat? = nil,
         buffer: LivePlaybackBuffer = .default,
         losslessAudioEnabled: Bool = LosslessAudioSettingsStore.defaultEnabled,
         videoUpscaling: VideoUpscaling = .default
@@ -1288,7 +1277,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     private var liveFailureDiagnostic: PlaybackFailureAttempt?
     private var liveDeliveryFailure: PlaybackDeliveryFailure?
     private var liveFailureCaptureTask: Task<Void, Never>?
-    private var liveSourceProbe: PlozzigenLiveSourceProbe?
 
     public var livePlaybackFailureDiagnostic: PlaybackFailureDiagnostic? {
         liveFailureDiagnostic?.diagnostic ?? liveDeliveryFailure?.diagnostic
@@ -1303,13 +1291,11 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     private func beginLiveAttempt() -> UInt64 {
         liveStartupBuffer = .default
-        liveSourceProbe?.cancel()
-        liveSourceProbe = nil
         liveFailureCaptureTask?.cancel()
         liveFailureCaptureTask = nil
         let generation = liveAttemptGate.begin()
         liveFailureDiagnostic = PlaybackFailureDiagnostics.shared.begin(
-            layer: .liveEngine, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         )
         liveSourceResetCancellable?.cancel()
         liveSourceResetCancellable = engine.liveSourceReset
@@ -1326,8 +1312,6 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
 
     private func endLiveAttempt() {
         liveStartupBuffer = .default
-        liveSourceProbe?.cancel()
-        liveSourceProbe = nil
         liveFailureCaptureTask?.cancel()
         liveFailureCaptureTask = nil
         liveAttemptGate.invalidate()

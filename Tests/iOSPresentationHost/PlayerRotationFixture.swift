@@ -19,14 +19,14 @@ final class RotationLoadProbe {
     var brightness: Double?
     var systemVolume: Double?
     var selectedVersionID: String?
-    private var server: IPTVTestHTTPServer?
+    private var server: LocalTestHTTPServer?
     private var streamingURL: URL?
 
     func playbackURL(file: URL, streaming: Bool) async throws -> URL {
         guard streaming else { return file }
         if let streamingURL { return streamingURL }
         let bytes = try Data(contentsOf: file)
-        let server = try IPTVTestHTTPServer { request in
+        let server = try LocalTestHTTPServer { request in
             var headers = ["Content-Type": "video/quicktime", "Accept-Ranges": "bytes"]
             guard let range = request.components(separatedBy: "\r\n")
                 .first(where: { $0.lowercased().hasPrefix("range: bytes=") }) else {

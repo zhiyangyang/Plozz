@@ -51,13 +51,13 @@ public enum SettingsSearchSubtitlePage: String, CaseIterable, Sendable {
 
 public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case playback, subtitles, subtitleStyle, theme, cards, artwork, circadian
-    case allScreens, navigation, home, hero, detail, liveTV, language
+    case allScreens, navigation, home, hero, detail, language
     case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
-    case externalPlayer, skipMarkers, liveSubtitleStyle, musicPlayer, topShelf
-    case downloads, profiles, metadata, diagnostics, liveTVSources
+    case externalPlayer, skipMarkers, musicPlayer, topShelf
+    case downloads, profiles, metadata, diagnostics
     case playbackAdvanced, streamingAdvanced, metadataDiagnostics, detailRatingSources
-    case liveTVGuide, liveTVVisibility, profileAppearance, profileSettings, accountLibraries
+    case profileAppearance, profileSettings, accountLibraries
     case releaseNotes
 
     public var path: [SettingsSearchLabel] {
@@ -92,25 +92,20 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .cardLabels: ["Appearance", "Cards", "Customize labels"]
         case .externalPlayer: ["Playback", "External player"]
         case .skipMarkers: ["Playback", "Intros, credits & more"]
-        case .liveSubtitleStyle: ["Subtitles", "Live TV", "Customize subtitle style"]
         case .musicPlayer: ["Screens & Navigation", "Music player"]
         case .topShelf: ["Top Shelf"]
         case .downloads: ["Downloads"]
         case .profiles: ["Profiles"]
         case .metadata: ["Metadata Providers"]
         case .diagnostics: ["Help & Diagnostics"]
-        case .liveTVSources: ["Live TV", "TV Sources"]
         case .playbackAdvanced: ["Playback", "Advanced"]
         case .streamingAdvanced: ["Playback", "Streaming quality", "Advanced"]
         case .metadataDiagnostics: ["Metadata Providers", "Diagnostics"]
         case .detailRatingSources: ["Screens & Navigation", "Movie & show details", "Rating sources & order"]
-        case .liveTVGuide: ["Live TV", "Guide preferences"]
-        case .liveTVVisibility: ["Live TV", "Channel visibility"]
         case .profileAppearance: ["Profiles", "Appearance"]
         case .profileSettings: ["Profiles", "Manage profile"]
         case .accountLibraries: ["Libraries"]
         case .detail: ["Screens & Navigation", "Movie & show details"]
-        case .liveTV: ["Live TV"]
         case .language: ["Language"]
         case .releaseNotes: ["Release Notes"]
         }
@@ -119,14 +114,13 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     public var symbol: String {
         switch self {
         case .playback, .externalPlayer, .skipMarkers, .playbackAdvanced, .streamingAdvanced: "play.rectangle"
-        case .subtitles, .subtitleStyle, .liveSubtitleStyle: "captions.bubble"
+        case .subtitles, .subtitleStyle: "captions.bubble"
         case .theme, .cards, .artwork, .circadian, .cardLabels: "paintpalette"
         case .allScreens, .navigation, .home, .hero, .detail, .heroContent, .heroRatings,
              .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
              .homeFiltering, .homeLabels, .continueWatching, .libraries, .musicPlayer, .topShelf, .detailRatingSources,
              .accountLibraries:
             "rectangle.3.group"
-        case .liveTV, .liveTVSources, .liveTVGuide, .liveTVVisibility: "antenna.radiowaves.left.and.right"
         case .language: "globe"
         case .downloads: "arrow.down.circle"
         case .profiles, .profileAppearance, .profileSettings: "person.2"
@@ -314,7 +308,6 @@ public struct SettingsSearchIndex {
             let titleWords = Self.tokens(document.title, locale: locale)
             score += words.map { word in titleWords.map { Self.match(word, to: $0) }.max() ?? 0 }
                 .reduce(0, +)
-            if document.entry.page == .liveSubtitleStyle { score -= 1 }
             return (document.entry, score)
         }
         .sorted { lhs, rhs in
@@ -372,15 +365,7 @@ public enum SettingsSearchCatalog {
             + (mode == .alwaysOn ? ["circadian-fade"] : [])
     }
 
-    public static let entries: [SettingsSearchEntry] = baseEntries + baseEntries.filter {
-        $0.page == .subtitleStyle && $0.subtitlePage != .dual && $0.id != "file-ass-override"
-    }.map { entry in
-        SettingsSearchEntry(
-            "live-\(entry.id)", page: .liveSubtitleStyle, title: entry.title, keywords: entry.keywords,
-            platform: entry.platform, minimumOSVersion: entry.minimumOSVersion,
-            anchorID: entry.anchorID, subtitlePage: entry.subtitlePage
-        )
-    }
+    public static let entries: [SettingsSearchEntry] = baseEntries
 
     public static var carouselHeroTargets: [String] {
         entries.filter {
@@ -439,8 +424,6 @@ public enum SettingsSearchCatalog {
               keywords: "buffering streaming cache ahead slow network stuttering loading memory"),
         .init("video-upscaling", page: .playback, title: "Video upscaling",
               keywords: "picture resolution SDR automatic standard animation anime4k super resolution metalfx"),
-        .init("live-buffer", page: .playback, title: "Live TV buffer",
-              keywords: "live channel buffering cache ahead slow network memory"),
         .init("skip-intros", page: .playback, title: "Skip intros, credits & more",
               keywords: "opening ending credits recap automatically skip intro markers"),
         .init("seek-without-pausing", page: .playback, title: "Seek without pausing",
@@ -461,8 +444,6 @@ public enum SettingsSearchCatalog {
               keywords: "deaf hearing impaired closed captions sound descriptions accessibility"),
         .init("subtitle-remember", page: .subtitles, title: "Remember subtitles per series",
               keywords: "remember captions language track episodes"),
-        .init("live-subtitle-style", page: .subtitles, title: "Use a separate style for Live TV",
-              keywords: "live television channel captions appearance different"),
         .init("subtitle-size", page: .subtitleStyle, title: "Subtitle size",
               keywords: "make subtitles bigger larger smaller captions text size hard to read"),
         .init("subtitle-font", page: .subtitleStyle, title: "Subtitle font",
@@ -515,16 +496,6 @@ public enum SettingsSearchCatalog {
               keywords: "movie show ratings reviews scores stars show external ratings"),
         .init("detail-age", page: .detail, title: "Show Common Sense age",
               keywords: "movie show family guidance recommended age children appropriate"),
-        .init("live-start", page: .liveTV, title: "Live TV opens to",
-              keywords: "start live channel guide categories default screen"),
-        .init("channel-order", page: .liveTV, title: "Channel order",
-              keywords: "sort channels alphabetically name number order"),
-        .init("live-clean-channel-names", page: .liveTV, title: "Clean channel names",
-              keywords: "iptv names cleanup decorations spacing region quality labels"),
-        .init("guide-preferences", page: .liveTV, title: "Guide preferences",
-              keywords: "channel preview keep watching browsing recently watched guide"),
-        .init("channel-visibility", page: .liveTV, title: "Channel visibility",
-              keywords: "hide channels favorites only guide listings filters"),
         .init("language", page: .language, title: "Language",
               keywords: "app interface translation language change menus")
     ] + homeEntries + additionalEntries + familyEntries

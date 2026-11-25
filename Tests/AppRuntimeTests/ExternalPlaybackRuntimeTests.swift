@@ -738,25 +738,6 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
         XCTAssertNil(fixture.runtime.receipt)
     }
 
-    func testIPTVUsesIndependentDeliveryAndNeverItsOrdinaryLocalProxy() async throws {
-        let fixture = ExternalPlaybackFixture()
-        defer { fixture.cleanup() }
-        fixture.kind = .iptv
-        let opened = try await fixture.launch()
-        XCTAssertTrue(opened)
-        XCTAssertEqual(fixture.externalRequests, 1)
-        XCTAssertNil(fixture.selectedVersion)
-        XCTAssertTrue(fixture.runtime.availablePlayers(
-            for: fixture.item, context: fixture.context, selection: fixture.selection
-        ).contains(.vlc))
-        fixture.requestError = ExternalPlayerError.unsupportedSource
-        let unsupported = try await fixture.launch()
-        XCTAssertFalse(unsupported)
-        XCTAssertEqual(fixture.externalRequests, 2)
-        XCTAssertNil(fixture.selectedVersion)
-        XCTAssertEqual(fixture.opened.count, 1)
-    }
-
     func testInfuseDASHAndScheduledPlaybackRemainInternal() async throws {
         let fixture = ExternalPlaybackFixture()
         defer { fixture.cleanup() }
@@ -796,7 +777,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testDownloadedVideoFallsBackBeforeResolvingRemotePlayback() async throws {
-        for kind in [ProviderKind.jellyfin, .emby, .plex, .silo, .iptv] {
+        for kind in [ProviderKind.jellyfin, .emby, .plex, .silo] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
             fixture.kind = kind
@@ -1206,9 +1187,6 @@ private struct ExternalPlaybackProvider: StreamingSessionReleasing, ExternalPlay
         streaming: StreamingPlaybackOptions?
     ) async throws -> PlaybackRequest {
         try await MainActor.run {
-            guard kind != .iptv || streaming?.requiresConversionPolicy != true else {
-                throw ExternalPlayerError.unsupportedSource
-            }
             fixture.externalRequests += 1
             fixture.streamingOptions = streaming
             if kind == .silo || kind == .mediaShare { fixture.selectedVersion = mediaSourceID }

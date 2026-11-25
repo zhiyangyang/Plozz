@@ -92,17 +92,15 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
         let navigation = SettingsNavigationModel()
         navigation.select(.subtitles)
         XCTAssertFalse(navigation.isCategoryOpen)
-        navigation.path = [.subtitleStyle(liveTV: false)]
-        XCTAssertTrue(navigation.isCategoryOpen)
-        navigation.path = [.subtitleStyle(liveTV: true)]
+        navigation.path = [.subtitleStyle]
         XCTAssertTrue(navigation.isCategoryOpen)
         navigation.select(.subtitles)
-        XCTAssertEqual(navigation.path, [.subtitleStyle(liveTV: true)])
+        XCTAssertEqual(navigation.path, [.subtitleStyle])
         navigation.select(.playback)
         XCTAssertTrue(navigation.path.isEmpty)
         XCTAssertFalse(navigation.isCategoryOpen)
         navigation.select(.subtitles)
-        navigation.path = [.subtitleStyle(liveTV: false)]
+        navigation.path = [.subtitleStyle]
         navigation.resetForProfile()
         XCTAssertEqual(navigation.section, .playback)
         XCTAssertFalse(navigation.isCategoryOpen)
@@ -127,7 +125,7 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
 
     func testEveryCategoryIsTheFirstPageUntilExplicitReturn() {
         let navigation = SettingsNavigationModel()
-        for route: SettingsRoute in [.playback, .myLibraries, .appearance, .screensNavigation, .subtitles, .liveTV, .metadata, .topShelf, .about] {
+        for route: SettingsRoute in [.playback, .myLibraries, .appearance, .screensNavigation, .subtitles, .metadata, .topShelf, .about] {
             navigation.select(route)
             navigation.enterDetail()
             XCTAssertEqual(navigation.path, [route])

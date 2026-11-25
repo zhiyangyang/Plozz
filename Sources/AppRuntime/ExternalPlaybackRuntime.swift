@@ -249,7 +249,7 @@ public final class ExternalPlaybackRuntime {
     }
 
     private static func supportsIndependentHandoff(_ provider: any MediaProvider) -> Bool {
-        [.iptv, .silo, .mediaShare].contains(provider.kind)
+        [.silo, .mediaShare].contains(provider.kind)
     }
 
     private func supportsShareHandoff(
@@ -282,7 +282,7 @@ public final class ExternalPlaybackRuntime {
         }
         try checkCurrent()
         switch account.provider.kind {
-        case .iptv, .silo, .mediaShare, .subsonic:
+        case .silo, .mediaShare, .subsonic:
             guard Self.supportsIndependentHandoff(account.provider),
                   account.provider is any ExternalPlaybackProviding else { return false }
         case .jellyfin, .emby, .plex:

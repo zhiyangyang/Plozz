@@ -263,7 +263,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
             ("direct", [NavigationLibraryLayout.downloadsKey, NavigationLibraryLayout.settingsKey]),
             ("overflow", [
                 NavigationLibraryLayout.homeKey, NavigationLibraryLayout.watchlistKey,
-                NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.searchKey,
+                NavigationLibraryLayout.searchKey,
                 NavigationLibraryLayout.settingsKey, NavigationLibraryLayout.downloadsKey,
             ]),
             ("hidden", [NavigationLibraryLayout.homeKey, NavigationLibraryLayout.settingsKey]),
@@ -327,7 +327,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
         let keys = NavigationDestinationDefaults.iOS
         let order = [
             NavigationLibraryLayout.homeKey, NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.downloadsKey,
+            NavigationLibraryLayout.downloadsKey,
             NavigationLibraryLayout.searchKey, NavigationLibraryLayout.settingsKey,
         ]
         store.save(.init(order: order, hiddenKeys: [], shownKeys: Set(keys)))
@@ -365,7 +365,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
         let keys = NavigationDestinationDefaults.iOS
         let order = [
             NavigationLibraryLayout.homeKey, NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.liveTVKey, NavigationLibraryLayout.searchKey,
+            NavigationLibraryLayout.searchKey,
             NavigationLibraryLayout.settingsKey, NavigationLibraryLayout.downloadsKey
         ]
         let store = NavigationLibraryLayoutStore(namespace: profile.id)

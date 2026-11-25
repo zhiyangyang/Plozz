@@ -82,8 +82,6 @@ struct MobileServerOnboardingFixture: View {
             addServer(provider: .silo)
         case "seeded":
             addServer(provider: .emby, address: "https://emby.example.test/media")
-        case "iptv":
-            AddServerView(appModel: appModel, initialProvider: .iptv)
         case "share":
             AddServerView(appModel: appModel, initialProvider: .mediaShare)
         case "home-empty", "home-new", "sources", "libraries", "libraries-empty":

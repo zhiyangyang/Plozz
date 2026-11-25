@@ -2,7 +2,6 @@
 import AppRuntime
 import CoreModels
 import CoreUI
-import FeatureLiveTV
 import FeatureProfiles
 import FeatureSettings
 import SwiftUI
@@ -42,10 +41,6 @@ struct PlozziOSProfileSetupView: View {
                 }
             }
         }
-        .guidePreparationOverlay(
-            model: appModel.guidePreparation, presenter: appModel.transientStatusPresenter,
-            palette: palette
-        )
         .offlineStatusOverlay(appModel: appModel, palette: palette)
         // Setup has to finish deliberately: the model releases the watchlist
         // import when it does, so a swipe-away is handled as an explicit cancel

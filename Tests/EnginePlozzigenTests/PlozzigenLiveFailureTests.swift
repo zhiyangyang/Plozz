@@ -11,7 +11,7 @@ final class PlozzigenLiveFailureTests: XCTestCase {
         let diagnostics = PlaybackFailureDiagnostics()
         let buffer = LiveFailureBuffer()
         diagnostics.start { buffer.append($0) }
-        let attempt = try XCTUnwrap(diagnostics.begin(layer: .liveEngine, content: .live))
+        let attempt = try XCTUnwrap(diagnostics.begin(layer: .engine, content: .live))
         PlozzigenLiveFailure.record(nil, attempt: attempt, stage: .load, fallbackError: URLError(.cancelled))
         XCTAssertNil(buffer.last)
         PlozzigenLiveFailure.record(
@@ -32,7 +32,7 @@ final class PlozzigenLiveFailureTests: XCTestCase {
         let diagnostics = PlaybackFailureDiagnostics()
         let buffer = LiveFailureBuffer()
         diagnostics.start { buffer.append($0) }
-        let attempt = try XCTUnwrap(diagnostics.begin(layer: .liveEngine, content: .live))
+        let attempt = try XCTUnwrap(diagnostics.begin(layer: .engine, content: .live))
         PlozzigenLiveFailure.record(
             .init(kind: .sourceOpenFailed, message: "private", underlyingDomain: NSURLErrorDomain,
                   underlyingCode: NSURLErrorCancelled), attempt: attempt, stage: .load
@@ -135,10 +135,10 @@ final class PlozzigenLiveFailureTests: XCTestCase {
     func testCombinedFailureKeepsEngineCauseAndTerminalProviderEvidence() throws {
         let diagnostics = PlaybackFailureDiagnostics()
         let attempt = try XCTUnwrap(diagnostics.begin(
-            layer: .liveEngine, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         let delivery = try XCTUnwrap(diagnostics.begin(
-            layer: .iptvProxy, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         delivery.fail(stage: .response, reason: .authentication, httpStatus: 403)
         var root = PlaybackDeliveryEvidence.Request(
@@ -173,10 +173,10 @@ final class PlozzigenLiveFailureTests: XCTestCase {
     func testNonVideoRefreshKeepsItsBodyClassificationAfterASuccessfulManifest() throws {
         let diagnostics = PlaybackFailureDiagnostics()
         let attempt = try XCTUnwrap(diagnostics.begin(
-            layer: .liveEngine, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         let delivery = try XCTUnwrap(diagnostics.begin(
-            layer: .iptvProxy, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         delivery.fail(stage: .body, reason: .invalidResponse, httpStatus: 200, format: .html)
         var root = PlaybackDeliveryEvidence.Request(
@@ -192,8 +192,6 @@ final class PlozzigenLiveFailureTests: XCTestCase {
         XCTAssertEqual(attempt.diagnostic?.format, .html)
         XCTAssertEqual(attempt.diagnostic?.httpStatus, 200)
         XCTAssertEqual(attempt.diagnostic?.evidence?.delivery?.root?.format, .hls)
-        let report = LiveChannelFailureReport(failure: .engine(.invalidResponse), diagnostic: attempt.diagnostic)
-        XCTAssertEqual(report.message, PlaybackFailureDiagnostic.Format.html.nonVideoMessage)
     }
 
     func testUnknownKindsAndDomainsCannotLeakLocatorsIntoDiagnosticFields() {

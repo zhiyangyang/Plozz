@@ -156,33 +156,4 @@ final class HomeRowNameTests: XCTestCase {
         XCTAssertEqual(original.section, section)
     }
 
-    func testLibrariesAndLiveTVNamesFollowTheSamePresentation() throws {
-        let library = AggregatedLibrary(
-            accountID: "a", accountName: "Account", serverName: "Server",
-            providerKind: .plex, library: .init(id: "movies", title: "Movies", kind: .movie)
-        )
-        let channel = HomeLiveTVChannel(
-            route: .init(
-                profileID: "profile", channelID: "news", sourceID: "source",
-                sourceAuthorizationID: "approval", serverAuthorizationID: "servers"
-            ), name: "News", sourceName: "Source", number: 1
-        )
-        let content = HomeViewModel.Content(libraries: [library])
-        var visibility = HomeLibraryVisibility(rowCustomization: .init(defaults: .custom, shown: [.libraries, .liveTV]))
-        visibility.setHomeRowName("My media", for: .libraries)
-        visibility.setHomeRowName("On air", for: .liveTV)
-        let rows = HomePresentationRow.resolve(
-            rows: HomeRow.rows(for: content, isLibraryVisible: { _ in true }),
-            content: content, visibility: visibility, liveTV: .init(recentChannels: [], channels: [channel])
-        )
-        let libraries = try XCTUnwrap(rows.first { $0.id == .libraries })
-        XCTAssertEqual(libraries.choice.title, "My media")
-        guard case let .home(row) = libraries.source else { return XCTFail("Expected libraries row") }
-        XCTAssertEqual(row.customTitle, "My media")
-        XCTAssertEqual(row.libraries, [library])
-        let live = try XCTUnwrap(rows.first { $0.id == .liveTV })
-        XCTAssertEqual(live.choice.title, "On air")
-        guard case let .liveTV(channels) = live.source else { return XCTFail("Expected live TV row") }
-        XCTAssertEqual(channels, [channel])
-    }
 }

@@ -2,19 +2,8 @@ import XCTest
 
 @MainActor
 final class EmptyPinnedNavigationTests: XCTestCase {
-    func testLiveTVSetupAcceptsSelectionAndRightFromPinnedNavigation() {
-        exercise(destination: "Live TV", downCount: 1, content: "live-tv-setup-playlist")
-    }
-
     func testSettingsAcceptsSelectionAndRightFromPinnedNavigationWithoutMedia() {
         exercise(destination: "Settings", downCount: 2, content: "settings-section-playback")
-    }
-
-    func testColdLiveTVSetupStartsOnTheFirstChoice() {
-        let app = launch(start: "liveTV")
-        defer { app.terminate() }
-        XCTAssertTrue(app.buttons["live-tv-setup-playlist"].waitForExistence(timeout: 15))
-        assertFocused(app.buttons["live-tv-setup-playlist"], in: app)
     }
 
     func testColdSettingsStartsOnItsPreferredCategory() {
@@ -22,29 +11,6 @@ final class EmptyPinnedNavigationTests: XCTestCase {
         defer { app.terminate() }
         XCTAssertTrue(app.buttons["settings-section-playback"].waitForExistence(timeout: 15))
         assertFocused(app.buttons["settings-section-playback"], in: app)
-    }
-
-    func testRetainedLiveTVDoesNotBlockSettingsOrHomeEntry() {
-        let app = launch()
-        defer { app.terminate() }
-        XCTAssertTrue(app.buttons["Try Again"].waitForExistence(timeout: 15))
-        assertFocused(app.buttons["Try Again"], in: app)
-        var currentDestination = "Home"
-        for (destination, moves, content) in [
-            ("Live TV", [XCUIRemote.Button.down], "live-tv-setup-playlist"),
-            ("Settings", [.down], "settings-section-playback"),
-            ("Home", [.up, .up], "Try Again"),
-            ("Live TV", [.down], "live-tv-setup-playlist")
-        ] {
-            XCUIRemote.shared.press(.left)
-            assertFocused(app.buttons[currentDestination], in: app)
-            for move in moves { XCUIRemote.shared.press(move) }
-            assertFocused(app.buttons[destination], in: app)
-            XCUIRemote.shared.press(.select)
-            XCTAssertTrue(app.buttons[content].waitForExistence(timeout: 10), app.debugDescription)
-            assertFocused(app.buttons[content], in: app)
-            currentDestination = destination
-        }
     }
 
     private func launch(start: String = "home") -> XCUIApplication {

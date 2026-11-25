@@ -30,8 +30,6 @@ public struct ServerHomeSection: Codable, Hashable, Identifiable, Sendable {
         case continueWatching
         case nextUp
         case recentlyAdded
-        case liveTV
-        case recordings
         case recommendations
 
         public var title: LocalizedStringResource {
@@ -40,8 +38,6 @@ public struct ServerHomeSection: Codable, Hashable, Identifiable, Sendable {
             case .continueWatching: "Continue Watching"
             case .nextUp: "Next Up"
             case .recentlyAdded: "Recently Added"
-            case .liveTV: "Live TV"
-            case .recordings: "Recordings"
             case .recommendations: "Recommended"
             }
         }
@@ -96,7 +92,6 @@ public struct HomeServerRowDefinition: Codable, Hashable, Identifiable, Sendable
         switch section.kind {
         case .libraries: .libraries
         case .continueWatching: .global(.continueWatching)
-        case .liveTV: .liveTV
         default: .server(accountID: accountID, section: section.id)
         }
     }

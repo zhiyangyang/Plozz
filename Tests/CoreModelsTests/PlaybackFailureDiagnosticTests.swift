@@ -6,29 +6,18 @@ final class PlaybackFailureDiagnosticTests: XCTestCase {
     func testLocalPlaybackEvidenceDoesNotEnableRemoteReporting() throws {
         let diagnostics = PlaybackFailureDiagnostics()
         let attempt = try XCTUnwrap(diagnostics.begin(
-            layer: .liveEngine, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         let buffer = PlaybackFailureBuffer()
         diagnostics.start { buffer.append($0) }
         attempt.fail(stage: .load, reason: .network, domain: .url, code: -1001)
         XCTAssertTrue(buffer.values.isEmpty)
         XCTAssertEqual(attempt.diagnostic?.code, -1001)
-        let report = LiveChannelFailureReport(failure: .engine(.serverUnreachable), diagnostic: attempt.diagnostic)
-        XCTAssertTrue(String(localized: report.message).contains("did not respond in time"))
-        XCTAssertFalse(PlaybackDiagnosticReport.playback(report).supportText.contains("http_status"))
-    }
-
-    func testSupportReportNeverExportsUnknownErrorDescriptions() {
-        let privateDescription = "https://private.invalid/live/user/password?token=private-secret"
-        let report = LiveChannelFailureReport(failure: .engine(.unknown(privateDescription)))
-        XCTAssertEqual(PlaybackDiagnosticReport.playback(report).supportText,
-                       "format=plozz-live-tv-2\noperation=playback\nfailure=unknown")
-        XCTAssertFalse(String(localized: report.message).contains("private"))
     }
 
     func testTerminalDeliveryReportKeepsMatchingStatusAfterAnEarlierRecoverableFailure() throws {
         let attempt = try XCTUnwrap(PlaybackFailureDiagnostics().begin(
-            layer: .iptvProxy, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         attempt.fail(stage: .response, reason: .notFound, httpStatus: 404)
         let refusal = attempt.fail(stage: .response, reason: .authentication, httpStatus: 403)
@@ -43,14 +32,14 @@ final class PlaybackFailureDiagnosticTests: XCTestCase {
     func testConsentRevocationDiscardsRetainedAttemptsEvenAfterReenabling() throws {
         let diagnostics = PlaybackFailureDiagnostics()
         let buffer = PlaybackFailureBuffer()
-        XCTAssertNil(diagnostics.begin(layer: .iptvProxy, content: .live))
+        XCTAssertNil(diagnostics.begin(layer: .engine, content: .live))
         diagnostics.start { buffer.append($0) }
-        let stale = try XCTUnwrap(diagnostics.begin(layer: .iptvProxy, content: .live))
+        let stale = try XCTUnwrap(diagnostics.begin(layer: .engine, content: .live))
         diagnostics.stop()
         diagnostics.start { buffer.append($0) }
         stale.fail(stage: .response, reason: .authentication, httpStatus: 403)
         XCTAssertTrue(buffer.values.isEmpty)
-        let current = try XCTUnwrap(diagnostics.begin(layer: .iptvProxy, content: .live))
+        let current = try XCTUnwrap(diagnostics.begin(layer: .engine, content: .live))
         current.fail(stage: .response, reason: .authentication, httpStatus: 403)
         current.fail(stage: .body, reason: .network)
         XCTAssertEqual(buffer.values.count, 1)
@@ -61,7 +50,7 @@ final class PlaybackFailureDiagnosticTests: XCTestCase {
         let diagnostics = PlaybackFailureDiagnostics()
         let buffer = PlaybackFailureBuffer()
         diagnostics.start { buffer.append($0) }
-        let attempt = try XCTUnwrap(diagnostics.begin(layer: .liveEngine, content: .live))
+        let attempt = try XCTUnwrap(diagnostics.begin(layer: .engine, content: .live))
         attempt.fail(stage: .load, reason: .cancelled)
         XCTAssertTrue(buffer.values.isEmpty)
         attempt.fail(stage: .playback, engineFailure: .nativeItemFailed, domain: .avfoundation,
@@ -93,19 +82,10 @@ final class PlaybackFailureDiagnosticTests: XCTestCase {
             nativeErrors: PlaybackFailureEvidence.ErrorCode.chain(error)
         )
         let attempt = try XCTUnwrap(PlaybackFailureDiagnostics().begin(
-            layer: .liveEngine, content: .live, captureForPresentation: true
+            layer: .engine, content: .live, captureForPresentation: true
         ))
         attempt.fail(stage: .playback, engineFailure: .nativeItemFailed, domain: .avfoundation,
                      code: -11850, evidence: evidence)
-        let report = PlaybackDiagnosticReport.playback(.init(
-            failure: .engine(.invalidResponse), diagnostic: attempt.diagnostic
-        )).supportText
-        XCTAssertTrue(report.contains("native_error_0=avfoundation:-11850"))
-        XCTAssertTrue(report.contains("native_error_1=coremedia:-12939"))
-        XCTAssertTrue(report.contains("route=nativeHLS"))
-        XCTAssertFalse(report.contains("private"))
-        let keys = report.split(separator: "\n").map { $0.split(separator: "=")[0] }
-        XCTAssertEqual(Set(keys).count, keys.count, "Protocol and media format must not share a key.")
         let data = try JSONEncoder().encode(XCTUnwrap(attempt.diagnostic))
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("secret"))
     }

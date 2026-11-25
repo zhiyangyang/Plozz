@@ -30,42 +30,6 @@ final class DiagnosticExportTests: XCTestCase {
         XCTAssertFalse(scope.alias(for: session).contains(HandoffDiagnostics.correlationID(session)))
     }
 
-    func testSourceExportKeepsIdentityRelationshipsWithoutPersistentHashesOrLaunchIDs() throws {
-        let now = Date()
-        let recorder = LiveTVSourceDiagnostics(url: nil, clock: { now })
-        recorder.configuration(.init(servers: [
-            .init(id: "private-source", name: "Private server", accountID: "private-account")
-        ]), namespace: "private-profile")
-        recorder.record(
-            .sourceReadFailed, identities: [.account: "private-account", .profile: "private-profile"],
-            counts: [.channels: 42], flags: [.authorized: true], reason: .timeout, stage: .error,
-            error: NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut,
-                           userInfo: [NSLocalizedDescriptionKey: "https://private.test?token=secret"])
-        )
-        let scope = DiagnosticExportScope(now: now.addingTimeInterval(2))
-        let body = try object(recorder.export(scope: scope))
-        let entries = try XCTUnwrap(body["entries"] as? [[String: Any]])
-        let first = try XCTUnwrap(entries.first)
-        let last = try XCTUnwrap(entries.last)
-        let source = try XCTUnwrap((first["sources"] as? [[String: Any]])?.first)
-        let identities = try XCTUnwrap(last["identities"] as? [String: String])
-        XCTAssertEqual(source["account"] as? String, identities["account"])
-        XCTAssertEqual(first["launch"] as? String, last["launch"] as? String)
-        XCTAssertEqual(last["ageMilliseconds"] as? Int, 2_000)
-        XCTAssertEqual(last["reason"] as? String, "timeout")
-        XCTAssertEqual(last["errorCode"] as? Int, NSURLErrorTimedOut)
-        XCTAssertEqual((last["counts"] as? [String: Int])?["channels"], 42)
-        XCTAssertNil(last["timestamp"])
-        let text = try String(decoding: JSONSerialization.data(withJSONObject: body), as: UTF8.self)
-        for value in ["private", "Private", "secret", HandoffDiagnostics.correlationID("private-account"),
-                      HandoffDiagnostics.correlationID("private-profile")] {
-            XCTAssertFalse(text.contains(value), value)
-        }
-        let another = try object(recorder.export(scope: DiagnosticExportScope()))
-        let anotherLaunch = (another["entries"] as? [[String: Any]])?.first?["launch"] as? String
-        XCTAssertNotEqual(first["launch"] as? String, anotherLaunch)
-    }
-
     func testPlaybackExportKeepsFailureCodecTimingAndAttemptRelationshipsWithoutSourceIdentity() async throws {
         let now = Date()
         let recorder = PlaybackDiagnosticJournal(url: nil, clock: { now })
@@ -102,25 +66,20 @@ final class DiagnosticExportTests: XCTestCase {
         XCTAssertFalse(text.contains("timestamp"))
     }
 
-    func testCorruptJournalsReportUnavailableEvidenceWithoutUploadingFileContents() async throws {
+    func testCorruptJournalReportsUnavailableEvidenceWithoutUploadingFileContents() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let sourceURL = directory.appendingPathComponent("sources.json")
         let playbackURL = directory.appendingPathComponent("playback.json")
         let privateData = Data("private-server.example.test PRIVATE-SECRET".utf8)
-        try privateData.write(to: sourceURL)
         try privateData.write(to: playbackURL)
-        let source = LiveTVSourceDiagnostics(url: sourceURL).export(scope: DiagnosticExportScope())
-        let playback = await PlaybackDiagnosticJournal(url: playbackURL).export(scope: DiagnosticExportScope())
-        for body in [try object(source), try object(playback)] {
-            XCTAssertEqual(body["storageAvailable"] as? Bool, false)
-            XCTAssertEqual(body["storageIssue"] as? String, "readFailed")
-            XCTAssertEqual((body["entries"] as? [Any])?.count, 0)
-            let text = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
-            XCTAssertFalse(text.contains("private-server"))
-            XCTAssertFalse(text.contains("PRIVATE-SECRET"))
-        }
+        let body = try object(await PlaybackDiagnosticJournal(url: playbackURL).export(scope: DiagnosticExportScope()))
+        XCTAssertEqual(body["storageAvailable"] as? Bool, false)
+        XCTAssertEqual(body["storageIssue"] as? String, "readFailed")
+        XCTAssertEqual((body["entries"] as? [Any])?.count, 0)
+        let text = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
+        XCTAssertFalse(text.contains("private-server"))
+        XCTAssertFalse(text.contains("PRIVATE-SECRET"))
     }
 
     private func object(_ value: some Encodable) throws -> [String: Any] {

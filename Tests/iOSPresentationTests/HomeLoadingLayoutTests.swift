@@ -428,7 +428,6 @@ final class HomeLoadingLayoutTests: XCTestCase {
                     switch row.source {
                     case let .home(value): XCTAssertEqual(value.items.count, count)
                     case let .library(value): XCTAssertEqual(value.section.items.count, count)
-                    case .liveTV: XCTFail("Unexpected source")
                     }
                 }
                 for (loading, failure): (Bool, AppError?) in [(true, nil), (false, .serverUnreachable)] {
@@ -444,8 +443,6 @@ final class HomeLoadingLayoutTests: XCTestCase {
                 }
             }
         }
-        XCTAssertFalse(HomePresentationRow(choice: choice, source: .liveTV([]))
-            .supportsBrowsing(loadedItemThreshold: threshold))
     }
 
     func testRelatedBrowserKeepsTheWholeRowAndInvalidatesAfterProfileSwitch() async throws {
@@ -1557,42 +1554,6 @@ final class HomeLoadingLayoutTests: XCTestCase {
             state.row = HomeCollectionRow(definition: definition, failure: .serverUnreachable).row
             try await fixture.settle()
             XCTAssertEqual(heights.loaded, reserved, accuracy: 0.5)
-        }
-    }
-
-    func testLiveTVReservationDoesNotAddMediaCaptionSpace() async throws {
-        let fixture = try Fixture()
-        defer { fixture.close() }
-        let channel = HomeLiveTVChannel(
-            route: .init(profileID: fixture.profileID, channelID: "channel", sourceID: "source",
-                         sourceAuthorizationID: "source-auth", serverAuthorizationID: "server-auth"),
-            name: "Channel", sourceName: "Source", number: 1
-        )
-        let presentation = HomePresentationRow(
-            choice: try XCTUnwrap(HomeRowChoice.shared.first { $0.id == .liveTV }), source: .liveTV([channel])
-        )
-        for style in [CardStyle.borderless, .framed] {
-            let heights = Heights()
-            fixture.mount(
-                ScrollView {
-                    PlozziOSHomeRowSlot(
-                        presentation: presentation, captions: .default,
-                        continueWatchingLayout: .landscape, continueWatchingUsesSeriesArtwork: false
-                    ) {
-                        PlozziOSHomeMediaRail(
-                            title: Text("Live TV"), items: [], style: .landscape,
-                            appModel: fixture.app, liveChannels: [channel]
-                        )
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loading = $0 }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loaded = $0 }
-                }
-                .environment(\.plozziOSHomeViewportWidth, 390)
-                .environment(\.plozzCardStyle, style)
-            )
-            try await fixture.settle()
-            XCTAssertGreaterThan(heights.loaded, 100)
-            XCTAssertEqual(heights.loaded, heights.loading, accuracy: 0.5)
         }
     }
 

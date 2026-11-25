@@ -223,7 +223,7 @@ final class DownloadActivityLifecycleTests: XCTestCase {
             throw XCTSkip("Requires iOS/iPadOS 26 or later.")
         }
         let bytes = Data(repeating: 0x5a, count: 2 * 1_024 * 1_024)
-        let server = try IPTVTestHTTPServer { _ in
+        let server = try LocalTestHTTPServer { _ in
             .init(data: bytes, delay: .milliseconds(100))
         }
         let url = try await server.start()
@@ -423,7 +423,7 @@ final class DownloadActivityLifecycleTests: XCTestCase {
         OfflineMode.shared.setEnabled(false)
         defer { OfflineMode.shared.setEnabled(previousOffline) }
         let bytes = Data(repeating: 0x5a, count: 1_024)
-        let server = try IPTVTestHTTPServer { _ in .init(data: bytes) }
+        let server = try LocalTestHTTPServer { _ in .init(data: bytes) }
         let url = try await server.start()
         let profile = "subtitle-expiration-\(UUID().uuidString)"
         let policyKey = "downloads.policy.\(profile)"
