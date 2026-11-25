@@ -387,13 +387,11 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         liveTV: HomeLiveTVSnapshot = .empty, presentation: LibraryPresentationSettings = .default,
         showsEmptySectionMessages: Bool = true
     ) -> [HomePresentationRow] {
-        let upcomingHomeReleases = upcoming.homeReleases
         let isStable = loadingRows.isEmpty && rowFailures.isEmpty
         if isStable {
             let key = PresentationRowsKey(
                 revision: stateRevision,
                 rowKinds: rows.map(\.kind),
-                upcomingHomeReleaseIDs: upcomingHomeReleases.map(\.id),
                 visibility: visibility,
                 liveTV: liveTV,
                 presentation: presentation,
@@ -405,7 +403,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
             }
             let resolved = HomePresentationRow.resolve(
                 rows: rows, content: content, visibility: visibility, liveTV: liveTV,
-                upcoming: upcomingHomeReleases, presentation: presentation,
+                presentation: presentation,
                 showsEmptySectionMessages: showsEmptySectionMessages,
                 serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
             )
@@ -414,13 +412,11 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         }
         return HomePresentationRow.resolve(
             rows: rows, content: content, visibility: visibility, liveTV: liveTV,
-            upcoming: upcomingHomeReleases, presentation: presentation,
+            presentation: presentation,
             showsEmptySectionMessages: showsEmptySectionMessages,
             serverInfo: accounts.sourceServerInfo(), identitySources: identitySources
         )
     }
-
-    public let upcoming = UpcomingFeedModel(cache: .shared)
 
     public private(set) var state: LoadState<Content> = .idle {
         didSet { stateRevision &+= 1 }
@@ -432,7 +428,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     private struct PresentationRowsKey: Equatable {
         let revision: UInt64
         let rowKinds: [HomeRowKind]
-        let upcomingHomeReleaseIDs: [String]
         let visibility: HomeLibraryVisibility
         let liveTV: HomeLiveTVSnapshot
         let presentation: LibraryPresentationSettings
@@ -871,12 +866,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         ) { [weak self] note in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                // A watch-state change can change which series are "watching"
-                // in Upcoming, but it does not need to synchronously restart a
-                // full multi-library scan while Home is on screen. Mark the feed
-                // stale; the Upcoming tab and the next foreground pass use the
-                // existing refreshIfStale() path.
-                self.upcoming.markStale()
                 if let mutation = MediaItemMutation.from(note) {
                     self.applyWatchedState(mutation)
                 } else {
@@ -959,7 +948,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     /// A replaced account/profile scope must retire its model-owned work now,
     /// not wait for deinit while an outstanding load still retains the model.
     public func invalidate() {
-        upcoming.retire()
         isInvalidated = true
         recommendationContext.invalidate()
         cancelPendingLoad()
@@ -2480,7 +2468,6 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
               let content = state.value else { throw AppError.notFound }
         switch kind {
         case .continueWatching: return content.continueWatching
-        case .comingSoon: return upcoming.homeReleases.map(\.item)
         case .watchlist: return content.watchlist
         case .recentlyAdded:
             return HomeRecentlyAddedPolicy.items(

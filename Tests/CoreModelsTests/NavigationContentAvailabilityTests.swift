@@ -7,10 +7,9 @@ final class NavigationContentAvailabilityTests: XCTestCase {
         NavigationLibraryLayout.homeKey,
         NavigationLibraryLayout.searchKey,
         NavigationLibraryLayout.watchlistKey,
-        NavigationLibraryLayout.upcomingKey,
     ]
 
-    func testLiveOnlySourcesHideUpcomingWithoutChangingOtherMobileDefaults() {
+    func testLiveOnlySourcesHideWatchlistWithoutChangingOtherMobileDefaults() {
         for accounts in [[], [account("iptv", provider: .iptv)]] {
             let facts = availability(accounts: accounts)
             XCTAssertEqual(facts.automaticallyHiddenKeys, automaticKeys)
@@ -29,7 +28,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
             }
             XCTAssertEqual(NavigationLibraryLayout.default.resolvingAutomaticVisibility(
                 hidden: NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(
-                    available: NavigationDestinationDefaults.iOS, hasUpcomingContent: facts.hasUpcomingContent
+                    available: NavigationDestinationDefaults.iOS
                 )
             ).sections(
                 available: NavigationDestinationDefaults.iOS, requiredEnabled: []
@@ -81,61 +80,10 @@ final class NavigationContentAvailabilityTests: XCTestCase {
             let facts = availability(accounts: [account("server", provider: provider)])
             XCTAssertTrue(facts.hasHomeContent)
             XCTAssertTrue(facts.hasSearchContent)
-            XCTAssertTrue(facts.hasUpcomingContent)
         }
-    }
-
-    func testUpcomingUsesEligibleProfileSourcesAndSavedTitlesNotUnrelatedContent() {
-        let iptv = account("iptv", provider: .iptv)
-        for kind in [MediaItemKind.movie, .series, .folder, .unknown] {
-            XCTAssertTrue(availability(accounts: [iptv], libraries: [library("iptv", kind: kind)])
-                .hasUpcomingContent)
-        }
-        XCTAssertFalse(availability(accounts: [iptv], libraries: [library("iptv", kind: .video)])
-            .hasUpcomingContent)
-        XCTAssertFalse(availability(
-            accounts: [iptv], libraries: [library("other-profile")], known: ["iptv"]
-        ).hasUpcomingContent)
-        XCTAssertFalse(availability(
-            accounts: [iptv], libraries: [library("iptv")], disabled: ["iptv:movies"]
-        ).hasUpcomingContent)
-        XCTAssertFalse(availability(accounts: [iptv], watchlist: true).hasUpcomingContent)
-        XCTAssertTrue(availability(accounts: [iptv], watchlist: true, titles: true).hasUpcomingContent)
-        XCTAssertTrue(availability(accounts: [iptv], discovery: true).hasUpcomingContent)
     }
 
     @MainActor
-    func testExplicitUpcomingShowIsProfileScopedAndResetRestoresAutomaticHiding() {
-        let suite = "NavigationContentAvailabilityTests." + UUID().uuidString
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let key = NavigationLibraryLayout.upcomingKey
-        let available = NavigationDestinationDefaults.iOS
-        let hidden = NavigationDestinationDefaults.iOSAutomaticallyHiddenKeys(
-            available: available, hasUpcomingContent: false
-        )
-        func model(_ profile: String) -> NavigationStyleSettingsModel {
-            let model = NavigationStyleSettingsModel(
-                store: NavigationStyleSettingsStore(defaults: defaults, namespace: profile),
-                layoutStore: NavigationLibraryLayoutStore(defaults: defaults, namespace: profile)
-            )
-            model.automaticallyHiddenKeys = hidden
-            return model
-        }
-        let viewer = model("viewer")
-        let initial = viewer.librarySections(available: available)
-        XCTAssertTrue(initial.disabled.contains(key))
-        viewer.applyLibrarySections(
-            .init(enabled: initial.enabled + [key], disabled: initial.disabled.filter { $0 != key }),
-            available: available
-        )
-        XCTAssertEqual(viewer.libraryLayout.shownKeys, [key])
-        XCTAssertTrue(model("viewer").librarySections(available: available).enabled.contains(key))
-        XCTAssertFalse(model("other").librarySections(available: available).enabled.contains(key))
-        viewer.resetLibraryLayout()
-        XCTAssertFalse(model("viewer").librarySections(available: available).enabled.contains(key))
-    }
-
     func testMusicOnlyStartupNeverPrefersLiveTV() {
         for discovery in [false, true] {
             let facts = availability(
@@ -239,8 +187,7 @@ final class NavigationContentAvailabilityTests: XCTestCase {
                     NavigationLibraryLayout.settingsKey,
                 ],
                 disabled: [
-                    NavigationLibraryLayout.homeKey, NavigationLibraryLayout.searchKey,
-                    NavigationLibraryLayout.upcomingKey
+                    NavigationLibraryLayout.homeKey, NavigationLibraryLayout.searchKey
                 ]
             ),
             available: available,
@@ -344,12 +291,11 @@ final class NavigationContentAvailabilityTests: XCTestCase {
     private func availability(
         accounts: [Account] = [], libraries: [AggregatedLibrary] = [],
         known: Set<String> = [], disabled: Set<String> = [],
-        discovery: Bool = false, watchlist: Bool = false, titles: Bool = false
+        discovery: Bool = false, watchlist: Bool = false
     ) -> NavigationContentAvailability {
         NavigationContentAvailability(
             accounts: accounts, libraries: libraries, discoveredAccountIDs: known,
-            disabledLibraryKeys: disabled, hasDiscoverySearch: discovery, hasWatchlistItems: watchlist,
-            hasWatchlistTitles: titles
+            disabledLibraryKeys: disabled, hasDiscoverySearch: discovery, hasWatchlistItems: watchlist
         )
     }
 

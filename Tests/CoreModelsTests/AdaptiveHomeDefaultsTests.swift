@@ -78,13 +78,13 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
             return false
         }.map(HomeRowChoice.init(serverRow:))
         XCTAssertEqual(model.visibility.rowSections(choices: choices).enabled, [
-            .global(.continueWatching), .global(.comingSoon), .global(.watchlist), .global(.recentlyAdded),
+            .global(.continueWatching), .global(.watchlist), .global(.recentlyAdded),
             .server(accountID: "a", section: "picks"), .server(accountID: "b", section: "latest"),
             .liveTV, .libraries
         ])
         model.useRowDefaults(.combined)
         XCTAssertEqual(model.visibility.rowSections(choices: choices).enabled, [
-            .global(.continueWatching), .global(.comingSoon), .global(.watchlist),
+            .global(.continueWatching), .global(.watchlist),
             .global(.recentlyAdded), .liveTV, .libraries
         ])
     }

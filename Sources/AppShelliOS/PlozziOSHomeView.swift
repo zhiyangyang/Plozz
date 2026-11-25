@@ -212,7 +212,6 @@ struct PlozziOSHomeView: View {
     @State private var contentEntrance = PlozziOSHomeContentEntrance.initial
     @State private var rowBrowser: HomeRowBrowseModel?
     @State private var showingHomeCustomization = false
-    @State private var showingUpcoming = false
     @State private var editingHomeRow: PlozziOSHomeRowSettingsRoute?
     @State private var heroFreshnessRefresh = HeroFreshnessRefreshDriver()
     private let appModel: PlozziOSAppModel
@@ -221,7 +220,6 @@ struct PlozziOSHomeView: View {
     private let heroMetadataEnricher: HeroMetadataEnricher
 
     private func browseAction(for row: HomePresentationRow) -> (() -> Void)? {
-        if row.id == .global(.comingSoon) { return { showingUpcoming = true } }
         guard row.supportsBrowsing(
             loadedItemThreshold: isRunningOnMac ? PlozziOSMediaRailLayout.desktopBrowseThreshold : nil
         ) else { return nil }
@@ -308,8 +306,7 @@ struct PlozziOSHomeView: View {
     var body: some View {
         let displayState = HomePresentationRow.displayState(
             viewModel.state, liveTV: liveTV,
-            visibility: appModel.settings.homeVisibility.visibility,
-            upcoming: viewModel.upcoming.homeReleases
+            visibility: appModel.settings.homeVisibility.visibility
         )
         let hasScrollingContent = switch displayState {
         case .idle, .loading, .loaded: true
@@ -376,10 +373,6 @@ struct PlozziOSHomeView: View {
             if isEmpty, contentEntrance == .initial { contentEntrance = .waiting }
         }
         .environment(\.plozzCardCaptionView, .home)
-        .navigationDestination(isPresented: $showingUpcoming) { [appModel, viewModel] in
-            UpcomingView(model: viewModel.upcoming, interval: UpcomingFeedLoader.window())
-                .plozziOSItemNavigation(appModel: appModel)
-        }
         .navigationDestination(item: $editingHomeRow) { [appModel] route in
             PlozziOSHomeRowSettingsDestination(route: route, appModel: appModel)
         }
@@ -834,12 +827,7 @@ struct PlozziOSHomeView: View {
                             onNavigationInteraction: viewModel.noteHomeNavigationInteraction
                         )
                     case let .library(row):
-                        if presentation.id == .global(.comingSoon) {
-                            UpcomingHomeRow(title: row.section.displayName, releases: viewModel.upcoming.homeReleases) {
-                                showingUpcoming = true
-                            }
-                        } else {
-                            PlozziOSHomeLibraryPresentationRow(
+                        PlozziOSHomeLibraryPresentationRow(
                             choice: presentation.choice, row: row,
                             appModel: appModel, viewModel: viewModel,
                             coordinator: featuredTrailers, controller: trailerController,
@@ -848,7 +836,6 @@ struct PlozziOSHomeView: View {
                             rowBrowser: $rowBrowser, showingHomeCustomization: $showingHomeCustomization
                         )
                         .equatable()
-                        }
                     }
                 }
                 .environment(\.plozzLandscapeTitleLogo, presentation.choice.collectionSection?.titleLogo ?? .off)

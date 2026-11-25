@@ -206,7 +206,6 @@ targets:
         basedOnDependencyAnalysis: false
     sources:
       - path: Tests/iOSPresentationHost
-      - path: Tests/HomePresentationSupport/UpcomingCaptureFixture.swift
       - path: Tests/HomePresentationSupport/DetailSelectionFixture.swift
       - path: Tests/HomePresentationSupport/ContentRefreshReturnFixture.swift
       - path: Tests/AuthPresentationSupport/MobileServerOnboardingFixture.swift

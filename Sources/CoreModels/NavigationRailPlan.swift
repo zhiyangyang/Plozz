@@ -6,7 +6,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
     case home
     case search
     case watchlist
-    case upcoming
     case liveTV
     case music
     case settings
@@ -21,7 +20,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case .home: return "home"
         case .search: return "search"
         case .watchlist: return "watchlist"
-        case .upcoming: return "upcoming"
         case .liveTV: return "liveTV"
         case .music: return "music"
         case .settings: return "settings"
@@ -35,7 +33,6 @@ public enum NavigationRailDestination: Hashable, Sendable {
         case "home": self = .home
         case "search": self = .search
         case "watchlist": self = .watchlist
-        case "upcoming": self = .upcoming
         case "liveTV": self = .liveTV
         case "music": self = .music
         case "settings": self = .settings
@@ -94,7 +91,7 @@ public enum NavigationDestinationDefaults {
     public static func compact(hasMusic: Bool) -> [String] {
         var keys = [
             NavigationLibraryLayout.homeKey,
-            NavigationLibraryLayout.watchlistKey, NavigationLibraryLayout.upcomingKey
+            NavigationLibraryLayout.watchlistKey
         ]
         keys.append(NavigationLibraryLayout.liveTVKey)
         keys.append(NavigationLibraryLayout.searchKey)
@@ -121,7 +118,6 @@ public enum NavigationDestinationDefaults {
 
     public static let iOSDefaultVisibleKeys = [
         NavigationLibraryLayout.homeKey,
-        NavigationLibraryLayout.upcomingKey,
         NavigationLibraryLayout.downloadsKey,
         NavigationLibraryLayout.searchKey,
     ]
@@ -139,8 +135,7 @@ public enum NavigationDestinationDefaults {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.collectionsKey,
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.upcomingKey,
-            NavigationLibraryLayout.downloadsKey,
+                NavigationLibraryLayout.downloadsKey,
             NavigationLibraryLayout.searchKey,
         ]
     }
@@ -154,8 +149,7 @@ public enum NavigationDestinationDefaults {
                 NavigationLibraryLayout.homeKey,
                 NavigationLibraryLayout.collectionsKey,
                 NavigationLibraryLayout.watchlistKey,
-                NavigationLibraryLayout.upcomingKey,
-                NavigationLibraryLayout.downloadsKey,
+                        NavigationLibraryLayout.downloadsKey,
                 NavigationLibraryLayout.searchKey,
                 NavigationLibraryLayout.liveTVKey,
                 NavigationLibraryLayout.settingsKey,
@@ -194,14 +188,12 @@ public enum NavigationDestinationDefaults {
     /// New libraries stay in the editor until explicitly shown. This is a
     /// presentation default, not a persisted hide or a content restriction.
     public static func iOSAutomaticallyHiddenKeys(
-        available: [String], hasUpcomingContent: Bool = true,
+        available: [String],
         customBuild: Bool = PlozzCustomization.isCustomBuild
     ) -> Set<String> {
-        var hidden = Set(available).subtracting(
+        Set(available).subtracting(
             defaultVisibleKeys(customBuild: customBuild) + [NavigationLibraryLayout.musicKey]
         )
-        if !hasUpcomingContent { hidden.insert(NavigationLibraryLayout.upcomingKey) }
-        return hidden
     }
 }
 
@@ -321,7 +313,6 @@ public enum NavigationRailPlan {
         case NavigationLibraryLayout.homeKey: return .home
         case NavigationLibraryLayout.searchKey: return .search
         case NavigationLibraryLayout.watchlistKey: return .watchlist
-        case NavigationLibraryLayout.upcomingKey: return .upcoming
         case NavigationLibraryLayout.liveTVKey: return .liveTV
         case NavigationLibraryLayout.musicKey: return .music
         case NavigationLibraryLayout.settingsKey: return .settings
@@ -336,7 +327,6 @@ public enum NavigationRailPlan {
         case .home: return NavigationLibraryLayout.homeKey
         case .search: return NavigationLibraryLayout.searchKey
         case .watchlist: return NavigationLibraryLayout.watchlistKey
-        case .upcoming: return NavigationLibraryLayout.upcomingKey
         case .liveTV: return NavigationLibraryLayout.liveTVKey
         case .music: return NavigationLibraryLayout.musicKey
         case .settings: return NavigationLibraryLayout.settingsKey

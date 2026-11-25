@@ -179,7 +179,6 @@ public struct HomeRowCustomization: Codable, Equatable, Sendable {
     public func isVisible(_ id: HomeRowID, providerDefault: Bool) -> Bool {
         if hidden.contains(id) { return false }
         if shown.contains(id) { return true }
-        if id == .global(.comingSoon) { return true }
         switch defaults {
         case .matchServer:
             guard let resolvedDefaults else { return providerDefault }

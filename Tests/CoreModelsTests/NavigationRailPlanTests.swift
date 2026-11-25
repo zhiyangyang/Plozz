@@ -325,7 +325,6 @@ final class NavigationRailPlanTests: XCTestCase {
         var expected = [
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.upcomingKey,
         ]
         expected.append(NavigationLibraryLayout.liveTVKey)
         expected += [
@@ -523,7 +522,6 @@ final class NavigationRailPlanTests: XCTestCase {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.searchKey,
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.upcomingKey,
             NavigationLibraryLayout.musicKey,
             NavigationLibraryLayout.allLibrariesKey,
             "a:1",
@@ -577,7 +575,6 @@ final class NavigationRailPlanTests: XCTestCase {
             NavigationLibraryLayout.homeKey,
             NavigationLibraryLayout.collectionsKey,
             NavigationLibraryLayout.watchlistKey,
-            NavigationLibraryLayout.upcomingKey,
             NavigationLibraryLayout.downloadsKey,
             NavigationLibraryLayout.searchKey,
         ])

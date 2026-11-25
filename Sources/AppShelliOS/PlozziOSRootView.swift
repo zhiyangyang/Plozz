@@ -656,7 +656,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
     case home
     case collections
     case watchlist
-    case upcoming
     case liveTV
     case downloads
     case music
@@ -672,7 +671,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .home: "home"
         case .collections: "collections"
         case .watchlist: "watchlist"
-        case .upcoming: "upcoming"
         case .liveTV: "liveTV"
         case .downloads: "downloads"
         case .music: "music"
@@ -688,7 +686,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case "home": self = .home
         case "collections": self = .collections
         case "watchlist": self = .watchlist
-        case "upcoming": self = .upcoming
         case "liveTV": self = .liveTV
         case "downloads": self = .downloads
         case "music": self = .music
@@ -713,7 +710,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .collections: "Collections"
         case .watchlist:
             PlozzCustomization.isCustomBuild ? "Favorites" : "Watchlist"
-        case .upcoming: "Upcoming"
         case .liveTV: "Live TV"
         case .downloads: "Downloads"
         case .music: "Music"
@@ -734,7 +730,6 @@ enum PlozziOSDestination: Identifiable, Hashable {
         case .home: "house"
         case .collections: "rectangle.stack"
         case .watchlist: PlozzCustomization.isCustomBuild ? "heart" : "bookmark"
-        case .upcoming: "calendar"
         case .liveTV: "antenna.radiowaves.left.and.right"
         case .downloads: "arrow.down.circle"
         case .music: "music.note"
@@ -813,56 +808,9 @@ struct PlozziOSTabShell: View {
     @State private var hasChosenNavigationDestination = false
     @State private var scrollToTopRequest = 0
     let homeViewModelBox: LazyViewState<HomeViewModel>
-    var upcomingFeedLoader:
-        (@Sendable (@escaping @MainActor @Sendable ([UpcomingRelease]) -> Void) async throws -> UpcomingFeedSnapshot)?
     var sharedHomeViewModel: HomeViewModel {
         homeViewModelBox.value(forKey: homeContentIdentity, onDiscard: { $0.invalidate() }) {
             Self.makeHomeViewModel(appModel: appModel)
-        }
-    }
-
-    private var upcomingScopeKey: String {
-        UpcomingFeedLoader.scopeKey(
-            profileID: appModel.profiles.activeProfileID,
-            accounts: appModel.upcomingAccounts,
-            language: locale.identifier, regionCode: Locale.current.region?.identifier
-        )
-    }
-
-    private func refreshUpcoming() async {
-        let bootStart = DispatchTime.now().uptimeNanoseconds
-        PlozzLog.boot("Upcoming.refresh START")
-        defer {
-            PlozzLog.boot(
-                "Upcoming.refresh END ms=\(Double(DispatchTime.now().uptimeNanoseconds - bootStart) / 1_000_000)"
-            )
-        }
-        let scope = upcomingScopeKey
-        let accounts = appModel.upcomingAccounts
-        let saved = appModel.resolvedUniversalWatchlistItems(candidates: [])
-        let region = Locale.current.region?.identifier
-        let language = locale.identifier
-        let cacheScope = UpcomingFeedLoader.scopeKey(
-            profileID: appModel.profiles.activeProfileID, accounts: accounts,
-            language: language, regionCode: region
-        )
-        let isCurrent: @MainActor @Sendable () -> Bool = {
-            appModel.isLiveTVProfileAuthorized && upcomingScopeKey == scope
-        }
-        await sharedHomeViewModel.upcoming.refresh(
-            scope: scope, namespace: appModel.profiles.activeNamespace,
-            cacheScope: upcomingFeedLoader == nil ? cacheScope : nil,
-            rehydrate: appModel.mediaItemActionHandler.rehydratePersistedArtwork,
-            isCurrent: isCurrent
-        ) { progress in
-            if let upcomingFeedLoader {
-                return try await upcomingFeedLoader(progress)
-            }
-            return try await UpcomingFeedLoader.load(
-                accounts: accounts, watchlist: saved, regionCode: region,
-                interval: UpcomingFeedLoader.window(),
-                isCurrent: isCurrent, onProgress: progress
-            )
         }
     }
     /// The profile picker opened deliberately (from Settings) rather than at
@@ -937,7 +885,6 @@ struct PlozziOSTabShell: View {
                 case NavigationLibraryLayout.homeKey: return .home
                 case NavigationLibraryLayout.collectionsKey: return .collections
                 case NavigationLibraryLayout.watchlistKey: return .watchlist
-                case NavigationLibraryLayout.upcomingKey: return .upcoming
                 case NavigationLibraryLayout.liveTVKey: return .liveTV
                 case NavigationLibraryLayout.searchKey: return .search
                 case NavigationLibraryLayout.downloadsKey: return .downloads
@@ -992,8 +939,7 @@ struct PlozziOSTabShell: View {
             discoveredAccountIDs: navigation.discoveredAccountIDs,
             disabledLibraryKeys: appModel.settings.homeVisibility.visibility.disabledKeys,
             hasDiscoverySearch: false,
-            hasWatchlistItems: navigation.hasWatchlistItems,
-            hasWatchlistTitles: navigation.hasWatchlistTitles
+            hasWatchlistItems: navigation.hasWatchlistItems
         )
     }
 
@@ -1002,18 +948,13 @@ struct PlozziOSTabShell: View {
             available: NavigationDestinationDefaults.iOS(
                 visibleLibraries: appModel.visibleNavigationLibraries,
                 hasMusic: appModel.music?.availability.hasMusic == true
-            ),
-            hasUpcomingContent: navigationAvailability(appModel: appModel).hasUpcomingContent
+            )
         )
     }
 
     private func refreshWatchlistNavigation() {
         if let hasItems = appModel.navigationWatchlistHasItems {
             appModel.settings.navigation.hasWatchlistItems = hasItems
-            appModel.settings.navigation.hasWatchlistTitles =
-                appModel.resolvedUniversalWatchlistItems(candidates: []).contains {
-                    $0.kind == .movie || $0.kind == .series
-                }
         }
     }
 
@@ -1198,13 +1139,6 @@ struct PlozziOSTabShell: View {
             )
             .plozziOSItemNavigation(appModel: appModel)
             .toolbarBackground(.hidden, for: .navigationBar)
-        case .upcoming:
-            UpcomingView(model: sharedHomeViewModel.upcoming, interval: UpcomingFeedLoader.window()) {
-                PlozziOSSettingsToolbarItem(action: showSettings)
-            }
-                .plozziOSItemNavigation(appModel: appModel)
-                .toolbarBackground(.automatic, for: .navigationBar)
-                .background { AppBackground(palette: palette) }
         case .liveTV:
             PlozziOSLiveTVDestination(
                 isActive: effectiveSelectedDestination == .liveTV && !isShowingMorePage,
@@ -1413,8 +1347,7 @@ struct PlozziOSTabShell: View {
                 musicDockUsesBottomBar: !usesVerticalToolbar,
                 hasOpaqueBottomBar: usesOpaqueBottomBar,
                 overflowNavigation: overflowNavigation,
-                scrollToTopRequest: scrollToTopRequest,
-                onPageReselection: UpcomingView.scrollToToday
+                scrollToTopRequest: scrollToTopRequest
             )
             .frame(width: 0, height: 0)
         }
@@ -1435,27 +1368,14 @@ struct PlozziOSTabShell: View {
                 trigger: "launch"
             )
         }
-        .task(
-            id: "\(upcomingScopeKey)|\(sharedHomeViewModel.upcoming.refreshRevision)"
-                + "|\(appModel.isLiveTVProfileAuthorized)"
-                + "|\(sharedHomeViewModel.hasSettledLiveLoad)|\(selectedDestination)"
-        ) {
-            // Home owns the first launch burst. Upcoming performs a full series
-            // scan plus a complete Continue Watching read, so starting it in the
-            // same window delayed Home's own content. Wait for Home to settle;
-            // opening the Upcoming tab explicitly still refreshes immediately.
-            guard sharedHomeViewModel.hasSettledLiveLoad
-                    || selectedDestination == .upcoming else { return }
-            // Layout discovery is two Emby round trips. Home now starts from its
+        .task(id: sharedHomeViewModel.hasSettledLiveLoad) {
+            guard sharedHomeViewModel.hasSettledLiveLoad else { return }
+            // Layout discovery is two Emby round trips. Home starts from its
             // persisted layout immediately; refresh that cache only after the
             // content rows the viewer is waiting for have settled.
             await appModel.settings.homeVisibility.refreshServerDefaultsCacheOnly(
                 accounts: appModel.accountsProviders.homeAccounts
             )
-            await refreshUpcoming()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { sharedHomeViewModel.upcoming.refreshIfStale() }
         }
         .environment(\.homeContentSnapshot, sharedHomeViewModel)
         .onChange(of: appModel.allowsHomeContentLoading, initial: true) { _, allowed in
@@ -1859,7 +1779,6 @@ struct PlozziOSSettingsTabAction: UIViewControllerRepresentable {
     var hasOpaqueBottomBar = false
     var overflowNavigation: PlozziOSOverflowNavigation?
     var scrollToTopRequest = 0
-    var onPageReselection: ((UIScrollView) -> Bool)?
 
     func makeUIViewController(context: Context) -> Controller { Controller() }
 
@@ -1877,7 +1796,6 @@ struct PlozziOSSettingsTabAction: UIViewControllerRepresentable {
         controller.musicDockUsesBottomBar = musicDockUsesBottomBar
         controller.hasOpaqueBottomBar = hasOpaqueBottomBar
         controller.overflowNavigation = overflowNavigation
-        controller.onPageReselection = onPageReselection
         controller.install()
         controller.receiveScrollToTopRequest(scrollToTopRequest)
     }
@@ -1889,7 +1807,6 @@ struct PlozziOSSettingsTabAction: UIViewControllerRepresentable {
         controller.onSettingsVisibilityChange = nil
         controller.onBottomBarVisibilityChange = nil
         controller.overflowNavigation = nil
-        controller.onPageReselection = nil
     }
 
     fileprivate struct MoreBackground: Equatable {
@@ -1918,8 +1835,7 @@ struct PlozziOSSettingsTabAction: UIViewControllerRepresentable {
         var reservesMusicDockSpace = false
         var musicDockUsesBottomBar = true
         var hasOpaqueBottomBar = false
-        var onPageReselection: ((UIScrollView) -> Bool)?
-        private final class MusicInset {
+            private final class MusicInset {
             weak var controller: UIViewController?
             var amount: CGFloat = 0
             var nativeBottom: CGFloat = 0
@@ -2391,7 +2307,6 @@ struct PlozziOSSettingsTabAction: UIViewControllerRepresentable {
                 return view.subviews.lazy.compactMap { pageScroll(in: $0) }.first
             }
             guard let scroll = pageScroll(in: root) else { return }
-            if onPageReselection?(scroll) == true { return }
             let top = -scroll.adjustedContentInset.top
             guard scroll.contentOffset.y > top else { return }
             scroll.setContentOffset(
@@ -2452,7 +2367,7 @@ private struct PlozziOSDestinationView: View {
                 onlyMovies: PlozzCustomization.favoritesOnlyMovies()
             )
             .id(activeAccountsIdentity)
-        case .upcoming, .liveTV, .collections, .library, .allLibraries, .music:
+        case .liveTV, .collections, .library, .allLibraries, .music:
             EmptyView()
         case .search:
             PlozziOSSearchView(
