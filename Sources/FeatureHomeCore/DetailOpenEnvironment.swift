@@ -56,11 +56,6 @@ public struct DetailOpenEnvironment {
     /// `nil` leaves roster-backed season coverage unavailable.
     public let loadSeasonEpisodeRoster:
         (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)?
-    /// Builds the Related row's loader. A closure rather than a value because the
-    /// loader holds per-page state, so each detail page needs its own.
-    /// `nil` leaves the row absent.
-    public let makeRelatedTitlesLoader:
-        (@MainActor (RelatedTitlesLoader.DisplayMode) -> RelatedTitlesLoader?)?
     /// Stale-while-revalidate detail snapshot cache (instant repaint on revisit).
     public let snapshotCache: DetailSnapshotCache
 
@@ -77,8 +72,6 @@ public struct DetailOpenEnvironment {
         discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
             (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)? = nil,
-        makeRelatedTitlesLoader:
-            (@MainActor (RelatedTitlesLoader.DisplayMode) -> RelatedTitlesLoader?)? = nil,
         snapshotCache: DetailSnapshotCache = .ephemeral
     ) {
         self.resolveProvider = resolveProvider
@@ -92,7 +85,6 @@ public struct DetailOpenEnvironment {
         self.trailerSettings = trailerSettings
         self.discoveryStatusRefresh = discoveryStatusRefresh
         self.loadSeasonEpisodeRoster = loadSeasonEpisodeRoster
-        self.makeRelatedTitlesLoader = makeRelatedTitlesLoader
         self.snapshotCache = snapshotCache
     }
 
@@ -171,14 +163,6 @@ public struct DetailOpenEnvironment {
                 || (item.kind == .series && item.seasonID != nil),
               let account = item.sourceAccountID else { return nil }
         return MediaItemSourceIdentity(accountID: account, itemID: item.id)
-    }
-
-    /// The Related-row policy shared by both platform shells. Discovery details keep
-    /// navigable external results; owned details retain the library-only row.
-    public static func relatedTitlesDisplayMode(
-        isDiscoveryItem: Bool
-    ) -> RelatedTitlesLoader.DisplayMode {
-        isDiscoveryItem ? .includeExternal : .libraryOnly
     }
 
     public func initialSources(for item: MediaItem, isDiscovery: Bool) -> [MediaSourceRef] {
@@ -333,9 +317,6 @@ public struct DetailOpenEnvironment {
             alternateProviderResolver: resolveOptionalProvider,
             crossServerSourceResolver: crossServerSourceResolver,
             identitySources: liveIdentitySources,
-            relatedTitlesLoader: makeRelatedTitlesLoader?(
-                Self.relatedTitlesDisplayMode(isDiscoveryItem: isDiscovery)
-            ),
             snapshotCache: snapshotCache,
             openingResolver: openingResolver,
             localizedDetailMetadataResolver: localizedDetailMetadataResolver,

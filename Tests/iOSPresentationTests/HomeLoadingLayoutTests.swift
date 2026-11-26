@@ -445,63 +445,6 @@ final class HomeLoadingLayoutTests: XCTestCase {
         }
     }
 
-    func testRelatedBrowserKeepsTheWholeRowAndInvalidatesAfterProfileSwitch() async throws {
-        let fixture = try Fixture()
-        defer { fixture.close() }
-        let entries = fixture.items.map {
-            RelatedEntry(related: .init(title: $0.title, kind: .movie, source: .tmdb), libraryItem: $0)
-        }
-        let model = PlozziOSRelatedSection.makeBrowser(entries: entries, appModel: fixture.app)
-        XCTAssertEqual(model.items.map(\.stablePresentationID), fixture.items.map(\.stablePresentationID))
-        XCTAssertEqual(model.items.count, 20)
-        XCTAssertFalse(model.hasMore)
-        await model.load()
-        XCTAssertNil(model.error)
-        XCTAssertEqual(model.items.count, 20)
-        let next = fixture.app.profiles.add(name: "Other", isAwaitingSetup: false)
-        defer {
-            fixture.app.profiles.remove(next.id)
-            for key in UserDefaults.standard.dictionaryRepresentation().keys
-            where key.components(separatedBy: ".").contains(next.id) {
-                UserDefaults.standard.removeObject(forKey: key)
-            }
-        }
-        fixture.app.selectProfile(next.id)
-        await model.load()
-        XCTAssertFalse(model.scopeIsCurrent)
-        XCTAssertTrue(model.items.isEmpty)
-        XCTAssertEqual(model.error, .notFound)
-    }
-
-    func testRelatedChevronAppearsOnlyAboveTenItemsOnMac() async throws {
-        let fixture = try Fixture()
-        defer { fixture.close() }
-        var plainEdge: CGFloat?
-        for (isMac, count) in [(true, 10), (true, 11), (false, 11)] {
-            let entries = fixture.items.prefix(count).map {
-                RelatedEntry(related: .init(title: $0.title, kind: .movie, source: .tmdb), libraryItem: $0)
-            }
-            fixture.mount(
-                ScrollView {
-                    PlozziOSRelatedSection(entries: entries, inset: 52, onSelect: { _, _ in })
-                }
-                .environment(\.plozziOSIsRunningOnMac, isMac),
-                width: 1039
-            )
-            try await fixture.settle()
-            let image = renderedImage(fixture.window)
-            let edge = try rightmostHeaderInk(in: image)
-            if let plainEdge {
-                if isMac { XCTAssertGreaterThan(edge, plainEdge + 8) }
-                else { XCTAssertEqual(edge, plainEdge, accuracy: 1) }
-            } else { plainEdge = edge }
-            let attachment = XCTAttachment(image: image)
-            attachment.name = "related-chevron-mac-\(isMac)-items-\(count)"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-        }
-    }
-
     private func rightmostHeaderInk(in image: UIImage) throws -> CGFloat {
         let cgImage = try XCTUnwrap(image.cgImage)
         let header = try XCTUnwrap(cgImage.cropping(to: CGRect(
@@ -833,13 +776,6 @@ final class HomeLoadingLayoutTests: XCTestCase {
             MediaItem(id: "episode-peek-\($0)", title: "Episode", kind: .episode,
                       posterURL: url, backdropURL: url, allowsTitleBasedMetadataMatching: false)
         }
-        let related = items.enumerated().map { index, item in
-            RelatedEntry(
-                related: RelatedTitle(title: item.title, kind: .movie,
-                                      providerIDs: ["tmdb": "\(index + 1)"], source: .tmdb),
-                libraryItem: item
-            )
-        }
         let coordinator = FeaturedTrailerCoordinator()
         let controller = HeroTrailerController()
         let scenarios: [(CGFloat, CardStyle)] = [
@@ -850,13 +786,9 @@ final class HomeLoadingLayoutTests: XCTestCase {
         ]
         for (width, cardStyle) in scenarios {
             var headingHeight: CGFloat?
-            for kind in 0..<5 {
+            for kind in 0..<4 {
                 let row: AnyView
-                if kind == 4 {
-                    row = AnyView(PlozziOSRelatedSection(
-                        entries: related, inset: DesktopMediaRailLayout.pageInset, onSelect: { _, _ in }
-                    ))
-                } else if kind == 3 {
+                if kind == 3 {
                     row = AnyView(PlozziOSMediaSection(title: Text(verbatim: "Collection")) {
                         PlozziOSInlineEpisodeRail(episodes: episodes, isLoading: false, onPlay: { _, _ in })
                     })
@@ -910,7 +842,7 @@ final class HomeLoadingLayoutTests: XCTestCase {
                 for run in runs.dropLast() {
                     XCTAssertEqual(run.upperBound - run.lowerBound, expectedWidth, accuracy: 1.5)
                 }
-                if width == 1960, kind == 0 || kind == 4 {
+                if width == 1960, kind == 0 {
                     XCTAssertEqual(runs.count, 9, "Home and Related must show eight full posters and one preview.")
                 }
                 // The offscreen Mac host renders the heading with a very low

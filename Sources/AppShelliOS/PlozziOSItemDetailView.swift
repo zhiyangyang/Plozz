@@ -189,24 +189,6 @@ struct PlozziOSItemDetailView: View {
             metadataLanguage: language,
             localizedDetailMetadataResolver: localizedResolver,
             trailerSettings: appModel.settings.heroBackground,
-            makeRelatedTitlesLoader: { mode in
-                // The personal build replaces this metadata-driven row with the
-                // server's native similar list; don't start external lookups.
-                guard !PlozzCustomization.showsEmbySimilar else { return nil }
-                guard !appModel.isOfflineMode, let search = relatedTitleLibrarySearch(in: accounts) else { return nil }
-                return RelatedTitlesLoader(
-                    resolver: .production(),
-                    search: search,
-                    indexedLibrarySources: identitySources,
-                    loadIndexedItem: relatedTitleLibraryItemLoader(in: accounts),
-                    loadIndexedBatches: relatedTitleLibraryBatchLoaders(in: accounts),
-                    // The iOS detail page always offers recommendations. Owned
-                    // matches open in place; the rest stay requestable. Keep the
-                    // core loader's library-only policy for callers/tests that
-                    // explicitly ask for it.
-                    displayMode: .includeExternal
-                )
-            },
             snapshotCache: appModel.detailSnapshotCache
         )
     }
@@ -681,15 +663,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                             onSelect: { item, source in artworkItemNavigator?(item, source) }
                         ))
                     }
-                }
-
-                if !PlozzCustomization.showsEmbySimilar,
-                   let loader = viewModel.relatedTitlesLoader, !loader.entries.isEmpty {
-                    AnyView(PlozziOSRelatedSection(
-                        entries: loader.entries,
-                        inset: pageInset,
-                        onSelect: { item, source in artworkItemNavigator?(item, source) }
-                    ))
                 }
 
                 AnyView(DetailInformationSections(
@@ -1613,11 +1586,6 @@ struct PlozziOSInlineSeriesBrowser: View {
                 guard FanoutDiagnostics.isEnabled else { return }
                 let stamp: Int = Int(ProcessInfo.processInfo.systemUptime * 1000)
                 FanoutDiagnostics.emit("DETAILCAST t=\(stamp) count=\(count)")
-            }
-            .onChange(of: viewModel.relatedTitlesLoader?.entries.count ?? -1, initial: true) { _, count in
-                guard FanoutDiagnostics.isEnabled else { return }
-                let stamp: Int = Int(ProcessInfo.processInfo.systemUptime * 1000)
-                FanoutDiagnostics.emit("DETAILRELATED t=\(stamp) count=\(count)")
             }
             .onChange(
                 of: !seasons.isEmpty && selectedSeasonID != nil && displayedEpisodes == nil

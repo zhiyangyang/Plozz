@@ -502,8 +502,6 @@ public final class ItemDetailViewModel {
     /// never downgrades a fresher render. Cancelled on each new load.
     private nonisolated(unsafe) var snapshotRestoreTask: Task<Void, Never>?
     private nonisolated(unsafe) var serverRatingsTask: Task<Void, Never>?
-    private nonisolated(unsafe) var relatedTitlesTask: Task<Void, Never>?
-    @ObservationIgnored private var relatedTitlesItem: MediaItem?
     /// Set once the live fetch publishes fresh detail, so a late snapshot restore
     /// never clobbers a fresher hero.
     @ObservationIgnored private var hasPaintedFreshDetail = false
@@ -580,10 +578,6 @@ public final class ItemDetailViewModel {
     /// (item + children + episodes + cross-server sources). On a revisit `load()`
     /// paints the last-known snapshot instantly, then refreshes it from the
     /// network — so a show you've opened before never shows a cold spinner.
-    /// Resolves titles related to this one. `nil` in contexts that don't show the
-    /// row (previews, tests), which makes the whole feature inert rather than
-    /// conditional at every call site.
-    public let relatedTitlesLoader: RelatedTitlesLoader?
     private let snapshotCache: DetailSnapshotCache
     @ObservationIgnored public private(set) var metadataLanguage: String
     @ObservationIgnored private var openingResolver: (@MainActor () async throws -> DetailOpeningResolution)?
@@ -651,7 +645,6 @@ public final class ItemDetailViewModel {
         alternateProviderResolver: @escaping (String) -> (any MediaProvider)? = { _ in nil },
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)? = nil,
         identitySources: @escaping (MediaItem) -> [MediaSourceRef] = { _ in [] },
-        relatedTitlesLoader: RelatedTitlesLoader? = nil,
         snapshotCache: DetailSnapshotCache = .ephemeral,
         openingResolver: (@MainActor () async throws -> DetailOpeningResolution)? = nil,
         localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)? = nil,
@@ -660,7 +653,6 @@ public final class ItemDetailViewModel {
         /// eager prefetch competed with the page's first paint during the push.
         prefetchesOpeningSeason: Bool = false
     ) {
-        self.relatedTitlesLoader = relatedTitlesLoader
         self.editionOpeningSource = initialItem?.editionOpeningSource
         self.openingEdition = initialItem?.edition
         self.provider = provider
@@ -726,11 +718,6 @@ public final class ItemDetailViewModel {
                 return episode
             }
             self.publish(Detail(item: seeded, children: [], serverResumeEpisode: resume))
-            // Begin the related-title metadata lookup while the view is being
-            // built, not after `load()` publishes full detail. The resolver chain
-            // (AniList/TMDb/Trakt) is the slowest part of the Related row and is
-            // independent of the primary item fetch.
-            relatedTitlesLoader?.prepareRecommendations(for: seeded)
         }
     }
 
@@ -765,7 +752,6 @@ public final class ItemDetailViewModel {
         alternateSourceEnrichmentTask?.cancel()
         snapshotRestoreTask?.cancel()
         serverRatingsTask?.cancel()
-        relatedTitlesTask?.cancel()
         pendingSnapshotWrite?.cancel()
         seasonLoads.values.forEach { $0.task?.cancel() }
     }
@@ -914,13 +900,6 @@ public final class ItemDetailViewModel {
 
         // Cold open (no seeded hero) shows a spinner immediately instead of blank.
         if state.value == nil { state = .loading }
-        if let seed = state.value?.item {
-            relatedTitlesLoader?.prepareRecommendations(for: seed)
-        }
-        var startedRelated = false
-        defer {
-            if !startedRelated, isCurrent() { relatedTitlesLoader?.cancelRecommendationPreparation() }
-        }
         do {
             let fetched: MediaItem
             if let openingItem {
@@ -1009,8 +988,6 @@ public final class ItemDetailViewModel {
                 // await — so navigating away cancels it instead of letting the
                 // multi-server search fan-out starve the next page's `provider.item`.
                 startSpeculativeEnrichment(for: item)
-                loadRelatedTitles(for: taggedItem)
-                startedRelated = true
                 // Publish seasons and resume independently. Explicit episode/season
                 // entries can browse immediately; SeriesEpisodeEntry owns the
                 // resume gate for entries without an explicit selection.
@@ -1086,8 +1063,6 @@ public final class ItemDetailViewModel {
                 // A film has related titles too. This sat only in the container
                 // branch above, so the row simply never loaded on a movie page —
                 // it looked like a matching failure and was a missing call.
-                loadRelatedTitles(for: taggedItem)
-                startedRelated = true
                 await runTrailersAndRatings(
                     for: item,
                     children: [],
@@ -1256,7 +1231,6 @@ public final class ItemDetailViewModel {
         if enriched.kind == .series {
             loadUpcomingSchedule(for: enriched)
         }
-        loadRelatedTitles(for: enriched)
         await status
         persistSnapshot()
         return false
@@ -1709,8 +1683,6 @@ public final class ItemDetailViewModel {
         crossServerDiscoveryTask?.cancel(); crossServerDiscoveryTask = nil
         alternateSourceEnrichmentTask?.cancel(); alternateSourceEnrichmentTask = nil
         serverRatingsTask?.cancel(); serverRatingsTask = nil
-        relatedTitlesTask?.cancel(); relatedTitlesTask = nil
-        relatedTitlesLoader?.cancel()
         seasonLoadingSuspended = true
         cancelSeasonLoads()
         seasonEpisodeRosters.reset()
@@ -1723,10 +1695,6 @@ public final class ItemDetailViewModel {
     public func resumeEnrichmentIfNeeded() {
         if seasonLoadingResumeSourceGeneration == nil {
             seasonLoadingSuspended = false
-        }
-        if relatedTitlesTask == nil, relatedTitlesLoader?.hasResolved == false,
-           let relatedTitlesItem {
-            loadRelatedTitles(for: relatedTitlesItem)
         }
         guard hasPaintedFreshDetail else { return }
         if let item = state.value?.item, let activeProvider {
@@ -2397,35 +2365,6 @@ public final class ItemDetailViewModel {
     /// Best-effort: a failure leaves ``serverResumeEpisode`` nil and the page
     /// falls back to inferring from the loaded season, which is what it did
     /// before. Never blocks first paint — it runs after children are published.
-    /// Resolves the Related row, when a loader was supplied.
-    ///
-    /// Never delays detail content. Owned separately so leaving the page also
-    /// cancels indexed lookups and fallback searches.
-    private func loadRelatedTitles(for item: MediaItem) {
-        guard let relatedTitlesLoader else { return }
-        // Enrichment rewrites the item (ratings, overview, credits) and then calls
-        // this again. Restarting the fetch for the same subject cancelled the
-        // in-flight request and started a second one, so the row's arrival time
-        // depended on which pass finished last — the reported "related loads slower
-        // depending, inconsistent". Same subject while a fetch is running or done is
-        // a no-op; only a different item restarts it.
-        if relatedTitlesItem?.id == item.id,
-           relatedTitlesTask != nil || relatedTitlesLoader.hasResolved {
-            return
-        }
-        if relatedTitlesTask != nil {
-            relatedTitlesTask?.cancel()
-            relatedTitlesLoader.cancel()
-        }
-        relatedTitlesItem = item
-        let mode = DetailOpenEnvironment.relatedTitlesDisplayMode(isDiscoveryItem: isDiscoveryItem)
-        relatedTitlesTask = Task { [weak self] in
-            await relatedTitlesLoader.load(for: item, displayMode: mode)
-            guard !Task.isCancelled else { return }
-            self?.relatedTitlesTask = nil
-        }
-    }
-
     /// Fills ``upcomingSchedule`` from cache, then refreshes it in the background.
     ///
     /// Series only — a movie has no schedule — and never awaited by the caller, so
