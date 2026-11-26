@@ -125,7 +125,7 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
 
     func testEveryCategoryIsTheFirstPageUntilExplicitReturn() {
         let navigation = SettingsNavigationModel()
-        for route: SettingsRoute in [.playback, .myLibraries, .appearance, .screensNavigation, .subtitles, .metadata, .topShelf, .about] {
+        for route: SettingsRoute in [.playback, .myLibraries, .appearance, .screensNavigation, .subtitles, .topShelf, .about] {
             navigation.select(route)
             navigation.enterDetail()
             XCTAssertEqual(navigation.path, [route])
@@ -149,7 +149,6 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
     func testHouseholdRoutesRemainUnavailableToKidsEvenAfterUnlock() {
         let routes: [SettingsRoute] = [
             .servers, .server(key: "server"), .profile, .parentalPIN, .topShelf,
-            .metadata, .metadataDiagnostics,
             .profileSettings(profileID: "adult"),
             .profileAppearance(profileID: "adult"), .profileLockSetup(profileID: "adult")
         ]

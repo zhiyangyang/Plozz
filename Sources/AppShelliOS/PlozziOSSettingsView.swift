@@ -207,7 +207,6 @@ private enum PlozziOSSettingsDestination: Hashable {
     /// The household's Parental PIN.
     case parentalPIN
     case profile(ProfileSettingsCategory)
-    case metadata
     case diagnostics
     case attributions
     case releaseNotes
@@ -574,11 +573,6 @@ private struct PlozziOSSettingsSplitView: View {
                                 title: KidsProfileCopy.parentalPIN,
                                 systemImage: "figure.and.child.holdinghands"
                             )
-                            settingsRow(
-                                .metadata,
-                                title: "Metadata Providers",
-                                systemImage: "sparkles.rectangle.stack"
-                            )
                         }
                     }
 
@@ -816,8 +810,6 @@ private struct PlozziOSSettingsSplitView: View {
                 onAddUser: onAddUser, canManageProviders: !isParentalSealed,
                 isPresented: selection == .profile(category)
             )
-        case .metadata:
-            PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())
         case .diagnostics:
             PlozziOSDiagnosticsSettingsView(
                 appModel: appModel,
@@ -965,7 +957,6 @@ private struct PlozziOSSettingsCompactMenu: View {
     var onSwitchTo: (String) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     @State private var confirmSignOutAll = false
-    @State private var showMetadata = false
     @State private var searchSelection: SettingsSearchEntry?
     @State private var searchQuery = ""
     @State private var isSearching = false
@@ -1152,15 +1143,6 @@ private struct PlozziOSSettingsCompactMenu: View {
                         }
                         .settingsActionRow()
 
-                        // This link needs an explicit destination to keep neighboring actions independent.
-                        Button {
-                            showMetadata = true
-                        } label: {
-                            Label("Metadata Providers", systemImage: "sparkles.rectangle.stack")
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .settingsActionRow()
                     }
                 }
 
@@ -1276,9 +1258,6 @@ private struct PlozziOSSettingsCompactMenu: View {
         }
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in isParentalUnlocked = false }
         .onChange(of: appModel.profiles.parentalPIN) { _, _ in isParentalUnlocked = false }
-        .navigationDestination(isPresented: $showMetadata) {
-            PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())
-        }
         .alert("Sign out of all accounts?", isPresented: $confirmSignOutAll) {
             Button("Cancel", role: .cancel) {}
             Button("Sign Out", role: .destructive) {
@@ -1531,10 +1510,6 @@ private struct PlozziOSSettingsSearchDestination: View {
                 isParentalUnlocked: isParentalUnlocked
             )
         case .accountLibraries: profilePage(.libraries)
-        case .metadata:
-            PlozziOSMetadataSettingsView(appModel: appModel, deps: appModel.makeMetadataSettingsDependencies())
-        case .metadataDiagnostics:
-            PlozziOSMetadataDiagnosticsView(deps: appModel.makeMetadataSettingsDependencies())
         case .diagnostics:
             PlozziOSDiagnosticsSettingsView(
                 appModel: appModel, model: appModel.settings.diagnostics
@@ -2145,44 +2120,11 @@ struct PlozziOSArtworkSettingsView: View {
     let appModel: PlozziOSAppModel
     @Bindable var cardStyle: CardStyleSettingsModel
     let canManageProviders: Bool
-    var returnsToMetadata = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
             ArtworkSettingsControls(cards: cardStyle)
-            if canManageProviders {
-                SettingsSectionGroup {
-                    if returnsToMetadata {
-                        Button {
-                            dismiss()
-                        } label: {
-                            HStack {
-                                Text("Metadata Providers (TMDB, TheTVDB…)")
-                                Spacer()
-                                Image(systemName: "chevron.forward")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .settingsActionRow()
-                        .accessibilityIdentifier("artwork-metadata-providers")
-                    } else {
-                        SettingsPageLink {
-                            PlozziOSMetadataSettingsView(
-                                appModel: appModel, deps: appModel.makeMetadataSettingsDependencies(),
-                                returnsToArtwork: true
-                            )
-                        } label: {
-                            SettingsDisclosureLabel { Text("Metadata Providers (TMDB, TheTVDB…)") }
-                        }
-                        .settingsActionRow()
-                        .accessibilityIdentifier("artwork-metadata-providers")
-                    }
-                } footer: {
-                    Text("Shared by all profiles.")
-                }
-            }
         }
         .settingsPageSurface()
         .navigationTitle("Artwork")

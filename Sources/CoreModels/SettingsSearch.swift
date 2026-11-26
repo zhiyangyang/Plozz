@@ -55,8 +55,8 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, topShelf
-    case downloads, profiles, metadata, diagnostics
-    case playbackAdvanced, streamingAdvanced, metadataDiagnostics
+    case downloads, profiles, diagnostics
+    case playbackAdvanced, streamingAdvanced
     case profileAppearance, profileSettings, accountLibraries
     case releaseNotes
 
@@ -95,11 +95,9 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .topShelf: ["Top Shelf"]
         case .downloads: ["Downloads"]
         case .profiles: ["Profiles"]
-        case .metadata: ["Metadata Providers"]
         case .diagnostics: ["Help & Diagnostics"]
         case .playbackAdvanced: ["Playback", "Advanced"]
         case .streamingAdvanced: ["Playback", "Streaming quality", "Advanced"]
-        case .metadataDiagnostics: ["Metadata Providers", "Diagnostics"]
         case .profileAppearance: ["Profiles", "Appearance"]
         case .profileSettings: ["Profiles", "Manage profile"]
         case .accountLibraries: ["Libraries"]
@@ -122,7 +120,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .language: "globe"
         case .downloads: "arrow.down.circle"
         case .profiles, .profileAppearance, .profileSettings: "person.2"
-        case .metadata, .metadataDiagnostics: "sparkles.rectangle.stack"
         case .diagnostics: "ladybug"
         case .releaseNotes: "doc.text"
         }
@@ -130,7 +127,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
 
     public var requiresAdultProfile: Bool {
         switch self {
-        case .downloads, .profiles, .metadata, .metadataDiagnostics, .topShelf: true
+        case .downloads, .profiles, .topShelf: true
         default: false
         }
     }

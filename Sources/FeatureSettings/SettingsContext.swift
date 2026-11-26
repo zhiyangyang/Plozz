@@ -127,8 +127,6 @@ public enum SettingsRoute: Hashable {
     case subtitleStyle
     case spoilers
     case integrations
-    case metadata
-    case metadataDiagnostics
     case releaseNotes
     case attributions
     case help
@@ -169,8 +167,7 @@ extension SettingsRoute {
             guard let entry = SettingsSearchCatalog.entry(id: id) else { return .allowed }
             if entry.requiresAdultProfile { return .adultProfile }
             return entry.page.requiresParentalAuthorization && isParentalSealed ? .parentalPIN : .allowed
-        case .profile, .servers, .server, .parentalPIN, .topShelf,
-             .metadata, .metadataDiagnostics:
+        case .profile, .servers, .server, .parentalPIN, .topShelf:
             return .adultProfile
         case .myLibraries, .plexUser, .serverUser, .parentalPINSetup:
             return isParentalSealed ? .parentalPIN : .allowed
@@ -214,10 +211,6 @@ public final class SettingsNavigationModel {
         select(.appearance)
         path = [.appearance, .artwork]
         enterDetail()
-    }
-
-    func openMetadataProviders() {
-        reveal(.metadata)
     }
 
     public func openHomeCustomization() {

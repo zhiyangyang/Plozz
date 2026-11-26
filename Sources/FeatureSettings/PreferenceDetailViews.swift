@@ -109,9 +109,6 @@ struct AppearanceDetailView: View {
                             continueWatchingShowsSeriesArtwork: librariesScope.homeVisibility.continueWatchingUsesSeriesArtwork,
                             continueWatchingLayout: librariesScope.homeVisibility.continueWatchingLayout
                         )
-                        if canManageProviders {
-                            metadataProviderLink
-                        }
                     }
                 }.groupedContent(),
                 SettingsSplitRow(
@@ -163,17 +160,6 @@ struct AppearanceDetailView: View {
             .settingsSearchAnchor("theme")
         Toggle("Gradient Backgrounds", isOn: $theme.gradientEnabled)
             .settingsSearchAnchor("gradient-backgrounds")
-    }
-
-    private var metadataProviderLink: some View {
-        VStack(alignment: .leading, spacing: SettingsFormMetrics.relatedControlSpacing) {
-            Button(action: settingsNavigation.openMetadataProviders) {
-                Label("Metadata Providers (TMDB, TheTVDB…)", systemImage: "globe")
-            }
-            .buttonStyle(SettingsFormButtonStyle())
-            .accessibilityIdentifier("artwork-metadata-providers")
-            Text("Shared by all profiles.").settingsHelperText()
-        }
     }
 
     /// Everything controlled by the single Navigation master row.

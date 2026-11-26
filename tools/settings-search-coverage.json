@@ -45,8 +45,6 @@
     "LibraryDisplaySettingsView",
     "LibraryNavigationSettingsView",
     "LibraryPresentationSettingsView",
-    "MetadataDiagnosticsCachePanel",
-    "MetadataSettingsDetailView",
     "MobileSubtitleBackgroundView",
     "MobileSubtitleDualView",
     "MobileSubtitleFileFormattingView",
@@ -64,8 +62,6 @@
     "PlozziOSDetailPageSettingsView",
     "PlozziOSDiagnosticsSettingsView",
     "PlozziOSDownloadSettingsView",
-    "PlozziOSMetadataDiagnosticsView",
-    "PlozziOSMetadataSettingsView",
     "PlozziOSMyLibrariesSettingsView",
     "PlozziOSNightShiftSettingsView",
     "PlozziOSPlaybackSettingsView",
@@ -102,8 +98,6 @@
     "Sources/AppShelliOS/AddServerView.swift",
     "Sources/AppShelliOS/PlozziOSDiagnosticsSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSDownloadsView.swift",
-    "Sources/AppShelliOS/PlozziOSMetadataDiagnosticsView.swift",
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSPlexHomeUserSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSProfileSettingsView.swift",
@@ -148,7 +142,6 @@
     "Sources/FeatureSettings/HomeSectionSettingsViews.swift",
     "Sources/FeatureSettings/LibraryPresentationSettingsView.swift",
     "Sources/FeatureSettings/LosslessAudioControl.swift",
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift",
     "Sources/FeatureSettings/MyLibrariesDetailView.swift",
     "Sources/FeatureSettings/NavigationLibrariesDetailView.swift",
     "Sources/FeatureSettings/NightShiftDetailView.swift",
@@ -410,13 +403,6 @@
       "reason": "Loading, errors and retry actions; no preference values.",
       "controls": {
         "Sources/FeatureSettings/HomeSectionSettingsViews.swift|HomeCatalogStatus|body|Button|\"Retry\"": 1
-      }
-    },
-    "MetadataDiagnosticsOverviewPanel": {
-      "kind": "presentation",
-      "reason": "Read-only metrics and explicit refresh; cache-budget inputs are separate.",
-      "controls": {
-        "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsOverviewPanel|body|Button|<dynamic>": 1
       }
     },
     "ParentalPINDetailView": {
@@ -691,61 +677,6 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSMetadataDiagnosticsView.swift|PlozziOSMetadataDiagnosticsView|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataDiagnosticsView.swift|PlozziOSMetadataDiagnosticsView|body|Button|\"Clear Cache\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataDiagnosticsView.swift|PlozziOSMetadataDiagnosticsView|cacheSection|Button|Label(\"Clear Cache\", systemImage: \"trash\")": {
-      "count": 1,
-      "reason": "destructive_cache_action: Budget controls remain included.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataDiagnosticsView.swift|PlozziOSMetadataDiagnosticsView|overviewSection|Button|Label(\"Refresh\", systemImage: \"arrow.clockwise\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|body|Button|HStack { Text(\"Artwork\") Spacer() Image(systemName: \"chevron.forward\") .font(.footnote) .foregroundStyle(.secondary) }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Artwork\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|diagnosticsSection|Button|HStack { Label(\"Diagnostics\", systemImage: \"chart.bar.xaxis\") Spacer() Text(\"Cache and provider health\") .font(.subheadline) .plozzForeground(.secondary) Image(systemName: \"chevron.forward\") .font(.caption.weight(.semibold)) .plozzForeground(.tertiary) } .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|tmdbSection|Button|Label(\"Remove Key\", systemImage: \"trash\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|tmdbSection|Button|Label(\"Verify Key\", systemImage: \"checkmark.shield\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|tmdbSection|Button|Label(tmdbKey.isConfigured ? \"Replace Key\" : \"Save Key\", systemImage: \"square.and.arrow.down\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSMetadataSettingsView.swift|PlozziOSMetadataSettingsView|tmdbSection|SecureField|\"TMDB v4 API Read Access Token\"": {
-      "count": 1,
-      "reason": "credential: Same credential boundary.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSPlexHomeUserSettingsView.swift|PlozziOSPlexHomeUserSettingsView|userButton|Button|HStack(spacing: 12) { AsyncImage(url: user.avatarURL) { image in image.resizable().scaledToFill() } placeholder: { Image(systemName: \"person.crop.circle.fill\") .resizable() .plozzForeground(.secondary) } .frame(width: 40, height: 40) .clipShape(Circle()) Text(verbatim: user.name) .foregroundStyle(.primary) if user.requiresPIN { Image(systemName: \"lock.fill\") .font(.caption) .plozzForeground(.secondary) } Spacer() if pendingSelection?.homeUserID == user.id { if appModel.plexHomeUsers.plexPINEntryAvailability == .checking { ProgressView().accessibilityHidden(true) } } else if isSelected(user) { Image(systemName: \"checkmark\").foregroundStyle(.tint).accessibilityHidden(true) } } .frame(maxWidth: .infinity) .contentShape(Rectangle())": {
       "count": 1,
       "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
@@ -856,16 +787,6 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|Button|HStack { Text(\"Metadata Providers (TMDB, TheTVDB…)\") Spacer() Image(systemName: \"chevron.forward\") .font(.footnote) .foregroundStyle(.secondary) }": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Metadata Providers (TMDB, TheTVDB…)\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDeveloperInfoSection|body|Button|Label(\"Copy Info\", systemImage: \"doc.on.doc\")": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -954,11 +875,6 @@
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|Button|\"Turn Off Developer Mode\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|Button|Label(\"Metadata Providers\", systemImage: \"sparkles.rectangle.stack\") .frame(maxWidth: .infinity, alignment: .leading) .contentShape(Rectangle())": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -1819,54 +1735,6 @@
       "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
       "covered_by": []
     },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsCachePanel|body|Button|\"Cancel\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsCachePanel|body|Button|\"Clear Cache\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsCachePanel|body|Button|Label(\"Clear Cache\", systemImage: \"trash\") .frame(maxWidth: .infinity)": {
-      "count": 1,
-      "reason": "destructive_cache_action: Budget controls remain included.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataDiagnosticsCachePanel|budgetControl|SettingsStepper|<dynamic>": {
-      "count": 1,
-      "reason": "Configured renderer or contextual choice for the indexed control family; the containing editor owns reveal and selection.",
-      "covered_by": [
-        "artwork-cache-budget",
-        "lookup-cache-budget"
-      ]
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataSettingsDetailView|artworkLink|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataSettingsDetailView|tmdbKeySection|Button|Label(\"Remove Key\", systemImage: \"trash\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataSettingsDetailView|tmdbKeySection|Button|Label(\"Verify Key\", systemImage: \"checkmark.shield\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataSettingsDetailView|tmdbKeySection|Button|Label(tmdbKey.isConfigured ? \"Replace Key\" : \"Save Key\", systemImage: \"square.and.arrow.down\")": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureSettings/MetadataSettingsDetailView.swift|MetadataSettingsDetailView|tmdbKeySection|SecureField|\"TMDB v4 API Read Access Token\"": {
-      "count": 1,
-      "reason": "credential: Generic TMDB-key setup page only; never key values.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/MyLibrariesDetailView.swift|MyLibrariesContentView|addServerSection|Button|<dynamic>": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -1947,11 +1815,6 @@
       "covered_by": [
         "watcher-plex-user"
       ]
-    },
-    "Sources/FeatureSettings/PreferenceDetailViews.swift|AppearanceDetailView|metadataProviderLink|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
     },
     "Sources/FeatureSettings/PreferenceDetailViews.swift|AppearanceDetailView|themeAndTransparency|DescribedSegmentedPicker|{ $0.displayName }": {
       "count": 1,
