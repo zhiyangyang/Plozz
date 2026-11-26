@@ -818,8 +818,7 @@ final class DownloadPresentationTests: XCTestCase {
                 versions: [], selectedVersionID: nil,
                 onSelectSource: { _ in }, onSelectVersion: { _ in },
                 presentation: presentation, fallbackPresentation: presentation,
-                style: .compactPortrait, actionHandler: handler, onPlay: { _, _ in },
-                trailerItem: item, onPlayTrailer: { _ in }
+                style: .compactPortrait, actionHandler: handler, onPlay: { _, _ in }
             )
             .environment(app)
             .frame(width: 350)

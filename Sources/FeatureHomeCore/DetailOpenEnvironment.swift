@@ -43,7 +43,6 @@ public struct DetailOpenEnvironment {
     /// Discovers *other servers* hosting the same title off the critical path, to
     /// fill the cross-server picker. `nil` disables cross-server discovery.
     public let crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?
-    public let trailerSettings: HeroBackgroundSettingsModel?
     /// Refreshes a discovery (Seerr) title's request/availability. `nil` when Seerr
     /// isn't wired.
     public let discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)?
@@ -60,7 +59,6 @@ public struct DetailOpenEnvironment {
         identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?,
         continueWatchingSnapshot: @escaping @MainActor () -> [MediaItem] = { [] },
-        trailerSettings: HeroBackgroundSettingsModel? = nil,
         discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
             (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)? = nil,
@@ -71,7 +69,6 @@ public struct DetailOpenEnvironment {
         self.identitySources = identitySources
         self.continueWatchingSnapshot = continueWatchingSnapshot
         self.crossServerSourceResolver = crossServerSourceResolver
-        self.trailerSettings = trailerSettings
         self.discoveryStatusRefresh = discoveryStatusRefresh
         self.loadSeasonEpisodeRoster = loadSeasonEpisodeRoster
         self.snapshotCache = snapshotCache
@@ -299,7 +296,6 @@ public struct DetailOpenEnvironment {
             loadSeasonEpisodeRoster: loadSeasonEpisodeRoster,
             sourceAccountID: isDiscovery ? nil : selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,
             originSourceAccountID: Self.contextSource(for: selectedItem)?.accountID,
-            trailerSettings: trailerSettings,
             initialSources: sources,
             alternateProviderResolver: resolveOptionalProvider,
             crossServerSourceResolver: crossServerSourceResolver,

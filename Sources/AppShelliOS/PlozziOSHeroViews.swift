@@ -571,8 +571,6 @@ struct PlozziOSDetailHeroSection: View {
     var loadVersions: MediaVersionInventoryLoader? = nil
     let actionHandler: any MediaItemActionHandling
     let onPlay: (MediaItem, Bool) -> Void
-    var trailerItem: MediaItem?
-    var onPlayTrailer: ((MediaItem) -> Void)?
     var heroRequest: PlozziOSHeroRequest?
     /// Forwarded to the action row — see `offersParentNavigation` there.
     var offersParentNavigation: Bool = false
@@ -628,8 +626,6 @@ struct PlozziOSDetailHeroSection: View {
                 style: style,
                 actionHandler: actionHandler,
                 onPlay: onPlay,
-                trailerItem: trailerItem,
-                onPlayTrailer: onPlayTrailer,
                 heroRequest: heroRequest,
                 offersParentNavigation: offersParentNavigation,
                 presentsEpisodeStill: presentsEpisodeStill
@@ -2435,8 +2431,6 @@ struct PlozziOSDetailHeroForeground: View {
     let style: HeroArtworkStyle
     let actionHandler: any MediaItemActionHandling
     let onPlay: (MediaItem, Bool) -> Void
-    var trailerItem: MediaItem?
-    var onPlayTrailer: ((MediaItem) -> Void)?
     var heroRequest: PlozziOSHeroRequest?
     /// Whether this hero fronts an item with a parent page worth returning to —
     /// an episode opened with "Go to Episode", where Back may leave the show
@@ -2696,12 +2690,10 @@ struct PlozziOSDetailHeroForeground: View {
     /// the least-used action is the first to move into "…".
     private enum InlineExtra: Identifiable {
         case primary(ActionEntry)
-        case trailer
 
         var id: String {
             switch self {
             case .primary(let entry): return "media.\(entry.action.rawValue)"
-            case .trailer: return "trailer"
             }
         }
     }
@@ -2715,11 +2707,6 @@ struct PlozziOSDetailHeroForeground: View {
     /// directions if one list has to express both.
     private func orderedInlineExtras(from actions: [ActionEntry]) -> [InlineExtra] {
         var extras: [InlineExtra] = []
-        // Next to Play: on a title you don't have, the trailer and Request are
-        // the only two things you can actually do.
-        if trailerItem != nil, onPlayTrailer != nil {
-            extras.append(.trailer)
-        }
         extras.append(contentsOf: actions.filter(\.action.isPrimaryDetailAction).map { InlineExtra.primary($0) })
         // On an episode page the breadcrumb above the title carries this, so it
         // isn't repeated as a button in a row of watch-state actions.
@@ -2736,7 +2723,6 @@ struct PlozziOSDetailHeroForeground: View {
         switch extra {
         case .primary(let entry):
             return entry.action.isNavigation ? 1 : 2
-        case .trailer: return 3
         }
     }
 
@@ -2816,8 +2802,6 @@ struct PlozziOSDetailHeroForeground: View {
         switch extra {
         case .primary(let entry):
             primaryActionButton(entry)
-        case .trailer:
-            trailerActionButton()
         }
     }
 
@@ -2829,33 +2813,7 @@ struct PlozziOSDetailHeroForeground: View {
         }
     }
 
-    @ViewBuilder
-    private func trailerActionButton() -> some View {
-        if let trailerItem, let onPlayTrailer {
-            Button {
-                onPlayTrailer(trailerItem)
-            } label: {
-                TrailerActionButtonLabel(trailer: trailerItem)
-            }
-            .buttonStyle(
-                PlozziOSHeroActionButtonStyle(
-                    kind: .secondary,
-                    circular: true
-                )
-            )
-            .accessibilityLabel(Text(trailerItem.trailerActionTitle))
-        } else if onPlayTrailer != nil {
-            // The trailer resolves after the page opens. Reserve its circular slot
-            // from the first frame so Play and the other actions do not shift when
-            // it arrives.
-            Color.clear
-                .frame(width: 48, height: 48)
-                .accessibilityHidden(true)
-        }
-    }
-
-
-    @ViewBuilder
+@ViewBuilder
     private func playActionButton(
         resume: PlayResumeButtonLabel.ResumeTrailingStyle = .full,
         wrapsText: Bool = false
@@ -2963,14 +2921,6 @@ struct PlozziOSDetailHeroForeground: View {
                 systemImage: primaryActionSymbol(for: entry)
             )
         }
-        // So a collapsed Trailer is still reachable rather than simply gone.
-        if let trailerItem, onPlayTrailer != nil {
-            result.append(PlaybackSourceMenuAction(
-                id: "trailer",
-                title: "Trailer",
-                systemImage: trailerItem.isYouTubeTrailer ? "arrow.up.right" : "film.fill"
-            ))
-        }
         return result
     }
 
@@ -2978,10 +2928,6 @@ struct PlozziOSDetailHeroForeground: View {
         let entries = actions
         if id == "media.browseFiles", let fileBrowserAction = entries.first(where: { $0.action == .browseFiles }) {
             perform(fileBrowserAction)
-            return
-        }
-        if id == "trailer" {
-            if let trailerItem, let onPlayTrailer { onPlayTrailer(trailerItem) }
             return
         }
         guard id.hasPrefix("media."),
@@ -3541,18 +3487,6 @@ private struct PlozziOSDetailCredits: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-}
-
-struct PlozziOSDetailAudioMuteControl: View {
-    let trailer: HeroTrailerController
-    let itemID: String?
-
-    var body: some View {
-        if trailer.isPlaying, trailer.activeSurfaceRole == .detail, let itemID,
-           trailer.isShowing(itemID) {
-            PlozziOSHeroAudioMuteToolbarButton(isMuted: trailer.isMuted, onToggle: trailer.toggleMuted)
-        }
-    }
 }
 
 struct PlozziOSHeroAudioMuteToolbarButton: View {

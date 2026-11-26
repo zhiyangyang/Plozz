@@ -120,61 +120,18 @@ final class SeasonRequestLayoutTests: XCTestCase {
         )
     }
 
-    func testActualDetailHeroUsesOverflowBeforeStackingAndKeepsButtonsTheSameHeight() throws {
-        let app = PlozziOSAppModel()
-        let button = PlozziOSHeroRequestButton(item: item, request: request)
-            .environment(\.dynamicTypeSize, .large)
-        let primary = size(button, width: 2_000)
-        let singleLine = size(Button("Play", action: {})
-            .buttonStyle(PlozziOSHeroActionButtonStyle(kind: .primary)), width: 2_000)
-        XCTAssertEqual(primary.height, singleLine.height, accuracy: 0.5,
-                       "The complete request status must remain a native single-line button, not a subtitle card.")
-        XCTAssertLessThan(primary.width, 500, "Request buttons must report their readable width, not fill the proposal.")
-        let overflowSpacingAndWidth: CGFloat = 12 + 48
-        for width in [primary.width + overflowSpacingAndWidth - 2,
-                      primary.width + overflowSpacingAndWidth + 2, 500, 720] {
-            let baseline = foreground(app: app, extras: false)
-            let actual = foreground(app: app, extras: true)
-            let baselineSize = size(baseline, width: width)
-            let actualSize = size(actual, width: width)
-            XCTAssertLessThanOrEqual(actualSize.width, width + 0.5)
-            if width >= primary.width + overflowSpacingAndWidth {
-                XCTAssertEqual(actualSize.height, baselineSize.height, accuracy: 1,
-                               "Secondary actions must enter the real overflow menu before the row grows taller.")
-            } else {
-                XCTAssertEqual(actualSize.height, baselineSize.height + overflowSpacingAndWidth, accuracy: 1,
-                               "The secondary icons must share one row below the primary request.")
-            }
-            let image = try capture(actual, width: width, name: "actual-detail-overflow-\(Int(width))pt")
-            if width < primary.width + overflowSpacingAndWidth {
-                try assertBottomIconCount(2, in: image)
-            }
-            let recognition = VNRecognizeTextRequest()
-            recognition.recognitionLevel = .accurate
-            recognition.recognitionLanguages = ["en-US"]
-            try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([recognition])
-            let lines = (recognition.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-            XCTAssertTrue(lines.contains { $0.contains("Requested") && $0.contains("Unreleased") },
-                          "Both facts must appear together on one line: \(lines)")
-            if width < 500 {
-                XCTAssertFalse(lines.contains { $0 == "Trailer" },
-                               "Trailer must use its icon or overflow rather than forcing a taller request button.")
-            }
-        }
-    }
-
-    func testStackedIconsRetainSeparateSourceSelectionWithoutHidingActions() throws {
+func testStackedIconsRetainSeparateSourceSelectionWithoutHidingActions() throws {
         let app = PlozziOSAppModel()
         let view = foreground(app: app, extras: true, sources: [
             .init(accountID: "jellyfin", itemID: "show-jellyfin", kind: .series, providerKind: .jellyfin),
             .init(accountID: "plex", itemID: "show-plex", kind: .series, providerKind: .plex)
         ])
         let image = try capture(view, width: 276, name: "stacked-icons-with-source-menu")
-        try assertBottomIconCount(3, in: image)
+        try assertBottomIconCount(2, in: image)
         let narrowWidth: CGFloat = 156
         let baseline = size(foreground(app: app, extras: false), width: narrowWidth)
-        XCTAssertEqual(size(view, width: narrowWidth).height, baseline.height + 120, accuracy: 1,
-                       "All three controls must wrap into two icon rows rather than disappearing into overflow.")
+        XCTAssertEqual(size(view, width: narrowWidth).height, baseline.height + 60, accuracy: 1,
+                       "The source and watchlist controls must wrap rather than disappearing into overflow.")
         _ = try capture(view, width: narrowWidth, name: "stacked-icons-wrapping-with-source-menu")
     }
 
@@ -227,8 +184,7 @@ final class SeasonRequestLayoutTests: XCTestCase {
             presentation: presentation, fallbackPresentation: presentation,
             style: .compactPortrait,
             actionHandler: RequestLayoutActions(showsWatchlist: extras, includesWatched: noStreams && extras),
-            onPlay: { _, _ in }, trailerItem: extras ? item : nil,
-            onPlayTrailer: extras ? { _ in } : nil, heroRequest: noStreams ? nil : request
+            onPlay: { _, _ in }, heroRequest: noStreams ? nil : request
         )
         .environment(app)
         .environment(\.dynamicTypeSize, typeSize)
@@ -453,8 +409,7 @@ private struct UpdatingDetailHeroView: View {
             versions: fixture.versions, selectedVersionID: "first",
             onSelectSource: { _ in }, onSelectVersion: { _ in },
             presentation: presentation, fallbackPresentation: presentation, style: .compactPortrait,
-            actionHandler: RequestLayoutActions(showsWatchlist: true), onPlay: { _, _ in },
-            trailerItem: fixture.hasTrailer ? item : nil, onPlayTrailer: { _ in }
+            actionHandler: RequestLayoutActions(showsWatchlist: true), onPlay: { _, _ in }
         )
         .frame(width: fixture.width)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

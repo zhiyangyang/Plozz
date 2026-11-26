@@ -174,7 +174,6 @@ struct PlozziOSItemDetailView: View {
             identitySources: identitySources,
             crossServerSourceResolver: crossServerSourceResolver(in: accounts, identitySources: identitySources),
             continueWatchingSnapshot: { homeViewModel?.continueWatchingForDetail ?? [] },
-            trailerSettings: appModel.settings.heroBackground,
             snapshotCache: appModel.detailSnapshotCache
         )
     }
@@ -192,13 +191,11 @@ private struct PlozziOSCanonicalItemDetailView: View {
     @Environment(\.plozzMetrics) private var metrics
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     @Environment(\.locale) private var locale
-    @State private var trailerOpening = YouTubeTrailerOpening()
     @State private var externalOpening = ExternalMediaOpening()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.themePalette) private var palette
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(PlozziOSAppModel.self) private var appModel
     /// Pushes another title from the Related row. Read here rather than only in a
     /// subview because a `navigationDestination` is hosted by the stack, so it
@@ -335,9 +332,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
             openCatalog(.tag(tag))
         })
         .artworkGradientBackground(scope: ObjectIdentifier(viewModel), isVisible: isPageVisible)
-        .task(id: appModel.settings.heroBackground.settings.trailerSources) {
-            await viewModel.refreshTrailerPolicy()
-        }
         .background(palette.backgroundBase.ignoresSafeArea())
         .onAppear {
             isPageVisible = true
@@ -352,11 +346,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                PlozziOSDetailAudioMuteControl(
-                    trailer: trailerController,
-                    itemID: viewModel.state.value?.item.id
-                )
-
                 if let detail = viewModel.state.value {
                     detailDownloadControl(detail)
                 }
@@ -399,7 +388,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
         .onChange(of: viewModel.serverResumeEpisode) { _, resume in
             applyServerResumeEpisode(resume)
         }
-        .youTubeTrailerOpeningFailures(trailerOpening)
         .externalMediaOpeningFailures(externalOpening)
         .alert("Couldn't load versions", isPresented: Binding(
             get: { viewModel.playbackInventoryRetryError != nil },
@@ -431,8 +419,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     title: Text("Server unavailable"),
                     message: Text("Reconnect the selected server and try again.")
                 )
-                .onAppear { trailerController.suspendForPlayback(owner: request.id) }
-                .onDisappear { trailerController.resumeAfterPlayback(owner: request.id) }
             }
         }
     }
@@ -468,11 +454,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
             : .landscape
         let headerPresentation = HeroPresentation(item: heroTarget, artworkStyle: heroStyle, surface: .detail)
         let rootPresentation = HeroPresentation(item: detail.item, artworkStyle: heroStyle, surface: .detail)
-        let trailerPauseThreshold = PlozziOSHeroMetrics.height(
-            style: heroStyle,
-            surfaceRole: .detail,
-            dynamicTypeSize: dynamicTypeSize
-        ) / 2
         return ScrollView {
             // Only the hero and the first sections exist on the push frame. The
             // information grid, cast, extras and related rows are offscreen work;
@@ -529,8 +510,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                         }
                         play(selected, fromBeginning: fromBeginning)
                     },
-                    trailerItem: viewModel.trailers.first,
-                    onPlayTrailer: { play($0) },
                     heroRequest: nil,
                     // "Go to Episode" opens the episode's own page, so offer
                     // a way over to its show.
@@ -661,11 +640,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
         }
         .onScrollPhaseChange { _, phase in
             isHeroScrollActive = phase == .interacting || phase == .decelerating
-        }
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y > trailerPauseThreshold
-        } action: { _, isPastHalfHero in
-            trailerController.setPaused(isPastHalfHero, surfaceRole: .detail)
         }
         .onScrollGeometryChange(for: CGFloat.self) { geometry in
             let topOffset = geometry.contentOffset.y
@@ -951,16 +925,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     }
 
     private func play(_ item: MediaItem, fromBeginning: Bool = false) {
-        guard !appModel.isOfflineMode || !item.isTrailer else { return }
-        guard !item.isTrailer || appModel.settings.heroBackground.settings.trailerSources.allows(item) else {
-            PlozzLog.app.info("Trailer action suppressed by profile settings")
-            return
-        }
         if !item.opensExternalSource { playbackPreparation.handoff(item) }
-        if item.isYouTubeTrailer {
-            Task { await trailerOpening.open(item) }
-            return
-        }
         let origin = playlistOrigin?.containsSelection(item) == true ? playlistOrigin : nil
         let playlist = origin.map {
             VideoPlaylistPlaybackContext(

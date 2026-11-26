@@ -85,67 +85,13 @@ public final class ItemDetailViewModel {
     @ObservationIgnored public private(set) var isRestoringSnapshot = false
     @ObservationIgnored private var collectionLoadGeneration: UInt64 = 0
 
-    /// Playable trailers for this item, loaded alongside detail. Empty until
-    /// resolved (and when the backend has none). Each is tagged with this
-    /// detail's owning account so it routes back to the right provider.
-    private var resolvedTrailers: [MediaItem] = []
-    public private(set) var trailers: [MediaItem] {
-        get { resolvedTrailers.filter { trailerPolicy.allows($0) } }
-        set { resolvedTrailers = newValue }
-    }
-
-    @ObservationIgnored private let trailerSettings: HeroBackgroundSettingsModel?
-    @ObservationIgnored private var preparedTrailerPolicy: TrailerSourcePolicy?
-    @ObservationIgnored private var trailerLoadGeneration: UInt64 = 0
-    @ObservationIgnored private var trailerLoadNeedsRetry = false
-    private var trailerPolicy: TrailerSourcePolicy {
-        trailerSettings?.settings.trailerSources ?? HeroBackgroundSettings.default.trailerSources
-    }
-
-    public func canPlayTrailer(_ trailer: MediaItem) -> Bool {
-        trailerPolicy.allows(trailer)
-    }
-
-    public func refreshTrailerPolicy() async {
-        guard let preparedTrailerPolicy,
-              preparedTrailerPolicy != trailerPolicy || trailerLoadNeedsRetry,
-              let item = state.value?.item else { return }
-        if isDiscoveryItem {
-            trailers = []
-        } else if let activeProvider {
-            await loadTrailers(for: item, provider: activeProvider, sourceGeneration: sourceGeneration)
-        }
-    }
-
-    private func beginTrailerLoad() -> UInt64 {
-        trailerLoadGeneration &+= 1
-        preparedTrailerPolicy = trailerPolicy
-        trailerLoadNeedsRetry = false
-        trailers = []
-        return trailerLoadGeneration
-    }
-
-    private func isCurrentTrailerLoad(
-        _ generation: UInt64, policy: TrailerSourcePolicy,
-        item: MediaItem, sourceGeneration: UInt64
-    ) -> Bool {
-        !Task.isCancelled && trailerLoadGeneration == generation && trailerPolicy == policy
-            && isStillLoaded(item, sourceGeneration: sourceGeneration)
-    }
-
-    private func finishTrailerLoad(_ generation: UInt64) {
-        if trailerLoadGeneration == generation, Task.isCancelled {
-            trailerLoadNeedsRetry = true
-        }
-    }
-
     /// Local, playable extras for the active source. Loaded independently from
     /// the detail so missing or unavailable bonus material never blocks the page.
     private var resolvedExtrasState: LoadState<[MediaExtra]> = .idle
     public private(set) var extrasState: LoadState<[MediaExtra]> {
         get {
             guard case .loaded(let extras) = resolvedExtrasState else { return resolvedExtrasState }
-            let allowed = extras.filter { !$0.item.isTrailer || trailerPolicy.allows($0.item) }
+            let allowed = extras.filter { !$0.item.isTrailer }
             return allowed.isEmpty ? .empty : .loaded(allowed)
         }
         set { resolvedExtrasState = newValue }
@@ -365,10 +311,6 @@ public final class ItemDetailViewModel {
     /// the initial load and its snapshot restore.
     private var sourceGeneration: UInt64 = 0
     @ObservationIgnored private var returnRefreshGeneration: UInt64 = 0
-    /// Memo of trailer-resolution outcomes so a revisited detail page surfaces its
-    /// Trailer button instantly instead of repeating metadata requests. Injected
-    /// so tests can supply an isolated cache.
-    private let trailerCache: TrailerResolutionCache
     /// The account this item belongs to, propagated so the detail item and its
     /// children stay tagged with their owning provider as the user drills down
     /// (children come from the provider untagged). `nil` outside aggregated flows.
@@ -515,8 +457,7 @@ public final class ItemDetailViewModel {
 
     /// Dwell before any speculative discovery fan-out (cross-server discovery,
     /// alternate-source fetch) fires. A page tapped through in under this window
-    /// pays zero speculative cost. Zero under tests. Trailer metadata has its
-    /// own dwell on the awaited path.
+    /// pays zero speculative cost. Zero under tests.
     private static var enrichmentDwellNanos: UInt64 { isRunningUnderTests ? 0 : 800_000_000 }
     /// Settle time before a bounded one-frame stream probe. This task is separate
     /// from cross-server discovery so an explicit source switch restarts it for
@@ -525,17 +466,14 @@ public final class ItemDetailViewModel {
         isRunningUnderTests ? 0 : 2_300_000_000
     }
 
-    /// Avoid speculative trailer metadata requests while navigating quickly.
-    private static var trailerMetadataDwellNanos: UInt64 { isRunningUnderTests ? 0 : 1_700_000_000 }
-
     /// In-flight SPECULATIVE discovery (cross-server picker + alternate-source
     /// watch-state), owned as a cancellable task that `load()` does NOT await.
     /// Decoupling it from `load()` means a navigate-away (which cancels via
     /// ``suspendEnrichment()``) stops the multi-server search fan-out from running
     /// to completion on the next page's back — the cooperative-pool starvation
     /// that left a freshly-opened detail's `provider.item` unscheduled for 15–20s
-    /// after tapping through several titles. Trailers + ratings, by contrast, are
-    /// awaited on the `load()` path (see ``runTrailersAndRatings(for:)``).
+    /// after tapping through several titles. Ratings are awaited on the `load()`
+    /// path (see ``runRatingsAndExtras(for:)``).
     private nonisolated(unsafe) var enrichmentTask: Task<Void, Never>?
     @ObservationIgnored private var episodePrefetchTask: Task<Void, Never>?
     /// Season whose episodes the viewer most recently had on screen; the snapshot
@@ -623,8 +561,6 @@ public final class ItemDetailViewModel {
         metadataLanguage: String = "en",
         sourceAccountID: String? = nil,
         originSourceAccountID: String? = nil,
-        trailerCache: TrailerResolutionCache = .shared,
-        trailerSettings: HeroBackgroundSettingsModel? = nil,
         initialSources: [MediaSourceRef] = [],
         alternateProviderResolver: @escaping (String) -> (any MediaProvider)? = { _ in nil },
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)? = nil,
@@ -656,8 +592,6 @@ public final class ItemDetailViewModel {
         self.metadataLanguage = Locale.canonicalLanguageIdentifier(from: metadataLanguage)
         self.sourceAccountID = sourceAccountID
         self.originSourceAccountID = originSourceAccountID
-        self.trailerCache = trailerCache
-        self.trailerSettings = trailerSettings
         self.initialSources = initialSources
         self.rejectedSourceIDs = initialItem?.rejectedSourceIDs ?? []
         self.alternateProviderResolver = alternateProviderResolver
@@ -693,22 +627,6 @@ public final class ItemDetailViewModel {
             }
             self.publish(Detail(item: seeded, children: [], serverResumeEpisode: resume))
         }
-    }
-
-    /// Env-gated (`SCRUB_DIAG=1`) stdout tracer for trailer-source resolution,
-    /// mirroring the `PLZSEEK` capture pattern so a network-paired Apple TV can be
-    /// watched via `devicectl --console`. Zero-cost when unset.
-    private static let trailerDiagEnabled: Bool = {
-        let env = ProcessInfo.processInfo.environment
-        return env["SCRUB_DIAG"] == "1" || env["SEEK_DIAG"] == "1"
-    }()
-    private static func trailerDiag(_ message: String) {   // l10n:content — diagnostic log text
-        guard trailerDiagEnabled else { return }
-        FileHandle.standardOutput.write(Data(("PLZTRAIL " + message + "\n").utf8))
-    }
-
-    private static func playableVideoID(_ ids: [String]) -> String? {
-        ids.first { MediaItem.youTubeVideoID(fromURL: $0) == $0 }
     }
 
     /// Cancels every piece of owned background work so no detached/async task can
@@ -963,7 +881,7 @@ public final class ItemDetailViewModel {
                 guard !Task.isCancelled, isCurrent() else { return }
                 // Trailers and ordinary enrichment remain on the existing load
                 // path. Optional server ratings run independently of completion.
-                await runTrailersAndRatings(
+                await runRatingsAndExtras(
                     for: item,
                     children: fetchedChildren,
                     provider: loadProvider,
@@ -993,7 +911,7 @@ public final class ItemDetailViewModel {
                 // A film has related titles too. This sat only in the container
                 // branch above, so the row simply never loaded on a movie page —
                 // it looked like a matching failure and was a missing call.
-                await runTrailersAndRatings(
+                await runRatingsAndExtras(
                     for: item,
                     children: [],
                     provider: loadProvider,
@@ -1215,7 +1133,7 @@ private func refreshDiscoveryStatus() async {
     /// thread pool.
     ///
     /// Trailers and external ratings are NOT started here: those resolve on the
-    /// awaited `load()` path (see ``runTrailersAndRatings(for:)``) so that opening
+    /// awaited `load()` path (see ``runRatingsAndExtras(for:)``) so that opening
     /// a detail deterministically populates its Trailer button and rating badges,
     /// while this speculative discovery stays decoupled and droppable.
     private func startSpeculativeEnrichment(for item: MediaItem) {
@@ -1363,25 +1281,13 @@ private func refreshDiscoveryStatus() async {
         }
     }
 
-    /// Resolves trailers and ordinary enrichment concurrently on the awaited `load()`
-    /// path. Server-provided ratings instead use an independently owned task,
-    /// so a missing or slow response cannot hold loading open. Cancellable via the awaiting
-    /// task: a navigate-away cancels `load()`, which cancels this mid-flight (the
-    /// guards below bail) instead of letting trailer metadata / a ratings fetch
-    /// run to completion on the next page's back. The heavy trailer extraction is
-    /// additionally gated behind a cancellable dwell (see ``loadTrailers(for:)``)
-    /// so rapid tap-through never pays it.
-    private func runTrailersAndRatings(
+    /// Resolves ratings and extras concurrently on the awaited `load()` path.
+    private func runRatingsAndExtras(
         for item: MediaItem,
         children: [MediaItem],
         provider: any MediaProvider,
         sourceGeneration: UInt64
     ) async {
-        async let trailersDone: Void = loadTrailers(
-            for: item,
-            provider: provider,
-            sourceGeneration: sourceGeneration
-        )
         async let ratingsDone: Void = enrichRatings(
             for: item,
             provider: provider,
@@ -1393,7 +1299,6 @@ private func refreshDiscoveryStatus() async {
             provider: provider,
             sourceGeneration: sourceGeneration
         )
-        _ = await trailersDone
         _ = await ratingsDone
         _ = await extrasDone
     }
@@ -1534,92 +1439,6 @@ private func refreshDiscoveryStatus() async {
         startSpeculativeEnrichment(for: item)
     }
 
-    /// Prefer provider-owned files, including cross-server copies. Otherwise show
-    /// a server or TMDB YouTube link. Video availability is handled by YouTube.
-    private func loadTrailers(
-        for item: MediaItem,
-        provider: any MediaProvider,
-        sourceGeneration: UInt64
-    ) async {
-        guard !Task.isCancelled, isStillLoaded(item, sourceGeneration: sourceGeneration) else { return }
-        let policy = trailerPolicy
-        let generation = beginTrailerLoad()
-        defer { finishTrailerLoad(generation) }
-        func isCurrent() -> Bool {
-            isCurrentTrailerLoad(generation, policy: policy, item: item, sourceGeneration: sourceGeneration)
-        }
-        guard policy.allowsServerTrailers, isCurrent() else { return }
-        let provided = (try? await provider.trailers(for: item.id)) ?? []
-        guard isCurrent() else { return }
-
-        let localCount = provided.filter { !$0.isYouTubeTrailer }.count
-        let ytCount = provided.count - localCount
-        Self.trailerDiag("loadTrailers item=\(item.id) provider=\(provider.kind.rawValue) provided=\(provided.count) local=\(localCount) yt=\(ytCount)")
-
-        // 1) A real local trailer file wins outright — no network verification.
-        if let local = provided.first(where: { !$0.isYouTubeTrailer }) {
-            guard isStillLoaded(item, sourceGeneration: sourceGeneration) else { return }
-            Self.trailerDiag("loadTrailers item=\(item.id) -> LOCAL trailer id=\(local.id)")
-            trailers = [tagged(local.markingAsTrailer())]
-            return
-        }
-
-        // 1b) The active server has no local trailer, but this may be a
-        //     cross-server merged title whose OTHER copy (e.g. a Plex twin) does
-        //     have a local trailer file. Prefer any server's real local trailer
-        //     over the online (YouTube) fallback. The surfaced item is tagged with
-        //     the owning server's account so playback routes back to it.
-        if let (crossLocal, ownerAccountID) = await firstCrossServerLocalTrailer(
-            excluding: activeSourceAccountID,
-            sourceGeneration: sourceGeneration,
-            isCurrent: isCurrent
-        ) {
-            guard isCurrent() else { return }
-            Self.trailerDiag("loadTrailers item=\(item.id) -> CROSS-SERVER LOCAL trailer id=\(crossLocal.id) account=\(ownerAccountID)")
-            trailers = [crossLocal.markingAsTrailer().taggingSource(ownerAccountID)]
-            return
-        }
-
-        guard isCurrent(), policy.allowsYouTube else { return }
-        let serverIDs = orderedUnique(provided.compactMap(\.youTubeTrailerVideoID))
-
-        // 2) A cached decision applies instantly — the main reason a revisited page
-        //    no longer repeats the metadata lookup.
-        if let cached = trailerCache.outcome(for: item.id) {
-            guard isStillLoaded(item, sourceGeneration: sourceGeneration) else { return }
-            switch cached {
-            case .working(let id): surfaceTrailer(videoID: id, for: item)
-            case .none: trailers = []
-            }
-            return
-        }
-
-        // 3) Optimistically show the button from the server's first trailer id
-        //    while verification runs, so it isn't gated on the network.
-        if let optimistic = serverIDs.first {
-            guard isStillLoaded(item, sourceGeneration: sourceGeneration) else { return }
-            surfaceTrailer(videoID: optimistic, for: item)
-        }
-
-        if serverIDs.isEmpty, Self.trailerMetadataDwellNanos > 0 {
-            try? await Task.sleep(nanoseconds: Self.trailerMetadataDwellNanos)
-            guard isCurrent() else { return }
-        }
-
-        let workingID = Self.playableVideoID(serverIDs)
-        guard isCurrent() else { return }
-
-        guard isCurrent() else { return }
-        if let workingID {
-            surfaceTrailer(videoID: workingID, for: item)
-            trailerCache.record(.working(workingID), for: item.id)
-        } else {
-            // Neither the server nor metadata supplied a usable link.
-            trailers = []
-            trailerCache.record(.none, for: item.id)
-        }
-    }
-
     /// Whether the loaded detail is still this `item` (guards against a stale
     /// trailer resolution landing after the user navigated away / reloaded).
     private func isStillLoaded(_ item: MediaItem, sourceGeneration: UInt64) -> Bool {
@@ -1629,72 +1448,6 @@ private func refreshDiscoveryStatus() async {
             return true
         }
         return false
-    }
-
-    /// Searches this title's OTHER cross-server copies for a real local trailer
-    /// file, returning the first one found with the account id that owns it (so
-    /// the caller can tag it for correct playback routing). `nil` when no alternate
-    /// source has a local trailer.
-    ///
-    /// This is what lets a title whose active server (e.g. a Jellyfin twin) only
-    /// exposes an online YouTube trailer still play the real local trailer sitting
-    /// on another server (e.g. its Plex twin) instead of the online fallback.
-    /// Alternate sources come from the merged card (`initialSources`) and any
-    /// cross-server discovery already completed (`sources`), deduped by account and
-    /// skipping the active source (already checked by the caller).
-    private func firstCrossServerLocalTrailer(   // l10n:content — trailer search term
-        excluding activeAccountID: String?,
-        sourceGeneration: UInt64,
-        isCurrent: () -> Bool
-    ) async -> (MediaItem, String)? {
-        var seenAccounts = Set<String>()
-        if let activeAccountID { seenAccounts.insert(activeAccountID) }
-
-        let candidates = initialSources + sources
-        Self.trailerDiag("firstCrossServerLocalTrailer candidates=\(candidates.count) initial=\(initialSources.count) enriched=\(sources.count) activeAccount=\(activeAccountID ?? "nil")")
-        for source in candidates {
-            guard self.sourceGeneration == sourceGeneration, isCurrent() else { return nil }
-            guard !seenAccounts.contains(source.accountID) else { continue }
-            seenAccounts.insert(source.accountID)
-            guard let altProvider = alternateProviderResolver(source.accountID) else { continue }
-            let altTrailers = (try? await altProvider.trailers(for: source.itemID)) ?? []
-            if let local = altTrailers.first(where: { !$0.isYouTubeTrailer }) {
-                return (local, source.accountID)
-            }
-        }
-        return nil
-    }
-
-    /// Builds an external YouTube trailer action with the title's presentation context.
-    private func surfaceTrailer(videoID: String, for item: MediaItem) {
-        let trailer = MediaItem.youTubeTrailer(
-            videoID: videoID,
-            title: "\(item.title) — Trailer",
-            parentTitle: item.title,
-            posterURL: item.posterURL
-        )
-        trailers = [stampTrailerContext(trailer, from: item)]
-    }
-
-    /// De-duplicates `ids` preserving first-seen order and dropping empties.
-    private func orderedUnique(_ ids: [String]) -> [String] {
-        var seen = Set<String>()
-        var out: [String] = []
-        for id in ids where !id.isEmpty && !seen.contains(id) {
-            seen.insert(id)
-            out.append(id)
-        }
-        return out
-    }
-
-    /// Keep external trailer metadata attached to the parent title. Local trailers
-    /// and already-populated fields remain untouched.
-    private func stampTrailerContext(_ trailer: MediaItem, from item: MediaItem) -> MediaItem {
-        guard trailer.isYouTubeTrailer else { return trailer }
-        var copy = trailer
-        if copy.parentTitle?.isEmpty != false { copy.parentTitle = item.title }
-        if copy.productionYear == nil { copy.productionYear = item.productionYear }
-        return copy
     }
 
     /// Applies a watched-state or progress mutation to the loaded detail, its
@@ -1751,7 +1504,6 @@ private func refreshDiscoveryStatus() async {
                 return updated
             }
         }
-        resolvedTrailers = resolvedTrailers.map { mutation.applied(to: $0) }
         if case let .loaded(extras) = resolvedExtrasState {
             extrasState = .loaded(extras.map { extra in
                 var copy = extra
@@ -1881,19 +1633,11 @@ private func refreshDiscoveryStatus() async {
             guard !Task.isCancelled, isCurrent() else { return }
         }
         guard !Task.isCancelled else { return }
-        await enrichRatings(for: item, provider: provider, sourceGeneration: reloadSourceGeneration)
-        async let trailers: Void = loadTrailers(
-            for: item,
-            provider: provider,
-            sourceGeneration: reloadSourceGeneration
-        )
         async let extras: Void = loadExtras(
-            for: item,
-            children: children,
-            provider: provider,
+            for: item, children: children, provider: provider,
             sourceGeneration: reloadSourceGeneration
         )
-        _ = await trailers
+        await enrichRatings(for: item, provider: provider, sourceGeneration: reloadSourceGeneration)
         _ = await extras
     }
 
@@ -2074,7 +1818,6 @@ private func refreshDiscoveryStatus() async {
         activeSourceAccountID = accountID
         nativeDetailItem = nil
         artworkSourceIsReady = false
-        trailers = []
         extrasState = .loading
         seasonLoadingResumeSourceGeneration = sourceGeneration
 
