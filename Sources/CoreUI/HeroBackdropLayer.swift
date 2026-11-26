@@ -2,7 +2,6 @@
 import SwiftUI
 import CoreModels
 import CoreNetworking
-import MetadataKit
 
 
 public extension View {

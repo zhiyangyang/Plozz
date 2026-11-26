@@ -1,6 +1,5 @@
 import CoreModels
 import Foundation
-import MetadataKit
 
 #if canImport(UIKit)
 import UIKit

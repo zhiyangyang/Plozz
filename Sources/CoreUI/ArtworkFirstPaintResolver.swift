@@ -1,7 +1,6 @@
 #if canImport(UIKit)
 import CoreModels
 import Foundation
-import MetadataKit
 import UIKit
 
 /// One decoded artwork identity selected before first paint.

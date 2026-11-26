@@ -1,5 +1,4 @@
 import Foundation
-import CoreModels
 
 /// The visual role of a piece of artwork. Drives both which provider capability is
 /// queried and which CDN image size is requested.
@@ -269,46 +268,16 @@ public struct MetadataQuery: Sendable, Hashable {
     }
 }
 
-/// One source of artwork for a content type. Implementations are free, keyless,
-/// per-IP APIs wherever possible (so they scale to any number of users), with the
-/// optional TMDb tier behind a self-hostable proxy.
-public protocol ArtworkProvider: Sendable {
-    /// A short stable identifier, for logging/cache scoping.
-    var id: String { get }
-    /// Returns a URL for `kind` art matching `query`, or `nil` if this provider
-    /// can't serve it. Must never throw — enrichment is always best-effort.
-    func artworkURL(_ kind: ArtworkKind, for query: MetadataQuery) async -> URL?
-    /// Hero-only selection from the provider's usual artwork response, without
-    /// additional lookups: neutral portrait, neutral backdrop, then usable art.
-    func portraitHeroURL(for query: MetadataQuery) async -> URL?
-    /// Existing title-bearing wide artwork, not a clean hero background or a composed logo.
-    func landscapeCardURL(for query: MetadataQuery) async -> URL?
-    /// Ordered candidates for `kind`, best first, up to `limit`.
-    ///
-    /// A hero draws the show's logo over its backdrop, and the Home hero and the
-    /// detail page want *different* pictures — so a provider that holds several
-    /// needs a way to offer them. One answer per provider made that impossible:
-    /// both screens asked for `.hero`, got the same single URL, and the four
-    /// textless backdrops TMDb had already fetched were discarded one layer up.
-    ///
-    /// Defaults to the single answer ``artworkURL(_:for:)`` gives, so a provider
-    /// with only one picture needs no change and costs no extra request.
-    func artworkURLs(_ kind: ArtworkKind, for query: MetadataQuery, limit: Int) async -> [URL]
-}
 
-extension ArtworkProvider {
-    public func landscapeCardURL(for query: MetadataQuery) async -> URL? { nil }
+/// A locally parsed episode title used to settle same-name show collisions.
+public struct SeriesEpisodeHint: Sendable, Equatable {
+    public let season: Int
+    public let episode: Int
+    public let title: String  // l10n:content — episode title parsed from the local library
 
-    public func portraitHeroURL(for query: MetadataQuery) async -> URL? {
-        await artworkURL(.hero, for: query)
-    }
-
-    public func artworkURLs(
-        _ kind: ArtworkKind,
-        for query: MetadataQuery,
-        limit: Int
-    ) async -> [URL] {
-        guard limit > 0, let url = await artworkURL(kind, for: query) else { return [] }
-        return [url]
+    public init(season: Int, episode: Int, title: String) {  // l10n:content — episode title parsed from the local library
+        self.season = season
+        self.episode = episode
+        self.title = title
     }
 }

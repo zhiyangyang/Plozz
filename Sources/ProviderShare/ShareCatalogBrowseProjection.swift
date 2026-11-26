@@ -1,7 +1,6 @@
 import Foundation
 import SQLite3
 import CoreModels
-import MetadataKit
 
 /// Catalog-backed projection for one live share-directory listing.
 ///
@@ -483,9 +482,7 @@ struct ShareCatalogBrowseProjection {
         guard let subject = ArtworkLookupSubject(catalog: catalog) else { return live }
         func eligible(_ url: URL?) -> URL? {
             guard let url else { return nil }
-            return catalog.libraryArtworkURL(url) != nil
-                || catalog.artworkMetadataSource(for: url).map(MetadataEnrichmentConfig.defaultBaseOrder.contains) == true
-                ? url : nil
+            return catalog.libraryArtworkURL(url) != nil ? url : nil
         }
         var item = live
         item.artworkLookupSubject = subject

@@ -1,6 +1,5 @@
 import XCTest
 import CoreModels
-import MetadataKit
 @testable import ProviderShare
 
 final class CatalogBrowseHydrationTests: XCTestCase {
@@ -199,16 +198,10 @@ final class CatalogBrowseHydrationTests: XCTestCase {
         return connection
     }
 
-    private func makeQueries(
-        _ connection: CatalogConnection,
-        preferOnlineArtwork: Bool = false
-    ) -> CatalogReadQueries {
+    private func makeQueries(_ connection: CatalogConnection) -> CatalogReadQueries {
         CatalogReadQueries(
             connection: connection,
             normalizedMetadataReady: true,
-            metadataConfig: MetadataEnrichmentConfig(
-                preferOnlineArtwork: preferOnlineArtwork
-            ),
             localMetadataPresence: LocalMetadataPresence()
         )
     }
@@ -413,58 +406,7 @@ final class CatalogBrowseHydrationTests: XCTestCase {
         XCTAssertNil(batch[ShareCatalogID.file("Movies/Missing.mkv")])
     }
 
-    func testBatchPreservesLocalAndExternalPosterPrecedence() throws {
-        let connection = openConnection()
-        seedMovie(
-            connection,
-            relPath: "Movies/Poster.mkv",
-            basename: "Poster.mkv",
-            title: "Poster",
-            year: 2024,
-            movieKey: "poster-2024"
-        )
-        let itemID = ShareCatalogID.movie("poster-2024")
-        let representativeID = ShareCatalogID.file("Movies/Poster.mkv")
-        let onlineURL = try XCTUnwrap(URL(string: "https://example.invalid/online.jpg"))
-        let localURL = try XCTUnwrap(URL(string: "https://example.invalid/local.jpg"))
-        insertEnrichment(
-            connection,
-            itemID: representativeID,
-            title: "Poster",
-            posterURL: onlineURL
-        )
-        insertMetadataValue(
-            connection,
-            itemID: representativeID,
-            field: "posterURL",
-            source: "tmdb",
-            valueJSON: String(
-                decoding: try JSONEncoder().encode(onlineURL),
-                as: UTF8.self
-            )
-        )
-        try insertLocalArtwork(connection, itemID: representativeID, url: localURL)
-
-        let localFirst = makeQueries(connection)
-            .browseItems(ids: [itemID])[itemID]
-        let onlineFirst = makeQueries(connection, preferOnlineArtwork: true)
-            .browseItems(ids: [itemID])[itemID]
-
-        XCTAssertEqual(
-            localFirst?.artworkReferences(for: .poster),
-            [.remote(localURL)]
-        )
-        XCTAssertEqual(localFirst?.metadataProvenance[.posterURL]?.source, .tmdb)
-        XCTAssertEqual(localFirst?.metadataArtworkURLs(for: .poster), [.init(value: onlineURL, source: .tmdb)])
-        XCTAssertEqual(
-            onlineFirst?.artworkReferences(for: .poster),
-            [.remote(localURL)]
-        )
-        XCTAssertEqual(onlineFirst?.metadataProvenance[.posterURL]?.source, .tmdb)
-        XCTAssertEqual(onlineFirst?.metadataArtworkURLs(for: .poster), [.init(value: onlineURL, source: .tmdb)])
-    }
-
-    func testBatchBoundsLargeInputAndOmitsUnknownIDs() {
+func testBatchBoundsLargeInputAndOmitsUnknownIDs() {
         let connection = openConnection()
         let count = 450
         for index in 0..<count {

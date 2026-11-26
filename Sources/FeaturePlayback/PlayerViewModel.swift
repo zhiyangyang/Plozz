@@ -5,7 +5,6 @@ import Observation
 import CoreModels
 import CoreNetworking
 import CoreUI
-import MetadataKit
 #if canImport(UIKit)
 import UIKit
 #endif

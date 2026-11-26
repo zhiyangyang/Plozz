@@ -1,5 +1,4 @@
 import CoreModels
-import MetadataKit
 import XCTest
 @testable import CoreUI
 
@@ -94,31 +93,7 @@ final class SeriesArtworkIdentityTests: XCTestCase {
         XCTAssertNotEqual(key(first), key(anotherAccount))
     }
 
-    func testCorrectedLogoLookupBypassesOldChildNegativeAndReusesSeriesAnswer() async throws {
-        let child = episode(ids: ["Tmdb": "child-123", "SeriesTmdb": "show-456"])
-        let legacy = MediaItem(id: "series-1", title: "The Series", kind: .series, providerIDs: child.providerIDs)
-        let corrected = PosterCardView.seriesArtworkItem(for: child)
-        let detail = MediaItem(id: "series-1", title: "The Series", kind: .series, providerIDs: ["Tmdb": "show-456"])
-        let oldKey = MetadataQuery(legacy).cacheKey(for: .logo)
-        let correctKey = MetadataQuery(corrected).cacheKey(for: .logo)
-        let detailKey = MetadataQuery(detail).cacheKey(for: .logo)
-        XCTAssertNotEqual(oldKey, correctKey)
-        XCTAssertEqual(correctKey, detailKey)
-
-        let cache = MetadataDiskCache(directory: nil)
-        await cache.store(nil, for: oldKey)
-        let cachedMiss = await cache.cached(oldKey)
-        XCTAssertTrue(cachedMiss != nil, "The old failed lookup remains cached; no global purge is needed.")
-        XCTAssertNil(cachedMiss ?? nil)
-        let before = await cache.cached(correctKey)
-        XCTAssertNil(before)
-        let logo = try XCTUnwrap(URL(string: "https://artwork.example.test/series-logo.png"))
-        await cache.store(logo, for: detailKey)
-        let actual = await cache.cached(correctKey)
-        XCTAssertEqual(actual ?? nil, logo)
-    }
-
-    func testConversionKeepsMatchingRestrictionsAndLeavesRealSeriesUntouched() {
+func testConversionKeepsMatchingRestrictionsAndLeavesRealSeriesUntouched() {
         var child = episode(ids: [:])
         child.allowsTitleBasedMetadataMatching = false
         let target = PosterCardView.seriesArtworkItem(for: child)

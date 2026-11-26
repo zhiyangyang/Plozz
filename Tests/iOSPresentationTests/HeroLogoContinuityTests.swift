@@ -2,7 +2,6 @@ import CoreModels
 @testable import CoreUI
 import FeatureAuth
 import FeatureHomeCore
-import MetadataKit
 import Observation
 import SwiftUI
 import UIKit
@@ -866,10 +865,8 @@ func testLateDetailWordmarkFadesUnlessMotionIsReduced() async throws {
             ))
             try await waitUntil { try fixture.hasRedLogo() }
 
-            let enriched = DetailMetadataResolver.applying(
-                MetadataEnrichment(genres: .init(value: ["Anime"], source: .tmdb)),
-                to: show
-            )
+            var enriched = show
+            enriched.genres = ["Anime"]
             XCTAssertEqual(ContentClassifier.classify(show), .tvShow)
             XCTAssertEqual(ContentClassifier.classify(enriched), .anime)
             let lookup = LookupGate()

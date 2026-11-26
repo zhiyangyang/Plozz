@@ -1,7 +1,6 @@
 import Foundation
 import CoreModels
 import CoreNetworking
-import MetadataKit
 
 public struct DetailOpeningResolution {
     let provider: any MediaProvider
@@ -44,10 +43,6 @@ public struct DetailOpenEnvironment {
     /// Discovers *other servers* hosting the same title off the critical path, to
     /// fill the cross-server picker. `nil` disables cross-server discovery.
     public let crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?
-    /// External ratings (IMDb/RT/Metacritic) provider for live enrichment.
-    public let detailMetadataResolver: @Sendable (MediaItem) async -> MetadataEnrichment
-    public let metadataLanguage: String
-    public let localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)?
     public let trailerSettings: HeroBackgroundSettingsModel?
     /// Refreshes a discovery (Seerr) title's request/availability. `nil` when Seerr
     /// isn't wired.
@@ -65,9 +60,6 @@ public struct DetailOpenEnvironment {
         identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?,
         continueWatchingSnapshot: @escaping @MainActor () -> [MediaItem] = { [] },
-        detailMetadataResolver: @escaping @Sendable (MediaItem) async -> MetadataEnrichment = { _ in MetadataEnrichment() },
-        metadataLanguage: String = "en",
-        localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)? = nil,
         trailerSettings: HeroBackgroundSettingsModel? = nil,
         discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
@@ -79,9 +71,6 @@ public struct DetailOpenEnvironment {
         self.identitySources = identitySources
         self.continueWatchingSnapshot = continueWatchingSnapshot
         self.crossServerSourceResolver = crossServerSourceResolver
-        self.detailMetadataResolver = detailMetadataResolver
-        self.metadataLanguage = metadataLanguage
-        self.localizedDetailMetadataResolver = localizedDetailMetadataResolver
         self.trailerSettings = trailerSettings
         self.discoveryStatusRefresh = discoveryStatusRefresh
         self.loadSeasonEpisodeRoster = loadSeasonEpisodeRoster
@@ -308,8 +297,6 @@ public struct DetailOpenEnvironment {
             isDiscoveryItem: isDiscovery,
             discoveryStatusRefresh: discoveryStatusRefresh,
             loadSeasonEpisodeRoster: loadSeasonEpisodeRoster,
-            detailMetadataResolver: detailMetadataResolver,
-            metadataLanguage: metadataLanguage,
             sourceAccountID: isDiscovery ? nil : selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,
             originSourceAccountID: Self.contextSource(for: selectedItem)?.accountID,
             trailerSettings: trailerSettings,
@@ -319,7 +306,6 @@ public struct DetailOpenEnvironment {
             identitySources: liveIdentitySources,
             snapshotCache: snapshotCache,
             openingResolver: openingResolver,
-            localizedDetailMetadataResolver: localizedDetailMetadataResolver,
             // Match upstream: the season rail loads when it is actually shown.
             // Eagerly fetching the opening season's episodes here starts a third
             // server round-trip during the push, competing with the page's first

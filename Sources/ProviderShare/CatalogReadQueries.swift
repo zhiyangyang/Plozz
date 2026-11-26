@@ -2,7 +2,6 @@ import Foundation
 import SQLite3
 import CoreModels
 import CoreNetworking
-import MetadataKit
 
 /// Reference box for the store's "does this catalog have ANY local (NFO/filename)
 /// metadata at all" memo. It lets the read-query helper share — and lazily populate —
@@ -43,8 +42,6 @@ struct CatalogReadQueries {
     /// Value snapshot of the store's `normalizedMetadataReady` — whether the local
     /// metadata materialization has completed and normalized winners may be overlaid.
     let normalizedMetadataReady: Bool
-    /// Snapshot of household provider + artwork precedence for this read.
-    let metadataConfig: MetadataEnrichmentConfig
     /// Shared, store-owned memo for `hasAnyLocalMetadata()` (invalidated by store writes).
     let localMetadataPresence: LocalMetadataPresence
 
@@ -1862,8 +1859,7 @@ struct CatalogReadQueries {
             return ShareCatalogReadProjection.applyLocalArtwork(
                 item,
                 values,
-                metadataConfig: metadataConfig
-            )
+                )
         }
     }
 

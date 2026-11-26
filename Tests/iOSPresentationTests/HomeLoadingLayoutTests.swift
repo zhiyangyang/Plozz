@@ -6,7 +6,6 @@ import AppRuntime
 import FeatureAuth
 @testable import FeatureHomeCore
 import HeroUI
-import MetadataKit
 import Observation
 import ProviderJellyfin
 import ProviderPlex

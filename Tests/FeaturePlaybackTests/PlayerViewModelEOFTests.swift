@@ -3,7 +3,6 @@ import XCTest
 import CoreModels
 import CoreUI
 import MediaPlayer
-import MetadataKit
 @testable import FeaturePlayback
 #if canImport(UIKit)
 import UIKit

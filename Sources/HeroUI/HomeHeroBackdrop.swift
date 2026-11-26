@@ -3,7 +3,6 @@ import SwiftUI
 import CoreUI
 import CoreModels
 import FeatureHomeCore
-import MetadataKit
 #if canImport(UIKit)
 import UIKit
 #endif

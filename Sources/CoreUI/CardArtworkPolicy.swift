@@ -1,7 +1,6 @@
 #if canImport(SwiftUI)
 import CoreModels
 import Foundation
-import MetadataKit
 
 /// Presentation context that must not change a media item's provider or playback identity.
 public enum CardArtworkPolicy: Hashable, Sendable {

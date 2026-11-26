@@ -15,8 +15,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         let settings = MetadataProviderSettingsStore()
         savedProviders = settings.load()
         settings.save(.init(
-            orderMode: .custom, enabledOrder: ["tmdb"],
-            disabledOrder: MetadataEnrichmentConfig.defaultBaseOrder.filter { $0 != .tmdb }.map(\.rawValue)
+            orderMode: .custom, enabledOrder: ["tmdb"], disabledOrder: []
         ))
     }
 

@@ -1,5 +1,4 @@
 import CoreModels
-import MetadataKit
 
 /// Builds the series-scoped lookup subject used for episode-level presentation.
 /// This is identity shaping only; it does not resolve any artwork itself.

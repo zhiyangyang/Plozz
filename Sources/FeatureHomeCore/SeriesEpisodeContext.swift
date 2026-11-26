@@ -1,5 +1,4 @@
 import CoreModels
-import MetadataKit
 
 /// Series-level context that should be propagated onto episode items so fallback
 /// artwork/routing stays accurate without per-focus remapping.

@@ -4,7 +4,6 @@ import CoreModels
 import CoreUI
 import FeatureHomeCore
 import Foundation
-import MetadataKit
 import Observation
 import SwiftUI
 

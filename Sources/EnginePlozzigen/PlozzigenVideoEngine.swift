@@ -5,7 +5,6 @@ import Combine
 import CoreModels
 import CoreNetworking
 import FeaturePlayback
-import MetadataKit
 #if canImport(UIKit)
 import UIKit
 #endif

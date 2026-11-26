@@ -1,6 +1,5 @@
 #if canImport(SwiftUI)
 import CoreModels
-import MetadataKit
 import SwiftUI
 
 public struct ArtworkPresentationPolicy: Equatable, Sendable {

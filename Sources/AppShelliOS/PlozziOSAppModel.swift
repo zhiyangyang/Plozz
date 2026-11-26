@@ -13,7 +13,6 @@ import FeatureWatchlistCore
 import Foundation
 import MediaDownloads
 import MediaTransportCore
-import MetadataKit
 import Observation
 import ProviderJellyfin
 import ProviderPlex

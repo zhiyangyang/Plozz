@@ -1,6 +1,5 @@
 import XCTest
 import CoreModels
-import MetadataKit
 @testable import ProviderShare
 
 /// Direct tests for the Batch-4 extractions out of `ShareCatalogStore`:

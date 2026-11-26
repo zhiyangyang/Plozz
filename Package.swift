@@ -42,7 +42,6 @@ let package = Package(
         .library(name: "CoreModels", targets: ["CoreModels"]),
         .library(name: "CoreNetworking", targets: ["CoreNetworking"]),
         .library(name: "CoreUI", targets: ["CoreUI"]),
-        .library(name: "MetadataKit", targets: ["MetadataKit"]),
         .library(name: "FeatureDiscoveryCore", targets: ["FeatureDiscoveryCore"]),
         .library(name: "ProviderJellyfin", targets: ["ProviderJellyfin"]),
         .library(name: "ProviderSilo", targets: ["ProviderSilo"]),
@@ -317,21 +316,8 @@ let package = Package(
         // MARK: Shared UI (design system + reusable tvOS components)
         .target(
             name: "CoreUI",
-            dependencies: ["CoreModels", "MetadataKit"],
+            dependencies: ["CoreModels", "CoreNetworking"],
             resources: [.process("Resources")]
-        ),
-
-        // MARK: Scalable external metadata/artwork (content-type-routed providers)
-        //
-        // Foundation-only so it stays unit-testable off-device. Houses the keyless,
-        // per-IP artwork providers (AniList, Kitsu, TVmaze, Deezer, MusicBrainz),
-        // the optional proxy/token-gated TMDb provider, the content-type classifier
-        // + ArtworkRouter that picks the right provider chain, and a persistent
-        // resolved-URL disk cache. This is the engine behind goals 1–5 scaling to
-        // a large user base without a "bring your own API key" design.
-        .target(
-            name: "MetadataKit",
-            dependencies: ["CoreModels", "CoreNetworking"]
         ),
 
         // MARK: Providers
@@ -359,7 +345,6 @@ let package = Package(
                 "CoreModels",
                 "CoreNetworking",
                 "MediaTransportCore",
-                "MetadataKit",
                 .product(name: "SMBClient", package: "SMBClient"),
             ]
         ),
@@ -385,17 +370,16 @@ let package = Package(
             dependencies: [
                 "CoreModels",
                 "CoreNetworking",
-                "CoreUI",
-                "MetadataKit"
+                "CoreUI"
             ]
         ),
         .target(
             name: "HeroUI",
-            dependencies: ["CoreModels", "CoreUI", "FeatureHomeCore", "MetadataKit"]
+            dependencies: ["CoreModels", "CoreUI", "FeatureHomeCore"]
         ),
         .target(
             name: "FeaturePlayback",
-            dependencies: ["CoreModels", "CoreNetworking", "CoreUI", "MetadataKit"],
+            dependencies: ["CoreModels", "CoreNetworking", "CoreUI"],
             resources: [.process("Resources")]
         ),
         .target(
@@ -665,7 +649,6 @@ let package = Package(
             dependencies: [
                 "CoreModels",
                 "CoreNetworking",
-                "MetadataKit",
                 "MediaTransportCore",
                 "FeaturePlayback",
                 .product(name: "AetherEngine", package: "AetherEngine"),
@@ -680,7 +663,6 @@ let package = Package(
                 "CoreModels",
                 "CoreNetworking",
                 "CoreUI",
-                "MetadataKit",
                 "FeatureAuthCore",
                 // The universal watchlist runtime lives here so tvOS and iOS share
                 // one implementation instead of two 560-line copies.
@@ -739,7 +721,6 @@ let package = Package(
                 "FeatureSearchCore",
                 "FeatureSettings",
                 "FeatureWatchlistCore",
-                "MetadataKit",
                 "MediaDownloads",
                 "MediaTransportCore",
                 "MediaTransportFTP",
@@ -809,10 +790,6 @@ let package = Package(
             dependencies: ["CoreNetworking", "CoreModels", "TestSupportNetworking"]
         ),
         .testTarget(
-            name: "MetadataKitTests",
-            dependencies: ["MetadataKit", "CoreModels", "TestSupportNetworking"]
-        ),
-        .testTarget(
             name: "FeatureDiscoveryTests",
             dependencies: ["FeatureDiscoveryCore", "CoreModels"]
         ),
@@ -834,7 +811,7 @@ let package = Package(
         ),
         .testTarget(
             name: "FeatureHomeCoreTests",
-            dependencies: ["FeatureHomeCore", "CoreModels", "MetadataKit", "ProviderJellyfin",
+            dependencies: ["FeatureHomeCore", "CoreModels", "ProviderJellyfin",
                            "CoreNetworking", "TestSupportPerformance", "TestSupportContentRefresh"]
         ),
         .testTarget(

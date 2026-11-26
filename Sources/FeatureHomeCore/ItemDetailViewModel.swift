@@ -2,7 +2,6 @@ import Foundation
 import Observation
 import CoreModels
 import CoreNetworking
-import MetadataKit
 
 /// How much a season's cached episode list can be trusted.
 ///
@@ -333,7 +332,6 @@ public final class ItemDetailViewModel {
 
     private let provider: (any MediaProvider)?
     private let itemID: String
-    @ObservationIgnored private var detailMetadataResolver: @Sendable (MediaItem, String) async -> MetadataEnrichment
     /// External until a real library source is resolved. Both shells observe this
     /// instead of freezing the index's ownership answer at navigation time.
     public private(set) var isDiscoveryItem: Bool
@@ -348,8 +346,6 @@ public final class ItemDetailViewModel {
     /// items and must not enter snapshots or download flows.
     private let seasonEpisodeRosterLoader:
         (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)?
-    @ObservationIgnored private var externalMetadataResolver:
-        @Sendable (MediaItem, String) async -> ExternalTitleMetadata
     private let availabilityRegionCode: String
 
     /// The currently *active* source the page is showing. Defaults to the base
@@ -541,7 +537,6 @@ public final class ItemDetailViewModel {
     /// after tapping through several titles. Trailers + ratings, by contrast, are
     /// awaited on the `load()` path (see ``runTrailersAndRatings(for:)``).
     private nonisolated(unsafe) var enrichmentTask: Task<Void, Never>?
-    @ObservationIgnored private var detailMetadataTask: Task<Void, Never>?
     @ObservationIgnored private var episodePrefetchTask: Task<Void, Never>?
     /// Season whose episodes the viewer most recently had on screen; the snapshot
     /// persists that one so a revisit paints the rail immediately.
@@ -575,7 +570,6 @@ public final class ItemDetailViewModel {
     @ObservationIgnored public private(set) var metadataLanguage: String
     @ObservationIgnored private var openingResolver: (@MainActor () async throws -> DetailOpeningResolution)?
     private let discoverySeed: MediaItem?
-    private let usesDefaultExternalMetadataResolver: Bool
     @ObservationIgnored private var nativeDetailItem: MediaItem?
     /// List seeds and restored snapshots do not establish the preferred artwork
     /// source. Release only this visual gate when native/discovery identity settles.
@@ -586,7 +580,6 @@ public final class ItemDetailViewModel {
     }
     /// A valid cached page is usable before the live artwork source is resolved.
     public var metadataIsReady: Bool { presentationReadiness.metadataIsReady }
-    @ObservationIgnored private var interruptedLanguageSeasonIDs: Set<String> = []
     /// Stable per-title key for ``snapshotCache``. Scoped by owning account so the
     /// same id on two servers or in two languages caches independently. Routes to a series share a
     /// key (they're all built with the series id as `itemID`).
@@ -625,10 +618,8 @@ public final class ItemDetailViewModel {
         discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
             (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)? = nil,
-        externalMetadataResolver: (@Sendable (MediaItem, String) async -> ExternalTitleMetadata)? = nil,
         availabilityRegionCode: String =
             Locale.current.region?.identifier ?? "US",
-        detailMetadataResolver: @escaping @Sendable (MediaItem) async -> MetadataEnrichment = { _ in MetadataEnrichment() },
         metadataLanguage: String = "en",
         sourceAccountID: String? = nil,
         originSourceAccountID: String? = nil,
@@ -640,7 +631,6 @@ public final class ItemDetailViewModel {
         identitySources: @escaping (MediaItem) -> [MediaSourceRef] = { _ in [] },
         snapshotCache: DetailSnapshotCache = .ephemeral,
         openingResolver: (@MainActor () async throws -> DetailOpeningResolution)? = nil,
-        localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)? = nil,
         /// Opt-in: prefetch the season the page opens on. Off by default — the
         /// rail loads when it is actually shown, matching upstream lazy loading;
         /// eager prefetch competed with the page's first paint during the push.
@@ -656,11 +646,6 @@ public final class ItemDetailViewModel {
         self.isDiscoveryItem = isDiscoveryItem
         self.discoveryStatusRefresh = discoveryStatusRefresh
         self.seasonEpisodeRosterLoader = loadSeasonEpisodeRoster
-        self.externalMetadataResolver = externalMetadataResolver ?? {
-            await ExternalTitleMetadataResolver.shared.resolve(
-                item: $0, regionCode: $1, language: metadataLanguage
-            )
-        }
         self.availabilityRegionCode = availabilityRegionCode
         // Fall back to the library-origin account when a direct source tag is
         // absent, so a played item is always attributed to the account it was
@@ -668,9 +653,6 @@ public final class ItemDetailViewModel {
         // this id — dropping it silently routes the write to the primary server
         // instead, which is why a share's resume never survived a relaunch).
         self.activeSourceAccountID = sourceAccountID ?? originSourceAccountID
-        self.detailMetadataResolver = localizedDetailMetadataResolver ?? { item, _ in
-            await detailMetadataResolver(item)
-        }
         self.metadataLanguage = Locale.canonicalLanguageIdentifier(from: metadataLanguage)
         self.sourceAccountID = sourceAccountID
         self.originSourceAccountID = originSourceAccountID
@@ -685,7 +667,6 @@ public final class ItemDetailViewModel {
         self.openingResolver = openingResolver
         self.prefetchesOpeningSeason = prefetchesOpeningSeason
         self.discoverySeed = isDiscoveryItem ? initialItem : nil
-        self.usesDefaultExternalMetadataResolver = externalMetadataResolver == nil
 
         // Seed the hero from the list item the user just tapped so the detail
         // screen's first paint is INSTANT — before `provider.item(id:)` returns.
@@ -749,39 +730,9 @@ public final class ItemDetailViewModel {
         seasonLoads.values.forEach { $0.task?.cancel() }
     }
 
-    /// Keep the page and explicit selections mounted, but never reuse enriched
-    /// text as native input after changing language.
-    public func updateMetadataLanguage(
-        _ language: String,
-        resolver: (@Sendable (MediaItem) async -> MetadataEnrichment)? = nil
-    ) {
-        let language = Locale.canonicalLanguageIdentifier(from: language)
-        guard language != metadataLanguage else { return }
-        interruptedLanguageSeasonIDs.formUnion(seasonLoads.keys)
-        suspendEnrichment()
-        invalidateSourceOperations()
-        metadataLanguage = language
-        artworkSourceIsReady = false
-        if let resolver {
-            detailMetadataResolver = { item, _ in await resolver(item) }
-        }
-        if usesDefaultExternalMetadataResolver {
-            externalMetadataResolver = {
-                await ExternalTitleMetadataResolver.shared.resolve(
-                    item: $0, regionCode: $1, language: language
-                )
-            }
-        }
-        if isDiscoveryItem, let discoverySeed {
-            publish(Detail(item: discoverySeed, children: []))
-        } else if var detail = state.value, let nativeDetailItem,
-                  nativeDetailItem.id == activeItemID,
-                  nativeDetailItem.sourceAccountID == activeSourceAccountID {
-            detail.item = tagged(nativeDetailItem)
-            publish(detail)
-        } else {
-            state = .loading
-        }
+    /// Keeps the snapshot namespace in step with the app language.
+    public func updateMetadataLanguage(_ language: String) {
+        metadataLanguage = Locale.canonicalLanguageIdentifier(from: language)
     }
 
     public func load() async {
@@ -918,13 +869,6 @@ public final class ItemDetailViewModel {
             nativeDetailItem = taggedItem
             // The full item establishes the preferred artwork source.
             artworkSourceIsReady = true
-            // Cast and the rest of the external metadata are their own network round
-            // trip. Running them here — concurrent with the children fetch and the
-            // opening season's episode prefetch — means the page settles with cast in
-            // place. They used to start only after children, resume and ratings, which
-            // is why the cast row arrived visibly later than the rest of the page.
-            startDetailMetadataEnrichment(for: item, sourceGeneration: loadSourceGeneration)
-
             if item.kind == .collection {
                 publish(Detail(
                     item: taggedItem,
@@ -1089,12 +1033,6 @@ public final class ItemDetailViewModel {
                 if error is URLError { artworkSourceIsReady = state.value != nil }
             }
         }
-        for seasonID in interruptedLanguageSeasonIDs.sorted() {
-            guard !Task.isCancelled, isCurrent() else { return }
-            await loadEpisodes(for: seasonID)
-            guard !Task.isCancelled, isCurrent() else { return }
-            interruptedLanguageSeasonIDs.remove(seasonID)
-        }
     }
 
 
@@ -1166,111 +1104,25 @@ public final class ItemDetailViewModel {
         let generation = sourceGeneration
         hasPaintedFreshDetail = false
         startSnapshotRestore()
-        let resolver = externalMetadataResolver
-        let region = availabilityRegionCode
-        let metadata = Task { await resolver(seed, region) }
-        defer { metadata.cancel() }
-        return await withTaskCancellationHandler {
-            if await resolveDiscoveryLibrarySource() { return true }
-            guard !Task.isCancelled, sourceGeneration == generation else { return false }
-            return await applyDiscoveryMetadata(
-                await metadata.value, seed: seed, generation: generation
-            )
-        } onCancel: {
-            metadata.cancel()
-        }
-    }
-
-    private func applyDiscoveryMetadata(
-        _ resolved: ExternalTitleMetadata, seed: MediaItem, generation: UInt64
-    ) async -> Bool {
-        let enrichedSeed = Self.applying(resolved.enrichment, to: seed)
-        guard !Task.isCancelled,
-              sourceGeneration == generation,
+        if await resolveDiscoveryLibrarySource() { return true }
+        guard !Task.isCancelled, sourceGeneration == generation,
               case var .loaded(detail) = state,
               detail.item.id == seed.id else { return false }
 
-        detail.item = Self.applying(
-            resolved.enrichment,
-            to: detail.item
-        )
-        detail.externalAvailability =
-            resolved.availability.isEmpty ? nil : resolved.availability
         detail.childrenLoaded = true
         publish(detail)
         hasPaintedFreshDetail = true
-        if seed.providerIDs != detail.item.providerIDs, await resolveDiscoveryLibrarySource() {
-            return true
-        }
-        guard !Task.isCancelled, sourceGeneration == generation else { return false }
         artworkSourceIsReady = true
-        // Discovery titles (AniList/Seerr/watchlist entries with no library item)
-        // take this path instead of `load()`, and this path never wrote a snapshot.
-        // TV and film pages therefore reopened from cache while an anime page
-        // painted placeholders on every visit. Persist here as well, and again after
-        // the optional ratings/trailer work below adds anything worth keeping.
         persistSnapshot()
 
         // Request status cannot establish artwork ownership or hold its first paint.
         async let status: Void = refreshDiscoveryStatus()
-        let enriched = detail.item
         await status
         persistSnapshot()
         return false
     }
 
-    private static func applying(
-        _ enrichment: MetadataEnrichment,
-        to item: MediaItem
-    ) -> MediaItem {
-        var copy = DetailMetadataResolver.applying(
-            enrichment, to: item, refreshExternalText: true, isDiscoverySeed: true
-        )
-        if copy.overview?.isEmpty != false, let overview = enrichment.overview {
-            copy.overview = overview.value
-            copy.metadataProvenance.set(overview, for: .overview)
-        }
-        if copy.genres.isEmpty, let genres = enrichment.genres {
-            copy.genres = genres.value
-            copy.metadataProvenance.set(genres, for: .genres)
-        }
-        if copy.taglines.isEmpty, let tagline = enrichment.tagline {
-            copy.taglines = [tagline.value]
-            copy.metadataProvenance.set(tagline, for: .taglines)
-        }
-        if copy.posterURL == nil, let poster = enrichment.posterURL {
-            copy.posterURL = poster.value
-            copy.metadataProvenance.set(poster, for: .posterURL)
-        }
-        if copy.logoURL == nil, let logo = enrichment.logoURL {
-            copy.logoURL = logo.value
-            copy.metadataProvenance.set(logo, for: .logoURL)
-        }
-        // Only when the page has NO backdrop at all.
-        //
-        // The hero draws `heroBackdropURL ?? backdropURL`, so filling the hero slot
-        // on an item that already had a plain backdrop replaced an image the viewer
-        // was already looking at — the background visibly swapping a second after
-        // the page opened. Filling an empty slot is enrichment; outranking what is
-        // on screen is a contradiction, and this layer only does the former.
-        if copy.heroBackdropURL == nil,
-           copy.backdropURL == nil,
-           let backdrop = enrichment.detailBackdrop {
-            copy.heroBackdropURL = backdrop.value
-            copy.metadataProvenance.set(backdrop, for: .detailBackdrop)
-        }
-        for (key, value) in enrichment.externalIDs
-        where copy.providerIDs[key] == nil {
-            copy.providerIDs[key] = value.value
-            copy.metadataProvenance.set(
-                value,
-                for: .providerID(key)
-            )
-        }
-        return copy
-    }
-
-    private func refreshDiscoveryStatus() async {
+private func refreshDiscoveryStatus() async {
         guard let requestedItem = state.value?.item else {
             if state.value == nil { state = .empty }
             return
@@ -1535,25 +1387,12 @@ public final class ItemDetailViewModel {
             provider: provider,
             sourceGeneration: sourceGeneration
         )
-        // Cast/metadata already started at item resolution (see
-        // `startDetailMetadataEnrichment`); starting it here too would fetch it twice.
         async let extrasDone: Void = loadExtras(
             for: item,
             children: children,
             provider: provider,
             sourceGeneration: sourceGeneration
         )
-        // The early start is an overlap, not a detached fire-and-forget: the page
-        // still settles only when the metadata it was waiting for has been applied.
-        // Without awaiting it, `load()` returned before cast/studios arrived (so a
-        // caller saw a half-enriched item), and cancelling `load()` no longer
-        // cancelled the fetch, letting late crew publish onto a page that had gone.
-        let metadata = detailMetadataTask
-        await withTaskCancellationHandler {
-            await metadata?.value
-        } onCancel: {
-            metadata?.cancel()
-        }
         _ = await trailersDone
         _ = await ratingsDone
         _ = await extrasDone
@@ -1660,7 +1499,6 @@ public final class ItemDetailViewModel {
         // work. Leaving them running meant a page the viewer had already left kept a
         // network round trip and its decodes alive while Home scrolled — measured as
         // hitching on exit. Both are cancellable, so cancel them here with the rest.
-        detailMetadataTask?.cancel(); detailMetadataTask = nil
         episodePrefetchTask?.cancel(); episodePrefetchTask = nil
         streamProbeTask?.cancel(); streamProbeTask = nil
         crossServerDiscoveryTask?.cancel(); crossServerDiscoveryTask = nil
@@ -2044,7 +1882,6 @@ public final class ItemDetailViewModel {
         }
         guard !Task.isCancelled else { return }
         await enrichRatings(for: item, provider: provider, sourceGeneration: reloadSourceGeneration)
-        await enrichDetailMetadata(for: item, sourceGeneration: reloadSourceGeneration)
         async let trailers: Void = loadTrailers(
             for: item,
             provider: provider,
@@ -2237,7 +2074,6 @@ public final class ItemDetailViewModel {
         activeSourceAccountID = accountID
         nativeDetailItem = nil
         artworkSourceIsReady = false
-        interruptedLanguageSeasonIDs = []
         trailers = []
         extrasState = .loading
         seasonLoadingResumeSourceGeneration = sourceGeneration
@@ -2975,26 +2811,6 @@ public final class ItemDetailViewModel {
     ///
     /// Cancellable and generation-guarded like the other speculative work: navigating
     /// away must not leave a fetch running against the next page's provider.
-    private func startDetailMetadataEnrichment(for item: MediaItem, sourceGeneration: UInt64) {
-        detailMetadataTask?.cancel()
-        detailMetadataTask = Task { [weak self] in
-            await self?.enrichDetailMetadata(for: item, sourceGeneration: sourceGeneration)
-        }
-    }
-
-    private func enrichDetailMetadata(for item: MediaItem, sourceGeneration: UInt64) async {
-        guard !Task.isCancelled,
-              !DetailMetadataResolver.missingFields(in: item)
-                .union(DetailMetadataResolver.refreshableTextFields(in: item)).isEmpty else { return }
-        let enrichment = await detailMetadataResolver(item, metadataLanguage)
-        guard !Task.isCancelled, self.sourceGeneration == sourceGeneration,
-              case var .loaded(detail) = state, detail.item.id == item.id else { return }
-        let enriched = DetailMetadataResolver.applying(enrichment, to: detail.item, refreshExternalText: true)
-        guard enriched != detail.item else { return }
-        detail.item = enriched
-        publish(detail)
-    }
-
     /// Confirms missing source facts with a bounded background probe.
     /// Initial detail rendering and playback never await this; a confirmed result
     /// only upgrades the already-visible technical badges and persisted snapshot.

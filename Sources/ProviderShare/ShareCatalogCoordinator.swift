@@ -2,7 +2,6 @@ import Foundation
 import CoreModels
 import CoreNetworking
 import MediaTransportCore
-import MetadataKit
 
 public protocol ShareCatalogCoordinating: Sendable {
     /// Returns the read-only catalog capability for a share, creating the backing
@@ -49,7 +48,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
     private let arbiterFactory: ArbiterFactory
     private let pipelineFactory: any ShareMetadataPipelineFactory
     private let artworkCacheLifecycle: any ShareLocalArtworkCacheLifecycle
-    private let metadataConfig: @Sendable () -> MetadataEnrichmentConfig
     /// Minimum gap between background scan *spawns* for one share. Kept equal to
     /// `ShareScanner.scanIfStale`'s default `minInterval` so a spawn is only
     /// allowed once the walk would actually run — anything sooner is a guaranteed
@@ -108,7 +106,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.diagnostics = DefaultShareScanDiagnostics()
         self.pipelineFactory = DefaultShareMetadataPipelineFactory()
         self.artworkCacheLifecycle = NoopShareLocalArtworkCacheLifecycle()
-        self.metadataConfig = { MetadataEnrichmentConfig() }
     }
 
     public init(
@@ -122,7 +119,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.diagnostics = DefaultShareScanDiagnostics()
         self.pipelineFactory = DefaultShareMetadataPipelineFactory()
         self.artworkCacheLifecycle = artworkCacheLifecycle
-        self.metadataConfig = { MetadataEnrichmentConfig() }
     }
 
     init(
@@ -139,7 +135,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.diagnostics = diagnostics
         self.pipelineFactory = pipelineFactory
         self.artworkCacheLifecycle = artworkCacheLifecycle
-        self.metadataConfig = { MetadataEnrichmentConfig() }
     }
 
     /// Inject the app's scan-status reporter (call once at startup). Applies to
@@ -660,10 +655,7 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
             }
             let runtime = runtimes[accountKey] ?? {
                 let created = ShareCatalogRuntime(
-                    store: ShareCatalogStore(
-                        accountKey: accountKey,
-                        metadataConfig: metadataConfig
-                    ),
+                    store: ShareCatalogStore(accountKey: accountKey),
                     pacer: scanPacer,
                     arbiter: arbiterFactory(accountKey)
                 )
@@ -1025,10 +1017,7 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
     ) {
         let runtime = runtimes[accountKey] ?? {
             let created = ShareCatalogRuntime(
-                store: ShareCatalogStore(
-                    accountKey: accountKey,
-                    metadataConfig: metadataConfig
-                ),
+                store: ShareCatalogStore(accountKey: accountKey),
                 pacer: ShareScanPacer(),
                 arbiter: arbiterFactory(accountKey)
             )

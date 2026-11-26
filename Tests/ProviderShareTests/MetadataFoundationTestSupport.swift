@@ -1,7 +1,6 @@
 import CoreModels
 import Foundation
 import MediaTransportCore
-import MetadataKit
 import SQLite3
 @testable import ProviderShare
 
@@ -203,14 +202,8 @@ final class ShareCatalogSQLiteFixture {
         self.catalogURL = Self.catalogURL(accountKey: accountKey, directory: directory)
     }
 
-    func makeStore(preferOnlineArtwork: Bool = true) -> ShareCatalogStore {
-        ShareCatalogStore(
-            accountKey: accountKey,
-            directory: directory,
-            metadataConfig: {
-                MetadataEnrichmentConfig(preferOnlineArtwork: preferOnlineArtwork)
-            }
-        )
+    func makeStore() -> ShareCatalogStore {
+        ShareCatalogStore(accountKey: accountKey, directory: directory)
     }
 
     func execute(_ sql: String) throws {

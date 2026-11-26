@@ -1,5 +1,4 @@
 import Foundation
-import CoreModels
 
 /// Persistent, on-disk cache of a title's **resolved detail** — the full item, its
 /// children (seasons/folder contents), any already-loaded episodes-per-season, and

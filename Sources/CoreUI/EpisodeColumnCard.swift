@@ -1,7 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
 import CoreModels
-import MetadataKit
 
 /// The fixed standard-size, borderless episode column used only on series detail.
 ///

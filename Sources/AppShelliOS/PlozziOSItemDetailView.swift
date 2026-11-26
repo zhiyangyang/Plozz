@@ -6,7 +6,6 @@ import CoreUI
 import FeatureHomeCore
 import FeaturePlayback
 import MediaDownloads
-import MetadataKit
 import SwiftUI
 
 private struct PlozziOSDetailViewModelKey: Hashable {
@@ -163,17 +162,6 @@ struct PlozziOSItemDetailView: View {
     private var detailEnvironment: DetailOpenEnvironment {
         let accounts = appModel.accountsProviders.homeAccounts
         let identitySources = appModel.identityIndex.identitySourcesProvider
-        let language = locale.identifier
-        // The custom build is offline-first; no Wikipedia/Wikidata detail
-        // enrichment and no online trailer lookup.
-        let localizedResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)?
-        if PlozzCustomization.isCustomBuild {
-            localizedResolver = nil
-        } else {
-            localizedResolver = { item, language in
-                await DetailMetadataResolver.household.resolve(item, language: language)
-            }
-        }
         return DetailOpenEnvironment(
             resolveProvider: { accountID in
                 guard let accountID else { return provider }
@@ -186,8 +174,6 @@ struct PlozziOSItemDetailView: View {
             identitySources: identitySources,
             crossServerSourceResolver: crossServerSourceResolver(in: accounts, identitySources: identitySources),
             continueWatchingSnapshot: { homeViewModel?.continueWatchingForDetail ?? [] },
-            metadataLanguage: language,
-            localizedDetailMetadataResolver: localizedResolver,
             trailerSettings: appModel.settings.heroBackground,
             snapshotCache: appModel.detailSnapshotCache
         )

@@ -6,7 +6,6 @@ import CoreUI
 import FeatureHomeCore
 import HeroUI
 import MediaDownloads
-import MetadataKit
 import Observation
 import SwiftUI
 import UIKit

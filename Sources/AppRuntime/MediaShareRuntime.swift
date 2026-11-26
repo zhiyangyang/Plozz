@@ -4,54 +4,7 @@ import CoreNetworking
 import CoreUI
 import FeatureAuthCore
 import MediaTransportCore
-import MetadataKit
 import ProviderShare
-
-final class MetadataEnrichmentConfigCache: @unchecked Sendable {
-    private let baseline: MetadataEnrichmentConfig
-    private let settingsStore: any MetadataProviderSettingsStoring
-    private let center: NotificationCenter
-    private let lock = NSLock()
-    private var cached: MetadataEnrichmentConfig
-    private var observer: NSObjectProtocol?
-
-    init(
-        baseline: MetadataEnrichmentConfig,
-        settingsStore: any MetadataProviderSettingsStoring,
-        center: NotificationCenter = .default
-    ) {
-        self.baseline = baseline
-        self.settingsStore = settingsStore
-        self.center = center
-        self.cached = baseline.merged(withUserOverrides: settingsStore.load())
-        self.observer = center.addObserver(
-            forName: .metadataProviderSettingsDidChange,
-            object: nil,
-            queue: nil
-        ) { [weak self] _ in
-            self?.reload()
-        }
-    }
-
-    deinit {
-        if let observer {
-            center.removeObserver(observer)
-        }
-    }
-
-    func value() -> MetadataEnrichmentConfig {
-        lock.lock()
-        defer { lock.unlock() }
-        return cached
-    }
-
-    private func reload() {
-        let updated = baseline.merged(withUserOverrides: settingsStore.load())
-        lock.lock()
-        cached = updated
-        lock.unlock()
-    }
-}
 
 /// The atomic, app-wide ownership bundle for one media-share runtime
 /// generation. It ties together the single share catalog coordinator used by
@@ -184,7 +137,6 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
         // immediately if a budget was lowered since last launch).
         let cacheBudgets = CacheBudgetSettingsStore().load()
         Task {
-            await MetadataDiskCache.shared.setMaxBytes(cacheBudgets.metadataCacheBytes)
             await ArtworkImageCache.shared.setDerivedArtworkCacheByteCap(cacheBudgets.artworkCacheBytes)
         }
         let composition = MediaShareTransportComposition.make(accountStore: accountStore)
@@ -304,23 +256,20 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
         let counts = await coordinator.metadataCountPerSource()
         let work = await coordinator.metadataWorkStatus()
         let artworkBytes = await ArtworkImageCache.shared.derivedArtworkCacheByteSize()
-        let metadataBytes = await MetadataDiskCache.shared.currentByteSize()
         return MetadataEnrichmentDiagnosticsSnapshot(
             capturedAt: capturedAt,
             metadataCountPerSource: counts,
             artworkCacheBytes: artworkBytes,
-            metadataCacheBytes: metadataBytes,
+            metadataCacheBytes: 0,
             work: work
         )
     }
 
     public func applyCacheBudgets(_ settings: CacheBudgetSettings) async {
-        await MetadataDiskCache.shared.setMaxBytes(settings.metadataCacheBytes)
         await ArtworkImageCache.shared.setDerivedArtworkCacheByteCap(settings.artworkCacheBytes)
     }
 
     public func clearMetadataCaches() async {
-        await MetadataDiskCache.shared.clear()
         await ArtworkImageCache.shared.clearDerivedArtworkCache()
     }
 

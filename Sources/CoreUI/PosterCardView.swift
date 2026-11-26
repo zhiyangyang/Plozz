@@ -1,7 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
 import CoreModels
-import MetadataKit
 
 /// A focusable poster/landscape card for a `MediaItem`, with artwork, a watched
 /// progress bar, and title/subtitle. The standard building block of Home rows

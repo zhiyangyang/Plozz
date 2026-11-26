@@ -3,7 +3,6 @@ import CoreModels
 import CoreUI
 import Foundation
 import MediaDownloads
-import MetadataKit
 import MediaTransportCore
 import Observation
 import ProviderSilo

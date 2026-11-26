@@ -2,7 +2,6 @@
 import SwiftUI
 import CoreModels
 import CoreUI
-import MetadataKit
 
 
 /// A person's page: who they are, and what else the viewer owns with them.

@@ -1,7 +1,6 @@
 import Foundation
 import SQLite3
 import CoreModels
-import MetadataKit
 
 /// Pure row/candidate → `MediaItem` mapping and metadata-overlay policy for the
 /// share catalog read path. It holds NO SQLite handle, transport, network,
@@ -192,22 +191,9 @@ enum ShareCatalogReadProjection {
     /// portable provenance.
     static func applyLocalArtwork(
         _ item: MediaItem,
-        _ selections: [ArtworkSelection],
-        metadataConfig: MetadataEnrichmentConfig = MetadataEnrichmentConfig()
+        _ selections: [ArtworkSelection]
     ) -> MediaItem {
         var copy = item
-        func permitted(_ url: URL?) -> URL? {
-            guard let url else { return nil }
-            if let source = item.artworkMetadataSource(for: url),
-               metadataConfig.disabledSources.contains(source) { return nil }
-            return url
-        }
-        copy.posterURL = permitted(item.posterURL)
-        copy.seriesPosterURL = permitted(item.seriesPosterURL)
-        copy.backdropURL = permitted(item.backdropURL)
-        copy.heroBackdropURL = permitted(item.heroBackdropURL)
-        copy.fallbackArtworkURL = permitted(item.fallbackArtworkURL)
-        copy.logoURL = permitted(item.logoURL)
         guard !selections.isEmpty else { return copy }
         var byPlacement = Dictionary(uniqueKeysWithValues: copy.artworkSelections.map { ($0.placement, $0) })
         for selection in selections where !selection.references.isEmpty {

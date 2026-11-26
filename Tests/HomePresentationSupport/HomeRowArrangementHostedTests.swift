@@ -3,7 +3,6 @@ import CoreModels
 @testable import CoreUI
 @testable import FeatureHomeCore
 import HeroUI
-import MetadataKit
 #if os(iOS)
 @testable import AppShelliOS
 import FeatureAuth

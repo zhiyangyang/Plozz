@@ -1,5 +1,4 @@
 import Foundation
-import CoreModels
 
 /// The kind of content a media item represents, used to *route* metadata/artwork
 /// lookups to the provider that does that content type best (e.g. anime → AniList,

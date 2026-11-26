@@ -2,7 +2,6 @@ import Foundation
 import SQLite3
 import CoreModels
 import CoreNetworking
-import MetadataKit
 
 struct ShareScanResumeCheckpoint: Sendable, Equatable {
     let scanGeneration: UUID
@@ -52,7 +51,6 @@ actor ShareCatalogStore {
 
     private let url: URL
     private let enrichmentSaveFailurePoint: EnrichmentSaveFailurePoint?
-    private let metadataConfig: @Sendable () -> MetadataEnrichmentConfig
     /// The actor-confined SQLite handle owner. Never escapes this actor and is only
     /// ever touched under the store's isolation, preserving the single-connection,
     /// single-threaded invariant. See `CatalogConnection`.
@@ -84,7 +82,6 @@ actor ShareCatalogStore {
         CatalogReadQueries(
             connection: connection,
             normalizedMetadataReady: normalizedMetadataReady,
-            metadataConfig: metadataConfig(),
             localMetadataPresence: localMetadataPresence
         )
     }
@@ -135,9 +132,6 @@ actor ShareCatalogStore {
         accountKey: String,
         directory: URL? = nil,
         enrichmentSaveFailurePoint: EnrichmentSaveFailurePoint? = nil,
-        metadataConfig: @escaping @Sendable () -> MetadataEnrichmentConfig = {
-            MetadataEnrichmentConfig()
-        },
         writeChunkBoundary: (@Sendable () async -> Void)? = nil
     ) {
         let base = directory ?? Self.defaultDirectory()
@@ -146,7 +140,6 @@ actor ShareCatalogStore {
         self.url = fileURL
         self.connection = CatalogConnection(url: fileURL)
         self.enrichmentSaveFailurePoint = enrichmentSaveFailurePoint
-        self.metadataConfig = metadataConfig
         self.writeChunkBoundary = writeChunkBoundary
     }
 
