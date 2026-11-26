@@ -9,7 +9,6 @@ final class SettingsSearchTests: XCTestCase {
 
     func testProviderNamesRemainVerbatimAndSearchableInEveryLocale() throws {
         let names = HeroDiscoverySource.allCases.map { ("hero-discovery-\($0.rawValue)", $0.displayName) }
-            + RatingSource.allCases.map { ("rating-source-\($0.rawValue)", $0.displayName) }
         for locale in ["en_US", "fr", "ar"].map(Locale.init(identifier:)) {
             let localizedIndex = SettingsSearchIndex(entries: SettingsSearchCatalog.entries, locale: locale)
             for (id, name) in names {
@@ -126,11 +125,6 @@ final class SettingsSearchTests: XCTestCase {
     }
 
     func testModelBackedFamiliesAreExhaustive() {
-        for source in RatingSource.allCases {
-            XCTAssertEqual(
-                SettingsSearchCatalog.entry(id: "rating-source-\(source.rawValue)")?.page, .detailRatingSources
-            )
-        }
         for view in CardCaptionView.customizableCases {
             XCTAssertEqual(
                 SettingsSearchCatalog.entry(id: "card-label-view-\(view.rawValue)")?.cardCaptionView, view

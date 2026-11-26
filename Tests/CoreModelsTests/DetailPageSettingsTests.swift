@@ -14,7 +14,7 @@ final class DetailPageSettingsTests: XCTestCase {
         XCTAssertNil(settings.headerFamilyGuidanceAge(from: nil, hidesRatings: false))
         XCTAssertEqual(settings.headerRatings(
             from: [imdb, audience, critics], isAnime: false, hidesRatings: false
-        ), [audience, critics])
+        ), [critics, audience])
     }
 
     func testAgeVisibilityIsIndependentOfReviewScoresAndHonorsSpoilers() {
@@ -43,7 +43,7 @@ final class DetailPageSettingsTests: XCTestCase {
             XCTAssertEqual(restored, settings)
             XCTAssertEqual(restored.headerFamilyGuidanceAge(from: 12, hidesRatings: false), 12)
             XCTAssertTrue(restored.headerRatings(
-                from: [audience, critics, imdb, tmdb], isAnime: false, hidesRatings: false
+                from: [critics, audience, imdb, tmdb], isAnime: false, hidesRatings: false
             ).isEmpty)
         }
     }
@@ -55,8 +55,6 @@ final class DetailPageSettingsTests: XCTestCase {
         let settings = try JSONDecoder().decode(DetailPageSettings.self, from: data)
         XCTAssertTrue(settings.showsHeaderFamilyGuidance)
         XCTAssertEqual(settings.maxHeaderRatings, 4)
-        XCTAssertEqual(settings.ratingSourceOrder, [.imdb])
-        XCTAssertEqual(settings.enabledRatingSources, [.imdb])
     }
 
     func testHomeHasIndependentPersistedPreviewPreferences() throws {
@@ -75,11 +73,11 @@ final class DetailPageSettingsTests: XCTestCase {
         XCTAssertEqual(restored.showsRatings, home.showsRatings)
     }
 
-    func testDefaultPrefersAudienceAndCriticsRatherThanServerOrder() {
+    func testDefaultPrefersCriticsThenAudience() {
         XCTAssertEqual(DetailPageSettings.default.maxHeaderRatings, 2)
         XCTAssertEqual(DetailPageSettings.default.headerRatings(
             from: [tmdb, imdb, critics, audience], isAnime: false, hidesRatings: false
-        ), [audience, critics])
+        ), [critics, audience])
     }
 
     func testChosenMaximumAllowsMoreRatingsWithoutChangingPriorityOrFiltering() {
@@ -87,14 +85,10 @@ final class DetailPageSettingsTests: XCTestCase {
         let available = [tmdb, anilist, imdb, critics, audience]
         XCTAssertEqual(settings.headerRatings(
             from: available, isAnime: false, hidesRatings: false
-        ), [audience, critics, imdb, tmdb])
+        ), [critics, audience, imdb, tmdb])
         XCTAssertEqual(settings.headerRatings(
             from: available, isAnime: true, hidesRatings: false
-        ), [audience, critics, imdb, anilist])
-        settings.enabledRatingSources.remove(.rottenTomatoes)
-        XCTAssertEqual(settings.headerRatings(
-            from: available, isAnime: false, hidesRatings: false
-        ), [audience, imdb, tmdb])
+        ), [critics, audience, imdb, tmdb])
         XCTAssertTrue(settings.headerRatings(
             from: available, isAnime: true, hidesRatings: true
         ).isEmpty)
@@ -105,29 +99,11 @@ final class DetailPageSettingsTests: XCTestCase {
         XCTAssertEqual(settings.maxHeaderRatings, 1)
         XCTAssertEqual(settings.headerRatings(
             from: [audience, critics, imdb], isAnime: false, hidesRatings: false
-        ), [audience])
+        ), [critics])
         settings.maxHeaderRatings = 100
-        XCTAssertEqual(settings.maxHeaderRatings, RatingSource.allCases.count)
+        XCTAssertEqual(settings.maxHeaderRatings, 5)
         settings.maxHeaderRatings = 0
         XCTAssertEqual(settings.maxHeaderRatings, 1)
-    }
-
-    func testEightEnabledSourcesCanShowOnlyTheirTopTwoAvailableScores() {
-        var settings = DetailPageSettings(
-            maxHeaderRatings: 2,
-            ratingSourceOrder: [.metacritic, .imdb, .rottenTomatoesAudience, .rottenTomatoes, .tmdb],
-            enabledRatingSources: Set(RatingSource.allCases).subtracting([.community, .provider])
-        )
-        let available = [tmdb, audience, imdb, critics]
-        XCTAssertEqual(settings.enabledRatingSources.count, 8)
-        XCTAssertEqual(settings.headerRatings(
-            from: available, isAnime: false, hidesRatings: false
-        ), [imdb, audience], "Skip the unavailable higher-priority source, not the enabled sources below it.")
-        settings.maxHeaderRatings = 3
-        XCTAssertEqual(settings.headerRatings(
-            from: available, isAnime: false, hidesRatings: false
-        ), [imdb, audience, critics])
-        XCTAssertEqual(settings.enabledRatingSources.count, 8)
     }
 
     func testProviderSelectedRatingsRetainServerOrderAndViewerVisibility() {
@@ -139,16 +115,13 @@ final class DetailPageSettingsTests: XCTestCase {
             source: .tmdb, value: 70, scale: .outOfHundred,
             providerDisplay: .init(sourceID: "tmdb", name: "TMDB", value: "7.0", order: 1)
         )
-        var settings = DetailPageSettings(ratingSourceOrder: [.tmdb, .imdb])
+        let settings = DetailPageSettings()
         XCTAssertEqual(settings.headerRatings(from: [tmdb, imdb], isAnime: false, hidesRatings: false), [imdb, tmdb])
-        settings.enabledRatingSources.remove(.imdb)
-        XCTAssertEqual(settings.headerRatings(from: [imdb, tmdb], isAnime: false, hidesRatings: false), [tmdb])
     }
 
     func testCodablePreservesCountAndReadsLegacySettingsWithoutResettingChoices() throws {
         let selected = DetailPageSettings(
-            showsHeaderRatings: false, maxHeaderRatings: 5,
-            ratingSourceOrder: [.imdb, .tmdb], enabledRatingSources: [.tmdb]
+            showsHeaderRatings: false, maxHeaderRatings: 5
         )
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
@@ -162,8 +135,6 @@ final class DetailPageSettingsTests: XCTestCase {
         )
         XCTAssertEqual(decoded.maxHeaderRatings, 2)
         XCTAssertFalse(decoded.showsHeaderRatings)
-        XCTAssertEqual(decoded.ratingSourceOrder, [.imdb, .tmdb])
-        XCTAssertEqual(decoded.enabledRatingSources, [.tmdb])
     }
 
     func testMissingSourcesFallThroughAndSparseTitlesStaySparse() {
@@ -179,37 +150,23 @@ final class DetailPageSettingsTests: XCTestCase {
         }
     }
 
-    func testPreferencesAndAnimeApplicabilityControlSelection() {
-        let settings = DetailPageSettings(
-            ratingSourceOrder: [.anilist, .tmdb, .imdb],
-            enabledRatingSources: [.anilist, .imdb, .tmdb]
-        )
-        let available = [audience, critics, imdb, tmdb, anilist]
-        XCTAssertEqual(settings.headerRatings(from: available, isAnime: true, hidesRatings: false), [anilist, tmdb])
-        XCTAssertEqual(settings.headerRatings(from: available, isAnime: false, hidesRatings: false), [tmdb, imdb])
+    func testAnimeOnlySourcesAreFilteredWithoutChangingOtherRatings() {
+        let settings = DetailPageSettings(maxHeaderRatings: 5)
+        let available = [critics, audience, imdb, tmdb, anilist]
+        XCTAssertEqual(settings.headerRatings(from: available, isAnime: true, hidesRatings: false),
+                       [critics, audience, imdb, tmdb, anilist])
+        XCTAssertEqual(settings.headerRatings(from: available, isAnime: false, hidesRatings: false),
+                       [critics, audience, imdb, tmdb])
     }
 
     func testHiddenOrDisabledRatingsNeverFillTheHeader() {
-        let available = [audience, critics, imdb, tmdb]
+        let available = [critics, audience, imdb, tmdb]
         XCTAssertTrue(DetailPageSettings.default.headerRatings(
             from: available, isAnime: false, hidesRatings: true
         ).isEmpty)
         XCTAssertTrue(DetailPageSettings(showsHeaderRatings: false).headerRatings(
             from: available, isAnime: false, hidesRatings: false
-        ).isEmpty)
-        XCTAssertTrue(DetailPageSettings(enabledRatingSources: []).headerRatings(
-            from: available, isAnime: false, hidesRatings: false
-        ).isEmpty)
-    }
-
-    func testDuplicateSourcesCannotTakeBothSlots() {
-        let settings = DetailPageSettings(ratingSourceOrder: [.imdb, .imdb, .tmdb])
-        XCTAssertEqual(settings.headerRatings(
-            from: [imdb, imdb, tmdb], isAnime: false, hidesRatings: false
-        ), [imdb, tmdb])
-        XCTAssertEqual(Set(settings.orderedSources), Set(RatingSource.allCases))
-        XCTAssertEqual(settings.orderedSources.count, RatingSource.allCases.count)
-    }
+        ).isEmpty)    }
 
     func testSettingsPersistPerProfileAndTransferWithoutChangingOtherProfiles() throws {
         let suite = "DetailPageSettingsTests.\(UUID().uuidString)"
@@ -220,11 +177,7 @@ final class DetailPageSettingsTests: XCTestCase {
         let selected = DetailPageSettings(
             showsHeaderRatings: false,
             showsHeaderFamilyGuidance: false,
-            maxHeaderRatings: 4,
-            ratingSourceOrder: [.imdb, .community] + DetailPageSettings.defaultRatingOrder.filter {
-                $0 != .imdb && $0 != .community
-            },
-            enabledRatingSources: [.imdb, .community]
+            maxHeaderRatings: 4
         )
         first.save(selected)
         XCTAssertEqual(first.load(), selected)
@@ -240,15 +193,6 @@ final class DetailPageSettingsTests: XCTestCase {
         XCTAssertEqual(first.load(), selected)
     }
 
-    func testEmptySavedSelectionSurvivesReload() throws {
-        let suite = "DetailPageSettingsTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let store = DetailPageSettingsStore(defaults: defaults)
-        store.save(DetailPageSettings(enabledRatingSources: []))
-        XCTAssertTrue(store.load().enabledRatingSources.isEmpty)
-    }
-
     func testLegacyStoreDefaultsCountWithoutResettingSourceChoices() throws {
         let suite = "DetailPageSettingsTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -261,8 +205,6 @@ final class DetailPageSettingsTests: XCTestCase {
         let settings = DetailPageSettingsStore(defaults: defaults).load()
         XCTAssertEqual(settings.maxHeaderRatings, 2)
         XCTAssertFalse(settings.showsHeaderRatings)
-        XCTAssertEqual(settings.ratingSourceOrder, [.imdb])
-        XCTAssertEqual(settings.enabledRatingSources, [.imdb])
     }
 
 }

@@ -48,7 +48,6 @@ let package = Package(
         .library(name: "ProviderSilo", targets: ["ProviderSilo"]),
         .library(name: "ProviderPlex", targets: ["ProviderPlex"]),
         .library(name: "ProviderShare", targets: ["ProviderShare"]),
-        .library(name: "RatingsService", targets: ["RatingsService"]),
         .library(name: "CoreSecureStore", targets: ["CoreSecureStore"]),
         .library(name: "FeatureAuthCore", targets: ["FeatureAuthCore"]),
         .library(name: "FeatureAuth", targets: ["FeatureAuth"]),
@@ -364,10 +363,6 @@ let package = Package(
                 .product(name: "SMBClient", package: "SMBClient"),
             ]
         ),
-        .target(
-            name: "RatingsService",
-            dependencies: ["CoreModels", "CoreNetworking"]
-        ),
         // MARK: Features
         .target(
             name: "FeatureDiscoveryCore",
@@ -391,8 +386,7 @@ let package = Package(
                 "CoreModels",
                 "CoreNetworking",
                 "CoreUI",
-                "MetadataKit",
-                "RatingsService"
+                "MetadataKit"
             ]
         ),
         .target(
@@ -758,7 +752,6 @@ let package = Package(
                 "FeatureAuth",
                 "ProviderPlex",
                 "ProviderShare",
-                "RatingsService",
             ]
         ),
 
@@ -834,10 +827,6 @@ let package = Package(
         .testTarget(
             name: "ProviderPlexTests",
             dependencies: ["ProviderPlex", "CoreModels", "CoreNetworking", "TestSupportNetworking"]
-        ),
-        .testTarget(
-            name: "RatingsServiceTests",
-            dependencies: ["RatingsService", "CoreModels", "CoreNetworking"]
         ),
         .testTarget(
             name: "FeatureAuthTests",

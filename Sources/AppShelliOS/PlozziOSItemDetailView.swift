@@ -7,7 +7,6 @@ import FeatureHomeCore
 import FeaturePlayback
 import MediaDownloads
 import MetadataKit
-import RatingsService
 import SwiftUI
 
 private struct PlozziOSDetailViewModelKey: Hashable {
@@ -196,8 +195,6 @@ struct PlozziOSItemDetailView: View {
             identitySources: identitySources,
             crossServerSourceResolver: crossServerSourceResolver(in: accounts, identitySources: identitySources),
             continueWatchingSnapshot: { homeViewModel?.continueWatchingForDetail ?? [] },
-            ratingsProvider: PlozzCustomization.isCustomBuild
-                ? DisabledRatingsProvider() : RatingsServiceFactory.make(),
             metadataLanguage: language,
             localizedDetailMetadataResolver: localizedResolver,
             onlineTrailerResolver: onlineTrailers,

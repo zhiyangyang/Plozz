@@ -3,7 +3,6 @@ import Observation
 import CoreModels
 import CoreNetworking
 import MetadataKit
-import RatingsService
 
 /// How much a season's cached episode list can be trusted.
 ///
@@ -341,7 +340,6 @@ public final class ItemDetailViewModel {
 
     private let provider: (any MediaProvider)?
     private let itemID: String
-    private let ratingsProvider: any ExternalRatingsProviding
     @ObservationIgnored private var detailMetadataResolver: @Sendable (MediaItem, String) async -> MetadataEnrichment
     /// External until a real library source is resolved. Both shells observe this
     /// instead of freezing the index's ownership answer at navigation time.
@@ -649,7 +647,6 @@ public final class ItemDetailViewModel {
         externalMetadataResolver: (@Sendable (MediaItem, String) async -> ExternalTitleMetadata)? = nil,
         availabilityRegionCode: String =
             Locale.current.region?.identifier ?? "US",
-        ratingsProvider: any ExternalRatingsProviding = DisabledRatingsProvider(),
         detailMetadataResolver: @escaping @Sendable (MediaItem) async -> MetadataEnrichment = { _ in MetadataEnrichment() },
         metadataLanguage: String = "en",
         sourceAccountID: String? = nil,
@@ -694,7 +691,6 @@ public final class ItemDetailViewModel {
         // this id — dropping it silently routes the write to the primary server
         // instead, which is why a share's resume never survived a relaunch).
         self.activeSourceAccountID = sourceAccountID ?? originSourceAccountID
-        self.ratingsProvider = ratingsProvider
         self.detailMetadataResolver = localizedDetailMetadataResolver ?? { item, _ in
             await detailMetadataResolver(item)
         }
@@ -1277,23 +1273,6 @@ public final class ItemDetailViewModel {
             loadUpcomingSchedule(for: enriched)
         }
         loadRelatedTitles(for: enriched)
-        async let ratings = ratingsProvider.ratings(for: enrichedSeed)
-        async let trailer: Void = loadDiscoveryTrailer(
-            for: enriched,
-            sourceGeneration: generation
-        )
-        let externalRatings = await ratings
-        if !externalRatings.isEmpty,
-           !Task.isCancelled,
-           sourceGeneration == generation,
-           case var .loaded(latest) = state,
-           latest.item.id == enriched.id,
-           !latest.item.usesProviderRatings {
-            latest.item.ratings =
-                latest.item.ratings.mergedWithAuthoritative(externalRatings)
-            publish(latest)
-        }
-        await trailer
         await status
         persistSnapshot()
         return false
@@ -3145,35 +3124,24 @@ public final class ItemDetailViewModel {
     private func enrichRatings(
         for item: MediaItem, provider: any MediaProvider, sourceGeneration: UInt64
     ) async {
-        guard !item.usesProviderRatings else { return }
-        if let server = provider as? any ServerRatingsProviding {
-            startServerRatings(for: item, server: server, generation: sourceGeneration)
-            return
-        }
-        let external = await ratingsProvider.ratings(for: item)
-        guard !Task.isCancelled else { return }
-        applyRatings(external, serverSupplied: false, itemID: item.id, generation: sourceGeneration)
+        guard !item.usesProviderRatings,
+              let server = provider as? any ServerRatingsProviding else { return }
+        startServerRatings(for: item, server: server, generation: sourceGeneration)
     }
 
     private func startServerRatings(for item: MediaItem, server: any ServerRatingsProviding, generation: UInt64) {
         serverRatingsTask?.cancel()
-        let externalProvider = ratingsProvider
         serverRatingsTask = Task { [weak self] in
             do {
                 if let supplied = try await server.serverRatings(for: item) {
                     guard !Task.isCancelled else { return }
                     self?.applyRatings(supplied, serverSupplied: true, itemID: item.id, generation: generation)
-                    return
                 }
             } catch {
                 guard !Task.isCancelled, !(error is CancellationError),
                       error as? AppError != .cancelled else { return }
                 PlozzLog.networking.error("Unable to read server-provided rating metadata.")
             }
-            guard !Task.isCancelled else { return }
-            let external = await externalProvider.ratings(for: item)
-            guard !Task.isCancelled else { return }
-            self?.applyRatings(external, serverSupplied: false, itemID: item.id, generation: generation)
         }
     }
 

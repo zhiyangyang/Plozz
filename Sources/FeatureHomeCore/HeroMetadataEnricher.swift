@@ -1,7 +1,6 @@
 import CoreModels
 import CoreNetworking
 import Foundation
-import RatingsService
 
 /// Hydrates sparse hero list records before they are published to a carousel.
 ///
@@ -20,14 +19,12 @@ public struct HeroMetadataEnricher: Sendable {
 
     private let providersByAccount: [String: any MediaProvider]
     private let targetSelector: @Sendable (MediaItem) -> MediaItem
-    private let ratingsProvider: any ExternalRatingsProviding
     private let libraryTargetResolver: (@Sendable (MediaItem) async -> MediaItem?)?
     private let hideWatched: Bool
 
     public init(
         accounts: [ResolvedAccount],
         targetSelector: @escaping @Sendable (MediaItem) -> MediaItem,
-        ratingsProvider: any ExternalRatingsProviding = DisabledRatingsProvider(),
         libraryTargetResolver: (@Sendable (MediaItem) async -> MediaItem?)? = nil,
         hideWatched: Bool = false
     ) {
@@ -36,7 +33,6 @@ public struct HeroMetadataEnricher: Sendable {
             uniquingKeysWith: { first, _ in first }
         )
         self.targetSelector = targetSelector
-        self.ratingsProvider = ratingsProvider
         self.libraryTargetResolver = libraryTargetResolver
         self.hideWatched = hideWatched
     }
@@ -384,19 +380,6 @@ public struct HeroMetadataEnricher: Sendable {
                 enriched[index].ratings = cached.ratings
                 enriched[index].usesProviderRatings = true
             }
-        }
-        guard let cachedProvider =
-            ratingsProvider as? any CachedExternalRatingsProviding else {
-            return enriched
-        }
-        for index in enriched.indices {
-            guard !enriched[index].usesProviderRatings else { continue }
-            guard let cached = await cachedProvider.cachedRatings(for: enriched[index]),
-                  !cached.isEmpty else {
-                continue
-            }
-            enriched[index].ratings =
-                enriched[index].ratings.mergedWithAuthoritative(cached)
         }
         return enriched
     }

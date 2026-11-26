@@ -2,7 +2,6 @@ import Foundation
 import CoreModels
 import CoreNetworking
 import MetadataKit
-import RatingsService
 
 public struct DetailOpeningResolution {
     let provider: any MediaProvider
@@ -46,7 +45,6 @@ public struct DetailOpenEnvironment {
     /// fill the cross-server picker. `nil` disables cross-server discovery.
     public let crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?
     /// External ratings (IMDb/RT/Metacritic) provider for live enrichment.
-    public let ratingsProvider: any ExternalRatingsProviding
     public let detailMetadataResolver: @Sendable (MediaItem) async -> MetadataEnrichment
     public let metadataLanguage: String
     public let localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)?
@@ -73,7 +71,6 @@ public struct DetailOpenEnvironment {
         identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?,
         continueWatchingSnapshot: @escaping @MainActor () -> [MediaItem] = { [] },
-        ratingsProvider: any ExternalRatingsProviding = DisabledRatingsProvider(),
         detailMetadataResolver: @escaping @Sendable (MediaItem) async -> MetadataEnrichment = { _ in MetadataEnrichment() },
         metadataLanguage: String = "en",
         localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)? = nil,
@@ -91,7 +88,6 @@ public struct DetailOpenEnvironment {
         self.identitySources = identitySources
         self.continueWatchingSnapshot = continueWatchingSnapshot
         self.crossServerSourceResolver = crossServerSourceResolver
-        self.ratingsProvider = ratingsProvider
         self.detailMetadataResolver = detailMetadataResolver
         self.metadataLanguage = metadataLanguage
         self.localizedDetailMetadataResolver = localizedDetailMetadataResolver
@@ -331,7 +327,6 @@ public struct DetailOpenEnvironment {
             isDiscoveryItem: isDiscovery,
             discoveryStatusRefresh: discoveryStatusRefresh,
             loadSeasonEpisodeRoster: loadSeasonEpisodeRoster,
-            ratingsProvider: ratingsProvider,
             detailMetadataResolver: detailMetadataResolver,
             metadataLanguage: metadataLanguage,
             sourceAccountID: isDiscovery ? nil : selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,

@@ -62,7 +62,6 @@
     "PlozziOSAdvancedStreamingSettings",
     "PlozziOSAllScreensSettingsView",
     "PlozziOSDetailPageSettingsView",
-    "PlozziOSDetailRatingPriorityView",
     "PlozziOSDiagnosticsSettingsView",
     "PlozziOSDownloadSettingsView",
     "PlozziOSMetadataDiagnosticsView",
@@ -863,11 +862,6 @@
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSArtworkSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Metadata Providers (TMDB, TheTVDB…)\") }": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDetailPageSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Rating sources & order\") }": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []

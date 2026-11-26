@@ -10,36 +10,25 @@ public struct DetailPageSettings: Codable, Equatable, Sendable {
     public var maxHeaderRatings: Int {
         didSet { maxHeaderRatings = Self.boundedRatingCount(maxHeaderRatings) }
     }
-    public var ratingSourceOrder: [RatingSource]
-    public var enabledRatingSources: Set<RatingSource>
-
-    public static let headerRatingCountRange = 1...RatingSource.allCases.count
-    public static let defaultRatingOrder: [RatingSource] = [
-        .rottenTomatoesAudience, .rottenTomatoes, .imdb, .anilist, .tmdb,
-        .metacritic, .letterboxd, .community, .critic, .provider
-    ]
+    public static let headerRatingCountRange = 1...5
     public static let `default` = DetailPageSettings()
 
     public init(
         showsHeaderRatings: Bool = true,
         showsHeaderFamilyGuidance: Bool = true,
         maxHeaderRatings: Int = 2,
-        ratingSourceOrder: [RatingSource] = defaultRatingOrder,
-        enabledRatingSources: Set<RatingSource> = Set(RatingSource.allCases),
         logoSize: HeroLogoSize = .default,
         textSize: HeroTextSize = .default
     ) {
         self.showsHeaderRatings = showsHeaderRatings
         self.showsHeaderFamilyGuidance = showsHeaderFamilyGuidance
         self.maxHeaderRatings = Self.boundedRatingCount(maxHeaderRatings)
-        self.ratingSourceOrder = ratingSourceOrder
-        self.enabledRatingSources = enabledRatingSources
         self.logoSize = logoSize
         self.textSize = textSize
     }
 
     private enum CodingKeys: String, CodingKey {
-        case showsHeaderRatings, showsHeaderFamilyGuidance, maxHeaderRatings, ratingSourceOrder, enabledRatingSources
+        case showsHeaderRatings, showsHeaderFamilyGuidance, maxHeaderRatings
         case logoSize, textSize
     }
 
@@ -49,18 +38,9 @@ public struct DetailPageSettings: Codable, Equatable, Sendable {
             showsHeaderRatings: try values.decodeIfPresent(Bool.self, forKey: .showsHeaderRatings) ?? true,
             showsHeaderFamilyGuidance: try values.decodeIfPresent(Bool.self, forKey: .showsHeaderFamilyGuidance) ?? true,
             maxHeaderRatings: try values.decodeIfPresent(Int.self, forKey: .maxHeaderRatings) ?? 2,
-            ratingSourceOrder: try values.decodeIfPresent([RatingSource].self, forKey: .ratingSourceOrder)
-                ?? Self.defaultRatingOrder,
-            enabledRatingSources: try values.decodeIfPresent(Set<RatingSource>.self, forKey: .enabledRatingSources)
-                ?? Set(RatingSource.allCases),
             logoSize: try values.decodeIfPresent(HeroLogoSize.self, forKey: .logoSize) ?? .default,
             textSize: try values.decodeIfPresent(HeroTextSize.self, forKey: .textSize) ?? .default
         )
-    }
-
-    public var orderedSources: [RatingSource] {
-        var seen: Set<RatingSource> = []
-        return (ratingSourceOrder + Self.defaultRatingOrder).filter { seen.insert($0).inserted }
     }
 
     private static func boundedRatingCount(_ value: Int) -> Int {
@@ -73,16 +53,9 @@ public struct DetailPageSettings: Codable, Equatable, Sendable {
         hidesRatings: Bool
     ) -> [ExternalRating] {
         guard showsHeaderRatings, !hidesRatings else { return [] }
-        if available.contains(where: { $0.providerDisplay != nil }) {
-            return Array(available.filter {
-                enabledRatingSources.contains($0.source) && (!$0.source.isAnimeOnly || isAnime)
-            }.sorted { $0.sortRank < $1.sortRank }.prefix(maxHeaderRatings))
-        }
-        return Array(orderedSources.compactMap { source in
-            guard enabledRatingSources.contains(source),
-                  !source.isAnimeOnly || isAnime else { return nil }
-            return available.first { $0.source == source }
-        }.prefix(maxHeaderRatings))
+        return Array(available.filter {
+            !$0.source.isAnimeOnly || isAnime
+        }.sorted { $0.sortRank < $1.sortRank }.prefix(maxHeaderRatings))
     }
 
     public func headerFamilyGuidanceAge(from age: Double?, hidesRatings: Bool) -> Double? {
@@ -113,11 +86,6 @@ public final class DetailPageSettingsStore: DetailPageSettingsStoring, @unchecke
             showsHeaderRatings: values["showsHeaderRatings"] as? Bool ?? true,
             showsHeaderFamilyGuidance: values["showsHeaderFamilyGuidance"] as? Bool ?? true,
             maxHeaderRatings: values["maxHeaderRatings"] as? Int ?? 2,
-            ratingSourceOrder: (values["ratingSourceOrder"] as? [String])?
-                .compactMap(RatingSource.init(rawValue:)) ?? DetailPageSettings.defaultRatingOrder,
-            enabledRatingSources: (values["enabledRatingSources"] as? [String])
-                .map { Set($0.compactMap(RatingSource.init(rawValue:))) }
-                ?? Set(RatingSource.allCases),
             logoSize: HeroLogoSize(rawValue: values["logoSize"] as? Int ?? 0),
             textSize: HeroTextSize(rawValue: values["textSize"] as? Int ?? 0)
         )
@@ -128,8 +96,6 @@ public final class DetailPageSettingsStore: DetailPageSettingsStoring, @unchecke
             "showsHeaderRatings": settings.showsHeaderRatings,
             "showsHeaderFamilyGuidance": settings.showsHeaderFamilyGuidance,
             "maxHeaderRatings": settings.maxHeaderRatings,
-            "ratingSourceOrder": settings.orderedSources.map(\.rawValue),
-            "enabledRatingSources": settings.enabledRatingSources.map(\.rawValue).sorted(),
             "logoSize": settings.logoSize.rawValue,
             "textSize": settings.textSize.rawValue
         ], forKey: key)

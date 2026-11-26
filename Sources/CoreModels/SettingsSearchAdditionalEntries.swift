@@ -30,10 +30,6 @@ extension SettingsSearchCatalog {
               keywords: "movie show details review scores trailer"),
         .init("detail-trailer-muted", page: .heroTrailers, title: "Start muted",
               keywords: "movie show details review scores trailer"),
-        .init("rating-source-enabled", page: .detailRatingSources, title: "Rating sources",
-              keywords: "review scores ratings critics community priority order", platform: .mobile),
-        .init("rating-source-order", page: .detailRatingSources, title: "Rating sources & order",
-              keywords: "review scores ratings critics community priority order", platform: .mobile),
         .init("circadian-mode-tv", page: .circadian, title: "Circadian schedule",
               keywords: "night shift circadian blue light warm dim evening schedule", platform: .television),
         .init("circadian-schedule-mobile", page: .circadian, title: "Schedule",
@@ -218,10 +214,5 @@ extension SettingsSearchCatalog {
               keywords: "diagnostics privacy logs errors performance troubleshooting"),
         .init("release-notes-startup", page: .releaseNotes, title: "Show release notes on startup",
               keywords: "what is new changelog updates startup new versions"),
-    ] + RatingSource.allCases.map { source in
-        .init("rating-source-\(source.rawValue)", page: .detailRatingSources,
-              title: .verbatim(source.displayName),
-              keywords: "review scores rating sources enable disable critics community",
-              platform: .mobile)
-    }
+    ]
 }

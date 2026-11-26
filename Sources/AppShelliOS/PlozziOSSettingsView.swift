@@ -1501,8 +1501,6 @@ private struct PlozziOSSettingsSearchDestination: View {
                 cards: appModel.settings.cardStyle, heroBackground: appModel.settings.heroBackground,
                 detailPage: appModel.settings.detailPage
             )
-        case .detailRatingSources:
-            PlozziOSDetailRatingPriorityView(model: appModel.settings.detailPage)
         case .libraries:
             LibraryPresentationSettingsView(
                 model: appModel.settings.libraryPresentation, cards: appModel.settings.cardStyle,
@@ -2302,12 +2300,6 @@ private struct PlozziOSDetailPageSettingsView: View {
                 if detailPage.settings.showsHeaderRatings {
                     HeaderReviewScoreCountPicker(settings: $detailPage.settings).settingsSearchAnchor("detail-rating-count")
                 }
-                SettingsPageLink {
-                    PlozziOSDetailRatingPriorityView(model: detailPage)
-                } label: {
-                    SettingsDisclosureLabel { Text("Rating sources & order") }
-                }
-                .settingsActionRow()
             }
             .settingsSearchGroup(["detail-ratings", "detail-rating-count"])
             SettingsSectionGroup("Age recommendation") {
@@ -2330,50 +2322,6 @@ private struct PlozziOSDetailPageSettingsView: View {
         }
         .settingsPageSurface()
         .navigationTitle("Movie & show details")
-    }
-}
-
-private struct PlozziOSDetailRatingPriorityView: View {
-    @Bindable var model: DetailPageSettingsModel
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(model.settings.orderedSources, id: \.self) { source in
-                    Toggle(isOn: Binding(
-                        get: { model.settings.enabledRatingSources.contains(source) },
-                        set: { enabled in
-                            if enabled {
-                                model.settings.enabledRatingSources.insert(source)
-                            } else {
-                                model.settings.enabledRatingSources.remove(source)
-                            }
-                        }
-                    )) {
-                        switch source {
-                        case .community: Text("Community")
-                        case .critic: Text("Critics")
-                        default: Text(verbatim: source.displayName)
-                        }
-                    }
-                    .settingsSearchAnchor(
-                        "rating-source-\(source.rawValue)",
-                        fallbackFor: source == model.settings.orderedSources.first ? ["rating-source-enabled"] : []
-                    )
-                }
-                .onMove { offsets, destination in
-                    var order = model.settings.orderedSources
-                    order.move(fromOffsets: offsets, toOffset: destination)
-                    model.settings.ratingSourceOrder = order
-                }
-            } footer: {
-                Text("Enable as many sources as you want, then tap Edit to set their priority. Not every title has every score. The header shows the first available enabled sources, up to your chosen maximum. AniList is used only for anime.")
-            }
-        }
-        .toggleStyle(SettingsSwitchToggleStyle())
-        .settingsPageSurface()
-        .navigationTitle("Rating sources & order")
-        .toolbar { EditButton().settingsSearchAnchor("rating-source-order") }
     }
 }
 

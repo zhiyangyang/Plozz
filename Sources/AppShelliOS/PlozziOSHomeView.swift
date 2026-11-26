@@ -9,7 +9,6 @@ import HeroUI
 import MediaDownloads
 import MetadataKit
 import Observation
-import RatingsService
 import SwiftUI
 import UIKit
 
@@ -248,8 +247,6 @@ struct PlozziOSHomeView: View {
                     identitySources: identitySources
                 )
             },
-            ratingsProvider: PlozzCustomization.isCustomBuild
-                ? DisabledRatingsProvider() : RatingsServiceFactory.make(),
             libraryTargetResolver: heroLibraryTargetResolver(
                 in: heroAccounts, identitySources: identitySources,
                 visibility: { [visibility = appModel.settings.homeVisibility] in

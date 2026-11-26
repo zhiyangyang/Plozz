@@ -56,7 +56,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, topShelf
     case downloads, profiles, metadata, diagnostics
-    case playbackAdvanced, streamingAdvanced, metadataDiagnostics, detailRatingSources
+    case playbackAdvanced, streamingAdvanced, metadataDiagnostics
     case profileAppearance, profileSettings, accountLibraries
     case releaseNotes
 
@@ -100,7 +100,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .playbackAdvanced: ["Playback", "Advanced"]
         case .streamingAdvanced: ["Playback", "Streaming quality", "Advanced"]
         case .metadataDiagnostics: ["Metadata Providers", "Diagnostics"]
-        case .detailRatingSources: ["Screens & Navigation", "Movie & show details", "Rating sources & order"]
         case .profileAppearance: ["Profiles", "Appearance"]
         case .profileSettings: ["Profiles", "Manage profile"]
         case .accountLibraries: ["Libraries"]
@@ -117,7 +116,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .theme, .cards, .artwork, .circadian, .cardLabels: "paintpalette"
         case .allScreens, .navigation, .home, .hero, .detail, .heroContent, .heroRatings,
              .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
-             .homeFiltering, .homeLabels, .continueWatching, .libraries, .topShelf, .detailRatingSources,
+             .homeFiltering, .homeLabels, .continueWatching, .libraries, .topShelf,
              .accountLibraries:
             "rectangle.3.group"
         case .language: "globe"
@@ -142,7 +141,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
 
     public var platform: SettingsSearchEntry.Platform? {
         switch self {
-        case .downloads, .streamingAdvanced, .detailRatingSources: .mobile
+        case .downloads, .streamingAdvanced: .mobile
         case .topShelf: .television
         default: nil
         }
