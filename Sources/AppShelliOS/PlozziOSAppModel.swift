@@ -219,7 +219,6 @@ final class PlozziOSAppModel {
     /// Household-wide optional user-supplied TMDB API key (bring-your-own-key). Stored
     /// in the same `com.plozz.app.household` Keychain service as tvOS so the key matches
     /// across platforms.
-    let tmdbUserKeyModel: TMDBUserKeyModel
     let shareScanStatus: ShareScanStatusModel
     let appLanguage: AppLanguageSettingsModel
     private(set) var requiresLaunchProfileSelection: Bool
@@ -517,12 +516,6 @@ final class PlozziOSAppModel {
         self.accountsProviders = accountsProviders
         self.authenticatedHTTPResolver = authenticatedHTTPResolver
         self.mediaShareRuntime = mediaShareRuntime
-        let tmdbKeyRuntime = mediaShareRuntime
-        self.tmdbUserKeyModel = TMDBUserKeyModel(
-            store: TMDBUserKeyStore(secureStore: KeychainStore(service: "com.plozz.app.household")),
-            validator: { token in await tmdbKeyRuntime.validateTMDBUserKey(token) },
-            onCredentialSuperseded: { token in await tmdbKeyRuntime.invalidateTMDBCredential(forToken: token) }
-        )
         self.shareScanStatus = shareScanStatus
         self.durableLocalStateStore = durableLocalStateStore
         let aliasStorageDirectory = Self.isRunningUnitTests

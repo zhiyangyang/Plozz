@@ -123,14 +123,6 @@ public protocol MediaShareRuntime: Sendable {
     /// (Step 6 "Clear cache now"). Default: no-op.
     func clearMetadataCaches() async
 
-    /// Verifies a user's TMDB BYOK token against TMDb over the resilient HTTP path
-    /// (Step 9), recording the outcome into that key's circuit breaker. Default:
-    /// `.unreachable` (test fakes need not implement).
-    func validateTMDBUserKey(_ token: String) async -> TMDBKeyValidationResult
-
-    /// Clears the shared cache + breaker state for a superseded TMDB key (Step 9),
-    /// invoked when a user replaces or removes their key. Default: no-op.
-    func invalidateTMDBCredential(forToken token: String) async
 }
 
 public extension MediaShareRuntime {
@@ -139,8 +131,6 @@ public extension MediaShareRuntime {
     }
     func applyCacheBudgets(_ settings: CacheBudgetSettings) async {}
     func clearMetadataCaches() async {}
-    func validateTMDBUserKey(_ token: String) async -> TMDBKeyValidationResult { .unreachable }
-    func invalidateTMDBCredential(forToken token: String) async {}
 
     /// Default: nothing to poll.
     func pollForChanges() async {}
@@ -214,11 +204,8 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
         // enrichment override) so entering/removing a key applies on the next share
         // refresh. Absent key => `.withUserToken(nil)` is a no-op, so the built-in
         // (proxy/maintainer-token/disabled) TMDb path is byte-identical to pre-Step-9.
-        let tmdbKeyStore = TMDBUserKeyStore(
-            secureStore: KeychainStore(service: "com.plozz.app.household")
-        )
         let providerConfig: @Sendable () -> MetadataProviderConfig = {
-            MetadataProviderConfig.resolved().withUserToken(tmdbKeyStore.load())
+            MetadataProviderConfig.resolved()
         }
         let coordinator = ShareCatalogCoordinator(
             artworkCacheLifecycle: artworkCacheLifecycle,
@@ -381,15 +368,6 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
         await ArtworkImageCache.shared.clearDerivedArtworkCache()
     }
 
-    public func validateTMDBUserKey(_ token: String) async -> TMDBKeyValidationResult {
-        await TMDBKeyValidator().validate(token)
-    }
-
-    public func invalidateTMDBCredential(forToken token: String) async {
-        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let credentialID = TMDbAccess.userToken(trimmed).credentialID else { return }
-        await providerRuntime.invalidateCredential(credentialID)
-    }
 }
 
 extension DefaultMediaShareRuntime: ArtworkNetworkFileFailureReporting {
