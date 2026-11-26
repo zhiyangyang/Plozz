@@ -42,7 +42,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
         }
         .background(.black)
         .environment(app)
-        .environment(HeroTrailerController())
         .environment(PlozziOSSidebarGeometryModel())
         try await withWindow(content, sizeClass: .compact) { window in
             try await Task.sleep(for: .milliseconds(600))
@@ -149,7 +148,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
         let original = app.profiles.activeProfileID
         let profile = app.profiles.add(name: "Series header fixture", isAwaitingSetup: false)
         app.selectProfile(profile.id)
-        app.settings.heroBackground.settings.detailMode = .off
         app.settings.spoilers.settings = .default
         defer {
             app.selectProfile(original)
@@ -173,7 +171,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                     PlozziOSItemDetailView(appModel: app, provider: provider, item: item)
                 }
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
                 try await withWindow(content, sizeClass: sizeClass) { window in
                     let deadline = ContinuousClock.now.advanced(by: .seconds(12))
@@ -260,7 +257,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                     actionHandler: actions, onPlay: { _, _ in }
                 )
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
                 try await withWindow(content, sizeClass: sizeClass) { window in
                     try await self.settle(window)
@@ -308,7 +304,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                             onSelectSource: { _ in }, onSelectVersion: { _ in },
                             actionHandler: SizingActions(), onPlay: { _, _ in }
                         )
-                        .environment(HeroTrailerController())
                     } else {
                         PlozziOSHomeHeroForeground(
                             item: item, detailItem: item, watchlistItem: item,
@@ -394,7 +389,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                 PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
             }
             .environment(app)
-            .environment(HeroTrailerController())
             .environment(PlozziOSSidebarGeometryModel())
             try await withWindow(home, sizeClass: sizeClass) { window in
                 let scroll = try XCTUnwrap(self.scrollViews(in: window).first)
@@ -490,7 +484,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                 PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
             }
             .environment(app)
-            .environment(HeroTrailerController())
             try await withWindow(home, sizeClass: sizeClass) { window in
                 let scroll = try XCTUnwrap(self.scrollViews(in: window).first)
                 let rowsHeight = scroll.contentSize.height
@@ -608,7 +601,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
             app.settings.hero.settings.isEnabled = false
             let home = PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
             try await withWindow(home, sizeClass: sizeClass) { window in
                 let scroll = try XCTUnwrap(self.scrollViews(in: window).first)
@@ -691,7 +683,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                 }
                 let home = PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
                     .environment(app)
-                    .environment(HeroTrailerController())
                     .environment(PlozziOSSidebarGeometryModel())
                 try await withWindow(home, sizeClass: sizeClass) { window in
                     let scroll = try XCTUnwrap(self.scrollViews(in: window).first)

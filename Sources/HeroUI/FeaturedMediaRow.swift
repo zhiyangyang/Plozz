@@ -21,10 +21,6 @@ public struct FeaturedMediaRow: View {
     private let title: Text
     private let items: [MediaItem]
     private let scope: ObjectIdentifier
-    private let coordinator: FeaturedTrailerCoordinator
-    private let controller: HeroTrailerController
-    private let settings: HeroBackgroundSettings
-    private let resolver: HeroTrailerResolving
     private let isActive: Bool
     private let spoilers: SpoilerSettings
     private let onFocus: ((MediaItem) -> Void)?
@@ -68,8 +64,6 @@ public struct FeaturedMediaRow: View {
 
     public init(
         title: Text, items: [MediaItem], scope: ObjectIdentifier,
-        coordinator: FeaturedTrailerCoordinator, controller: HeroTrailerController,
-        settings: HeroBackgroundSettings, resolver: @escaping HeroTrailerResolving,
         isActive: Bool, spoilers: SpoilerSettings = .default,
         onFocus: ((MediaItem) -> Void)? = nil, onSeeAll: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
@@ -77,10 +71,6 @@ public struct FeaturedMediaRow: View {
         self.title = title
         self.items = items
         self.scope = scope
-        self.coordinator = coordinator
-        self.controller = controller
-        self.settings = settings
-        self.resolver = resolver
         self.isActive = isActive
         self.spoilers = spoilers
         self.onFocus = onFocus
@@ -91,36 +81,17 @@ public struct FeaturedMediaRow: View {
     private var television: Bool {
         false
     }
-    private var candidate: MediaItem? {
-        guard !isLoading, isActive, scenePhase == .active, !reduceMotion,
-              settings.homeTrailerPlaybackEnabled, !controller.isPlaybackSuppressed,
-              television || (priority != nil && isSettled) else { return nil }
-        let id = television ? focusedID : (selectedID ?? items.first?.stablePresentationID)
-        return items.first { $0.stablePresentationID == id }
-    }
-    private struct Request: Equatable {
-        let itemID: String?
-        let scope: ObjectIdentifier
-        let priority: Int?
-        let muted: Bool
-    }
-    private var request: Request {
-        Request(itemID: candidate?.stablePresentationID, scope: scope,
-                priority: priority, muted: settings.homeTrailerMuted)
-    }
-
     public var body: some View {
         FeaturedMediaRowPresentation(
             title: title, isEmpty: items.isEmpty, isLoading: isLoading, usesRowBrowsing: usesRowBrowsing,
-            onBrowse: onBrowse.map { action in { coordinator.stop(); action() } },
-            onSeeAll: onSeeAll.map { action in { coordinator.stop(); action() } },
+            onBrowse: onBrowse,
+            onSeeAll: onSeeAll,
             selectedID: $selectedID, onSettled: { isSettled = $0 }
         ) { size in
             cards(size: size)
         }
         #if os(iOS)
         .environment(\.featuredArtworkSelection, { item, source in
-            coordinator.stop()
             if let onSelectArtwork {
                 onSelectArtwork(item, source)
             } else {
@@ -136,28 +107,12 @@ public struct FeaturedMediaRow: View {
             guard visible / frame.height >= 0.75 else { return nil }
             return Int(abs(frame.midY - bounds.height / 2) / 20)
         } action: { priority = $0 }
-        .task(id: request) {
-            if let candidate {
-                coordinator.update(
-                    rowID: rowID, item: candidate, scope: scope, priority: priority ?? 0,
-                    muted: settings.homeTrailerMuted, controller: controller, resolve: resolver
-                )
-            } else {
-                coordinator.withdraw(rowID: rowID)
-            }
-        }
-        .onDisappear { coordinator.withdraw(rowID: rowID) }
     }
 
     @ViewBuilder private func cards(size: CGSize) -> some View {
         ForEach(items, id: \.stablePresentationID) { item in
             FeaturedMediaCard(
                 item: item, size: size, spoilers: spoilers,
-                controller: controller,
-                showsVideo: coordinator.activeRowID == rowID
-                    && coordinator.activeItemID == item.stablePresentationID
-                    && controller.currentItemID == coordinator.playerItemID
-                    && controller.isPlaying,
                 onFocus: { focused in
                     if focused {
                         focusedID = item.stablePresentationID
@@ -167,7 +122,6 @@ public struct FeaturedMediaRow: View {
                     }
                 },
                 onSelect: {
-                    coordinator.stop()
                     onSelect(item)
                 }
             )
@@ -180,8 +134,6 @@ private struct FeaturedMediaCard: View {
     let item: MediaItem
     let size: CGSize
     let spoilers: SpoilerSettings
-    let controller: HeroTrailerController
-    let showsVideo: Bool
     let onFocus: (Bool) -> Void
     let onSelect: () -> Void
     #if os(iOS)
@@ -192,9 +144,6 @@ private struct FeaturedMediaCard: View {
         FeaturedCardControl(
             item: item, size: size, spoilers: spoilers, onFocus: onFocus, onSelect: onSelect
         ) {
-            if showsVideo {
-                HeroTrailerVideoLayer(controller: controller, role: .featured)
-            }
         }
         #if os(iOS)
         .artworkNavigation { source in

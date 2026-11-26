@@ -342,10 +342,6 @@ final class DetailCardSurfacePresentationTests: XCTestCase {
             window.rootViewController = nil
             previous?.makeKeyAndVisible()
         }
-        let trailer = HeroTrailerController()
-        let settings = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore(
-            HeroBackgroundSettings(homeTrailerEnabled: false, detailMode: .off)
-        ))
         let item = MediaItem(id: "gradient-fixture", title: "Fixture", kind: .series)
         for width in [CGFloat(390), 507] {
             window.frame = CGRect(x: 0, y: 0, width: width, height: 844)
@@ -357,8 +353,6 @@ final class DetailCardSurfacePresentationTests: XCTestCase {
                             item: item,
                             presentation: HeroPresentation(item: item, artworkStyle: .compactPortrait, surface: .detail),
                             style: .compactPortrait, surfaceRole: .detail, isActive: false,
-                            showsBackdrop: false, trailerController: trailer,
-                            backgroundSettings: settings, trailerResolver: { _ in nil }
                         ) {
                             Color.white.frame(width: 40, height: 120)
                         }

@@ -10,7 +10,6 @@ import UIKit
 struct ContinueWatchingDetailsFixture: View {
     @State private var appModel: PlozziOSAppModel
     @State private var home: HomeViewModel
-    @State private var trailer = HeroTrailerController()
     @State private var sidebar = PlozziOSSidebarGeometryModel()
     @State private var homeViewModelBox = LazyViewState<HomeViewModel>()
     // Harness upgrade (evidence work, not product change): the real iOS shell owns a
@@ -62,7 +61,6 @@ struct ContinueWatchingDetailsFixture: View {
             if testsHorizontalBack { model.settings.hero.settings.autoAdvance = false }
             ContinueWatchingDetailsProvider.prepareArtwork()
         }
-        model.settings.heroBackground.settings.detailMode = .off
         model.settings.spoilers.settings = .default
         model.settings.cardStyle.captions = .init(preference: .show)
         if revisitID != nil {
@@ -111,7 +109,6 @@ struct ContinueWatchingDetailsFixture: View {
             }
         }
         .environment(appModel)
-        .environment(trailer)
         .environment(sidebar)
         .environment(contentRefreshCoordinator)
         .background(ContentRefreshLifecycleReader(coordinator: contentRefreshCoordinator))

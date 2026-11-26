@@ -132,8 +132,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         let presentations = HomePresentationRow.resolve(rows: [], content: content, visibility: visibility.visibility)
         let libraryRows = presentations.filter { if case .library = $0.source { true } else { false } }
         XCTAssertGreaterThan(libraryRows.count, 1, "Real data must exercise multiple library rows.")
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         var sampled: [(HomeRowChoice, RowState)] = []
         var checkedItems = 0
         var browsePages = 0
@@ -146,7 +144,7 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             decoded.items = copy
             func view(_ value: HomeLibrarySectionGroup.Row) -> PlozziOSHomeLibraryPresentationRow {
                 .init(choice: presentation.choice, row: value, appModel: fixture.app, viewModel: model,
-                      coordinator: coordinator, controller: controller, isActive: false,
+                      isActive: false,
                       rowBrowser: .constant(nil), showingHomeCustomization: .constant(false))
             }
             // Boolean assertions keep real media and authenticated URLs out of failure logs.
@@ -195,7 +193,7 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             ForEach(sampled.indices, id: \.self) { index in
                 ReservedLibraryRow(
                     choice: sampled[index].0, state: sampled[index].1, app: fixture.app,
-                    model: model, coordinator: coordinator, controller: controller
+                    model: model
                 )
             }
         }, width: width)
@@ -692,8 +690,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             MediaItem(id: "episode-peek-\($0)", title: "Episode", kind: .episode,
                       posterURL: url, backdropURL: url, allowsTitleBasedMetadataMatching: false)
         }
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         let scenarios: [(CGFloat, CardStyle)] = [
             (1039, .borderless), (1039, .framed),
             (1297, .borderless), (1297, .framed),
@@ -710,9 +706,8 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
                     })
                 } else if kind == 2 {
                     row = AnyView(FeaturedMediaRow(
-                        title: Text(verbatim: "Collection"), items: items, scope: ObjectIdentifier(controller),
-                        coordinator: coordinator, controller: controller, settings: .default,
-                        resolver: { _ in nil }, isActive: false, onSelect: { _ in }
+                        title: Text(verbatim: "Collection"), items: items, scope: ObjectIdentifier(PlozziOSAppModel.self),
+                        isActive: false, onSelect: { _ in }
                     ).browsingRow({}))
                 } else {
                     row = AnyView(PlozziOSHomeMediaRail(
@@ -1001,8 +996,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         let model = HomeViewModel(accounts: [], profileNamespace: fixture.profileID)
         let replacement = HomeViewModel(accounts: [], profileNamespace: "replacement")
         defer { model.invalidate(); replacement.invalidate() }
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         let choice = try XCTUnwrap(HomeRowChoice.shared.first)
         let section = LibrarySection(id: "shelf", title: "Shelf", items: fixture.items)
         let row = HomeLibrarySectionGroup.Row(section: section, isLoading: false, failure: nil)
@@ -1013,7 +1006,7 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             PlozziOSHomeLibraryPresentationRow(
                 choice: choiceOverride ?? choice, row: row,
                 appModel: fixture.app, viewModel: modelOverride ?? model,
-                coordinator: coordinator, controller: controller, isActive: isActive,
+                isActive: isActive,
                 rowBrowser: .constant(nil), showingHomeCustomization: .constant(false)
             )
         }
@@ -1051,8 +1044,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         defer { fixture.close() }
         let model = HomeViewModel(accounts: [], profileNamespace: fixture.profileID)
         defer { model.invalidate() }
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         let choice = try XCTUnwrap(HomeRowChoice.shared.first)
         let items = (0..<75).map { index in
             MediaItem(
@@ -1068,7 +1059,7 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             PlozziOSHomeLibraryPresentationRow(
                 choice: choice,
                 row: .init(section: .init(id: "row", title: "Row", items: items), isLoading: false, failure: nil),
-                appModel: fixture.app, viewModel: model, coordinator: coordinator, controller: controller,
+                appModel: fixture.app, viewModel: model,
                 isActive: false, rowBrowser: .constant(nil), showingHomeCustomization: .constant(false)
             )
         }
@@ -1105,7 +1096,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
                     PlozziOSHomeLibraryPresentationRow(
                         choice: choice, row: row,
                         appModel: fixture.app, viewModel: model,
-                        coordinator: FeaturedTrailerCoordinator(), controller: HeroTrailerController(),
                         isActive: false, rowBrowser: .constant(nil), showingHomeCustomization: .constant(false)
                     )
                     .equatable()
@@ -1168,7 +1158,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
                                 ScrollView {
                                     ReservedLibraryRow(
                                         choice: choice, state: state, app: fixture.app, model: model,
-                                        coordinator: FeaturedTrailerCoordinator(), controller: HeroTrailerController(),
                                         onContentHeight: { heights.loading = $0 }
                                     )
                                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loaded = $0 }
@@ -1384,7 +1373,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
                 ScrollView {
                     ReservedLibraryRow(
                         choice: choice, state: state, app: fixture.app, model: model,
-                        coordinator: FeaturedTrailerCoordinator(), controller: HeroTrailerController(),
                         onContentHeight: { heights.loading = $0 }
                     )
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loaded = $0 }
@@ -1412,15 +1400,13 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         defer { model.invalidate() }
         let section = LibrarySection(id: "shelf", title: "Shelf", items: [])
         let state = RowState(row: .init(section: section, isLoading: true, failure: nil))
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         fixture.mount(PlozziOSHomeScrollView(heroActive: false) {
             EmptyView()
         } rows: {
             ForEach(0..<8, id: \.self) { index in
                 ReservedLibraryRow(
                     choice: .init(id: .library(key: "\(index)", section: "shelf"), title: "Shelf", isProviderDefault: true),
-                    state: state, app: fixture.app, model: model, coordinator: coordinator, controller: controller
+                    state: state, app: fixture.app, model: model
                 )
             }
         })
@@ -1454,25 +1440,21 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
     func testFeaturedCollectionSkeletonMatchesTheFeaturedCardHeight() async throws {
         let fixture = try Fixture()
         defer { fixture.close() }
-        let coordinator = FeaturedTrailerCoordinator()
-        let controller = HeroTrailerController()
         for width in [CGFloat(390), 768] {
             let heights = Heights()
             fixture.mount(
                 ScrollView {
                     VStack {
                         FeaturedMediaRow(
-                            title: Text("Featured"), items: [], scope: ObjectIdentifier(controller),
-                            coordinator: coordinator, controller: controller, settings: .default,
-                            resolver: { _ in nil }, isActive: false, onSelect: { _ in }
+                            title: Text("Featured"), items: [], scope: ObjectIdentifier(PlozziOSAppModel.self),
+                            isActive: false, onSelect: { _ in }
                         )
                         .browsingRow(nil)
                         .loading(true)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loading = $0 }
                         FeaturedMediaRow(
-                            title: Text("Featured"), items: fixture.items, scope: ObjectIdentifier(controller),
-                            coordinator: coordinator, controller: controller, settings: .default,
-                            resolver: { _ in nil }, isActive: false, onSelect: { _ in }
+                            title: Text("Featured"), items: fixture.items, scope: ObjectIdentifier(PlozziOSAppModel.self),
+                            isActive: false, onSelect: { _ in }
                         )
                         .browsingRow({})
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.loaded = $0 }
@@ -1607,8 +1589,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         let state: RowState
         let app: PlozziOSAppModel
         let model: HomeViewModel
-        let coordinator: FeaturedTrailerCoordinator
-        let controller: HeroTrailerController
         var onContentHeight: (CGFloat) -> Void = { _ in }
 
         var body: some View {
@@ -1620,7 +1600,7 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
             ) {
                 PlozziOSHomeLibraryPresentationRow(
                     choice: presentation.choice, row: state.row, appModel: app, viewModel: model,
-                    coordinator: coordinator, controller: controller, isActive: false,
+                    isActive: false,
                     rowBrowser: .constant(nil), showingHomeCustomization: .constant(false)
                 )
                 .equatable()

@@ -12,10 +12,6 @@ struct ContentRefreshReturnFixture: View {
     private let provider: RefreshReturnProvider
     @State private var coordinator: ContentRefreshCoordinator
     @State private var covered = false
-    @State private var trailer = HeroTrailerController()
-    @State private var background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore(
-        HeroBackgroundSettings(homeTrailerEnabled: false, detailMode: .off)
-    ))
     @State private var app: PlozziOSAppModel
     @State private var sidebar = PlozziOSSidebarGeometryModel()
 
@@ -46,7 +42,6 @@ struct ContentRefreshReturnFixture: View {
         model.profiles.setActiveAccountIDs(["refresh-fixture"], for: profile.id)
         model.accountsProviders.tokenResolver = { _ in "fixture" }
         model.accountsProviders.reloadAccounts()
-        model.settings.heroBackground.settings.detailMode = .off
         _app = State(initialValue: model)
     }
 
@@ -67,8 +62,6 @@ struct ContentRefreshReturnFixture: View {
                 }
         }
         .environment(coordinator)
-        .environment(trailer)
-        .environment(background)
         .environment(\.themePalette, .dark)
         .environment(\.locale, Locale(identifier: "en_US"))
         .preferredColorScheme(.dark)

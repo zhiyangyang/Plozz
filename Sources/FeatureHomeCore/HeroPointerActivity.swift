@@ -12,13 +12,11 @@ public final class HeroPointerActivity {
     // Mouse events extend the deadline without invalidating the hero on every pixel.
     @ObservationIgnored public private(set) var resumeDeadline: Date?
     @ObservationIgnored private var pauseStarted: Date?
-    @ObservationIgnored private var deferredAdvance = false
 
     public var isPaused: Bool { frozenGauge != nil }
 
     public struct Resumption {
         public let pausedDuration: TimeInterval
-        public let advanceAfterTrailer: Bool
     }
 
     public init() {}
@@ -39,21 +37,13 @@ public final class HeroPointerActivity {
     public func resume(at now: Date) -> Resumption? {
         guard let pauseStarted else { return nil }
         let result = Resumption(
-            pausedDuration: max(0, now.timeIntervalSince(pauseStarted)),
-            advanceAfterTrailer: deferredAdvance
+            pausedDuration: max(0, now.timeIntervalSince(pauseStarted))
         )
         reset()
         return result
     }
 
-    public func deferAdvanceIfPaused() -> Bool {
-        guard isPaused else { return false }
-        deferredAdvance = true
-        return true
-    }
-
     public func resetSlide(at now: Date) {
-        deferredAdvance = false
         if isPaused {
             pauseStarted = now
             frozenGauge = HeroGaugeState(fraction: 0, remaining: nil)
@@ -65,6 +55,5 @@ public final class HeroPointerActivity {
         pauseID = nil
         resumeDeadline = nil
         pauseStarted = nil
-        deferredAdvance = false
     }
 }

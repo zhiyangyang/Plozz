@@ -106,7 +106,6 @@
     "Sources/AppShelliOS/ServerOnboardingViews.swift",
     "Sources/CoreModels/ArtworkSettings.swift",
     "Sources/CoreModels/CardCaptionSettings.swift",
-    "Sources/CoreModels/HeroDiscovery.swift",
     "Sources/CoreModels/HeroSourceKind.swift",
     "Sources/CoreModels/LibraryPresentationSettings.swift",
     "Sources/CoreModels/MediaSegment.swift",
@@ -1983,14 +1982,6 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSDetailPageSettingsView|body|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers\") }": {
-      "count": 1,
-      "reason": "Navigation to the indexed trailer sources and detail background controls.",
-      "covered_by": [
-        "trailer-sources",
-        "detail-background"
-      ]
-    },
     "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileCompactPhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 24)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
       "count": 1,
       "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
@@ -2003,28 +1994,6 @@
       "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
       "covered_by": [
         "profile-photo"
-      ]
-    },
-    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersSettingsView|detailPicker.picker|Picker|\"Detail background\"": {
-      "count": 1,
-      "reason": "The detailPicker use in body owns the detail-background anchor and unavailable muted/volume fallbacks.",
-      "covered_by": [
-        "detail-background"
-      ]
-    },
-    "Sources/FeatureSettings/HeroSettingsControls.swift|TrailersSettingsView|sourcePicker.picker|Picker|\"Trailers\"": {
-      "count": 1,
-      "reason": "The sourcePicker use in body owns the trailer-sources anchor and disabled-autoplay fallback.",
-      "covered_by": [
-        "trailer-sources"
-      ]
-    },
-    "Sources/FeatureSettings/PreferenceDetailViews.swift|DetailPageDetailView|heroRows.rows|SettingsPageLink|SettingsDisclosureLabel { Text(\"Trailers\") }": {
-      "count": 1,
-      "reason": "Navigation to the indexed trailer sources and detail background controls.",
-      "covered_by": [
-        "trailer-sources",
-        "detail-background"
       ]
     }
   }

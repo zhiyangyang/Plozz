@@ -9,8 +9,6 @@ import UIKit
 @testable import AppShelliOS
 
 struct FeaturedCardInteractionFixture: View {
-    @State private var controller = HeroTrailerController()
-    @State private var coordinator = FeaturedTrailerCoordinator()
     @State private var selections = 0
     @State private var actions = HeroInteractionActions()
     private static let artworkURL = URL(string: "https://featured.invalid/artwork.png")!
@@ -48,8 +46,7 @@ struct FeaturedCardInteractionFixture: View {
                               backdropURL: Self.artworkURL, logoURL: Self.logoURL,
                               allowsTitleBasedMetadataMatching: false)
                 ],
-                scope: ObjectIdentifier(controller), coordinator: coordinator, controller: controller,
-                settings: .default, resolver: { _ in nil }, isActive: false,
+                scope: ObjectIdentifier(PlozziOSAppModel.self), isActive: false,
                 onSelect: { _ in selections += 1 }
             )
             Text("Following row").accessibilityIdentifier("featured-following-row")
@@ -75,7 +72,6 @@ struct HomeHeroInteractionFixture: View {
     }
     @State private var appModel: PlozziOSAppModel
     @State private var seriesLookup: HeroInteractionLookupGate
-    @State private var trailer = HeroTrailerController()
     @State private var sidebar = PlozziOSSidebarGeometryModel()
     @State private var pull = PlozziOSHomeHeroPullModel()
     @State private var actions = HeroInteractionActions()
@@ -154,8 +150,6 @@ struct HomeHeroInteractionFixture: View {
             }
         }
         model.accountsProviders.reloadAccounts()
-        model.settings.heroBackground.settings.homeTrailerEnabled = false
-        model.settings.heroBackground.settings.detailMode = HeroInteractionProvider.hasDetailTrailer ? .trailer : .off
         _appModel = State(initialValue: model)
     }
 
@@ -200,11 +194,7 @@ struct HomeHeroInteractionFixture: View {
                 }
                 Color.clear.frame(height: 1_200)
             } pageActions: {
-                PlozziOSHomePageActions(
-                    showsAudio: ProcessInfo.processInfo.arguments.contains("--hero-header-audio"),
-                    isMuted: isMuted, onToggleMute: { isMuted.toggle() },
-                    onShowSettings: { settingsCount += 1 }
-                )
+                PlozziOSHomePageActions(onShowSettings: { settingsCount += 1 })
             }
             .scrollClipDisabled()
             .plozzOnPageAppearanceChange { homePageIsVisible = $0 }
@@ -261,7 +251,6 @@ struct HomeHeroInteractionFixture: View {
             .allowsHitTesting(false)
         }
         .environment(appModel)
-        .environment(trailer)
         .environment(sidebar)
         .environment(\.mediaItemActionHandler, actions)
         .environment(\.plozzMetrics, .touch(density: .standard))

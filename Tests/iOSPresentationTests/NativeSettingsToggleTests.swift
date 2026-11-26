@@ -1724,10 +1724,8 @@ final class NativeSettingsToggleTests: XCTestCase {
         }
         for width: CGFloat in [390, 834] {
             let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-            let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
             hero.settings.autoAdvance = false
             hero.settings.showsRatings = false
-            background.settings.homeTrailerEnabled = false
             window.frame = CGRect(x: 0, y: 0, width: width, height: 1200)
             window.rootViewController = UIHostingController(rootView: NavigationStack {
                 SettingsPageList {
@@ -1736,14 +1734,13 @@ final class NativeSettingsToggleTests: XCTestCase {
                 .navigationTitle("Home")
             }
             .environment(hero)
-            .environment(background)
             .environment(\.locale, Locale(identifier: "en_US"))
             .environment(\.colorScheme, .dark))
             window.makeKeyAndVisible()
             try await settle(window)
             let root = try await captureScrollableText(window, name: "hero-root-mobile-\(Int(width))")
             for label in ["Hero content sources", "Items to show",
-                          "Advance automatically", "Ratings", "Off", "Trailers"] {
+                          "Advance automatically", "Ratings", "Off"] {
                 XCTAssertTrue(root.contains(label), root)
             }
             for label in ["Hide watched content", "Appearance", "Rotation", "Titles shown in hero", "Show ratings", "Seconds per item",
@@ -1764,7 +1761,6 @@ final class NativeSettingsToggleTests: XCTestCase {
             XCTAssertFalse(advanced.localizedCaseInsensitiveContains("Automatic changes"), advanced)
 
             hero.settings.showsRatings = true
-            background.settings.homeTrailerEnabled = true
             try await settle(window)
             let expanded = try await captureScrollableText(window, name: "hero-expanded-mobile-\(Int(width))")
             XCTAssertFalse(expanded.contains("Start muted"), expanded)
@@ -1782,13 +1778,11 @@ final class NativeSettingsToggleTests: XCTestCase {
             XCTAssertEqual(listedSwitches(in: window).count, 1)
             XCTAssertTrue(hero.settings.autoAdvance)
             XCTAssertTrue(hero.settings.showsRatings)
-            XCTAssertTrue(background.settings.homeTrailerEnabled)
 
             window.rootViewController = UIHostingController(rootView: NavigationStack {
                 HeroSettingsScreen(page: .ratings, libraries: [], accounts: [])
             }
             .environment(hero)
-            .environment(background)
             .environment(\.locale, Locale(identifier: "en_US"))
             .environment(\.colorScheme, .dark))
             try await settle(window)
@@ -1807,26 +1801,6 @@ final class NativeSettingsToggleTests: XCTestCase {
             XCTAssertFalse(hero.settings.showsRatings)
             XCTAssertEqual(listedSwitches(in: window).count, 1)
 
-            window.rootViewController = UIHostingController(rootView: NavigationStack {
-                HeroSettingsScreen(page: .trailers, libraries: [], accounts: [])
-            }
-            .environment(hero)
-            .environment(background)
-            .environment(\.locale, Locale(identifier: "en_US"))
-            .environment(\.colorScheme, .dark))
-            try await settle(window)
-            XCTAssertEqual(listedSwitches(in: window).count, 2)
-            let trailers = try captureText(window, name: "hero-trailers-mobile-\(Int(width))")
-            XCTAssertTrue(trailers.contains("Play trailer behind the hero"), trailers)
-            XCTAssertTrue(trailers.contains("Start muted"), trailers)
-            let playTrailer = try XCTUnwrap(listedSwitches(in: window).min {
-                $0.convert($0.bounds, to: window).minY < $1.convert($1.bounds, to: window).minY
-            })
-            playTrailer.setOn(false, animated: false)
-            playTrailer.sendActions(for: .valueChanged)
-            try await settle(window)
-            XCTAssertFalse(background.settings.homeTrailerEnabled)
-            XCTAssertEqual(listedSwitches(in: window).count, 1)
         }
     }
 
@@ -1927,7 +1901,6 @@ final class NativeSettingsToggleTests: XCTestCase {
             ] {
                 let model = Model()
                 let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-                let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
                 hero.settings.sources = HeroSourceKind.allCases
                 hero.settings.setEnabled(.collection, enabled: enabled)
                 let original = hero.settings
@@ -1939,7 +1912,6 @@ final class NativeSettingsToggleTests: XCTestCase {
                     }
                 }
                 .environment(hero)
-                .environment(background)
                 .environment(\.themePalette, .dark)
                 .environment(\.colorScheme, .dark)
                 .environment(\.gradientBackgroundsEnabled, false)
@@ -1982,14 +1954,12 @@ final class NativeSettingsToggleTests: XCTestCase {
         }
         for width: CGFloat in [390, 834] {
             let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-            let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
             hero.settings.sources = [.randomFromLibrary, .collection]
             window.frame = CGRect(x: 0, y: 0, width: width, height: 1200)
             window.rootViewController = UIHostingController(rootView: NavigationStack {
                 HeroSettingsScreen(page: .titles, libraries: [], accounts: [])
             }
             .environment(hero)
-            .environment(background)
             .environment(\.locale, Locale(identifier: "en_US"))
             .environment(\.colorScheme, .dark)
             .tint(.white))

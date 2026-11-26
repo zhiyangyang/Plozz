@@ -52,7 +52,7 @@ public enum SettingsSearchSubtitlePage: String, CaseIterable, Sendable {
 public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case playback, subtitles, subtitleStyle, theme, cards, artwork, circadian
     case allScreens, navigation, home, hero, detail, language
-    case heroContent, heroRatings, heroTrailers, heroLibraries, heroCollections
+    case heroContent, heroRatings, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, topShelf
     case downloads, profiles, diagnostics
@@ -79,7 +79,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .hero: ["Screens & Navigation", "Home", "Hero"]
         case .heroContent: ["Screens & Navigation", "Home", "Hero", "Hero content sources"]
         case .heroRatings: ["Screens & Navigation", "Home", "Hero", "Ratings"]
-        case .heroTrailers: ["Screens & Navigation", "Movie & show details", "Trailers"]
         case .heroLibraries: ["Screens & Navigation", "Home", "Hero", "Random libraries"]
         case .heroCollections: ["Screens & Navigation", "Home", "Hero", "Collections"]
         case .homeRows: ["Screens & Navigation", "Home", "Rows"]
@@ -112,7 +111,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .subtitles, .subtitleStyle: "captions.bubble"
         case .theme, .cards, .artwork, .circadian, .cardLabels: "paintpalette"
         case .allScreens, .navigation, .home, .hero, .detail, .heroContent, .heroRatings,
-             .heroTrailers, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
+             .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
              .homeFiltering, .homeLabels, .continueWatching, .libraries, .topShelf,
              .accountLibraries:
             "rectangle.3.group"
@@ -478,8 +477,6 @@ public enum SettingsSearchCatalog {
         .init("hero-enabled", page: .hero, title: "Show hero",
               keywords: "home hero carousel spotlight banner featured showcase enable disable turn on off hide",
               preferredQueries: ["hero", "home banner", "spotlight"]),
-        .init("detail-background", page: .heroTrailers, title: "Detail background",
-              keywords: "movie show details hero trailer behind artwork"),
         .init("detail-size", page: .detail, title: "Logo & text size",
               keywords: "movie show details title logo synopsis description bigger larger smaller"),
         .init("detail-ratings", page: .detail, title: "Show review scores",
@@ -571,12 +568,6 @@ public enum SettingsSearchCatalog {
               keywords: "hero family guidance children recommended age"),
         .init("hero-rating-count", page: .heroRatings, title: "Maximum ratings shown",
               keywords: "hero review scores number limit"),
-        .init("trailer-sources", page: .heroTrailers, title: "Trailers",
-              keywords: "trailers youtube server only off disable manual button sources"),
-        .init("hero-trailers", page: .heroTrailers, title: "Home autoplay",
-              keywords: "hero background video preview motion autoplay"),
-        .init("hero-trailers-muted", page: .heroTrailers, title: "Start muted",
-              keywords: "hero trailer sound audio silent background"),
         .init("hero-content", page: .hero, title: "Hero content sources",
               keywords: "hero banner carousel choose featured titles movies shows"),
         .init("hero-all-libraries", page: .heroLibraries, title: "All libraries on Home",

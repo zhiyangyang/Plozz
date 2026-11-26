@@ -163,18 +163,11 @@ private struct HomeNavigationBarReturnFade: UIViewControllerRepresentable {
 }
 
 struct PlozziOSHomePageActions: View {
-    let showsAudio: Bool
-    let isMuted: Bool
-    let onToggleMute: () -> Void
     let onShowSettings: () -> Void
 
     var body: some View {
         HStack(spacing: PlozziOSPageHeaderLayout.actionSpacing) {
             Spacer(minLength: 0)
-            if showsAudio {
-                PlozziOSHeroAudioMuteToolbarButton(isMuted: isMuted, onToggle: onToggleMute)
-                    .plozziOSPageAction()
-            }
             PlozziOSSettingsAvatarButton(action: onShowSettings)
         }
         .padding(.horizontal, PlozziOSPageHeaderLayout.horizontalInset)

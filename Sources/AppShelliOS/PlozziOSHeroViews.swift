@@ -23,7 +23,7 @@ enum PlozziOSHeroArtworkFallback {
     static func resolve(
         for item: MediaItem,
         style: HeroArtworkStyle,
-        surfaceRole: HeroTrailerSurfaceRole
+        surfaceRole: HeroSurfaceRole
     ) async -> URL? {
         await MediaArtworkSource.heroFallback(
             for: item, placement: surfaceRole == .home ? .homeHero : .detailBackdrop,
@@ -32,7 +32,7 @@ enum PlozziOSHeroArtworkFallback {
     }
 
     static func placements(
-        surfaceRole: HeroTrailerSurfaceRole
+        surfaceRole: HeroSurfaceRole
     ) -> [ArtworkPlacement] {
         let backdrop: ArtworkPlacement = surfaceRole == .home ? .homeHero : .detailBackdrop
         return [backdrop, .poster]
@@ -95,14 +95,14 @@ enum PlozziOSHeroMetrics {
     /// title for the artwork's height.
     static func extendsArtwork(
         style: HeroArtworkStyle,
-        surfaceRole: HeroTrailerSurfaceRole
+        surfaceRole: HeroSurfaceRole
     ) -> Bool {
         style == .compactPortrait
     }
 
     static func height(
         style: HeroArtworkStyle,
-        surfaceRole: HeroTrailerSurfaceRole,
+        surfaceRole: HeroSurfaceRole,
         dynamicTypeSize: DynamicTypeSize,
         containerHeight: CGFloat? = nil,
         isRunningOnMac: Bool = false
@@ -286,7 +286,7 @@ enum PlozziOSPageLayout {
 
     static func heroStageMaxWidth(
         for style: HeroArtworkStyle,
-        surfaceRole: HeroTrailerSurfaceRole
+        surfaceRole: HeroSurfaceRole
     ) -> CGFloat {
         guard style == .landscape else { return 560 }
         return surfaceRole == .detail
@@ -362,7 +362,6 @@ final class PlozziOSSidebarGeometryModel {
 
 struct PlozziOSHomeHeroSlide: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(PlozziOSAppModel.self) private var appModel
 
     let item: MediaItem
@@ -384,10 +383,7 @@ struct PlozziOSHomeHeroSlide: View {
             surfaceRole: .home,
             isActive: isSelected,
             showsBackdrop: false,
-            showsScrim: false,
-            trailerController: trailerController,
-            backgroundSettings: appModel.settings.heroBackground,
-            trailerResolver: appModel.heroTrailerResolver()
+            showsScrim: false
         ) {
             EmptyView()
         }
@@ -550,7 +546,6 @@ struct PlozziOSHeroArtworkSeed {
 
 struct PlozziOSDetailHeroSection: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(PlozziOSAppModel.self) private var appModel
 
     let item: MediaItem
@@ -602,10 +597,7 @@ struct PlozziOSDetailHeroSection: View {
             // Episode pages retain their own still instead of a show backdrop.
             showsBackdrop: !presentsEpisodeStill,
             textSize: appModel.settings.detailPage.settings.textSize,
-            pullDistance: pullDistance,
-            trailerController: trailerController,
-            backgroundSettings: appModel.settings.heroBackground,
-            trailerResolver: appModel.heroTrailerResolver()
+            pullDistance: pullDistance
         ) {
             PlozziOSDetailHeroForeground(
                 item: item,
@@ -645,7 +637,6 @@ struct PlozziOSDetailHeroSection: View {
 struct PlozziOSSeriesLoadingHero: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.themePalette) private var palette
-    @Environment(HeroTrailerController.self) private var trailerController
     let item: MediaItem
     let appModel: PlozziOSAppModel
 
@@ -660,10 +651,7 @@ struct PlozziOSSeriesLoadingHero: View {
             PlozziOSHeroStage(
                 item: series, presentation: presentation, style: style,
                 surfaceRole: .detail, isActive: false,
-                textSize: settings.textSize,
-                trailerController: trailerController,
-                backgroundSettings: appModel.settings.heroBackground,
-                trailerResolver: appModel.heroTrailerResolver()
+                textSize: settings.textSize
             ) {
                 PlozziOSHeroMetadata(
                     presentation: presentation, style: style, mode: .detail,
@@ -702,7 +690,7 @@ struct PlozziOSHeroStage<Foreground: View>: View {
     let item: MediaItem
     let presentation: HeroPresentation
     let style: HeroArtworkStyle
-    let surfaceRole: HeroTrailerSurfaceRole
+    let surfaceRole: HeroSurfaceRole
     /// Already-decoded card artwork to show on the first frame (a card's zoom
     /// transition is already stretching it).
     var seedArtwork: UIImage? = nil
@@ -713,24 +701,7 @@ struct PlozziOSHeroStage<Foreground: View>: View {
     /// Overscroll pull (points) from the enclosing scroll view. Stretches the
     /// backdrop just like the Home hero; 0 leaves the hero at rest.
     var pullDistance: CGFloat = 0
-    let trailerController: HeroTrailerController
-    let backgroundSettings: HeroBackgroundSettingsModel
-    let trailerResolver: HeroTrailerResolving
     @ViewBuilder let foreground: () -> Foreground
-
-    /// Whether a trailer should autoplay for THIS surface (home vs detail read
-    /// their own setting), and the surface's mute *default* (the session mute
-    /// itself lives on the shared controller).
-    private var surfaceTrailerEnabled: Bool {
-        surfaceRole == .home
-            ? backgroundSettings.settings.homeTrailerPlaybackEnabled
-            : backgroundSettings.settings.detailTrailerEnabled
-    }
-    private var surfaceMuteDefault: Bool {
-        surfaceRole == .home
-            ? backgroundSettings.settings.homeTrailerMuted
-            : backgroundSettings.settings.detailTrailerMuted
-    }
 
     private var height: CGFloat {
         PlozziOSHeroMetrics.height(
@@ -847,18 +818,6 @@ struct PlozziOSHeroStage<Foreground: View>: View {
                 .frame(height: height)
             }
         }
-        .task(
-            id: PlozziOSHeroPlaybackID(
-                itemID: item.id,
-                isActive: isActive && !trailerController.isPlaybackSuppressed
-                    && (surfaceRole != .home || !trailerController.isFeaturedReserved),
-                trailerEnabled: surfaceTrailerEnabled,
-                role: surfaceRole
-            )
-        ) {
-            await updateTrailerPlayback()
-        }
-        .onDisappear(perform: releaseTrailerSurface)
         .heroArtworkSource(id: presentation.itemID, isActive: isActive)
     }
 
@@ -885,8 +844,7 @@ struct PlozziOSHeroStage<Foreground: View>: View {
                 showsScrim: showsScrim,
                 extendsArtwork: extendsArtwork,
                 ignoresHorizontalSafeArea: false,
-                surfaceRole: surfaceRole,
-                trailerController: trailerController
+                surfaceRole: surfaceRole
             )
         } reflection: { reflectionWidth, contentWidth in
             PlozziOSHeroReflection(
@@ -901,319 +859,11 @@ struct PlozziOSHeroStage<Foreground: View>: View {
                 width: reflectionWidth,
                 contentWidth: contentWidth,
                 height: height,
-                trailerController: trailerController,
                 surfaceRole: surfaceRole
             )
         }
     }
 
-    private func updateTrailerPlayback() async {
-        guard !trailerController.isPlaybackSuppressed else { return }
-        guard surfaceRole != .home || !trailerController.isFeaturedReserved else { return }
-        guard isActive, surfaceTrailerEnabled else {
-            if surfaceRole == .home {
-                trailerController.stopHero(ifShowing: item.id)
-            } else {
-                trailerController.stop(ifShowing: item.id)
-            }
-            return
-        }
-        if !trailerController.isShowing(item.id) {
-            if surfaceRole == .home { trailerController.stopHero() }
-            else { trailerController.stop() }
-        }
-        trailerController.claimSurface(surfaceRole, itemID: item.id)
-        if surfaceRole == .detail {
-            trailerController.setEndHandler(
-                ownerID: detailEndHandlerOwnerID,
-                {}
-            )
-        }
-        if trailerController.isShowing(item.id) {
-            // Already rolling for this item — keep the live (session) mute; don't
-            // reset it to the default.
-            if surfaceRole == .detail {
-                trailerController.setPaused(false, surfaceRole: .detail)
-            }
-            if !trailerController.isPlaying {
-                await startPreparedAfterLeadIn()
-            }
-            return
-        }
-        guard let source = await trailerResolver(item),
-              !Task.isCancelled, !trailerController.isPlaybackSuppressed else {
-            return
-        }
-        guard trailerController.prepare(
-            itemID: item.id,
-            source: source,
-            muted: surfaceMuteDefault
-        ) else { return }
-        trailerController.claimSurface(surfaceRole, itemID: item.id)
-        guard (try? await trailerController.waitUntilReady(itemID: item.id)) == true else { return }
-        await startPreparedAfterLeadIn()
-    }
-
-    private func startPreparedAfterLeadIn() async {
-        do {
-            try await Task.sleep(
-                for: .seconds(HeroTrailerTimeline.leadIn)
-            )
-        } catch {
-            return
-        }
-        guard !Task.isCancelled,
-              !trailerController.isPlaybackSuppressed,
-              isActive,
-              trailerController.isShowing(item.id) else {
-            return
-        }
-        trailerController.startPrepared()
-    }
-
-    private func releaseTrailerSurface() {
-        guard !trailerController.isPlaybackSuppressed else { return }
-        if surfaceRole == .detail {
-            trailerController.clearEndHandler(ownerID: detailEndHandlerOwnerID)
-            guard trailerController.isClaimed(by: .detail, itemID: item.id) else { return }
-            trailerController.releaseSurface(.detail)
-            trailerController.stop(ifShowing: item.id)
-            return
-        }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            if !trailerController.isPlaybackSuppressed,
-               trailerController.isClaimed(by: .home, itemID: item.id) {
-                trailerController.releaseSurface(.home)
-                trailerController.stop(ifShowing: item.id)
-            }
-        }
-    }
-
-    private var detailEndHandlerOwnerID: String {
-        "ios-detail-\(item.id)"
-    }
-
-}
-
-private struct PlozziOSHeroPlaybackID: Equatable {
-    let itemID: String
-    let isActive: Bool
-    let trailerEnabled: Bool
-    let role: HeroTrailerSurfaceRole
-}
-
-/// A hero's artwork laid into a stage **taller than the picture**, with the
-/// shortfall filled by a mirrored continuation of the picture's own bottom edge.
-///
-/// The same trick a Continue Watching card uses, and deliberately the same
-/// geometry (``HeroStageMetrics`` delegating to ``ExtendedArtworkGeometry``)
-/// rather than a second implementation of it. The portrait Home hero has to
-/// stand about three quarters of the phone tall so its metadata sits low; a hero
-/// that simply *filled* that slot would crop 16:9 backdrop art past 3x, and
-/// would crop it by a different amount on every phone. Mirroring buys the height
-/// back and leaves the picture alone. A 24pt top reflection moves the original
-/// artwork below more of the status-bar chrome without growing the stage.
-///
-/// Only ever mirrors a still. Video cannot be mirrored — one AVPlayer renders in
-/// one AVPlayerLayer at a time — so a hero playing a trailer fills the stage with
-/// it instead; see ``PlozziOSHeroBackdrop``.
-struct PlozziOSExtendedHeroArtwork<Picture: View>: View {
-    @Environment(\.plozzReduceTransparency) private var reduceTransparency
-
-    /// How far the mirror is drawn up *behind* the picture's bottom edge, so the
-    /// two overlap instead of meeting at a line that splits open the moment the
-    /// hero is scaled by an overscroll pull. Same reasoning, and same value, as
-    /// a Continue Watching card's seam overlap.
-    private static var seamOverlap: CGFloat { 2 }
-    private static var topBlurLeadIn: CGFloat { 8 }
-
-    let height: CGFloat
-    let surfaceRole: HeroTrailerSurfaceRole
-    @ViewBuilder let picture: (PlozziOSHeroPictureLayout) -> Picture
-
-    var body: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let geometry = HeroStageMetrics.geometry(
-                width: width,
-                height: height
-            )
-            let topHeight = min(max(height, 0), HeroStageMetrics.topReflectionHeight)
-            ZStack(alignment: .top) {
-                if topHeight > 0 {
-                    topMirror(geometry, width: width, height: topHeight)
-                        .mask {
-                            LinearGradient(
-                                colors: [.white.opacity(0.82), .white],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        }
-                        .environment(\.heroArtworkDisplayReporter, nil)
-                }
-                sizedPicture(geometry)
-                    .offset(y: topHeight)
-                if geometry.reflectionHeight > 0 {
-                    mirror(geometry, width: width)
-                        .environment(\.heroArtworkDisplayReporter, nil)
-                        .offset(y: topHeight + geometry.pictureHeight - Self.seamOverlap)
-                }
-            }
-            .overlay(alignment: .top) {
-                if surfaceRole == .home || surfaceRole == .detail,
-                   topHeight > 0, !reduceTransparency {
-                    topReflectionBlur(geometry, width: width, topHeight: topHeight,
-                                      radius: topHeight / 6, from: 0, to: 0.55)
-                    topReflectionBlur(geometry, width: width, topHeight: topHeight,
-                                      radius: topHeight / 2, from: 0.2, to: 1)
-                }
-            }
-            // Flatten the picture and its mirror into one layer before anyone
-            // above can fade them.
-            //
-            // `.opacity()` applies to each overlapping child separately, so a
-            // half-faded hero drew the picture at alpha a AND the mirror at
-            // alpha a on top of it. Everywhere they overlap — the seam band,
-            // deliberately 2pt of it — that composites to 2a - a² instead of a,
-            // which is brighter than either neighbour. At rest a is 1 and the
-            // sum is also 1, so the seam is perfect; it only lit up mid-swipe,
-            // where the outgoing slide is drawn at partial opacity. Grouping
-            // makes the fade apply once, to the finished picture.
-            .compositingGroup()
-            // The primary picture and mirrors share this outer clip. The picture is wider than the
-            // stage whenever a side trim is in play, and the mirror overruns the
-            // foot; both are cut here rather than each carrying its own
-            // rasterisation boundary along the seam.
-            .frame(width: width, height: height, alignment: .top)
-            .clipped()
-        }
-        .frame(height: height)
-    }
-
-    private func sizedPicture(
-        _ geometry: ExtendedArtworkGeometry
-    ) -> some View {
-        picture(
-            PlozziOSHeroPictureLayout(
-                width: geometry.renderedWidth,
-                height: geometry.pictureHeight
-            )
-        )
-        .frame(width: geometry.renderedWidth, height: geometry.pictureHeight)
-    }
-
-    private func topMirror(
-        _ geometry: ExtendedArtworkGeometry,
-        width: CGFloat,
-        height: CGFloat
-    ) -> some View {
-        Color.clear
-            .frame(width: width, height: height + Self.seamOverlap)
-            .overlay(alignment: .bottom) {
-                sizedPicture(geometry)
-                    .scaleEffect(x: 1, y: -1)
-            }
-    }
-
-    private func topReflectionBlur(
-        _ geometry: ExtendedArtworkGeometry, width: CGFloat, topHeight: CGFloat,
-        radius: CGFloat, from start: CGFloat, to end: CGFloat
-    ) -> some View {
-        let halo = ceil(radius * 3)
-        return Color.clear
-            .frame(width: width, height: min(height, topHeight + Self.topBlurLeadIn))
-            .overlay(alignment: .top) {
-                ZStack(alignment: .top) {
-                    topMirror(geometry, width: width, height: topHeight)
-                    sizedPicture(geometry).offset(y: topHeight)
-                }
-            }
-            .environment(\.heroArtworkDisplayReporter, nil)
-            // Filter just the seam and reflected band, including the blur's sampling margin.
-            .padding(halo)
-            .clipped()
-            .blur(radius: radius)
-            .padding(-halo)
-            .mask {
-                LinearGradient(
-                    stops: ArtworkGradientRamp.stops(peak: 1, from: start, to: end),
-                    startPoint: .bottom, endPoint: .top
-                )
-            }
-            // Keep the reflection's existing alpha instead of stacking extra opacity.
-            .blendMode(.sourceAtop)
-    }
-
-    /// The band under the picture: the same image flipped, so its top row is the
-    /// picture's last row, then eased away by **alpha** rather than by painting
-    /// black over it. A black wash is what a Continue Watching card uses because
-    /// it stands on an opaque card; the hero stands on the page, and the page is
-    /// white in light mode.
-    private func mirror(
-        _ geometry: ExtendedArtworkGeometry,
-        width: CGFloat
-    ) -> some View {
-        // No clip of its own. The mask below already bounds the band, and the
-        // stage's single outer clip cuts the overrun — a third boundary here sat
-        // exactly on the seam, which is the one line that must not have one.
-        Color.clear
-            .frame(
-                width: width,
-                height: geometry.reflectionHeight + Self.seamOverlap
-            )
-            .overlay(alignment: .top) {
-                sizedPicture(geometry)
-                    .scaleEffect(x: 1, y: -1)
-            }
-            .mask {
-                // Full strength at the seam — a reflection is brightest where it
-                // meets what it reflects, and any step there is a hard line
-                // across the picture. Barely eased after that, because this is
-                // NOT the hero's dissolve: the fade mask is still to come and
-                // now begins at this very band, so ramping hard here as well
-                // dissolved the image twice over and left the buttons sitting on
-                // flat page background instead of on the picture.
-                LinearGradient(
-                    stops: [
-                        .init(color: .white, location: 0),
-                        .init(color: .white.opacity(0.94), location: 0.45),
-                        .init(color: .white.opacity(0.82), location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-    }
-}
-
-/// The slot ``PlozziOSExtendedHeroArtwork`` is asking a picture to fill.
-struct PlozziOSHeroPictureLayout {
-    let width: CGFloat
-    let height: CGFloat
-}
-
-struct PlozziOSHeroArtworkImage: View {
-    @Environment(\.plozziOSIsRunningOnMac) private var isRunningOnMac
-    @Environment(\.plozziOSHeroFitsLandscapeArtwork) private var fitsLandscapeArtwork
-    let image: Image
-    let style: HeroArtworkStyle
-    var surfaceRole: HeroTrailerSurfaceRole = .home
-
-    var body: some View {
-        if isRunningOnMac, style == .landscape, surfaceRole == .home {
-            GeometryReader { proxy in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                    .clipped()
-            }
-        } else if fitsLandscapeArtwork, style == .landscape, surfaceRole == .home {
-            ExtendedArtworkFill(image: image, sideCrop: 0)
-        } else {
-            ArtworkFillImage(image)
-        }
-    }
 }
 
 private struct PlozziOSPreparedHeroArtwork {
@@ -1327,21 +977,17 @@ private struct PlozziOSHeroBackdrop: View {
     let itemID: String
     let height: CGFloat
     let showsScrim: Bool
-    var showsTrailer: Bool = true
     var appliesFadeMask: Bool = true
     /// Fill the stage by mirroring the picture's bottom edge instead of cropping
     /// the picture until it fills. See ``PlozziOSExtendedHeroArtwork``.
     var extendsArtwork: Bool = false
     let ignoresHorizontalSafeArea: Bool
-    let surfaceRole: HeroTrailerSurfaceRole
-    let trailerController: HeroTrailerController
+    let surfaceRole: HeroSurfaceRole
 
     var body: some View {
         ZStack {
             stillArtwork()
                 .opacity(preparedArtwork?.opacity ?? 1)
-            // A trailer fills the stage; a single AVPlayer can't render in its mirrors.
-            trailerLayer
 
             // Gentle black legibility darkening behind the title (kept true to the
             // image, not a grey wash).
@@ -1462,16 +1108,6 @@ private struct PlozziOSHeroBackdrop: View {
         }
     }
 
-    @ViewBuilder
-    private var trailerLayer: some View {
-        if showsTrailer, trailerController.showsVideo(on: surfaceRole, itemID: itemID) {
-            HeroTrailerVideoLayer(
-                controller: trailerController,
-                role: surfaceRole
-            )
-            .transition(.opacity)
-        }
-    }
 }
 
 struct PlozziOSHeroScrim: View {
@@ -1694,7 +1330,6 @@ struct PlozziOSStationaryHeroScrim: View {
 
 struct PlozziOSHomeWipeBackdrop: View {
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     @State private var artworkAppearanceID = UUID().uuidString
 
@@ -1732,8 +1367,7 @@ struct PlozziOSHomeWipeBackdrop: View {
                 artworkPinIdentity: "home:\(item.stablePresentationID)",
                 width: reflectionWidth,
                 contentWidth: contentWidth,
-                height: height,
-                trailerController: trailerController
+                height: height
             )
         }
 
@@ -1753,8 +1387,6 @@ struct PlozziOSHomeWipeBackdrop: View {
             width: width,
             height: height,
             scrimTone: colorScheme == .dark ? .black : .white,
-            trailerController: trailerController,
-            showsTrailer: trailerController.showsVideo(on: .home, itemID: item.id),
             ignoresHorizontalSafeArea: false,
             scrimOpacity: 0,
             sharedResolutionIdentity: PlozziOSHeroArtworkFallback.cacheIdentity(
@@ -1768,7 +1400,6 @@ struct PlozziOSHomeWipeBackdrop: View {
 }
 
 struct PlozziOSHomeStaticBackdrop: View {
-    @Environment(HeroTrailerController.self) private var trailerController
     @State private var artworkAppearanceID = UUID().uuidString
 
     let item: MediaItem
@@ -1781,7 +1412,6 @@ struct PlozziOSHomeStaticBackdrop: View {
     var contentOffsetX: CGFloat = 0
     /// Suppress the trailer while sliding (image-only) — the trailer resumes on
     /// the idle backdrop once the transition settles.
-    var showsTrailer: Bool = true
     /// Transition artwork carries adjacent reflected edge panels. At rest the
     /// sharp center is pixel-identical to the ordinary idle backdrop.
     var usesSlidingArtwork: Bool = false
@@ -1825,12 +1455,10 @@ struct PlozziOSHomeStaticBackdrop: View {
                     itemID: item.id,
                     height: height,
                     showsScrim: false,
-                    showsTrailer: showsTrailer,
                     appliesFadeMask: false,
                     extendsArtwork: extendsArtwork,
                     ignoresHorizontalSafeArea: false,
-                    surfaceRole: .home,
-                    trailerController: trailerController
+                    surfaceRole: .home
                 )
             }
         } reflection: { reflectionWidth, contentWidth in
@@ -1843,9 +1471,7 @@ struct PlozziOSHomeStaticBackdrop: View {
                 artworkPinIdentity: "home:\(item.stablePresentationID)",
                 width: reflectionWidth,
                 contentWidth: contentWidth,
-                height: height,
-                trailerController: trailerController,
-                showsTrailer: showsTrailer
+                height: height
             )
         }
     }
@@ -1982,22 +1608,13 @@ private struct PlozziOSHeroReflection: View {
     let width: CGFloat
     let contentWidth: CGFloat
     let height: CGFloat
-    let trailerController: HeroTrailerController
-    var surfaceRole: HeroTrailerSurfaceRole = .home
-    var showsTrailer = true
+    var surfaceRole: HeroSurfaceRole = .home
 
     var body: some View {
         ZStack {
             stillArtwork
                 .compositingGroup()
                 .opacity(preparedArtwork?.opacity ?? 1)
-
-            if showsTrailer, trailerController.showsVideo(on: surfaceRole, itemID: itemID) {
-                PlozziOSMirrorVideoLayer(
-                    player: trailerController.player
-                )
-                .frame(width: contentWidth, height: height)
-            }
 
             (colorScheme == .dark ? Color.black : Color.white)
                 .opacity(0.22)
@@ -2138,7 +1755,6 @@ private struct PlozziOSStableHomeHeroMetadata: View {
 
 struct PlozziOSHomeHeroArtworkLink: View {
     @Environment(PlozziOSAppModel.self) private var appModel
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(\.heroArtworkDisplayState) private var displayedArtwork
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -2158,22 +1774,6 @@ struct PlozziOSHomeHeroArtworkLink: View {
                 profileID: appModel.profiles.activeProfileID,
                 policy: artworkPolicy.heroPolicy.forPlacement(presentation.artworkPlacement)
             )
-            if appModel.settings.heroBackground.settings.detailTrailerEnabled {
-                let selection = DetailOpenEnvironment.initialSourceSelection(
-                    for: item,
-                    isDiscovery: DetailOpenEnvironment.isDiscovery(
-                        item, identitySources: appModel.identityIndex.identitySourcesProvider
-                    ),
-                    libraryOrigin: nil,
-                    identitySources: appModel.identityIndex.identitySourcesProvider,
-                    sourceLocality: {
-                        appModel.accountsProviders.provider(forAccountID: $0)?.connectionLocality
-                    }
-                )
-                trailerController.handoffToDetail(
-                    itemID: item.id, destinationItemID: selection.selected?.itemID ?? item.id
-                )
-            }
             showsDetail = true
         } label: {
             Color.clear.contentShape(Rectangle())
@@ -3521,7 +3121,6 @@ struct PlozziOSHeroPagingIndicator: View {
     /// commits, so without this the incoming bar inherits its progress.
     var isTransitioning: Bool = false
     var pausedGauge: HeroGaugeState?
-    let trailerController: HeroTrailerController
 
     var body: some View {
         let gauge = gauge(at: .now)
@@ -3562,17 +3161,12 @@ struct PlozziOSHeroPagingIndicator: View {
     /// so this shell cannot drift from tvOS.
     func gauge(at now: Date) -> HeroGaugeState {
         if !isTransitioning, autoAdvance, let pausedGauge { return pausedGauge }
-        let trailerIsShowing = selectedItemID.map(trailerController.isShowing) ?? false
         return HeroGaugeState.resolve(
             autoAdvance: autoAdvance,
             dwellStart: dwellStart,
             dwellDuration: Double(autoAdvanceSeconds),
             now: now,
-            isTransitioning: isTransitioning,
-            trailerElapsed: trailerIsShowing
-                ? trailerController.player.currentTime().seconds
-                : nil,
-            trailerDuration: trailerIsShowing ? trailerController.duration : nil
+            isTransitioning: isTransitioning
         )
     }
 
@@ -3986,3 +3580,199 @@ struct PlozziOSHomeSidebarOverlapProbe: UIViewControllerRepresentable {
 }
 #endif
 
+struct PlozziOSExtendedHeroArtwork<Picture: View>: View {
+    @Environment(\.plozzReduceTransparency) private var reduceTransparency
+
+    /// How far the mirror is drawn up *behind* the picture's bottom edge, so the
+    /// two overlap instead of meeting at a line that splits open the moment the
+    /// hero is scaled by an overscroll pull. Same reasoning, and same value, as
+    /// a Continue Watching card's seam overlap.
+    private static var seamOverlap: CGFloat { 2 }
+    private static var topBlurLeadIn: CGFloat { 8 }
+
+    let height: CGFloat
+    let surfaceRole: HeroSurfaceRole
+    @ViewBuilder let picture: (PlozziOSHeroPictureLayout) -> Picture
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let geometry = HeroStageMetrics.geometry(
+                width: width,
+                height: height
+            )
+            let topHeight = min(max(height, 0), HeroStageMetrics.topReflectionHeight)
+            ZStack(alignment: .top) {
+                if topHeight > 0 {
+                    topMirror(geometry, width: width, height: topHeight)
+                        .mask {
+                            LinearGradient(
+                                colors: [.white.opacity(0.82), .white],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        }
+                        .environment(\.heroArtworkDisplayReporter, nil)
+                }
+                sizedPicture(geometry)
+                    .offset(y: topHeight)
+                if geometry.reflectionHeight > 0 {
+                    mirror(geometry, width: width)
+                        .environment(\.heroArtworkDisplayReporter, nil)
+                        .offset(y: topHeight + geometry.pictureHeight - Self.seamOverlap)
+                }
+            }
+            .overlay(alignment: .top) {
+                if surfaceRole == .home || surfaceRole == .detail,
+                   topHeight > 0, !reduceTransparency {
+                    topReflectionBlur(geometry, width: width, topHeight: topHeight,
+                                      radius: topHeight / 6, from: 0, to: 0.55)
+                    topReflectionBlur(geometry, width: width, topHeight: topHeight,
+                                      radius: topHeight / 2, from: 0.2, to: 1)
+                }
+            }
+            // Flatten the picture and its mirror into one layer before anyone
+            // above can fade them.
+            //
+            // `.opacity()` applies to each overlapping child separately, so a
+            // half-faded hero drew the picture at alpha a AND the mirror at
+            // alpha a on top of it. Everywhere they overlap — the seam band,
+            // deliberately 2pt of it — that composites to 2a - a² instead of a,
+            // which is brighter than either neighbour. At rest a is 1 and the
+            // sum is also 1, so the seam is perfect; it only lit up mid-swipe,
+            // where the outgoing slide is drawn at partial opacity. Grouping
+            // makes the fade apply once, to the finished picture.
+            .compositingGroup()
+            // The primary picture and mirrors share this outer clip. The picture is wider than the
+            // stage whenever a side trim is in play, and the mirror overruns the
+            // foot; both are cut here rather than each carrying its own
+            // rasterisation boundary along the seam.
+            .frame(width: width, height: height, alignment: .top)
+            .clipped()
+        }
+        .frame(height: height)
+    }
+
+    private func sizedPicture(
+        _ geometry: ExtendedArtworkGeometry
+    ) -> some View {
+        picture(
+            PlozziOSHeroPictureLayout(
+                width: geometry.renderedWidth,
+                height: geometry.pictureHeight
+            )
+        )
+        .frame(width: geometry.renderedWidth, height: geometry.pictureHeight)
+    }
+
+    private func topMirror(
+        _ geometry: ExtendedArtworkGeometry,
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
+        Color.clear
+            .frame(width: width, height: height + Self.seamOverlap)
+            .overlay(alignment: .bottom) {
+                sizedPicture(geometry)
+                    .scaleEffect(x: 1, y: -1)
+            }
+    }
+
+    private func topReflectionBlur(
+        _ geometry: ExtendedArtworkGeometry, width: CGFloat, topHeight: CGFloat,
+        radius: CGFloat, from start: CGFloat, to end: CGFloat
+    ) -> some View {
+        let halo = ceil(radius * 3)
+        return Color.clear
+            .frame(width: width, height: min(height, topHeight + Self.topBlurLeadIn))
+            .overlay(alignment: .top) {
+                ZStack(alignment: .top) {
+                    topMirror(geometry, width: width, height: topHeight)
+                    sizedPicture(geometry).offset(y: topHeight)
+                }
+            }
+            .environment(\.heroArtworkDisplayReporter, nil)
+            // Filter just the seam and reflected band, including the blur's sampling margin.
+            .padding(halo)
+            .clipped()
+            .blur(radius: radius)
+            .padding(-halo)
+            .mask {
+                LinearGradient(
+                    stops: ArtworkGradientRamp.stops(peak: 1, from: start, to: end),
+                    startPoint: .bottom, endPoint: .top
+                )
+            }
+            // Keep the reflection's existing alpha instead of stacking extra opacity.
+            .blendMode(.sourceAtop)
+    }
+
+    /// The band under the picture: the same image flipped, so its top row is the
+    /// picture's last row, then eased away by **alpha** rather than by painting
+    /// black over it. A black wash is what a Continue Watching card uses because
+    /// it stands on an opaque card; the hero stands on the page, and the page is
+    /// white in light mode.
+    private func mirror(
+        _ geometry: ExtendedArtworkGeometry,
+        width: CGFloat
+    ) -> some View {
+        // No clip of its own. The mask below already bounds the band, and the
+        // stage's single outer clip cuts the overrun — a third boundary here sat
+        // exactly on the seam, which is the one line that must not have one.
+        Color.clear
+            .frame(
+                width: width,
+                height: geometry.reflectionHeight + Self.seamOverlap
+            )
+            .overlay(alignment: .top) {
+                sizedPicture(geometry)
+                    .scaleEffect(x: 1, y: -1)
+            }
+            .mask {
+                // Full strength at the seam — a reflection is brightest where it
+                // meets what it reflects, and any step there is a hard line
+                // across the picture. Barely eased after that, because this is
+                // NOT the hero's dissolve: the fade mask is still to come and
+                // now begins at this very band, so ramping hard here as well
+                // dissolved the image twice over and left the buttons sitting on
+                // flat page background instead of on the picture.
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white.opacity(0.94), location: 0.45),
+                        .init(color: .white.opacity(0.82), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+    }
+}
+
+struct PlozziOSHeroArtworkImage: View {
+    @Environment(\.plozziOSIsRunningOnMac) private var isRunningOnMac
+    @Environment(\.plozziOSHeroFitsLandscapeArtwork) private var fitsLandscapeArtwork
+    let image: Image
+    let style: HeroArtworkStyle
+    var surfaceRole: HeroSurfaceRole = .home
+
+    var body: some View {
+        if isRunningOnMac, style == .landscape, surfaceRole == .home {
+            GeometryReader { proxy in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                    .clipped()
+            }
+        } else if fitsLandscapeArtwork, style == .landscape, surfaceRole == .home {
+            ExtendedArtworkFill(image: image, sideCrop: 0)
+        } else {
+            ArtworkFillImage(image)
+        }
+    }
+}
+
+struct PlozziOSHeroPictureLayout {
+    let width: CGFloat
+    let height: CGFloat
+}

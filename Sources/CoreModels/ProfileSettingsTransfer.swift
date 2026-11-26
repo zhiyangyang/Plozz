@@ -62,7 +62,6 @@ public enum ProfileSettingsTransfer {
         "com.plozz.captionSettings",
         "com.plozz.audioPolicyOverrides",
         "com.plozz.spoilerSettings",
-        "com.plozz.heroBackgroundSettings",
         "com.plozz.detailPageSettings",
         "com.plozz.heroSettings",
         "com.plozz.homeLibraryVisibility",

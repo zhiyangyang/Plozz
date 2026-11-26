@@ -28,8 +28,6 @@ extension SettingsSearchCatalog {
               keywords: "movie show details review scores trailer"),
         .init("detail-rating-count", page: .detail, title: "Maximum ratings shown",
               keywords: "movie show details review scores trailer"),
-        .init("detail-trailer-muted", page: .heroTrailers, title: "Start muted",
-              keywords: "movie show details review scores trailer"),
         .init("circadian-mode-tv", page: .circadian, title: "Circadian schedule",
               keywords: "night shift circadian blue light warm dim evening schedule", platform: .television),
         .init("circadian-schedule-mobile", page: .circadian, title: "Schedule",

@@ -227,7 +227,6 @@ final class HomeMultiServerLoadingTests: XCTestCase {
             PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
         }
         .environment(app)
-        .environment(HeroTrailerController())
         .environment(\.horizontalSizeClass, .compact)
         .environment(\.themePalette, .dark)
         .environment(\.plozzMetrics, .touch(density: .standard))

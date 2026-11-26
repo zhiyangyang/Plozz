@@ -12,10 +12,6 @@ import FeatureAuth
 struct DetailSelectionFixture: View {
     @State private var probe: DetailSelectionProbe
     private let providers: [DetailSelectionProvider]
-    @State private var trailer = HeroTrailerController()
-    @State private var background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore(
-        HeroBackgroundSettings(homeTrailerEnabled: false, detailMode: .off)
-    ))
     @State private var coordinator = ContentRefreshCoordinator(profile: .init(
         home: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .reloadHome),
         seriesDetail: .init(foregroundAfter: 1, surfaceReturnAfter: 1, action: .reloadSeriesContext),
@@ -56,7 +52,6 @@ struct DetailSelectionFixture: View {
         model.settings.playback.settings.askBeforeResuming = false
         model.settings.playback.settings.resumeRewindInterval = .off
         model.settings.playback.settings.versionSelectionMode = .automatic
-        model.settings.heroBackground.settings.detailMode = .off
         _app = State(initialValue: model)
     }
 
@@ -71,8 +66,6 @@ struct DetailSelectionFixture: View {
                 .allowsHitTesting(false)
         }
         .environment(coordinator)
-        .environment(trailer)
-        .environment(background)
         .environment(\.themePalette, .dark)
         .environment(\.locale, Locale(identifier: "en_US"))
         .preferredColorScheme(.dark)

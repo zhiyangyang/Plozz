@@ -108,7 +108,6 @@ final class HomeModelLifetimeTests: XCTestCase {
                     systemColorScheme: .dark
                 )
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
                 .environment(\.themePalette, .dark)
                 .environment(\.horizontalSizeClass, sizeClass)
@@ -180,7 +179,6 @@ final class HomeModelLifetimeTests: XCTestCase {
                     systemColorScheme: .dark
                 )
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
                 .environment(\.themePalette, .dark)
                 .environment(\.horizontalSizeClass, sizeClass)

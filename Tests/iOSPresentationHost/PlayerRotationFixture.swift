@@ -54,7 +54,6 @@ final class RotationLoadProbe {
 struct PlayerRotationFixture: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var model: PlozziOSAppModel
-    @State private var hero = HeroTrailerController()
     @State private var probe = RotationLoadProbe()
     @State private var request: PlozziOSPlaybackRequest?
 
@@ -102,7 +101,6 @@ struct PlayerRotationFixture: View {
             }
         }
         .environment(model)
-        .environment(hero)
         .environment(\.plozzMetrics, .touch(density: .standard))
         .environment(\.locale, Locale(identifier: "en_US"))
         .dynamicTypeSize(

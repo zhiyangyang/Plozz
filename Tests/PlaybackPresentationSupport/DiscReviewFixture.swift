@@ -40,14 +40,12 @@ struct DiscReviewFixture: View {
     private struct DiscReviewDetail: View {
         let item: MediaItem
         let isHome: Bool
-        @State private var trailer = HeroTrailerController()
         @State private var appModel: PlozziOSAppModel = {
                 let defaults = UserDefaults(suiteName: "DiscReview.\(UUID().uuidString)")!
             let model = PlozziOSAppModel(
                 accountStore: AccountStore(secureStore: InMemorySecureStore()),
                 profileStore: ProfileStore(defaults: defaults)
             )
-            model.settings.heroBackground.settings.detailMode = .off
             return model
         }()
         @State private var sidebar = PlozziOSSidebarGeometryModel()
@@ -80,7 +78,6 @@ struct DiscReviewFixture: View {
                 pendingResume = nil
             }
             .environment(appModel)
-            .environment(trailer)
             .environment(sidebar)
             .environment(\.plozzMetrics, .touch(density: .standard))
         }

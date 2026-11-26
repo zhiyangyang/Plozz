@@ -1464,12 +1464,10 @@ private struct PlozziOSSettingsSearchDestination: View {
                 contentRatings: appModel.settings.contentRatings, spoilers: appModel.settings.spoilers
             )
         case .navigation: PlozziOSNavigationSettingsView(appModel: appModel)
-        case .heroTrailers:
-            TrailersSettingsView(background: appModel.settings.heroBackground)
         case .home, .hero, .heroContent, .heroRatings,
              .heroLibraries, .heroCollections, .homeRows, .homeRowStyle, .homeFiltering, .homeLabels, .continueWatching:
             PlozziOSHomeSettingsView(
-                hero: appModel.settings.hero, heroBackground: appModel.settings.heroBackground,
+                hero: appModel.settings.hero,
                 cards: appModel.settings.cardStyle, visibility: appModel.settings.homeVisibility,
                 accounts: appModel.accountsProviders.resolvedActiveAccounts,
                 spoilerSettings: appModel.settings.spoilers.settings,
@@ -1477,7 +1475,7 @@ private struct PlozziOSSettingsSearchDestination: View {
             )
         case .detail:
             PlozziOSDetailPageSettingsView(
-                cards: appModel.settings.cardStyle, heroBackground: appModel.settings.heroBackground,
+                cards: appModel.settings.cardStyle,
                 detailPage: appModel.settings.detailPage
             )
         case .libraries:
@@ -2007,7 +2005,7 @@ private struct PlozziOSScreensNavigationSettingsView: View {
                 )
             case .home:
                 PlozziOSHomeSettingsView(
-                    hero: appModel.settings.hero, heroBackground: appModel.settings.heroBackground,
+                    hero: appModel.settings.hero,
                     cards: appModel.settings.cardStyle,
                     visibility: appModel.settings.homeVisibility,
                     accounts: appModel.accountsProviders.resolvedActiveAccounts,
@@ -2030,7 +2028,6 @@ private struct PlozziOSScreensNavigationSettingsView: View {
             case .detail:
                 PlozziOSDetailPageSettingsView(
                     cards: appModel.settings.cardStyle,
-                    heroBackground: appModel.settings.heroBackground,
                     detailPage: appModel.settings.detailPage
                 )
             }
@@ -2133,7 +2130,6 @@ struct PlozziOSArtworkSettingsView: View {
 
 struct PlozziOSHomeSettingsView: View {
     @Bindable var hero: HeroSettingsModel
-    @Bindable var heroBackground: HeroBackgroundSettingsModel
     let cards: CardStyleSettingsModel
     let visibility: HomeLibraryVisibilityModel
     let accounts: [ResolvedAccount]
@@ -2157,7 +2153,6 @@ struct PlozziOSHomeSettingsView: View {
         )
         .id(ObjectIdentifier(visibility))
         .environment(hero)
-        .environment(heroBackground)
         .environment(cards)
         .task(id: libraryRequestID) {
             await loadLibraries()
@@ -2221,7 +2216,6 @@ private struct HomeLibraryChoice {
 
 private struct PlozziOSDetailPageSettingsView: View {
     let cards: CardStyleSettingsModel
-    @Bindable var heroBackground: HeroBackgroundSettingsModel
     @Bindable var detailPage: DetailPageSettingsModel
 
     var body: some View {
@@ -2249,15 +2243,6 @@ private struct PlozziOSDetailPageSettingsView: View {
                     .settingsSearchAnchor("detail-age")
             }
             .settingsSearchGroup(["detail-age"])
-            SettingsSectionGroup {
-                SettingsPageLink {
-                    TrailersSettingsView(background: heroBackground)
-                } label: {
-                    SettingsDisclosureLabel { Text("Trailers") }
-                }
-                .settingsActionRow()
-                .accessibilityIdentifier("detail-trailers")
-            }
             SettingsSectionGroup("Cards") {
                 CardCaptionSettingsLink(cards: cards, scope: .detail)
             }

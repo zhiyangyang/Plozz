@@ -221,7 +221,7 @@ class RepositoryCoverageTests(unittest.TestCase):
 
     def test_refactored_editors_still_reject_new_unregistered_preferences(self):
         names = {
-            "PlozziOSAppearanceSettingsView", "TrailersSettingsView",
+            "PlozziOSAppearanceSettingsView",
             "PlozziOSMyLibrariesContent", "MyLibrariesContentView",
             "HomeEditorSaveAction", "HomeRowNameEditor",
             "HomeRowRemoveAction", "NavigationNameEditor", "ServerProviderChoices",
@@ -244,7 +244,6 @@ class RepositoryCoverageTests(unittest.TestCase):
     def test_reviewed_inner_controls_cannot_outlive_their_row_anchors(self):
         anchors = {
             "disc-playback", "subtitle-language", "external-template",
-            "trailer-sources", "detail-background",
         }
         def matches_reviewed_anchor(expression):
             pattern = GUARD.string_pattern(expression)

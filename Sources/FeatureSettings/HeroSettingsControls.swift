@@ -4,14 +4,13 @@ import CoreUI
 import SwiftUI
 
 public enum HeroSettingsPage: String, CaseIterable {
-    case titles, ratings, trailers, libraries, collections
+    case titles, ratings, libraries, collections
 
     var title: LocalizedStringResource {
         switch self {
         case .titles:
             "Hero content sources"
         case .ratings: "Ratings"
-        case .trailers: "Trailers"
         case .libraries: "Random libraries"
         case .collections: "Collections"
         }
@@ -19,7 +18,7 @@ public enum HeroSettingsPage: String, CaseIterable {
 
     var linkTitle: LocalizedStringResource {
         switch self {
-        case .titles, .ratings, .trailers: title
+        case .titles, .ratings: title
         case .libraries: "Choose libraries"
         case .collections: "Choose collections"
         }
@@ -29,7 +28,6 @@ public enum HeroSettingsPage: String, CaseIterable {
         switch self {
         case .titles: "hero-source-continueWatching"
         case .ratings: "hero-ratings"
-        case .trailers: "hero-trailers"
         case .libraries: "hero-all-libraries"
         case .collections: "hero-collection-done"
         }
@@ -62,8 +60,7 @@ public struct HeroSettingsControls: View {
             HeroAutomaticChangeControls()
             HeroSettingsGroup {
                 HeroSettingsLink(page: .ratings, libraries: libraries, accounts: accounts)
-                HeroSettingsLink(page: .trailers, libraries: libraries, accounts: accounts)
-            }
+                }
         }
     }
 
@@ -140,93 +137,11 @@ struct HeroRatingControls: View {
     }
 }
 
-public struct TrailersSettingsView: View {
-    @Bindable private var background: HeroBackgroundSettingsModel
-
-    public init(background: HeroBackgroundSettingsModel) {
-        self.background = background
-    }
-
-    public var body: some View {
-        ViewCustomizationList(
-            title: "Trailers", initialRowID: "trailer-sources",
-            sectionSpacing: SettingsRowMetrics.formSectionSpacing, hasGroupedContent: true
-        ) {
-            HeroSettingsGroup(
-                detail: background.settings.trailerSources.allowsYouTube
-                    ? "YouTube trailers open externally and never autoplay." : nil,
-                searchTargets: ["trailer-sources"]
-            ) {
-                sourcePicker
-                .accessibilityIdentifier("trailer-sources")
-                .modifier(ViewCustomizationRowFocus(id: "trailer-sources"))
-                .settingsSearchAnchor(
-                    "trailer-sources",
-                    fallbackFor: background.settings.trailerSources.allowsServerTrailers ? [] : ["hero-trailers"]
-                )
-            }
-            HeroSettingsGroup(title: "Home", searchTargets: ["hero-trailers", "hero-trailers-muted"]) {
-                Toggle("Home autoplay", isOn: Binding(
-                    get: { background.settings.homeTrailerPlaybackEnabled },
-                    set: { background.settings.homeTrailerEnabled = $0 }
-                ))
-                .disabled(!background.settings.trailerSources.allowsServerTrailers)
-                .accessibilityIdentifier("hero-trailers")
-                .modifier(ViewCustomizationRowFocus(id: "hero-trailers"))
-                .settingsSearchAnchor(
-                    "hero-trailers", fallbackFor: background.settings.homeTrailerPlaybackEnabled ? [] : ["hero-trailers-muted"]
-                )
-                if background.settings.homeTrailerPlaybackEnabled {
-                    Toggle("Start muted", isOn: $background.settings.homeTrailerMuted)
-                        .accessibilityIdentifier("hero-trailers-muted")
-                        .settingsSearchAnchor("hero-trailers-muted")
-                }
-            }
-            HeroSettingsGroup(
-                title: "Details", searchTargets: ["detail-background", "detail-trailer-muted"]
-            ) {
-                detailPicker
-                .accessibilityIdentifier("detail-background")
-                .settingsSearchAnchor(
-                    "detail-background",
-                    fallbackFor: background.settings.detailTrailerEnabled ? [] : ["detail-trailer-muted"]
-                )
-                if background.settings.detailTrailerEnabled {
-                    Toggle("Start muted", isOn: $background.settings.detailTrailerMuted)
-                        .settingsSearchAnchor("detail-trailer-muted")
-                }
-            }
-        }
-    }
-
-    private var sourcePicker: some View {
-        let picker = Picker("Trailers", selection: $background.settings.trailerSources) {
-            ForEach(TrailerSourcePolicy.allCases, id: \.self) {
-                Text($0.displayName).tag($0)
-            }
-        }
-        return picker.pickerStyle(.menu)
-    }
-
-    private var detailPicker: some View {
-        let picker = Picker("Detail background", selection: Binding(
-            get: { background.settings.effectiveDetailMode },
-            set: { background.settings.detailMode = $0 }
-        )) {
-            ForEach(background.settings.availableDetailModes, id: \.self) {
-                Text($0.displayName).tag($0)
-            }
-        }
-        return picker.pickerStyle(.menu)
-    }
-}
-
 struct HeroSettingsLink: View {
     let page: HeroSettingsPage
     let libraries: [AggregatedLibrary]
     let accounts: [ResolvedAccount]
     @Environment(HeroSettingsModel.self) private var hero
-    @Environment(HeroBackgroundSettingsModel.self) private var background
     #if os(iOS)
     @State private var isPresented = false
     #endif
@@ -243,7 +158,6 @@ struct HeroSettingsLink: View {
             .navigationDestination(isPresented: $isPresented) {
                 HeroSettingsScreen(page: page, libraries: libraries, accounts: accounts)
                     .environment(hero)
-                    .environment(background)
             }
             #else
             SettingsDetailLink(pageID: page.rawValue) {
@@ -336,15 +250,12 @@ struct HeroSettingsScreen: View {
     let libraries: [AggregatedLibrary]
     let accounts: [ResolvedAccount]
     @Environment(HeroSettingsModel.self) private var hero
-    @Environment(HeroBackgroundSettingsModel.self) private var background
     @Environment(SettingsDetailNavigation.self) private var parentNavigation: SettingsDetailNavigation?
     @State var childNavigation = SettingsDetailNavigation()
 
     var body: some View {
         @Bindable var hero = hero
-        if page == .trailers {
-            TrailersSettingsView(background: background)
-        } else if page == .collections {
+        if page == .collections {
             HeroCollectionPickerView(selections: $hero.settings.collections, libraries: libraries, accounts: accounts)
         } else {
             ViewCustomizationList(title: page.title, initialRowID: initialRowID) {
@@ -362,7 +273,6 @@ struct HeroSettingsScreen: View {
         switch page {
         case .titles: HeroTitleSources(libraries: libraries, accounts: accounts)
         case .ratings: HeroRatingControls()
-        case .trailers: EmptyView()
         case .libraries: randomLibraries
         case .collections: EmptyView()
         }

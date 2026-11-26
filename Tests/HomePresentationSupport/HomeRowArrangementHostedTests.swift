@@ -237,7 +237,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                     PlozziOSHomeView(appModel: app, viewModel: model, onAddServer: {}, onShowSettings: {})
                 }
                 .environment(app)
-                .environment(HeroTrailerController())
                 .environment(\.horizontalSizeClass, width < 600 ? .compact : .regular)
             } inspect: { window in
                 let text = try await self.capture(window, name: "Continue Watching without channels \(width)")
@@ -457,9 +456,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
     #endif
 
     func testExhaustedRowsHideBothBrowseAndLegacyActions() async throws {
-        let controller = HeroTrailerController()
-        let coordinator = FeaturedTrailerCoordinator()
-        defer { coordinator.stop() }
         for featured in [false, true] {
             for count in [0, 1] {
                 let items = (0..<count).map { MediaItem(id: "\($0)", title: "Only title", kind: .movie) }
@@ -467,9 +463,8 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                     ScrollView {
                         if featured {
                             FeaturedMediaRow(
-                                title: Text("Complete collection"), items: items, scope: ObjectIdentifier(controller),
-                                coordinator: coordinator, controller: controller, settings: .default,
-                                resolver: { _ in nil }, isActive: false, onSeeAll: {}, onSelect: { _ in }
+                                title: Text("Complete collection"), items: items, scope: ObjectIdentifier(PlozziOSAppModel.self),
+                                isActive: false, onSeeAll: {}, onSelect: { _ in }
                             )
                             .browsingRow(nil)
                         } else {
@@ -821,9 +816,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
     }
 
     func testFeaturedRailShowsRealMetadataAndNativeCardFocus() async throws {
-        let controller = HeroTrailerController()
-        let coordinator = FeaturedTrailerCoordinator()
-        defer { coordinator.stop() }
         let items = ["Orbit", "Voyage", "Horizon", "Arrival"].enumerated().map {
             MediaItem(id: "featured-\($0.offset)", title: $0.element, kind: .movie,
                       productionYear: 2024, officialRating: "PG", genres: ["Adventure"])
@@ -837,9 +829,8 @@ final class HomeRowArrangementHostedTests: XCTestCase {
         try await withWindow {
             ScrollView {
                 FeaturedMediaRow(
-                    title: Text("Weekend picks"), items: items, scope: ObjectIdentifier(controller),
-                    coordinator: coordinator, controller: controller, settings: .default,
-                    resolver: { _ in nil }, isActive: true, onSelect: { _ in }
+                    title: Text("Weekend picks"), items: items, scope: ObjectIdentifier(PlozziOSAppModel.self),
+                    isActive: true, onSelect: { _ in }
                 )
             }
             .environment(\.scenePhase, .active)
@@ -850,11 +841,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
             XCTAssertTrue(text.contains("Orbit"), text)
             XCTAssertTrue(text.contains("2024"), text)
             XCTAssertTrue(text.contains("Adventure"), text)
-            let visible = XCTNSPredicateExpectation(
-                predicate: NSPredicate { _, _ in coordinator.activeItemID == items[0].stablePresentationID },
-                object: nil
-            )
-            await self.fulfillment(of: [visible], timeout: 3)
         }
     }
 
@@ -1104,9 +1090,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
             .init(id: "comet", title: "Comet", kind: .series, productionYear: 2024,
                   allowsTitleBasedMetadataMatching: false)
         ]
-        let controller = HeroTrailerController()
-        let coordinator = FeaturedTrailerCoordinator()
-        defer { coordinator.stop() }
         #if os(iOS)
         let suite = "RowPreviewParity.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -1130,9 +1113,8 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                                     HomeRowPreviewView(title: Text("Weekend"), items: items, style: style, hasMore: browse != nil)
                                 } else if style == .featured {
                                     FeaturedMediaRow(
-                                        title: Text("Weekend"), items: items, scope: ObjectIdentifier(controller),
-                                        coordinator: coordinator, controller: controller, settings: .default,
-                                        resolver: { _ in nil }, isActive: false, onSelect: { _ in }
+                                        title: Text("Weekend"), items: items, scope: ObjectIdentifier(PlozziOSAppModel.self),
+                                        isActive: false, onSelect: { _ in }
                                     ).browsingRow(browse)
                                 } else {
                                     #if os(iOS)
@@ -2094,7 +2076,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
             NavigationStack {
                 PlozziOSHomeSettingsView(
                     hero: HeroSettingsModel(store: InMemoryHeroSettingsStore()),
-                    heroBackground: HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore()),
                     cards: CardStyleSettingsModel(),
                     visibility: visibility, accounts: []
                 )
@@ -2176,7 +2157,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
                     visibility: HomeLibraryVisibilityModel(store: HomeLibraryVisibilityStore(namespace: UUID().uuidString))
                 )
                 .environment(HeroSettingsModel(store: InMemoryHeroSettingsStore()))
-                .environment(HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore()))
                 .environment(CardStyleSettingsModel())
             }
         } inspect: { window in
@@ -2338,7 +2318,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
             NavigationStack {
                 PlozziOSHomeSettingsView(
                     hero: HeroSettingsModel(store: InMemoryHeroSettingsStore()),
-                    heroBackground: HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore()),
                     cards: CardStyleSettingsModel(),
                     visibility: visibility,
                     accounts: [offline, online].map {
@@ -2890,7 +2869,6 @@ final class HomeRowArrangementHostedTests: XCTestCase {
         window.rootViewController = HomeRowsFocusHost(rootView: AnyView(
             content()
                 .environment(HeroSettingsModel(store: InMemoryHeroSettingsStore()))
-                .environment(HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore()))
                 .environment(CardStyleSettingsModel())
                 .environment(\.themePalette, colorScheme == .dark ? ThemePalette.dark : ThemePalette.light)
                 .environment(\.colorScheme, colorScheme)
@@ -3024,14 +3002,12 @@ private struct HomeSettingsViewerHost: View {
     let source: HomeSettingsAccountsFixture
     let visibility: HomeLibraryVisibilityModel
     private let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-    private let heroBackground = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
     private let cards = CardStyleSettingsModel()
 
     var body: some View {
         NavigationStack {
             PlozziOSHomeSettingsView(
-                hero: hero, heroBackground: heroBackground,
-                cards: cards,
+                hero: hero, cards: cards,
                 visibility: visibility, accounts: source.accounts
             )
         }

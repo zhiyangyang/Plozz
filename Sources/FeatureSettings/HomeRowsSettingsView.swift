@@ -48,7 +48,6 @@ public struct HomeRowsSettingsView: View {
     public let spoilerSettings: SpoilerSettings
     private let searchPage: SettingsSearchPage
     @Environment(HeroSettingsModel.self) private var hero
-    @Environment(HeroBackgroundSettingsModel.self) private var heroBackground
     @Environment(CardStyleSettingsModel.self) private var cards
     @Environment(SettingsSearchRequest.self) private var searchRequest: SettingsSearchRequest?
     @State private var inventory: HomeSectionCatalogModel
@@ -80,7 +79,7 @@ public struct HomeRowsSettingsView: View {
     public var body: some View {
         switch searchPage {
         case .home: menu
-        case .hero, .heroContent, .heroRatings, .heroTrailers, .heroLibraries, .heroCollections:
+        case .hero, .heroContent, .heroRatings, .heroLibraries, .heroCollections:
             HomeHeroSettingsView(
                 libraries: libraries, accounts: accounts, visibility: visibility, initialPage: heroPage
             )
@@ -111,7 +110,6 @@ public struct HomeRowsSettingsView: View {
         switch searchPage {
         case .heroContent: .titles
         case .heroRatings: .ratings
-        case .heroTrailers: .trailers
         case .heroLibraries: .libraries
         case .heroCollections: .collections
         default: nil
@@ -123,7 +121,6 @@ public struct HomeRowsSettingsView: View {
             HomeEditorLink {
                 HomeHeroSettingsView(libraries: libraries, accounts: accounts, visibility: visibility)
                     .environment(hero)
-                    .environment(heroBackground)
             } label: {
                 HomeEditorRowLabel(title: heroTitle, value: heroSummary)
             }
@@ -145,7 +142,6 @@ public struct HomeRowsSettingsView: View {
                     inventory: inventory, spoilerSettings: spoilerSettings
                 )
                 .environment(hero)
-                .environment(heroBackground)
                 .environment(cards)
             } label: {
                 HomeEditorRowLabel(title: Text("Rows"))
@@ -202,7 +198,6 @@ struct HomeSectionsSettingsView: View {
     @Environment(\.homeContentSnapshot) private var homeSnapshot
     @State private var inventory: HomeSectionCatalogModel
     @Environment(HeroSettingsModel.self) private var hero
-    @Environment(HeroBackgroundSettingsModel.self) private var heroBackground
     @Environment(CardStyleSettingsModel.self) private var cards
     @State private var reorderSession: HomeSectionReorderSession?
     @State private var isLifting = false

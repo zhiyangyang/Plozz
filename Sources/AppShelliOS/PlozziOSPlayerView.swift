@@ -34,7 +34,6 @@ struct PlozziOSPlaybackRequest: Identifiable {
 }
 
 struct PlozziOSPlayerView: View {
-    @Environment(HeroTrailerController.self) private var trailerController
     @Environment(PlozziOSAppModel.self) private var appModel
     @Environment(\.scenePhase) private var scenePhase
     let orientation: PlozziOSPlayerOrientation
@@ -50,7 +49,6 @@ struct PlozziOSPlayerView: View {
     @State private var playerIdentity = UUID()
     @State private var handoffTask: Task<Void, Never>?
     @State private var isPresented = false
-    @State private var heroPlaybackOwner: UUID?
     @State private var streamingNetwork: StreamingNetwork = .unknown
     @State private var streamingConnection: StreamingConnection?
     @State private var presentsStreamingQuality = false
@@ -132,7 +130,6 @@ struct PlozziOSPlayerView: View {
                 .padding(.top, 60)
         }
         .onAppear {
-            suspendHeroPlayback()
             isPresented = true
         }
         .onDisappear {
@@ -151,18 +148,13 @@ struct PlozziOSPlayerView: View {
             // match the presentation.
             let outgoing = viewModel
             viewModel = nil
-            let heroOwner = heroPlaybackOwner
-            let heroController = trailerController
-            heroPlaybackOwner = nil
             Task { @MainActor in
                 if let outgoing { await outgoing.stop() }
-                if let heroOwner { heroController.resumeAfterPlayback(owner: heroOwner) }
             }
 
         }
         .task {
             ExternalPlaybackRuntime.shared.beginPlaybackIntent(context: appModel.externalPlaybackContext())
-            suspendHeroPlayback()
             let session = playbackSession ?? appModel.makePlaybackSession()
             playbackSession = session
             let item: MediaItem
@@ -485,14 +477,7 @@ struct PlozziOSPlayerView: View {
         return connection
     }
 
-    private func suspendHeroPlayback() {
-        guard heroPlaybackOwner == nil else { return }
-        let owner = UUID()
-        heroPlaybackOwner = owner
-        trailerController.suspendForPlayback(owner: owner)
-    }
-
-    private var versionItem: MediaItem {
+private var versionItem: MediaItem {
         PlayerVersionSelection.item(
             opened: activeItem ?? request.item, resolved: viewModel?.currentPlaybackItem
         )

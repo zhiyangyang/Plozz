@@ -1,4 +1,5 @@
 #if os(iOS)
+import CoreModels
 import CoreUI
 import FeatureHomeCore
 import SwiftUI
@@ -104,7 +105,7 @@ final class HeroReflectionPresentationTests: XCTestCase {
 
     func testDetailReflectionMatchesHomeBlurAndReducedTransparencyFallback() throws {
         for scheme in [ColorScheme.light, .dark] {
-            func artwork(role: HeroTrailerSurfaceRole, reduced: Bool) -> some View {
+            func artwork(role: HeroSurfaceRole, reduced: Bool) -> some View {
                 PlozziOSExtendedHeroArtwork(height: 340, surfaceRole: role) { layout in
                     HStack(spacing: 0) {
                         ForEach(0..<50) { index in
@@ -187,7 +188,7 @@ final class HeroReflectionPresentationTests: XCTestCase {
     }
 
     func testReflectedLayoutRemainsLimitedToCompactStillArtwork() {
-        for role in [HeroTrailerSurfaceRole.home, .detail] {
+        for role in [HeroSurfaceRole.home, .detail] {
             XCTAssertTrue(PlozziOSHeroMetrics.extendsArtwork(style: .compactPortrait, surfaceRole: role))
             XCTAssertFalse(PlozziOSHeroMetrics.extendsArtwork(style: .landscape, surfaceRole: role))
         }
@@ -257,7 +258,7 @@ final class HeroReflectionPresentationTests: XCTestCase {
             context.fill(CGRect(x: 0, y: 0, width: 400, height: 24))
         }
         for isMac in [false, true] {
-            for role in [HeroTrailerSurfaceRole.home, .detail] {
+            for role in [HeroSurfaceRole.home, .detail] {
                 for style in [HeroArtworkStyle.landscape, .compactPortrait] {
                     let result = try render(
                         PlozziOSHeroArtworkImage(

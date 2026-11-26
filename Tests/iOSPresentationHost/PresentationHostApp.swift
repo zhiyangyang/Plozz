@@ -102,7 +102,6 @@ struct PresentationHostApp: App {
         model.settings.detailPage.settings = .default
         model.settings.homeVisibility.useRowDefaults(.matchServer)
         model.settings.hero.settings = .default
-        model.settings.heroBackground.settings = .default
         model.settings.subtitleBehavior.settings = .default
         model.settings.subtitlePolicy.overrides = [:]
         model.settings.subtitleStyle.style = .profileDefault
@@ -306,7 +305,6 @@ struct PresentationHostApp: App {
 private struct CollectionSettingsInteractionFixture: View {
     private let provider = CollectionSettingsProvider()
     @State private var hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-    @State private var background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
     @State private var cards: CardStyleSettingsModel
     @State private var visibility: HomeLibraryVisibilityModel
 
@@ -329,7 +327,7 @@ private struct CollectionSettingsInteractionFixture: View {
         // Inject through the production page, not above the navigation stack where it masks missing handoffs.
         NavigationStack {
             PlozziOSHomeSettingsView(
-                hero: hero, heroBackground: background, cards: cards, visibility: visibility,
+                hero: hero, cards: cards, visibility: visibility,
                 accounts: [ResolvedAccount(account: Account(from: provider.session), provider: provider)]
             )
         }
@@ -421,7 +419,6 @@ private struct SettingsInteractionFixture: View {
     @State private var showingProfiles = false
     @State private var capturedSettingsURL: String?
     @State private var sidebarGeometry = PlozziOSSidebarGeometryModel()
-    @State private var heroTrailers = HeroTrailerController()
     @State private var homeViewModelBox = LazyViewState<HomeViewModel>()
     @State private var resumePreviewItem: MediaItem?
 
@@ -437,7 +434,6 @@ private struct SettingsInteractionFixture: View {
                     systemColorScheme: .dark
                 )
                 .environment(sidebarGeometry)
-                .environment(heroTrailers)
                 .task {
                     let arguments = ProcessInfo.processInfo.arguments
                     if arguments.contains("--libraries-in-more") || arguments.contains("--navigation-scroll-fixture") {

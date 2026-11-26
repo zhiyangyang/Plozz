@@ -11,7 +11,6 @@ import SwiftUI
 struct DownloadsInteractionFixture: View {
     @State private var appModel: PlozziOSAppModel
     @State private var downloads: PlozziOSDownloadsModel
-    @State private var trailer = HeroTrailerController()
     @State private var sidebar = PlozziOSSidebarGeometryModel()
 
     init() {
@@ -28,7 +27,6 @@ struct DownloadsInteractionFixture: View {
             app.accountsProviders.reloadAccounts()
             app.profiles.markFirstRunProfileSetupComplete()
             app.selectProfile(app.profiles.activeProfileID)
-            app.settings.heroBackground.settings.detailMode = .off
         }
         let count = ProcessInfo.processInfo.arguments.contains("--download-scroll") ? 24 : 12
         var records = (1...count).map { index in
@@ -92,7 +90,6 @@ struct DownloadsInteractionFixture: View {
             PlozziOSDownloadsView(model: downloads, appModel: appModel, onShowSettings: {})
         }
         .environment(appModel)
-        .environment(trailer)
         .environment(sidebar)
         .environment(\.locale, Locale(identifier: "en"))
         .environment(\.themePalette, .dark)

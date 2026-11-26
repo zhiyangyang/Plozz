@@ -92,10 +92,6 @@ public struct HomeHeroBackdrop: View {
     /// the whole backdrop blends together as you browse the rows below, instead of
     /// leaving a hard image edge on the right.
     var receded: Bool = false
-    /// Shared trailer player rendered above the still image. The still remains
-    /// underneath, so opacity can crossfade without a blank frame.
-    var trailerController: HeroTrailerController? = nil
-    var showsTrailer: Bool = false
     /// tvOS owns the full screen and breaks out horizontally. iPad embeds this
     /// renderer in an already-measured usable region and disables that breakout
     /// so the explicit width stays anchored through the physical trailing edge.
@@ -123,8 +119,6 @@ public struct HomeHeroBackdrop: View {
         scrimTone: Color,
         recedeLift: CGFloat = 0,
         receded: Bool = false,
-        trailerController: HeroTrailerController? = nil,
-        showsTrailer: Bool = false,
         ignoresHorizontalSafeArea: Bool = true,
         alignsArtworkToLeadingEdge: Bool = false,
         scrimOpacity: Double = 1,
@@ -145,8 +139,6 @@ public struct HomeHeroBackdrop: View {
         self.scrimTone = scrimTone
         self.recedeLift = recedeLift
         self.receded = receded
-        self.trailerController = trailerController
-        self.showsTrailer = showsTrailer
         self.ignoresHorizontalSafeArea = ignoresHorizontalSafeArea
         self.alignsArtworkToLeadingEdge = alignsArtworkToLeadingEdge
         self.scrimOpacity = scrimOpacity
@@ -165,8 +157,6 @@ public struct HomeHeroBackdrop: View {
         scrimTone: Color,
         recedeLift: CGFloat = 0,
         receded: Bool = false,
-        trailerController: HeroTrailerController? = nil,
-        showsTrailer: Bool = false,
         ignoresHorizontalSafeArea: Bool = true,
         alignsArtworkToLeadingEdge: Bool = false,
         scrimOpacity: Double = 1,
@@ -185,8 +175,6 @@ public struct HomeHeroBackdrop: View {
             scrimTone: scrimTone,
             recedeLift: recedeLift,
             receded: receded,
-            trailerController: trailerController,
-            showsTrailer: showsTrailer,
             ignoresHorizontalSafeArea: ignoresHorizontalSafeArea,
             alignsArtworkToLeadingEdge: alignsArtworkToLeadingEdge,
             scrimOpacity: scrimOpacity,
@@ -241,19 +229,8 @@ public struct HomeHeroBackdrop: View {
 
     private var backdropSurface: some View {
         backdropImage
-            .opacity(showsTrailer ? 0 : 1)
             .frame(width: width, height: height + topOverscan)
             .clipped()
-            .overlay {
-                if showsTrailer, let trailerController {
-                    HeroTrailerVideoLayer(
-                        controller: trailerController,
-                        role: .home
-                    )
-                    .transition(.opacity)
-                }
-            }
-            .animation(.easeInOut(duration: 0.45), value: showsTrailer)
             .overlay(scrim.opacity(scrimOpacity))
             .animation(.easeOut(duration: 0.18), value: scrimOpacity)
     }

@@ -770,7 +770,6 @@ final class LibraryNavigationTests: XCTestCase {
                 .environment(app)
                 .environment(app.settings.navigation)
                 .environment(app.settings.homeVisibility)
-                .environment(HeroTrailerController())
                 .environment(PlozziOSSidebarGeometryModel())
                 .environment(\.themePalette, .dark)
                 .environment(\.horizontalSizeClass, sizeClass)

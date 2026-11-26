@@ -7,7 +7,6 @@ import SwiftUI
 
 struct SearchKeyboardInteractionFixture: View {
     @State private var appModel: PlozziOSAppModel
-    @State private var trailer = HeroTrailerController()
     @State private var sidebar = PlozziOSSidebarGeometryModel()
     @State private var showsSettings = false
     @State private var showsSearch = true
@@ -41,7 +40,6 @@ struct SearchKeyboardInteractionFixture: View {
         model.accountsProviders.tokenResolver = { _ in "fixture" }
         model.accountsProviders.reloadAccounts()
         model.settings.cardStyle.captions = .default
-        model.settings.heroBackground.settings.detailMode = .off
         _appModel = State(initialValue: model)
     }
 
@@ -63,7 +61,6 @@ struct SearchKeyboardInteractionFixture: View {
             Text("Settings opened").accessibilityIdentifier("search-fixture-settings")
         }
         .environment(appModel)
-        .environment(trailer)
         .environment(sidebar)
         .environment(\.themePalette, palette)
         .environment(\.gradientBackgroundsEnabled, gradientEnabled)

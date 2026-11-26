@@ -100,10 +100,8 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                     host.rootView = AnyView(
                         PlozziOSHomeStaticBackdrop(
                             item: item, style: style, height: 400,
-                            showsTrailer: false, usesSlidingArtwork: sliding
                         )
                         .environment(PlozziOSSidebarGeometryModel())
-                        .environment(HeroTrailerController())
                         .environment(\.plozzArtworkArea, .home)
                         .environment(\.plozzArtworkSettings, policy.settings)
                         .environment(\.themePalette, .dark)
@@ -131,7 +129,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             accountStore: AccountStore(secureStore: InMemorySecureStore()),
             profileStore: ProfileStore(defaults: defaults)
         )
-        let trailer = HeroTrailerController()
         for (size, sizeClass) in [
             (CGSize(width: 390, height: 844), UserInterfaceSizeClass.compact),
             (CGSize(width: 1024, height: 768), .regular)
@@ -142,7 +139,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             ) { window, host in
                 host.rootView = AnyView(
                     PlozziOSSeriesLoadingHero(item: item, appModel: app)
-                        .environment(trailer)
                         .environment(PlozziOSSidebarGeometryModel())
                         .environment(\.horizontalSizeClass, sizeClass)
                         .environment(\.themePalette, .dark)
@@ -156,7 +152,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                 XCTAssertNotNil(text["SHOW"])
                 XCTAssertNil(text["SPOILERS"], "A parent-show preview must not reveal the child's synopsis.")
                 XCTAssertNil(text["Loading"], "Loading status is accessible, not a visible replacement page.")
-                XCTAssertFalse(trailer.isPlaying)
                 XCTAssertFalse(descendants(window).contains { $0 is UIActivityIndicatorView })
             }
         }
@@ -357,7 +352,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
         XCTAssertEqual(deadline, nextMovement.addingTimeInterval(HeroPointerActivity.idleDelay))
         XCTAssertNil(activity.resumeIfIdle(at: deadline.addingTimeInterval(-0.001)))
         let resumption = try XCTUnwrap(activity.resumeIfIdle(at: deadline))
-        XCTAssertFalse(resumption.advanceAfterTrailer)
         dwellStart += resumption.pausedDuration
         let resumed = HeroGaugeState.resolve(
             autoAdvance: true, dwellStart: dwellStart, dwellDuration: 10, now: deadline
@@ -380,25 +374,19 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
         activity.recordMovement(at: start, gauge: trailerGauge(elapsed: 30))
         activity.recordMovement(at: start.addingTimeInterval(1), gauge: trailerGauge(elapsed: 60))
         XCTAssertEqual(activity.frozenGauge, HeroGaugeState(fraction: 0.25, remaining: nil))
-        XCTAssertTrue(activity.deferAdvanceIfPaused())
-        XCTAssertTrue(activity.deferAdvanceIfPaused())
         let deadline = try XCTUnwrap(activity.resumeDeadline)
         let resumption = try XCTUnwrap(activity.resumeIfIdle(at: deadline))
-        XCTAssertTrue(resumption.advanceAfterTrailer)
         XCTAssertNil(activity.resumeIfIdle(at: deadline))
-        XCTAssertFalse(activity.deferAdvanceIfPaused())
     }
 
     func testManualPagingDiscardsDeferredTrailerAndStartsANewPausedDwell() throws {
         let activity = HeroPointerActivity()
         let start = Date(timeIntervalSinceReferenceDate: 100)
         activity.recordMovement(at: start, gauge: HeroGaugeState(fraction: 0.8, remaining: 2))
-        XCTAssertTrue(activity.deferAdvanceIfPaused())
         activity.resetSlide(at: start.addingTimeInterval(1))
         XCTAssertEqual(activity.frozenGauge, HeroGaugeState(fraction: 0, remaining: nil))
         let resumption = try XCTUnwrap(activity.resumeIfIdle(at: start.addingTimeInterval(1.5)))
         XCTAssertEqual(resumption.pausedDuration, 0.5)
-        XCTAssertFalse(resumption.advanceAfterTrailer)
     }
 
     func testPointerExitAndLifecycleResetCannotLeaveAStalePause() throws {
@@ -410,7 +398,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
         XCTAssertEqual(resumption.pausedDuration, 0.25)
         activity.recordMovement(at: start.addingTimeInterval(0.3), gauge: HeroGaugeState(fraction: 0.4, remaining: 6))
         XCTAssertNotEqual(activity.pauseID, firstID, "A new pause must rearm the idle task even within one render.")
-        XCTAssertTrue(activity.deferAdvanceIfPaused())
         activity.reset()
         XCTAssertNil(activity.pauseID)
         XCTAssertNil(activity.resumeDeadline)
@@ -424,7 +411,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             itemIDs: ["first", "second"], selectedItemID: "first", autoAdvance: true,
             autoAdvanceSeconds: 10, dwellStart: start,
             pausedGauge: HeroGaugeState(fraction: 0.4, remaining: nil),
-            trailerController: HeroTrailerController()
         )
         for offset in [4.0, 8, 20] {
             XCTAssertEqual(
@@ -671,7 +657,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             insets: .zero, pull: pull
         ) { window, host in
             let app = PlozziOSAppModel(accountStore: AccountStore(secureStore: InMemorySecureStore()))
-            let trailers = HeroTrailerController()
             let sidebar = PlozziOSSidebarGeometryModel()
             var origins: [CGFloat] = []
             @MainActor func home(ready: Bool) -> AnyView {
@@ -685,14 +670,13 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                     } rows: {
                         Text("Continue Watching")
                     } pageActions: {
-                        PlozziOSHomePageActions(showsAudio: false, isMuted: true,
-                                                onToggleMute: {}, onShowSettings: {})
+                        PlozziOSHomePageActions(onShowSettings: {})
                     }
                     .scrollClipDisabled()
                     .background(Color.black.ignoresSafeArea())
                     .toolbar(.hidden, for: .navigationBar)
                 }
-                .environment(app).environment(trailers).environment(sidebar)
+                .environment(app).environment(sidebar)
                 .environment(\.horizontalSizeClass, .compact)
                 .environment(\.plozziOSHeroContainerHeight, 844)
                 .environment(\.plozzArtworkSourceReady, ready)
@@ -1037,7 +1021,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             profileStore: ProfileStore(defaults: defaults)
         )
         try registerDetailProvider(provider, in: app)
-        app.settings.heroBackground.settings.detailMode = .off
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         try await withWindow(
             item: item, size: scene.coordinateSpace.bounds.size, sizeClass: nil,
@@ -1052,7 +1035,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                     PushedDetailTransparencyFixture(app: app, provider: provider)
                     .plozzOpaqueNavigationChrome()
                     .environment(app)
-                    .environment(HeroTrailerController())
                     .environment(PlozziOSSidebarGeometryModel())
                     .environment(\.horizontalSizeClass, .compact)
                     .environment(\.plozziOSHeroContainerHeight, window.bounds.height)
@@ -1226,7 +1208,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             profileStore: ProfileStore(defaults: defaults)
         )
         try registerDetailProvider(provider, in: app)
-        app.settings.heroBackground.settings.detailMode = .off
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         try await withWindow(
             item: item, size: scene.coordinateSpace.bounds.size, sizeClass: nil,
@@ -1244,7 +1225,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                         }
                         .modifier(PlozziOSNavigationBackground())
                         .environment(app)
-                        .environment(HeroTrailerController())
                         .environment(PlozziOSSidebarGeometryModel())
                         .environment(\.horizontalSizeClass, .compact)
                         .environment(\.plozziOSHeroContainerHeight, window.bounds.height)
@@ -1290,7 +1270,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             profileStore: ProfileStore(defaults: defaults)
         )
         try registerDetailProvider(provider, in: app)
-        app.settings.heroBackground.settings.detailMode = .off
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         try await withWindow(
             item: item, size: scene.coordinateSpace.bounds.size, sizeClass: nil,
@@ -1304,7 +1283,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                     )
                     .id(UUID())
                     .environment(app)
-                    .environment(HeroTrailerController())
                     .environment(PlozziOSSidebarGeometryModel())
                     .environment(\.horizontalSizeClass, .compact)
                     .environment(\.plozziOSHeroContainerHeight, window.bounds.height)
@@ -1372,7 +1350,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             accountStore: AccountStore(secureStore: InMemorySecureStore()),
             profileStore: ProfileStore(defaults: defaults)
         )
-        let trailer = HeroTrailerController()
         try await withWindow(
             item: item, size: scene.coordinateSpace.bounds.size, sizeClass: .compact,
             insets: .zero, pull: PlozziOSHomeHeroPullModel()
@@ -1386,9 +1363,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
                         presentation: HeroPresentation(item: item, artworkStyle: .landscape, surface: .detail),
                         style: .landscape, surfaceRole: .detail, seedArtwork: handoff, isActive: false,
                         showsScrim: false,
-                        trailerController: trailer,
-                        backgroundSettings: app.settings.heroBackground,
-                        trailerResolver: app.heroTrailerResolver()
                     ) { Color.clear }
                     .environment(PlozziOSSidebarGeometryModel())
                     .environment(\.plozzArtworkArea, .details)
@@ -1516,19 +1490,16 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             pull: PlozziOSHomeHeroPullModel(), isRunningOnMac: true
         ) { window, host in
             let sidebar = PlozziOSSidebarGeometryModel()
-            let trailer = HeroTrailerController()
             for (sliding, offset) in [(false, CGFloat(0)), (true, 0), (true, -100), (true, 100)] {
                 host.rootView = AnyView(
                     ZStack(alignment: .top) {
                         Color.black
                         PlozziOSHomeStaticBackdrop(
                             item: item, style: .landscape, height: 600,
-                            contentOffsetX: offset, showsTrailer: false, usesSlidingArtwork: sliding
                         )
                     }
                     .ignoresSafeArea()
                     .environment(sidebar)
-                    .environment(trailer)
                     .environment(\.themePalette, .dark)
                     .environment(\.colorScheme, .dark)
                     .environment(\.plozziOSIsRunningOnMac, true)
@@ -1657,18 +1628,15 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             let sidebar = PlozziOSSidebarGeometryModel()
             sidebar.recordCoveredWidth(280)
             sidebar.setVisible(true)
-            let trailer = HeroTrailerController()
             var idleSamples: [[UInt8]]?
             for sliding in [false, true, false] {
                 host.rootView = AnyView(
                     PlozziOSHomeStaticBackdrop(
                         item: item, style: .landscape, height: 680,
-                        showsTrailer: false, usesSlidingArtwork: sliding
                     )
                     .frame(maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
                     .environment(sidebar)
-                    .environment(trailer)
                     .environment(\.themePalette, .dark)
                     .environment(\.colorScheme, .dark)
                 )
@@ -1745,7 +1713,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
             accountStore: AccountStore(secureStore: InMemorySecureStore()),
             profileStore: ProfileStore(defaults: defaults)
         )
-        app.settings.heroBackground.settings.homeTrailerEnabled = false
         app.settings.hero.settings.showsRatings = showsRatings
         let sidebar = PlozziOSSidebarGeometryModel()
         let root = HomeHeroWidthFixture(
@@ -1755,7 +1722,6 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
         )
             .environment(app)
             .environment(sidebar)
-            .environment(HeroTrailerController())
             .environment(\.themePalette, .dark)
             .environment(\.colorScheme, .dark)
             .environment(\.plozzMetrics, PlozziOSMediaLayout.metrics(

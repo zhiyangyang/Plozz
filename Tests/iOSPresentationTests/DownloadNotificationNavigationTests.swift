@@ -430,7 +430,6 @@ final class DownloadNotificationNavigationTests: XCTestCase {
                 systemColorScheme: .dark
             )
             .environment(app)
-            .environment(HeroTrailerController())
             .environment(PlozziOSSidebarGeometryModel())
             .environment(\.themePalette, .dark)
             .environment(\.locale, Locale(identifier: "en"))

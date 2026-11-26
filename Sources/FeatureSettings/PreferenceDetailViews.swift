@@ -259,7 +259,6 @@ struct SpoilerRowsBuilder {
 /// Detail-page presentation and the shared trailer preferences.
 struct DetailPageDetailView: View {
     let cards: CardStyleSettingsModel
-    @Bindable var heroBackground: HeroBackgroundSettingsModel
     @Environment(\.detailHeaderSettings) private var detailHeaderSettings
 
     var body: some View {
@@ -267,20 +266,7 @@ struct DetailPageDetailView: View {
     }
 
     private var heroRows: [SettingsSplitRow] {
-        var rows = [
-            SettingsSplitRow(
-                id: "detail-page-hero-mode",
-                title: "Trailers",
-                sectionStart: detailHeaderSettings == nil ? .heading(Text("Hero")) : nil
-            ) {
-                SettingsPageLink {
-                    TrailersSettingsView(background: heroBackground)
-                } label: {
-                    SettingsDisclosureLabel { Text("Trailers") }
-                }
-                .accessibilityIdentifier("detail-trailers")
-            }.labeledControl()
-        ]
+        var rows: [SettingsSplitRow] = []
         if let detailHeaderSettings {
             rows.insert(SettingsSplitRow(
                 id: "detail-page-logo-size",

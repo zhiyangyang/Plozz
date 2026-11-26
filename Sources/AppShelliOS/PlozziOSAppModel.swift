@@ -94,11 +94,6 @@ final class PlozziOSAppModel {
     }
     var allowsHomeContentLoading: Bool { allowsHomeContentAccess && !isSettingsPresented }
     var allowsStandalonePlayback: Bool { admissionContext.explicitStandaloneChoice }
-    private struct HeroTrailerCacheEntry {
-        let source: HeroTrailerSource?
-        let expiresAt: Date
-    }
-
     struct PendingLibrarySelection: Identifiable {
         let id = UUID()
         let accountIDs: [String]
@@ -394,7 +389,6 @@ final class PlozziOSAppModel {
     @ObservationIgnored var universalWatchlistShouldResumeAuthentication = false
     @ObservationIgnored var universalWatchlistIdentityUpdateTask:
         Task<Void, Never>?
-    @ObservationIgnored private var heroTrailerCache: [String: HeroTrailerCacheEntry] = [:]
     @ObservationIgnored
     private(set) lazy var identityIndex = IdentityIndexModel(
         activeAccounts: { [weak self] in
@@ -760,7 +754,6 @@ final class PlozziOSAppModel {
     }
 
     private func reloadAccountsAndHeroCache() {
-        heroTrailerCache.removeAll()
         accountsProviders.reloadAccounts()
     }
 
@@ -769,52 +762,6 @@ final class PlozziOSAppModel {
             return accountsProviders.provider(forAccountID: accountID)
         }
         return accountsProviders.primaryProvider
-    }
-
-    func heroTrailerResolver() -> HeroTrailerResolving {
-        { [weak self] item in
-            await self?.resolveHeroTrailer(for: item)
-        }
-    }
-
-    private func resolveHeroTrailer(for item: MediaItem) async -> HeroTrailerSource? {
-        guard !isOfflineMode else { return nil }
-        let cacheKey = "\(item.sourceAccountID ?? "_"):\(item.id)"
-        let now = Date()
-        if let cached = heroTrailerCache[cacheKey], cached.expiresAt > now {
-            return cached.source
-        }
-
-        let source = await FastHeroTrailerResolver.resolve(
-            item: item,
-            identitySources: identityIndex.identitySourcesProvider(item),
-            providerForAccountID: {
-                accountsProviders.provider(forAccountID: $0)
-            },
-            authenticatedHTTPResolver: authenticatedHTTPResolver
-        )
-        guard !Task.isCancelled else { return nil }
-
-        // A session grant belongs to one player; even a short TTL outlives a stop.
-        if let source, !source.isCacheable { return source }
-        // Other signed playback URLs can expire, so positive entries stay short-lived.
-        // Negative entries use an even shorter TTL so a newly-added trailer appears
-        // without requiring an app restart.
-        let ttl: TimeInterval = source == nil ? 120 : 600
-        heroTrailerCache[cacheKey] = HeroTrailerCacheEntry(
-            source: source,
-            expiresAt: now.addingTimeInterval(ttl)
-        )
-        if heroTrailerCache.count > 64 {
-            heroTrailerCache = heroTrailerCache.filter { $0.value.expiresAt > now }
-            if heroTrailerCache.count > 64,
-               let oldest = heroTrailerCache.min(by: {
-                   $0.value.expiresAt < $1.value.expiresAt
-               })?.key {
-                heroTrailerCache[oldest] = nil
-            }
-        }
-        return source
     }
 
     func rescanShare(accountID: String) {
@@ -2380,8 +2327,7 @@ final class PlozziOSAppModel {
         }
         if profiles.activeProfileID == profileID {
             // The account set drives what's on screen, so this stays synchronous.
-            heroTrailerCache.removeAll()
-            accountsProviders.refreshActiveAccountSelection()
+                accountsProviders.refreshActiveAccountSelection()
             identityIndex.reset()
             // Everything else is bookkeeping, and it was running in the same
             // turn as the toggle — blocking the main actor long enough that the

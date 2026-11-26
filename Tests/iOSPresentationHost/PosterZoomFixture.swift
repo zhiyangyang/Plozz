@@ -12,8 +12,6 @@ struct PosterZoomFixture: View {
     @State private var selection: MediaArtworkZoomRoute<String>?
     @State private var plainSelection: String?
     @State private var playCount = 0
-    @State private var trailers = HeroTrailerController()
-    @State private var featured = FeaturedTrailerCoordinator()
     private let arguments = ProcessInfo.processInfo.arguments
     private var item: MediaItem {
         if arguments.contains("--episode-menu") {
@@ -48,8 +46,7 @@ struct PosterZoomFixture: View {
                     if arguments.contains("--featured") {
                         FeaturedMediaRow(
                             title: Text("Featured"), items: [item],
-                            scope: ObjectIdentifier(trailers), coordinator: featured, controller: trailers,
-                            settings: .default, resolver: { _ in nil }, isActive: false,
+                            scope: ObjectIdentifier(MediaItem.self), isActive: false,
                             onSelect: { _ in }
                         )
                         .artworkNavigation { _, source in

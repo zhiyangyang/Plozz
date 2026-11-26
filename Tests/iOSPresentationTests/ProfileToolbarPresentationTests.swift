@@ -83,7 +83,6 @@ final class ProfileToolbarPresentationTests: XCTestCase {
             }
             .environment(app)
             .environment(sidebar)
-            .environment(HeroTrailerController())
             .environment(\.themePalette, .dark)
             .environment(\.locale, Locale(identifier: "en"))
             .environment(\.plozzReduceTransparency, reduceTransparency)

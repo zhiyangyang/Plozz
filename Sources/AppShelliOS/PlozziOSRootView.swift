@@ -26,7 +26,6 @@ public struct PlozziOSRootView: View {
     @State private var appModel: PlozziOSAppModel
     @State private var homeViewModelBox = LazyViewState<HomeViewModel>()
     @State private var contentRefreshCoordinator = ContentRefreshCoordinator(profile: .iOS)
-    @State private var heroTrailerController = HeroTrailerController()
     @State private var sidebarGeometry = PlozziOSSidebarGeometryModel()
     @State private var showingAddServer = false
     @State private var providerSetupRouter = ManagedProviderSetupRouter()
@@ -113,9 +112,6 @@ public struct PlozziOSRootView: View {
                 )
             }
         }
-        .onChange(of: appModel.isOfflineMode) { _, _ in
-            heroTrailerController.stop()
-        }
         .scrollContentBackground(.hidden)
         .environment(\.managedProviderSetupRouter, providerSetupRouter)
         .background { downloadSelectionPresenter }
@@ -168,13 +164,11 @@ public struct PlozziOSRootView: View {
         .id(presentationShellIdentity)
         .onChange(of: appModel.isSettingsPresented) { _, presented in
             if presented {
-                    heroTrailerController.stop()
             }
             settingsShellIdentity = presented
                 ? (appModel.profiles.activeProfileID, shellIdentity) : nil
         }
         .onChange(of: shellIdentity) {
-            heroTrailerController.stop()
         }
         // A successful Plex selection changes shellIdentity, not the sheet collecting it.
         // Libraries owns the same question while Settings is presented.
@@ -261,7 +255,6 @@ public struct PlozziOSRootView: View {
         .environment(appModel)
         .environment(appModel.settings.navigation)
         .environment(appModel.settings.homeVisibility)
-        .environment(heroTrailerController)
         .environment(sidebarGeometry)
         .syncsWindowInterfaceStyle(appModel.settings.theme.theme.preferredColorScheme)
         .modifier(PlozziOSDownloadNotificationRouting(
@@ -703,8 +696,6 @@ struct PlozziOSTabShell: View {
     @Environment(\.plozziOSUsesVerticalToolbar) private var usesVerticalToolbar
     @Environment(PlozziOSSidebarGeometryModel.self)
     private var sidebarGeometry
-    @Environment(HeroTrailerController.self)
-    private var heroTrailerController
     @State private var selectedDestination: PlozziOSDestination = .home
     @State private var isShowingMorePage = false
     @State private var overflowNavigation = PlozziOSOverflowNavigation()
@@ -1279,9 +1270,6 @@ struct PlozziOSTabShell: View {
         }
         .onChange(of: tabDestinationKey, initial: true) { _, _ in
             selectDestination(selectedDestination)
-        }
-        .onChange(of: isShowingMorePage) { _, showingMore in
-            if showingMore { heroTrailerController.stop() }
         }
         .onChange(of: selectedDestination, initial: true) { _, destination in
             MainThreadStallProbe.context = destination.diagnosticCategory

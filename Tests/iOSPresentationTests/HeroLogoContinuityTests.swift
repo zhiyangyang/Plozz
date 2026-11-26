@@ -311,11 +311,9 @@ final class HeroLogoContinuityTests: XCTestCase {
         app.accountsProviders.registry.register(.jellyfin) { _ in provider }
         try app.accountsProviders.accountStore.add(account, token: "fixture")
         app.accountsProviders.reloadAccounts()
-        app.settings.heroBackground.settings.detailMode = .off
         fixture.host.rootView = AnyView(
             PlozziOSItemDetailView(appModel: app, provider: provider, item: provider.show)
             .environment(app)
-            .environment(HeroTrailerController())
             .environment(PlozziOSSidebarGeometryModel())
             .environment(\.horizontalSizeClass, .compact)
             .environment(\.plozziOSHeroContainerHeight, 844)
@@ -355,8 +353,6 @@ final class HeroLogoContinuityTests: XCTestCase {
             PlozziOSHeroStage(
                 item: item, presentation: HeroPresentation(item: item, artworkStyle: .compactPortrait, surface: .detail),
                 style: .compactPortrait, surfaceRole: .detail, seedArtwork: image, isActive: false,
-                trailerController: HeroTrailerController(), backgroundSettings: app.settings.heroBackground,
-                trailerResolver: app.heroTrailerResolver()
             ) { EmptyView() }
             .environment(\.plozzArtworkSourceReady, false)
             .environment(\.themePalette, .dark)
@@ -998,7 +994,6 @@ func testLateDetailWordmarkFadesUnlessMotionIsReduced() async throws {
     private struct ArtworkFixture: View {
         let state: ArtworkState
         @State private var app = PlozziOSAppModel(accountStore: AccountStore(secureStore: InMemorySecureStore()))
-        @State private var trailers = HeroTrailerController()
         @State private var sidebar = PlozziOSSidebarGeometryModel()
 
         var body: some View {
@@ -1006,8 +1001,6 @@ func testLateDetailWordmarkFadesUnlessMotionIsReduced() async throws {
                 item: state.item,
                 presentation: HeroPresentation(item: state.item, artworkStyle: .compactPortrait, surface: .detail),
                 style: .compactPortrait, surfaceRole: .detail, isActive: false, showsScrim: false,
-                trailerController: trailers, backgroundSettings: app.settings.heroBackground,
-                trailerResolver: { _ in nil }
             ) { EmptyView() }
             .environment(sidebar)
             .environment(\.plozzArtworkSourceReady, state.sourceReady)
