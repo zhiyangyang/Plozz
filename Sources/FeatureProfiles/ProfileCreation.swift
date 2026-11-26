@@ -21,7 +21,6 @@ extension ProfilesModel {
     @discardableResult
     public func addAwaitingSetup(
         _ draft: ProfileDraft,
-        isKids: Bool,
         activeAccountIDs: [String]
     ) -> Profile {
         return add(
@@ -39,8 +38,7 @@ extension ProfilesModel {
             avatarImageURL: draft.avatarImageURL,
             avatarEmoji: draft.avatarEmoji,
             avatarEmojiColorIndex: draft.avatarEmojiColorIndex,
-            isAwaitingSetup: true,
-            isKidsProfile: isKids ? true : nil
+            isAwaitingSetup: true
         )
     }
 

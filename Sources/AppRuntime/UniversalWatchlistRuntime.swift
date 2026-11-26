@@ -276,7 +276,6 @@ public protocol UniversalWatchlistHost: AnyObject {
     /// own Task. Guarding the routes individually means a route added later
     /// silently isn't guarded, and the two shells already disagreed about which
     /// ones were. Reading it once, here, is what makes the rule hold everywhere.
-    var activeProfileAwaitsUnlock: Bool { get }
 }
 
 public extension UniversalWatchlistHost {
@@ -362,8 +361,6 @@ public extension UniversalWatchlistHost {
     private func mayReadUniversalWatchlist() -> Bool {
         if OfflineMode.shared.isEnabled {
             return false
-        } else if activeProfileAwaitsUnlock {
-            PlozzLog.app.info("Watchlist refresh deferred — profile locked")
         } else if profiles.activeProfile.needsSetup {
             PlozzLog.app.info("Watchlist refresh deferred — profile awaiting setup")
         } else if !profiles.actionableIdentityAccountIDs(

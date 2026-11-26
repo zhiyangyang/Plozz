@@ -82,31 +82,16 @@ struct ProfileSelectionInteractionFixture: View {
             .init(homeUserID: "protected", name: protected.name, requiresPIN: isProtected, pinRequirementVerified: true),
             forPlexAccount: "plex"
         )
-        if ProcessInfo.processInfo.arguments.contains("--two-pins") {
-            protected.lock = ProfileLock.make(pin: "1234", iterations: 1)
-        }
-        if ProcessInfo.processInfo.arguments.contains("--matched-plex-pin") {
-            protected.lock = ProfileLock.make(pin: "2468", matchesPlexPIN: true, iterations: 1)
-        }
         profiles.update(protected)
         profiles.setActiveAccountIDs(
             ProcessInfo.processInfo.arguments.contains("--disabled-plex-source") ? [] : ["plex"],
             for: protected.id
         )
         if ProcessInfo.processInfo.arguments.contains("--local-profile") {
-            var local = profiles.add(name: "Local", avatarSymbol: "star.fill", colorIndex: 2)
-            local.lock = ProfileLock.make(pin: "1357", iterations: 1)
-            profiles.update(local)
+            let local = profiles.add(name: "Local", avatarSymbol: "star.fill", colorIndex: 2)
             profiles.setActiveAccountIDs([], for: local.id)
         }
-        if ProcessInfo.processInfo.arguments.contains("--locked-fallback") {
-            first.lock = ProfileLock.make(pin: "1357", iterations: 1)
-            profiles.update(first)
-            let guest = profiles.add(name: "Guest", avatarSymbol: "star.fill", colorIndex: 2)
-            profiles.select(guest.id)
-        } else {
-            profiles.select(first.id)
-        }
+        profiles.select(first.id)
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         do {
             try accounts.add(Account(
@@ -137,10 +122,7 @@ struct ProfileSelectionInteractionFixture: View {
             return "FIXTURE-CLOUD"
         }
         model.plexHomeUsers.plexServerTokenResolve = { _, _, _ in "FIXTURE-SERVER" }
-        if ProcessInfo.processInfo.arguments.contains("--initial-profile-lock") {
-            model.profiles.select(protected.id)
-            model.enforceActiveProfileLock()
-        } else if ProcessInfo.processInfo.arguments.contains("--initial-plex-pin") {
+        if ProcessInfo.processInfo.arguments.contains("--initial-plex-pin") {
             model.profiles.select(protected.id)
             model.refreshActiveProfileConfiguration()
         }

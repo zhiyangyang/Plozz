@@ -69,10 +69,10 @@ public enum PINEntryAvailability: Equatable, Sendable {
 /// Owns the entry state (typed digits) but not the *verdict* — the caller decides
 /// whether a PIN was right and feeds an error back down, because only it knows
 /// whether that means a network round-trip (Plex) or a local hash comparison
-/// (`ProfileLock`).
+/// (the Plex Home-user PIN).
 public struct PINEntryScaffold<Badge: View>: View {
     /// Large heading — what this entry is for ("Enter your PIN", "Create a
-    /// Profile Lock"). Carries the whole meaning of the screen, so it's the one
+    /// "(for Plex)"). Carries the whole meaning of the screen, so it's the one
     /// thing a caller must supply.
     public let title: LocalizedStringResource
     /// Supporting line under the title.
@@ -80,12 +80,10 @@ public struct PINEntryScaffold<Badge: View>: View {
     /// Name shown beside the badge.
     ///
     /// A `Text` rather than a `String` so a caller can pass either provider
-    /// CONTENT (`Text(verbatim: profile.name)`) or app COPY
-    /// (`Text(KidsProfileCopy.parentalPIN)`). When this took a `String`, the
-    /// copy case had to call `String(localized:)`, which resolves at call time
-    /// and freezes the value against a language change.
+    /// CONTENT (`Text(verbatim: profile.name)`) or app COPY. When this took a
+    /// `String`, the copy case had to call `String(localized:)`, which resolves
+    /// at call time and freezes the value against a language change.
     public let name: Text
-    public let showsLock: Bool
     /// Error from the last attempt, or `nil`. The slot is reserved either way so
     /// the pad doesn't jump when one appears.
     ///
@@ -131,7 +129,6 @@ public struct PINEntryScaffold<Badge: View>: View {
         title: LocalizedStringResource,
         subtitle: LocalizedStringResource? = nil,
         name: Text,
-        showsLock: Bool = false,
         errorMessage: LocalizedStringResource? = nil,
         isSubmitting: Bool = false,
         availability: PINEntryAvailability = .available,
@@ -147,7 +144,6 @@ public struct PINEntryScaffold<Badge: View>: View {
         self.title = title
         self.subtitle = subtitle
         self.name = name
-        self.showsLock = showsLock
         self.errorMessage = errorMessage
         self.isSubmitting = isSubmitting
         self.availability = availability
@@ -173,7 +169,7 @@ public struct PINEntryScaffold<Badge: View>: View {
 
             if let profileTransition {
                 PINProfileEntryLayout(
-                    transition: profileTransition, title: title, name: name, showsLock: showsLock,
+                    transition: profileTransition, title: title, name: name,
                     availability: availability, errorMessage: errorMessage,
                     footnote: footnote, sequenceStep: sequenceStep,
                     onRetry: onRetry, onCancel: cancelEntry,
@@ -257,7 +253,7 @@ public struct PINEntryScaffold<Badge: View>: View {
                 HStack(spacing: 14) {
                     badge()
                         .clipShape(Circle())
-                    PINIdentityName(name: name, showsLock: showsLock)
+                    PINIdentityName(name: name)
                         .font(PINMetrics.nameFont)
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
@@ -343,15 +339,14 @@ public struct PINEntryScaffold<Badge: View>: View {
 
 struct PINIdentityName: View {
     let name: Text
-    let showsLock: Bool
 
     var body: some View {
-        (showsLock
-            ? name + Text(verbatim: " ") + Text(Image(systemName: "lock.fill")).font(.caption2)
-            : name)
-            .accessibilityLabel(name)
-            .accessibilityValue(showsLock ? Text(ProfileLockCopy.title) : Text(verbatim: ""))
+        name.accessibilityLabel(name)
     }
+}
+
+enum PINEntryMetrics {
+    static let pinLength = 4
 }
 
 @MainActor @Observable
@@ -364,9 +359,9 @@ final class PINEntryState {
     func appendDigit(_ d: String, onSubmit: @escaping @MainActor (String) -> Void) {
         guard !isCommitting else { return }
         guard d.count == 1, d.first?.isNumber == true else { return }
-        guard pin.count < ProfileLock.pinLength else { return }
+        guard pin.count < PINEntryMetrics.pinLength else { return }
         pin.append(d)
-        if pin.count == ProfileLock.pinLength {
+        if pin.count == PINEntryMetrics.pinLength {
             let entered = pin
             // Show the fourth dot before synchronous verification can remove the view.
             isCommitting = true
@@ -477,7 +472,7 @@ public struct PINProgressDots: View {
 
     public var body: some View {
         HStack(spacing: 18) {
-            ForEach(0 ..< ProfileLock.pinLength, id: \.self) { idx in
+            ForEach(0 ..< PINEntryMetrics.pinLength, id: \.self) { idx in
                 let filled = idx < filledCount
                 Circle()
                     .strokeBorder(palette.secondaryText.opacity(0.75), lineWidth: 2)
@@ -494,7 +489,7 @@ public struct PINProgressDots: View {
         // quantifies a noun, which needs real plural variations in every language
         // (Polish has four forms, Arabic six). "2 of 4" needs none and reads the
         // same to VoiceOver.
-        .accessibilityLabel("PIN progress: \(filledCount) of \(ProfileLock.pinLength)")
+        .accessibilityLabel("PIN progress: \(filledCount) of \(PINEntryMetrics.pinLength)")
     }
 }
 

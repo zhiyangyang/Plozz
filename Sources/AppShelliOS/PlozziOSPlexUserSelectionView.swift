@@ -34,7 +34,7 @@ struct PlozziOSPlexUserSelectionView: View {
     }
 
     private var presentsProfileAuthorization: Bool {
-        hasPresentedAuthorization || appModel.parentalSwitch != nil || appModel.lockedSwitch != nil
+        hasPresentedAuthorization
     }
 }
 #endif

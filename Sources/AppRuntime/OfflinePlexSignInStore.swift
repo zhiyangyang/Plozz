@@ -9,7 +9,7 @@ public struct OfflinePlexSignInStore {
         let profile: AutomaticSignInStore.Session.ProfileAccess
         let account: AutomaticSignInStore.Session.AccountAccess
         let deviceID: String
-        let pinVerifier: ProfileLock?
+        let pinVerifier: PlexPINVerifier?
         let serverToken: String
     }
 
@@ -46,7 +46,7 @@ public struct OfflinePlexSignInStore {
     }
 
     func save(
-        profile: Profile, account: Account, pinVerifier: ProfileLock?,
+        profile: Profile, account: Account, pinVerifier: PlexPINVerifier?,
         serverToken: String
     ) throws {
         guard let binding = profile.homeUserBinding(forPlexAccount: account.id),

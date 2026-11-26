@@ -656,7 +656,7 @@ struct PlozziOSAccountReauthenticationView: View {
             model: appModel.accountsProviders.makeAccountReauthentication(
                 account: account,
                 isAuthorized: {
-                    appModel.isActiveProfileAuthorized && !appModel.managementRequiresParentalPIN
+                    appModel.isActiveProfileAuthorized
                 },
                 onComplete: {
                     dismiss()

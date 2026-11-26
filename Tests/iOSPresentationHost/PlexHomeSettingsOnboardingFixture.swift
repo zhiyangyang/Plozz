@@ -17,14 +17,12 @@ struct PlexHomeSettingsOnboardingFixture: View {
         let store = ProfileStore(defaults: defaults)
         let profiles = ProfilesModel(store: store)
         profiles.markFirstRunProfileSetupComplete()
-        var locked = profiles.add(
+        _ = profiles.add(
             name: "Locked viewer", activeAccountIDs: ["plex"],
             plexHomeUserBindings: ["plex": .init(
                 homeUserID: "locked", name: "Locked viewer", requiresPIN: false, pinRequirementVerified: true
             )]
         )
-        locked.replaceLock(with: ProfileLock.make(pin: "1357", iterations: 1))
-        profiles.update(locked)
         let accounts = AccountStore(secureStore: InMemorySecureStore())
         do {
             try accounts.add(.init(

@@ -125,9 +125,7 @@ final class AppAdmissionStoreTests: XCTestCase {
         let defaults = makeDefaults()
         let profileStore = ProfileStore(defaults: defaults)
         let profiles = ProfilesModel(store: profileStore)
-        var second = profiles.add(name: "Second")
-        second.replaceLock(with: try XCTUnwrap(ProfileLock.make(pin: "1234", iterations: 64)))
-        profiles.update(second)
+        let second = profiles.add(name: "Second")
         let originalProfiles = profiles.profiles
         let originalID = profiles.activeProfileID
         let originalRemembered = profiles.hasRememberedSelection
@@ -147,7 +145,6 @@ final class AppAdmissionStoreTests: XCTestCase {
 
         profiles.select(second.id)
         XCTAssertEqual(profiles.activeNamespace, second.id)
-        XCTAssertTrue(profiles.activeProfile.isLocked)
         XCTAssertTrue(model.context(
             hasMediaAccounts: false,
             standalonePlaybackAvailable: true

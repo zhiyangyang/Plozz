@@ -81,11 +81,9 @@ final class PlozziOSAppModel {
     var isActiveProfileAuthorized: Bool {
         return canEnterApp && !mustChooseProfile
             && (!requiresLaunchProfileSelection || didCompleteLaunchProfileSelection)
-            && lockedSwitch == nil && parentalSwitch == nil
             && pendingIdentityAccount == nil && pendingLibrarySelection == nil
             && pendingFirstRunStep == nil && profileOnboardingStep == nil
             && plexHomeUsers.pendingPlexPINRequest == nil
-            && !activeProfileNeedsUnlock
             && !accountsProviders.activeProfileAwaitsIdentity
     }
 
@@ -491,9 +489,7 @@ final class PlozziOSAppModel {
         // Forced when the profile we'd restore is locked, so its content never
         // renders behind the PIN prompt — the unlock then runs through the
         // ordinary `selectProfile(_:)` gate with the picker behind it.
-        let requiresLaunchProfileSelection =
-            profiles.activeProfile.isLocked
-            || profiles.profiles.count > 1
+        let requiresLaunchProfileSelection = profiles.profiles.count > 1
         let accountsProviders = AccountsProvidersModel(
             accountStore: accountStore,
             registry: registry,
@@ -916,32 +912,13 @@ final class PlozziOSAppModel {
 
     /// The state guarding entry to a profile. See `gate`.
     struct ProfileGate {
-        /// A profile waiting on its PIN before it can be opened, or `nil`.
-        var lockedSwitch: ParentalSwitchRequest?
-        /// A switch out of a Kids Profile, held until the Parental PIN is entered.
-        var parentalSwitch: ParentalSwitchRequest?
-        /// The enforced Kids Profile the device was moved OUT of without anyone
-        /// asking — a local or synced deletion re-points the active profile on
-        /// its own. Held until the Parental PIN clears it; see the tvOS twin.
-        var parentalFallThrough: Profile?
         /// Whether the launch picker has been satisfied by a switch that actually
         /// completed. See `performSelectProfile`.
         var didCompleteLaunchSelection = false
         var inlinePlexPINRequest: PlexHomeUsersModel.PlexPINRequest?
     }
 
-    /// `PlozziOSRootView` presents the profile-lock PIN screen off this.
-    var lockedSwitch: ParentalSwitchRequest? { gate.lockedSwitch }
-    /// `PlozziOSRootView` presents the Parental PIN screen off this.
-    var parentalSwitch: ParentalSwitchRequest? { gate.parentalSwitch }
-    var parentalFallThrough: Profile? { gate.parentalFallThrough }
     var didCompleteLaunchProfileSelection: Bool { gate.didCompleteLaunchSelection }
-
-    /// Whether profile management (add/edit) must be withheld right now: the
-    /// household policy plus the fall-through hold.
-    var managementRequiresParentalPIN: Bool {
-        profiles.managementRequiresParentalPIN || gate.parentalFallThrough != nil
-    }
     /// Where a newly created profile is in its setup sequence.
     ///
     /// An explicit sequence rather than a handful of overlapping optionals: the
@@ -952,18 +929,12 @@ final class PlozziOSAppModel {
         case libraries
         /// Its colour scheme, which is per-profile.
         case theme
-        /// Whether to put a PIN on it — offered at creation, like on tvOS, since
-        /// that's when someone setting up a household profile is thinking about
-        /// who should be able to open it.
-        case lockOffer
-
         var id: Self { self }
 
         var next: ProfileOnboardingStep? {
             switch self {
             case .libraries: .theme
-            case .theme: .lockOffer
-            case .lockOffer: nil
+            case .theme: nil
             }
         }
     }
@@ -1138,7 +1109,6 @@ final class PlozziOSAppModel {
     var presentableIdentityQuestion: ServerIdentityQuestion? {
         guard canEnterApp, !mustChooseProfile,
               !requiresLaunchProfileSelection || didCompleteLaunchProfileSelection,
-              lockedSwitch == nil, parentalSwitch == nil, !activeProfileNeedsUnlock,
               !profiles.activeProfile.needsSetup, pendingFirstRunStep == nil, profileOnboardingStep == nil,
               pendingLibrarySelection == nil, plexHomeUsers.pendingPlexUserSelection == nil,
               !isManagedServerPresentationActive, plexPINRequestForAppPresentation == nil,
@@ -1213,14 +1183,7 @@ final class PlozziOSAppModel {
         }
     }
 
-    /// Whether the profile that is already active is locked and unproven — the
-    /// backstop for paths that make a profile active without going through
-    /// `selectProfile(_:)` (a synced deletion re-pointing at `profiles.first`).
-    var activeProfileNeedsUnlock: Bool {
-        let active = profiles.activeProfile
-        return active.isLocked && !profiles.isProfileUnlocked(active.id)
-            && !plexHomeUsers.isAutomaticallySignedIn(active)
-    }
+    var activeProfileNeedsUnlock: Bool { false }
 
     func setAutomaticallySignIn(_ enabled: Bool) {
         plexHomeUsers.setAutomaticallySignIn(
@@ -1229,138 +1192,18 @@ final class PlozziOSAppModel {
         )
     }
 
-    /// Switches to `id`, unless its lock needs proof for this activation — in which case
-    /// the PIN prompt is raised and nothing is re-scoped until it's satisfied.
-    ///
-    /// The lock rides the synced profile record, so a profile locked on the Apple
-    /// TV arrives here locked too; without this gate it would open with one tap
-    /// and the lock would be worthless.
+    /// Switches to `id` and re-scopes the app to that profile.
     @ObservationIgnored
     private var plexOnboardingSelection: (id: String, onActivated: @MainActor () -> Void)?
 
     func selectProfileForPlexOnboarding(_ id: String, onActivated: @escaping @MainActor () -> Void) {
         plexOnboardingSelection = (id, onActivated)
-        requestProfileSelection(id)
+        selectProfile(id)
     }
 
     func selectProfile(_ id: String) {
         plexOnboardingSelection = nil
-        requestProfileSelection(id)
-    }
-
-    private func requestProfileSelection(_ id: String) {
-        guard let target = profiles.profiles.first(where: { $0.id == id }) else {
-            performSelectProfile(id)
-            return
-        }
-        // May you leave? Walking out of a Kids Profile needs the household
-        // Parental PIN, and is checked before the target's own lock — same order
-        // as tvOS, from the same shared policy on `ProfilesModel`.
-        // The hold wins over `activeProfile`: after an involuntary fall-through
-        // the active profile is already the grown-up one, so asking it whether we
-        // may leave a Kids Profile answers "there is no Kids Profile here".
-        if profiles.requiresParentalPIN(
-            switchingFrom: gate.parentalFallThrough ?? profiles.activeProfile,
-            to: target
-        ) {
-            gate.parentalSwitch = ParentalSwitchRequest(target: target)
-            return
-        }
-        continueSelect(target)
-    }
-
-    /// The switch past the parental gate, still subject to the target's own lock.
-    private func continueSelect(_ target: Profile) {
-        if target.isLocked,
-           target.id != profiles.activeProfileID || !profiles.isProfileUnlocked(target.id) {
-            gate.lockedSwitch = ParentalSwitchRequest(target: target)
-            return
-        }
-        performSelectProfile(target.id)
-    }
-
-    /// Checks `pin` against the household Parental PIN and lets the held switch
-    /// continue. Deliberately not remembered for the run — see the tvOS twin.
-    @discardableResult
-    func submitParentalPIN(_ pin: String) -> Bool {
-        guard let target = gate.parentalSwitch?.target else { return false }
-        guard profiles.matchesParentalPIN(pin) else {
-            gate.parentalSwitch?.error = ProfileLockCopy.incorrectPIN
-            return false
-        }
-        gate.parentalSwitch = nil
-        continueSelect(target)
-        return true
-    }
-
-    /// Abandons a held switch, leaving the child where they were.
-    func cancelParentalSwitch() {
-        plexOnboardingSelection = nil
-        // Deliberately does NOT clear `parentalFallThrough`: cancelling a switch
-        // the child never asked for must not hand them the profile they were
-        // dropped into.
-        gate.parentalSwitch = nil
-    }
-
-    /// Checks `pin` against the pending profile's lock, completing the held-back
-    /// switch on a match.
-    @discardableResult
-    func submitProfileLockPIN(_ pin: String) async -> Bool {
-        guard let request = gate.lockedSwitch, let lock = request.target.lock else { return false }
-        let selection = profiles.selectionGeneration
-        let matches = await lock.matchesOffMainActor(pin: pin)
-        guard !Task.isCancelled, gate.lockedSwitch?.id == request.id,
-              profiles.selectionGeneration == selection else { return false }
-        guard profiles.profiles.first(where: { $0.id == request.target.id })?.lock == lock else {
-            gate.lockedSwitch?.error = ProfileLockCopy.profileChanged
-            return false
-        }
-        guard matches else {
-            gate.lockedSwitch?.error = ProfileLockCopy.incorrectPIN
-            return false
-        }
-        gate.lockedSwitch = nil
-        if lock.matchesPlexPIN {
-            plexHomeUsers.prefillPlexPIN(pin, forProfile: request.target.id)
-        }
-        performSelectProfile(request.target.id, unlocking: lock)
-        return true
-    }
-
-    /// Abandons a pending unlock, leaving the active profile untouched.
-    func cancelProfileLockPrompt() {
-        plexOnboardingSelection = nil
-        gate.lockedSwitch = nil
-    }
-
-    /// Sets or clears a profile's PIN gate, dropping any unlock credit the
-    /// previous PIN granted.
-    func setLock(_ lock: ProfileLock?, forProfile id: String) {
-        guard var profile = profiles.profiles.first(where: { $0.id == id }) else { return }
-        profile.replaceLock(with: lock)
-        profiles.update(profile)
-        // Drop any unlock the OLD PIN granted, then re-grant it when a new PIN
-        // was just chosen: whoever typed it demonstrably knows it.
-        profiles.forgetProfileUnlock(id)
-        if lock != nil { profiles.noteProfileUnlocked(id) }
-    }
-
-    /// Whether a profile's PIN has been proved since the last profile change.
-    func isUnlockedThisRun(_ id: String) -> Bool {
-        profiles.isProfileUnlocked(id)
-    }
-
-    /// Records that a profile's PIN was proved outside `submitProfileLockPIN` —
-    /// e.g. to edit it. Knowing the PIN is knowing the PIN.
-    func noteUnlocked(_ id: String) {
-        profiles.noteProfileUnlocked(id)
-    }
-
-    /// Marks a profile as restricted, or lifts the restriction.
-    func setKidsProfile(_ isKids: Bool, forProfile id: String) {
-        guard var profile = profiles.profiles.first(where: { $0.id == id }) else { return }
-        profile.isKids = isKids
-        profiles.update(profile)
+        performSelectProfile(id)
     }
 
     /// Forces the profile picker with no way past it.
@@ -1372,45 +1215,7 @@ final class PlozziOSAppModel {
     /// *into*.
     private(set) var mustChooseProfile = false
 
-    /// Raises the PIN gate if the profile that just became active is locked and
-    /// unproven this run.
-    ///
-    /// `selectProfile(_:)` gates the deliberate route, but the store also
-    /// re-points `activeProfileID` on its own — deleting the active profile falls
-    /// through to whichever is left, and a deletion arriving over sync does the
-    /// same with no user action at all. Landing that way skipped the gate
-    /// entirely, so deleting a profile could drop you straight inside a locked
-    /// one. The prompt has no "cancel into the profile" path: dismissing it
-    /// returns to the picker.
-    /// - Returns: `true` when the gate was raised, meaning the caller must NOT
-    ///   go on to scope this profile in — applying its Plex identity or importing
-    ///   its watchlist before anyone has proved the PIN is most of what the lock
-    ///   is supposed to withhold.
-    /// - Parameter leaving: the profile that was active before the fall-through,
-    ///   when the caller knows it. A deleted Kids Profile drops the device into
-    ///   whatever profile is left — a route out of the child's profile that never
-    ///   passes `selectProfile`'s parental gate. The lock check below can't catch
-    ///   it, because the whole point of the Parental PIN is that grown-up
-    ///   profiles no longer need individual locks.
-    @discardableResult
-    func enforceActiveProfileLock(leaving outgoing: Profile? = nil) -> Bool {
-        if let outgoing,
-           profiles.requiresParentalPIN(switchingFrom: outgoing, to: profiles.activeProfile) {
-            // Held for the whole episode, not just this call: `activeProfile` is
-            // already the grown-up, so every predicate derived from it would
-            // stand aside — including the picker's Add/Edit gate.
-            gate.parentalFallThrough = outgoing
-            mustChooseProfile = true
-            gate.parentalSwitch = ParentalSwitchRequest(target: profiles.activeProfile)
-            return true
-        }
-        guard activeProfileNeedsUnlock else { return false }
-        mustChooseProfile = true
-        gate.lockedSwitch = ParentalSwitchRequest(target: profiles.activeProfile)
-        return true
-    }
-
-    func performSelectProfile(_ id: String, unlocking lock: ProfileLock? = nil) {
+    func performSelectProfile(_ id: String) {
         let onboarding = plexOnboardingSelection?.id == id ? plexOnboardingSelection : nil
         plexOnboardingSelection = nil
         universalWatchlistRetryScheduler = nil
@@ -1426,13 +1231,8 @@ final class PlozziOSAppModel {
             profileOnboardingID = profiles.activeProfile.needsSetup ? id : nil
             profileOnboardingStep = profiles.activeProfile.needsSetup ? .libraries : nil
         }
-        if let lock, profiles.activeProfile.lock == lock { profiles.noteProfileUnlocked(id) }
         TouchFeedback.shared.invalidatePendingConfirmations()
         plexHomeUsers.beginExplicitProfileActivation()
-        // Past both gates, so the hold has done its job. Released here rather
-        // than on PIN success so that switching into another Kids Profile (which
-        // needs no PIN) also releases it.
-        gate.parentalFallThrough = nil
         // The launch picker is satisfied by an ACTUAL switch, never by the tap
         // that merely asked for one: tapping a locked profile only raises its
         // PIN, so marking completion at the tap let a cancel fall straight
@@ -1452,7 +1252,7 @@ final class PlozziOSAppModel {
                 resumeProfileOnboardingIfNeeded()
             }
         }
-        refreshActiveProfileConfiguration(deferPlexIdentity: onboarding != nil && lock?.matchesPlexPIN != true)
+        refreshActiveProfileConfiguration(deferPlexIdentity: onboarding != nil)
         onboarding?.onActivated()
     }
 
@@ -2190,11 +1990,7 @@ final class PlozziOSAppModel {
     /// active-account subset) is preserved. A new profile is seeded with the
     /// current household accounts, selected, and handed to the first-run theme
     /// step — mirroring the previous `addProfile` behaviour.
-    /// - Parameter isKids: whether a NEWLY created profile is a Kids Profile.
-    ///   Ignored when editing, where the flag is owned by the profile's own
-    ///   settings page. Matches the tvOS picker, which has always been able to
-    ///   create one directly.
-    func saveProfile(_ draft: ProfileDraft, isKids: Bool = false) {
+    func saveProfile(_ draft: ProfileDraft) {
         let trimmed = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -2229,7 +2025,6 @@ final class PlozziOSAppModel {
             // the import until `advanceProfileOnboarding` releases it.
             let created = profiles.addAwaitingSetup(
                 draft,
-                isKids: isKids,
                 activeAccountIDs: accounts.map(\.id)
             )
             // Claimed BEFORE the switch: `performSelectProfile` schedules a
@@ -2252,22 +2047,10 @@ final class PlozziOSAppModel {
     func removeProfile(_ id: String) {
         universalWatchlistRetryScheduler = nil
         let previousActiveProfileID = profiles.activeProfileID
-        let outgoingProfile = profiles.activeProfile
         removeMediaAliases(forProfileID: id)
         profiles.remove(id)
         watchReconcilers[id] = nil
         if profiles.activeProfileID != previousActiveProfileID {
-            // Deleting the active profile falls the selection through to whatever
-            // is left, which can be a LOCKED profile — a route into it that never
-            // passes `selectProfile`'s gate. Stop here if so: re-scoping,
-            // re-pointing the Plex identity and importing that profile's
-            // watchlist is most of what the lock is meant to withhold, and doing
-            // it first would mean the PIN only hid a profile that was already
-            // open behind it.
-            if enforceActiveProfileLock(leaving: outgoingProfile) {
-                reloadAccountsAndHeroCache()
-                return
-            }
             settings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
             seriesTrackStore = SeriesTrackPreferenceStore(
                 namespace: profiles.activeNamespace

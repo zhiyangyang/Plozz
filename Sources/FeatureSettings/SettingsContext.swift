@@ -45,18 +45,6 @@ struct SettingsContext {
     /// Sub-pages therefore push through the stack's own route type.
     let pushRoute: (SettingsRoute) -> Void
     let onAddAccount: () -> Void
-    /// Whether the household has a Parental PIN, which is what decides if a Kids
-    /// Profile is enforced or merely simplified. See ``ParentalPIN``.
-    var hasParentalPIN: Bool = false
-    /// Whether the Parental PIN has been entered, unsealing this Kids Profile's
-    /// restricted settings for now.
-    var isParentalUnlocked: Bool = false
-    /// Verifies a candidate Parental PIN.
-    var matchesParentalPIN: (String) -> Bool = { _ in false }
-    /// Records a successful Parental PIN entry.
-    var onParentalUnlock: () -> Void = {}
-    /// Sets or clears the household's Parental PIN.
-    var onSetParentalPIN: (ParentalPIN?) -> Void = { _ in }
     /// Signs in another user on an already-added server.
     let onAddUser: (MediaServer) -> Void
     let onRemoveAccount: (Account) -> Void
@@ -65,22 +53,6 @@ struct SettingsContext {
     let onSignOutAll: () -> Void
     let plexHomeUsersFetcher: (String) async -> [PlexHomeUser]
     let onSelectPlexHomeUser: (String, PlexHomeUser?) -> Void
-    /// Sets (or clears, with `nil`) a profile's PIN gate. Takes an
-    /// already-derived `ProfileLock` so the raw PIN never leaves the entry view.
-    ///
-    /// Keyed by profile id rather than acting on the active one: locks are
-    /// managed for the whole household from Everyone › Profiles, the way Netflix
-    /// does it, so a grown-up can lock their own profile from a child's device
-    /// without switching into it first.
-    let onSetProfileLock: (String, ProfileLock?) -> Void
-    let validatePlexPIN: (String, String) async -> PlexPINValidationResult
-    /// Marks a profile as restricted (or lifts it).
-    let onSetKidsProfile: (String, Bool) -> Void
-    /// Whether a profile's PIN has already been proved this run, so a locked
-    /// profile's settings stay sealed until someone enters it.
-    let isProfileUnlocked: (String) -> Bool
-    /// Records that a profile's PIN was just proved.
-    let onProfileUnlocked: (String) -> Void
 }
 
 /// Typed routes for the Settings drill-down NavigationStack. Defined at file
@@ -100,20 +72,8 @@ public enum SettingsRoute: Hashable {
     case profile
     /// Per-profile settings page (Everyone › Profiles › <name>).
     case profileSettings(profileID: String)
-    /// The Parental PIN prompt that unseals a Kids Profile's restricted
-    /// settings. A pushed page, not a modal — modals asked for from inside the
-    /// Settings tab are unreliable (see the Edit button note in `SettingsView`).
-    case grownUps
-    /// The profile's own name, avatar and colour. Kept OUT of Parental
-    /// Controls: it can't escalate anything, and a Kids Profile should still be
-    /// able to choose how it looks.
+    /// The profile's own name, avatar and colour.
     case profileAppearance(profileID: String)
-    /// Choosing or changing one profile's own lock PIN.
-    case profileLockSetup(profileID: String)
-    /// Creating the household's Parental PIN.
-    case parentalPINSetup
-    /// The household's Parental PIN settings (Everyone › Parental PIN).
-    case parentalPIN
     case topShelf
     case servers
     case myLibraries
@@ -135,51 +95,6 @@ public enum SettingsRoute: Hashable {
     /// Jellyfin/Emby "Watching as" — the server's sign-ins, plus adding one.
     case serverUser(serverKey: String)
     case server(key: String)
-}
-
-enum SettingsRouteAccess: Equatable {
-    case allowed, parentalPIN, adultProfile
-}
-
-extension SettingsRoute {
-    var isSearchResult: Bool {
-        if case .searchResult = self { return true }
-        return false
-    }
-
-    var usesFullScreenDetail: Bool {
-        switch self {
-        case .searchResult(let id):
-            return SettingsSearchCatalog.entry(id: id).map {
-                $0.page == .subtitleStyle || $0.page == .profileAppearance
-            } == true
-        case .subtitleStyle, .profileAppearance, .profileLockSetup, .parentalPINSetup:
-            return true
-        default:
-            return false
-        }
-    }
-
-    func access(activeProfileID: String, isKids: Bool, isParentalSealed: Bool) -> SettingsRouteAccess {
-        guard isKids else { return .allowed }
-        switch self {
-        case .searchResult(let id):
-            guard let entry = SettingsSearchCatalog.entry(id: id) else { return .allowed }
-            if entry.requiresAdultProfile { return .adultProfile }
-            return entry.page.requiresParentalAuthorization && isParentalSealed ? .parentalPIN : .allowed
-        case .profile, .servers, .server, .parentalPIN, .topShelf:
-            return .adultProfile
-        case .myLibraries, .plexUser, .serverUser, .parentalPINSetup:
-            return isParentalSealed ? .parentalPIN : .allowed
-        case let .profileSettings(profileID), let .profileLockSetup(profileID):
-            guard profileID == activeProfileID else { return .adultProfile }
-            return isParentalSealed ? .parentalPIN : .allowed
-        case let .profileAppearance(profileID):
-            return profileID == activeProfileID ? .allowed : .adultProfile
-        default:
-            return .allowed
-        }
-    }
 }
 
 /// Settings navigation state that survives a top-bar/sidebar/rail shell swap.

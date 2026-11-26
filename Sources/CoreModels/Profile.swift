@@ -90,60 +90,6 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     /// always use `colorIndex`. Migration-safe (`decodeIfPresent`).
     public var avatarEmojiColorIndex: Int?
 
-    /// Optional PIN gate. `nil` (the default) = anyone on this device can open
-    /// the profile, which is the right default and the only behaviour that
-    /// existed before.
-    ///
-    /// Holds a salted verifier, never the PIN — see `ProfileLock`. The lock is
-    /// stored with this device's profile record and never leaves the device.
-    public var lock: ProfileLock?
-    /// Field-level conflict revision for `lock`. See `ProfileLockRevision`.
-    public var lockRevision: ProfileLockRevision?
-
-    /// The household's Parental PIN, carried on the household's FIRST profile.
-    ///
-    /// It lives with a profile record rather than a separate household file so a
-    /// single store owns the roster and its protection. Deleting that anchor
-    /// moves the revisioned PIN to the first survivor.
-    ///
-    /// Read it through ``ProfilesModel/parentalPIN``; nothing should reach for
-    /// this field directly.
-    public var parentalPIN: ParentalPIN?
-    /// Field-level revision, for the same reason `lockRevision` exists: an
-    /// unrelated name or avatar edit synced from a stale device must never erase
-    /// a newly-set Parental PIN.
-    public var parentalPINRevision: ProfileLockRevision?
-
-    /// Whether this is a **Kids Profile**: shared, household-level settings are
-    /// hidden while it's active.
-    ///
-    /// The other half of the lock. A lock keeps a child *out* of the grown-ups'
-    /// profiles; this keeps them from wrecking the household from inside their
-    /// own — removing servers, deleting profiles, signing everything out. Both
-    /// are needed, because the destructive controls live in a section every
-    /// profile can reach.
-    ///
-    /// Only settable from a profile that isn't itself a Kids Profile, so it
-    /// can't be switched off from inside. Synced, for the same reason the lock
-    /// is: a restriction that applied on one device wouldn't be a restriction.
-    ///
-    /// External Home Discovery is always disabled, independently of the Parental
-    /// PIN. Library content still follows the selected server user's access;
-    /// this flag is not an app-wide maturity-rating filter.
-    ///
-    /// Optional purely for migration: profiles encoded before this field existed
-    /// decode as `nil`, and the synthesized encoder omits `nil` rather than
-    /// writing `false`, so an older peer's bytes round-trip unchanged (the sync
-    /// anti-clobber invariant). Read it through `isKids`.
-    public var isKidsProfile: Bool?
-    /// Field-level revision for ``isKidsProfile``.
-    ///
-    /// Exists for exactly the reason ``lockRevision`` does, and it matters more:
-    /// the Kids flag is what makes the Parental PIN gate apply at all, so a
-    /// stale record that clears it doesn't just lose a preference — it quietly
-    /// un-restricts a child's profile on every device.
-    public var kidsProfileRevision: ProfileLockRevision?
-
     /// Whether this profile has never been through its setup step.
     ///
     /// A brand-new profile inherits every server in the household (no explicit
@@ -205,69 +151,6 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
         set { isAwaitingSetup = newValue ? true : nil }
     }
 
-    /// Whether this profile plays as a Plex Home user that already asks for a
-    /// PIN, so one entry can be offered to satisfy both gates.
-    ///
-    /// Shared because four screens across both shells asked the same question
-    /// with their own copy of it, and a lock offer that disagrees with the lock
-    /// screen about whether PIN reuse applies is a confusing way to fail.
-    public var playsAsPINProtectedPlexUser: Bool {
-        if plexHomeUserRequiresPIN == true { return true }
-        return plexHomeUserBindings?.values.contains { $0.requiresPIN == true } ?? false
-    }
-
-    /// Configured protection for setup summaries. Pickers must use the
-    /// source-aware overload; live Plex authorization still checks the server.
-    public var showsPINLock: Bool {
-        var accountIDs = Set(plexHomeUserBindings?.keys.map { $0 } ?? [])
-        if let plexHomeUserAccountID { accountIDs.insert(plexHomeUserAccountID) }
-        return showsPINLock(activePlexAccountIDs: accountIDs)
-    }
-
-    public func showsPINLock(activePlexAccountIDs: Set<String>) -> Bool {
-        isLocked || activePlexAccountIDs.contains {
-            homeUserBinding(forPlexAccount: $0)?.requiresPIN == true
-        }
-    }
-
-    /// Revision used for conflict resolution, including an immediate baseline for
-    /// locks created by an older build before `lockRevision` existed.
-    public var effectiveLockRevision: ProfileLockRevision? {
-        lockRevision ?? lock.map { ProfileLockRevision.legacy(for: $0) }
-    }
-
-    /// Revision used for conflict resolution, with a baseline for a flag set by
-    /// a build that predates the revision field.
-    public var effectiveKidsProfileRevision: ProfileLockRevision? {
-        kidsProfileRevision ?? isKidsProfile.map { ProfileLockRevision(counter: 0, nonce: $0 ? "kids" : "not-kids") }
-    }
-
-    /// Sets or clears the Kids flag and advances its revision.
-    public mutating func replaceKidsProfile(with isKids: Bool?) {
-        kidsProfileRevision = .next(after: effectiveKidsProfileRevision)
-        isKidsProfile = isKids
-    }
-
-    /// Adds, changes or removes the lock and advances its field-level revision.
-    public mutating func replaceLock(with newLock: ProfileLock?) {
-        lockRevision = .next(after: effectiveLockRevision)
-        lock = newLock
-    }
-
-    /// Revision used for conflict resolution, with a baseline for a PIN written
-    /// by a build that predates the revision field.
-    public var effectiveParentalPINRevision: ProfileLockRevision? {
-        parentalPINRevision ?? parentalPIN.map {
-            ProfileLockRevision(counter: 0, nonce: $0.verifier)
-        }
-    }
-
-    /// Sets or clears the household Parental PIN and advances its revision.
-    public mutating func replaceParentalPIN(with newPIN: ParentalPIN?) {
-        parentalPINRevision = .next(after: effectiveParentalPINRevision)
-        parentalPIN = newPIN
-    }
-
     /// Whether an answer is owed about who this profile watches as on any of
     /// `accountIDs`. See `accountsAwaitingIdentity`.
     ///
@@ -290,12 +173,6 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
         return accountIDs.contains { pending.contains($0) }
     }
 
-    /// Whether this profile is restricted. See `isKidsProfile`.
-    public var isKids: Bool {
-        get { isKidsProfile == true }
-        set { replaceKidsProfile(with: newValue ? true : nil) }
-    }
-
     public init(
         id: String = UUID().uuidString,
         name: String,
@@ -312,12 +189,6 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
         avatarImageURL: String? = nil,
         avatarEmoji: String? = nil,
         avatarEmojiColorIndex: Int? = nil,
-        lock: ProfileLock? = nil,
-        lockRevision: ProfileLockRevision? = nil,
-        parentalPIN: ParentalPIN? = nil,
-        parentalPINRevision: ProfileLockRevision? = nil,
-        kidsProfileRevision: ProfileLockRevision? = nil,
-        isKidsProfile: Bool? = nil,
         isAwaitingSetup: Bool? = nil,
         plexHomeImportIdentity: PlexHomeImportIdentity? = nil
     ) {
@@ -336,18 +207,10 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
         self.avatarImageURL = avatarImageURL
         self.avatarEmoji = avatarEmoji
         self.avatarEmojiColorIndex = avatarEmojiColorIndex
-        self.lock = lock
-        self.lockRevision = lockRevision
-        self.parentalPIN = parentalPIN
-        self.parentalPINRevision = parentalPINRevision
-        self.kidsProfileRevision = kidsProfileRevision
-        self.isKidsProfile = isKidsProfile
         self.isAwaitingSetup = isAwaitingSetup
         self.plexHomeImportIdentity = plexHomeImportIdentity
     }
 
-    /// Whether opening this profile needs a PIN.
-    public var isLocked: Bool { lock != nil }
 
     /// Stable namespace used to scope this profile's settings stores. The
     /// default/primary profile (`isDefault`) returns `nil` so it reads the
@@ -840,55 +703,5 @@ extension Profile {
         }
         copy.plexHomeUserBindings = dict.isEmpty ? nil : dict
         return copy
-    }
-}
-
-extension Profile {
-    /// Resolves this (incoming) profile's security fields against the copy this
-    /// device already holds, keeping whichever side's revision is newer.
-    ///
-    /// Pairing otherwise takes the sender wholesale, which is right for a name or
-    /// an avatar and wrong for the three fields that decide what a child can do:
-    /// a device that has been in a drawer since before the household set a
-    /// Profile Lock, marked a profile as Kids, or set the Parental PIN would
-    /// hand back its stale copy and quietly undo all three. The sync path has
-    /// always applied this rule — pairing is just another peer, so it uses the
-    /// same one rather than a second, subtly different implementation.
-    public mutating func resolveSecurityFields(against local: Profile) {
-        // Each field: the incoming value stands only when its revision is
-        // strictly newer. A revision-less (pre-upgrade) sender loses to any
-        // local revision, including the legacy baseline.
-        let localLock = local.effectiveLockRevision
-        if let incoming = lockRevision {
-            if let localLock, incoming <= localLock {
-                lock = local.lock
-                lockRevision = local.lockRevision
-            }
-        } else if localLock != nil {
-            lock = local.lock
-            lockRevision = local.lockRevision
-        }
-
-        let localPIN = local.effectiveParentalPINRevision
-        if let incoming = parentalPINRevision {
-            if let localPIN, incoming <= localPIN {
-                parentalPIN = local.parentalPIN
-                parentalPINRevision = local.parentalPINRevision
-            }
-        } else if localPIN != nil {
-            parentalPIN = local.parentalPIN
-            parentalPINRevision = local.parentalPINRevision
-        }
-
-        let localKids = local.effectiveKidsProfileRevision
-        if let incoming = kidsProfileRevision {
-            if let localKids, incoming <= localKids {
-                isKidsProfile = local.isKidsProfile
-                kidsProfileRevision = local.kidsProfileRevision
-            }
-        } else if localKids != nil {
-            isKidsProfile = local.isKidsProfile
-            kidsProfileRevision = local.kidsProfileRevision
-        }
     }
 }

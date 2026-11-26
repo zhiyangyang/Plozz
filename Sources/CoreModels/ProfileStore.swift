@@ -76,14 +76,6 @@ public protocol ProfilePersisting: Sendable {
     /// Persists whether the one-time first-run profile setup has completed.
     func setFirstRunProfileSetupComplete(_ value: Bool)
 
-    /// The household's Parental PIN, or `nil` when none is set (the default).
-    ///
-    /// Household-wide by design — see ``ParentalPIN``. Stored beside the profile
-    /// list so every Apple TV system user sees the same value.
-    func parentalPIN() -> ParentalPIN?
-    /// Persists (or clears with `nil`) the household's Parental PIN.
-    func setParentalPIN(_ value: ParentalPIN?)
-
     /// Debug-only: wipes all household profile state (profiles, the active
     /// selection, household preference overrides, and the first-run flag) so
     /// the next launch behaves like a brand-new install.
@@ -95,8 +87,6 @@ extension ProfilePersisting {
     // need to opt into the household-preferences additions to keep compiling.
     public func firstRunProfileSetupComplete() -> Bool { false }
     public func setFirstRunProfileSetupComplete(_ value: Bool) {}
-    public func parentalPIN() -> ParentalPIN? { nil }
-    public func setParentalPIN(_ value: ParentalPIN?) {}
     public func resetForDebugging() {}
     public func clearActiveAccountIDs(forProfile profileID: String) {}
     public func rootNamespaceOwnerID() -> String? { nil }
@@ -140,7 +130,6 @@ public final class ProfileStore: ProfilePersisting, @unchecked Sendable {
     /// the value left behind by older installs.
     private let legacyProfilesEnabledKey = "com.plozz.profiles.enabled"
     private let firstRunSetupKey = "com.plozz.profiles.firstRunSetupComplete"
-    private let parentalPINKey = "com.plozz.profiles.parentalPIN"
     private let rootNamespaceOwnerKey = "com.plozz.profiles.rootNamespaceOwner"
     /// Stable id assigned to the migrated default profile so its identity is the
     /// same across launches and its `isDefault` status is unambiguous.
@@ -271,24 +260,6 @@ public final class ProfileStore: ProfilePersisting, @unchecked Sendable {
         writeSharedBool(value, forKey: firstRunSetupKey)
     }
 
-    /// Stored beside the profile list (the shared/secure store), so the whole
-    /// household sees one PIN rather than one per Apple TV system user.
-    public func parentalPIN() -> ParentalPIN? {
-        lock.lock(); defer { lock.unlock() }
-        guard let data = sharedData(forKey: parentalPINKey) else { return nil }
-        return try? JSONDecoder().decode(ParentalPIN.self, from: data)
-    }
-
-    public func setParentalPIN(_ value: ParentalPIN?) {
-        lock.lock(); defer { lock.unlock() }
-        guard let value else {
-            removeShared(forKey: parentalPINKey)
-            return
-        }
-        guard let data = try? JSONEncoder().encode(value) else { return }
-        setSharedData(data, forKey: parentalPINKey)
-    }
-
     public func resetForDebugging() {
         lock.lock(); defer { lock.unlock() }
         for key in sharedMigrationMembershipKeys(for: loadProfilesLocked()).union([profilesKey]) {
@@ -302,7 +273,6 @@ public final class ProfileStore: ProfilePersisting, @unchecked Sendable {
         writeSharedBool(nil, forKey: legacyAskOnStartupKey)
         writeSharedBool(nil, forKey: legacyProfilesEnabledKey)
         writeSharedBool(nil, forKey: firstRunSetupKey)
-        removeShared(forKey: parentalPINKey)
         didMigrateShared = false
     }
 
@@ -545,53 +515,15 @@ public final class ProfilesModel {
     public private(set) var rootNamespaceOwnerID: String?
     public private(set) var activeProfileID: String {
         didSet {
-            if activeProfileID != oldValue {
-                unlockedProfileLocks.removeAll()
-                selectionGeneration += 1
-            }
+            if activeProfileID != oldValue { selectionGeneration += 1 }
         }
     }
     @ObservationIgnored public private(set) var selectionGeneration = 0
-    private var unlockedProfileLocks: [String: ProfileLock] = [:]
-
-    public func isProfileUnlocked(_ id: String) -> Bool {
-        guard let lock = profiles.first(where: { $0.id == id })?.lock else { return false }
-        return unlockedProfileLocks[id] == lock
-    }
-
-    /// Keeps proof only until the active profile changes, including sync/deletion fallbacks.
-    public func noteProfileUnlocked(_ id: String) {
-        unlockedProfileLocks[id] = profiles.first(where: { $0.id == id })?.lock
-    }
-
-    public func forgetProfileUnlock(_ id: String) {
-        unlockedProfileLocks[id] = nil
-    }
     /// Whether the current Apple TV system user already has a *stored* profile
     /// pick (vs. the in-memory default). Drives the launch picker: with system
     /// multi-user support, a user with no remembered pick still sees the picker
     /// even though `activeProfile` resolves to a sensible default.
     public private(set) var hasRememberedSelection: Bool
-    /// The household's Parental PIN, or `nil` when none is set.
-    ///
-    /// Its presence is the single switch between the two things a Kids Profile
-    /// can be: without it, Kids is *curation* (a simpler page, household
-    /// settings hidden) and nothing is gated; with it, Kids is *enforcement*.
-    /// Deriving both behaviours from one optional is what stops a setting ever
-    /// being locked behind a key nobody holds.
-    ///
-    /// Read from the household's FIRST profile, which is where it's stored so it
-    /// syncs — see ``Profile/parentalPIN``. Falls back to the device-local store
-    /// for a PIN written before it synced, so upgrading doesn't silently unlock
-    /// a household.
-    public var parentalPIN: ParentalPIN? {
-        profiles.first?.parentalPIN ?? legacyLocalParentalPIN
-    }
-
-    /// A Parental PIN written by a build that kept it device-local. Migrated onto
-    /// the first profile the next time one is set, and read until then.
-    @ObservationIgnored private var legacyLocalParentalPIN: ParentalPIN?
-
     private let store: ProfilePersisting
 
     /// - Parameters:
@@ -633,128 +565,15 @@ public final class ProfilesModel {
             // becoming some other profile's settings.
             self.rootNamespaceOwnerID = nil
         }
-        self.legacyLocalParentalPIN = store.parentalPIN()
         refreshAccountSelections()
         // Intentionally does *not* persist a defaulted selection: leaving it
         // unstored is what lets a fresh Apple TV system user get the picker.
-        migrateLocalParentalPINIfNeeded()
-    }
-
-    /// Moves a Parental PIN written by a build that kept it device-local onto the
-    /// synced anchor, so it starts reaching the household's other devices.
-    ///
-    /// Without this the PIN would sit in local storage forever and only sync if
-    /// someone happened to set it again — the household would look protected on
-    /// one device and be wide open on the rest, which is the worst of both.
-    private func migrateLocalParentalPINIfNeeded() {
-        guard let local = legacyLocalParentalPIN, var anchor = profiles.first else { return }
-
-        // A revision means the household has already DECIDED about the PIN —
-        // set it, changed it, or deliberately removed it. `parentalPIN == nil`
-        // alone can't tell "never had one" from "removed", so migrating on that
-        // would resurrect a PIN the user had just deleted (and, because the
-        // migration advances the revision, it would beat the deletion on every
-        // other device too).
-        guard anchor.parentalPIN == nil, anchor.effectiveParentalPINRevision == nil else {
-            // The decision has been made elsewhere; this copy is now noise.
-            legacyLocalParentalPIN = nil
-            store.setParentalPIN(nil)
-            return
-        }
-
-        anchor.replaceParentalPIN(with: local)
-        update(anchor)
-
-        // Only drop the local copy once the PIN is DURABLE. Checking the
-        // in-memory `profiles` proves nothing — it's the value we just assigned —
-        // and `saveProfiles` swallows a Keychain failure, so a failed write would
-        // otherwise leave the household with no PIN anywhere.
-        guard store.loadProfiles().first?.parentalPIN != nil else { return }
-        legacyLocalParentalPIN = nil
-        store.setParentalPIN(nil)
     }
 
     /// The currently-selected profile (falls back to the first profile).
     public var activeProfile: Profile {
         profiles.first { $0.id == activeProfileID } ?? profiles.first
             ?? Profile(id: ProfileStore.defaultProfileID, name: "Me")
-    }
-
-    // MARK: Parental controls
-
-    /// Sets or clears the household's Parental PIN.
-    ///
-    /// Written to the first profile so it syncs to every device — a parental
-    /// control that applied on one device only wouldn't control anything.
-    /// Advances a field-level revision so an unrelated edit arriving from a
-    /// stale device can't erase it.
-    ///
-    /// Clearing it doesn't touch any Kids Profile: those stay on, they simply
-    /// stop being enforced. That's deliberate — "I don't need the PIN any more"
-    /// shouldn't silently hand a child the household settings back.
-    /// - Returns: `false` when there was no profile to anchor the PIN to, so a
-    ///   caller can't report success while leaving the household unprotected.
-    @discardableResult
-    public func setParentalPIN(_ pin: ParentalPIN?) -> Bool {
-        guard var anchor = profiles.first else { return false }
-        anchor.replaceParentalPIN(with: pin)
-        update(anchor)
-        // The device-local copy is now redundant; clear it so the synced value is
-        // the only source and a stale local one can't resurrect a removed PIN.
-        legacyLocalParentalPIN = nil
-        store.setParentalPIN(nil)
-        return true
-    }
-
-    /// Whether `pin` is the household's Parental PIN. `false` when none is set,
-    /// so a caller can never be tricked into treating "no PIN" as "any PIN".
-    public func matchesParentalPIN(_ pin: String) -> Bool {
-        guard let parentalPIN else { return false }
-        return parentalPIN.matches(pin: pin)
-    }
-
-    /// Whether a Kids Profile's restrictions are actually being enforced.
-    ///
-    /// The single rule the whole feature turns on: a Kids Profile restricts
-    /// nothing until the household has a Parental PIN. Without one there is no
-    /// key, so gating a setting would strand it — and the child could switch to
-    /// an unlocked grown-up profile anyway, which makes the gate theatre.
-    public var enforcesKidsRestrictions: Bool { parentalPIN != nil }
-
-    /// Whether profile MANAGEMENT — creating, editing or deleting profiles — is
-    /// currently withheld.
-    ///
-    /// True only from inside an enforced Kids Profile. Creating a profile
-    /// *switches into it*, so an ungated "Add Profile" was a complete bypass:
-    /// a child could make an ordinary profile and land in it unrestricted,
-    /// never touching the switch gate. Editing is withheld for the same reason —
-    /// the editor reaches the Kids flag, the profile lock and Delete.
-    ///
-    /// A grown-up manages profiles from their own profile; getting there already
-    /// costs the Parental PIN, so nothing is unreachable — it just can't be
-    /// reached from inside the child's profile.
-    public var managementRequiresParentalPIN: Bool {
-        activeProfile.isKids && enforcesKidsRestrictions
-    }
-
-    /// Whether `profile` may change who it watches as, which libraries it sees,
-    /// its own Kids flag, and its own Profile Lock.
-    ///
-    /// The one predicate every surface asks, so a new screen can't accidentally
-    /// expose an escalation route the others close.
-    public func canEditRestrictedSettings(of profile: Profile) -> Bool {
-        !(profile.isKids && enforcesKidsRestrictions)
-    }
-
-    /// Whether switching from `from` to `to` has to be authorised first.
-    ///
-    /// Only leaving a Kids Profile asks. Switching between grown-up profiles
-    /// stays free, so the PIN costs the adults nothing in normal use while still
-    /// closing the one route that matters: the child walking out of their own
-    /// profile into an unrestricted one.
-    public func requiresParentalPIN(switchingFrom from: Profile, to: Profile) -> Bool {
-        guard enforcesKidsRestrictions else { return false }
-        return from.isKids && !to.isKids
     }
 
     /// Whether `profile` is the default/primary one (drives `nil`-namespaced
@@ -827,7 +646,6 @@ public final class ProfilesModel {
         /// every server and imports the household's watchlist on next launch —
         /// the exact leak the gate exists to stop. See `Profile.isAwaitingSetup`.
         isAwaitingSetup: Bool? = nil,
-        isKidsProfile: Bool? = nil,
         plexHomeImportIdentity: PlexHomeImportIdentity? = nil
     ) -> Profile {
         var profile = Profile(
@@ -847,9 +665,6 @@ public final class ProfilesModel {
             plexHomeImportIdentity: plexHomeImportIdentity
         )
         profile.isAwaitingSetup = isAwaitingSetup
-        // Through the revisioned setter, so a profile is never born with a Kids
-        // flag that a stale peer could clear.
-        profile.replaceKidsProfile(with: isKidsProfile)
         profiles.append(profile)
         profiles.sort { $0.createdAt < $1.createdAt }
         store.saveProfiles(profiles)
@@ -886,31 +701,12 @@ public final class ProfilesModel {
             byID[p.id] = p
         }
         for p in incoming {
-            if p.id == ProfileStore.defaultProfileID, receiverConfigured, let local = byID[p.id] {
-                // Keep the receiver's own default, but NOT at the cost of the
-                // household Parental PIN: that rides this record and nothing else
-                // carries it, so skipping wholesale handed the receiver every Kids
-                // Profile with nothing enforcing them — silently, badge and all.
-                // Merged under the same revision rule the sync path uses.
-                // Resolved by the one shared rule rather than a second copy of
-                // it: everything else stays local, and only the PIN is offered.
-                var merged = local
-                merged.parentalPIN = p.parentalPIN
-                // The EFFECTIVE revision, so a sender whose PIN predates
-                // revisions still competes on its synthesized baseline instead of
-                // arriving revisionless and always losing to the receiver.
-                merged.parentalPINRevision = p.effectiveParentalPINRevision
-                merged.resolveSecurityFields(against: local)
-                byID[p.id] = merged
-                continue // otherwise don't clobber a configured receiver's own default
+            if p.id == ProfileStore.defaultProfileID, receiverConfigured,
+               byID[p.id] != nil {
+                continue
             }
             if byID[p.id] == nil { order.append(p.id) }
-            // Incoming wins — except for the three fields that decide what a
-            // child can do, which are resolved by revision so a stale sender
-            // can't clear a Profile Lock, a Kids flag, or the Parental PIN.
-            var incoming = p
-            if let local = byID[p.id] { incoming.resolveSecurityFields(against: local) }
-            byID[p.id] = incoming
+            byID[p.id] = p
         }
         profiles = order.compactMap { byID[$0] }
         profiles.sort { $0.createdAt < $1.createdAt }
@@ -991,20 +787,9 @@ public final class ProfilesModel {
     }
 
 
-    /// The profile to fall back to when `outgoing` stops existing.
-    ///
-    /// Prefers another Kids Profile when the one leaving was a Kids Profile and
-    /// the household enforces restrictions. The fall-through is written to disk
-    /// immediately, while the shells' in-memory parental hold is not — so a child
-    /// who force-quits after a synced deletion would relaunch straight into an
-    /// unrestricted profile. Keeping the DURABLE choice restricted closes that
-    /// without a second, persisted piece of state to keep in step.
+    /// The profile to fall back to when the active one stops existing.
     private func fallbackProfile(leaving outgoing: Profile?) -> Profile? {
-        if let outgoing, outgoing.isKids, enforcesKidsRestrictions,
-           let sibling = profiles.first(where: { $0.isKids }) {
-            return sibling
-        }
-        return profiles.first
+        profiles.first
     }
 
     /// Removes a profile while keeping at least one. Removing the
@@ -1019,7 +804,6 @@ public final class ProfilesModel {
         guard profiles.count > 1, profiles.contains(where: { $0.id == id }) else { return }
         let outgoing = profiles.first { $0.id == id }
         var next = profiles.filter { $0.id != id }
-        preserveHouseholdPIN(in: &next)
         profiles = next
         accountSelections[id] = nil
         unconfirmedAccountSelectionProfileIDs.remove(id)
@@ -1033,15 +817,6 @@ public final class ProfilesModel {
             activeProfileID = fallbackProfile(leaving: outgoing)?.id ?? ProfileStore.defaultProfileID
             store.setActiveProfileID(activeProfileID)
         }
-    }
-
-    private func preserveHouseholdPIN(in survivors: inout [Profile]) {
-        guard let anchor = profiles.first, !survivors.isEmpty,
-              !survivors.contains(where: { $0.id == anchor.id }),
-              let revision = anchor.effectiveParentalPINRevision else { return }
-        if let survivorRevision = survivors[0].effectiveParentalPINRevision, survivorRevision >= revision { return }
-        survivors[0].parentalPIN = anchor.parentalPIN
-        survivors[0].parentalPINRevision = revision
     }
 
     // MARK: Per-profile active accounts

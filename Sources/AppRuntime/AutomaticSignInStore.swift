@@ -7,13 +7,9 @@ public struct AutomaticSignInStore {
     struct Session: Codable {
         struct ProfileAccess: Codable, Equatable {
             let id: String
-            let lock: ProfileLock?
-            let lockRevision: ProfileLockRevision?
 
             init(_ profile: Profile) {
                 id = profile.id
-                lock = profile.lock
-                lockRevision = profile.effectiveLockRevision
             }
         }
 

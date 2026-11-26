@@ -69,7 +69,7 @@ struct PlozziOSSettingsView: View {
             ServerAddressesView(
                 account: account, store: appModel.accountStore,
                 isAuthorized: {
-                    appModel.profiles.activeProfileID == profileID && !appModel.managementRequiresParentalPIN
+                    appModel.isActiveProfileAuthorized
                 },
                 onChanged: { appModel.accountsProviders.reloadAccounts(updatingServerAddressesFor: account.id) }
             )
@@ -197,15 +197,8 @@ private enum PlozziOSSettingsDestination: Hashable {
     case profiles
     case servers
     case myLibraries
-    /// Parental PIN prompt unsealing a Kids Profile's restricted settings.
-    case grownUps
-    /// This profile's own management page, reached from Parental Controls.
-    case manageProfile
-    /// The profile's own name, avatar and colour. Deliberately outside Parental
-    /// Controls — it can't escalate anything.
+    /// The profile's own name, avatar and colour.
     case profileAppearance
-    /// The household's Parental PIN.
-    case parentalPIN
     case profile(ProfileSettingsCategory)
     case diagnostics
     case attributions
@@ -217,33 +210,22 @@ private enum PlozziOSSettingsDestination: Hashable {
     }
 }
 
-struct PlozziOSProfileSettingsSection<Header: View, Row: View, Management: View>: View {
-    let showsParentalControls: Bool
-    let isKidsProfile: Bool
+struct PlozziOSProfileSettingsSection<Header: View, Row: View>: View {
     let appLanguage: AppLanguageSettingsModel
     var isSelected: (ProfileSettingsCategory) -> Bool = { _ in false }
     @ViewBuilder let header: () -> Header
     @ViewBuilder let row: (ProfileSettingsCategory) -> Row
-    @ViewBuilder let management: () -> Management
 
     var body: some View {
         SettingsSectionGroup {
             header()
                 .settingsActionRow()
-            ForEach(ProfileSettingsCategory.allCases.filter {
-                !isKidsProfile || $0 != .downloads
-            }) { category in
+            ForEach(ProfileSettingsCategory.allCases) { category in
                 if category == .language {
                     PlozziOSSettingsLanguagePicker(appLanguage: appLanguage)
                         .settingsActionRow()
                         .plozziOSSidebarSelection(isSelected(category))
                         .settingsSearchAnchor("language")
-                } else if category == .libraries {
-                    if !showsParentalControls {
-                        row(category)
-                            .plozziOSSidebarSelection(isSelected(category))
-                    }
-                    management()
                 } else {
                     row(category)
                         .plozziOSSidebarSelection(isSelected(category))
@@ -440,33 +422,7 @@ private struct PlozziOSSettingsSplitView: View {
     @State private var selection: PlozziOSSettingsDestination? = .profile(.playback)
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
-    /// Whether this profile shows a separate parent-controlled group. Only a
-    /// Kids Profile does, and only once a Parental PIN exists — without one
-    /// there's nothing to control with.
-    private var showsParentalControlsSection: Bool {
-        appModel.profiles.activeProfile.isKids
-            && appModel.profiles.parentalPIN != nil
-    }
-
-    private var isParentalSealed: Bool {
-        appModel.profiles.activeProfile.isKids
-            && appModel.profiles.parentalPIN != nil
-            && !isParentalUnlocked
-    }
-
     @State private var confirmSignOutAll = false
-    /// Whether the Parental PIN has been entered for the Kids Profile currently
-    /// open. View state, cleared when the profile changes, so unsealing once
-    /// never becomes unsealing for good.
-    @State private var isParentalUnlocked = false
-    /// Where to go once the Parental PIN is accepted.
-    ///
-    /// The detail pane is driven by `selection`, not a navigation stack, so the
-    /// unlock view's `dismiss()` does nothing here — it stayed on screen and let
-    /// you keep typing a PIN that had already worked. Remembering the row that
-    /// was tapped lets the unlock carry you INTO it, which is what someone
-    /// expects anyway.
-    @State private var parentalUnlockTarget: PlozziOSSettingsDestination?
     private var developerMode: DeveloperModeModel { .shared }
 
     var body: some View {
@@ -481,8 +437,6 @@ private struct PlozziOSSettingsSplitView: View {
                     )
 
                     PlozziOSProfileSettingsSection(
-                        showsParentalControls: showsParentalControlsSection,
-                        isKidsProfile: appModel.profiles.activeProfile.isKids,
                         appLanguage: appModel.appLanguage,
                         isSelected: { selection == .profile($0) }
                     ) {
@@ -504,79 +458,26 @@ private struct PlozziOSSettingsSplitView: View {
                         }
                         .settingsActionRow()
                         .accessibilityIdentifier("settings-category-\(category.rawValue)")
-                    } management: {
-                        if showsParentalControlsSection {
-                            settingsRow(
-                                .profileAppearance,
-                                title: KidsProfileCopy.nameAndAvatar,
-                                systemImage: "person.crop.circle"
-                            )
-                        } else if appModel.profiles.activeProfile.isKids {
-                            settingsRow(
-                                .manageProfile,
-                                title: KidsProfileCopy.manageProfile,
-                                systemImage: "person.crop.circle"
-                            )
-                        }
                     }
 
-                    // Real rows with real names; the grouping and the lock carry
-                    // the meaning. Mirrors tvOS.
-                    if showsParentalControlsSection {
-                        SettingsSectionGroup(KidsProfileCopy.parentalControls) {
-                            sealableRow(
-                                .myLibraries,
-                                title: SettingsCopy.libraries,
-                                systemImage: "rectangle.stack"
-                            )
-                            sealableRow(
-                                .manageProfile,
-                                title: KidsProfileCopy.manageProfile,
-                                systemImage: "person.crop.circle"
-                            )
-                        } footer: {
-                            // See the tvOS twin: the lock says "sealed" already.
-                            if !isParentalSealed {
-                                Text(KidsProfileCopy.parentalControlsOpen)
-                            }
+                    SettingsSectionGroup(deviceSettingsTitle) {
+                        settingsRow(
+                            .servers,
+                            title: SettingsCopy.sources,
+                            systemImage: "externaldrive.connected.to.line.below"
+                        )
+                        Button {
+                            selection = .profiles
+                        } label: {
+                            Label("Profiles", systemImage: "person.2")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
+                        .settingsActionRow()
+                        .plozziOSSidebarSelection(selection == .profiles)
                     }
 
-                    // No household section on a Kids Profile. The card that used
-                    // to explain its absence was a second "Kids Profile" heading
-                    // that did nothing; once Parental Controls exists, a missing
-                    // shared section needs no caption. See the tvOS twin.
-                    if !appModel.profiles.activeProfile.isKids {
-                        SettingsSectionGroup(deviceSettingsTitle) {
-                            settingsRow(
-                                .servers,
-                                title: SettingsCopy.sources,
-                                systemImage: "externaldrive.connected.to.line.below"
-                            )
-                            Button {
-                                selection = .profiles
-                            } label: {
-                                Label("Profiles", systemImage: "person.2")
-                                    .frame(
-                                        maxWidth: .infinity,
-                                        alignment: .leading
-                                    )
-                                    .contentShape(Rectangle())
-                            }
-                            .settingsActionRow()
-                            .plozziOSSidebarSelection(selection == .profiles)
-                            // Household-level, so it sits here rather than on a
-                            // profile — one PIN for everyone, not a property of
-                            // any one person. Matches tvOS.
-                            settingsRow(
-                                .parentalPIN,
-                                title: KidsProfileCopy.parentalPIN,
-                                systemImage: "figure.and.child.holdinghands"
-                            )
-                        }
-                    }
-
-                    PlozziOSSettingsVersionSection(isKidsProfile: appModel.profiles.activeProfile.isKids) {
+                    PlozziOSSettingsVersionSection() {
                         settingsRow(.releaseNotes, title: "Release Notes", systemImage: "doc.text")
                     }
                     PlozziOSCommunitySettingsSection()
@@ -593,7 +494,7 @@ private struct PlozziOSSettingsSplitView: View {
                     // times). Gating on the runtime flag rather than
                     // `#if DEBUG` hides these in every build — including the
                     // Debug-config branded builds — while keeping them reachable.
-                    if developerMode.isEnabled, !appModel.profiles.activeProfile.isKids {
+                    if developerMode.isEnabled {
                         SettingsSectionGroup("Developer") {
                             Button("Reset to First Run") {
                                 appModel.resetToFirstRunForDebugging()
@@ -607,7 +508,7 @@ private struct PlozziOSSettingsSplitView: View {
                         }
                         PlozziOSDeveloperInfoSection()
                     }
-                    if !appModel.accounts.isEmpty, !appModel.profiles.activeProfile.isKids {
+                    if !appModel.accounts.isEmpty {
                         PlozziOSSignOutSettingsSection {
                             confirmSignOutAll = true
                         }
@@ -646,19 +547,10 @@ private struct PlozziOSSettingsSplitView: View {
         // Switching profiles re-seals: an unlock proves who is standing there
         // now, not who was standing there for a different profile.
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in
-            isParentalUnlocked = false
-            parentalUnlockTarget = nil
             selection = .profile(.playback)
         }
         // A PIN replaced on another device must invalidate an unlock proved
         // against the old one.
-        .onChange(of: appModel.profiles.parentalPIN) { _, _ in
-            isParentalUnlocked = false
-            if showsParentalControlsSection {
-                parentalUnlockTarget = nil
-                selection = .profile(.playback)
-            }
-        }
         .toolbarBackground(.hidden, for: .navigationBar)
         .alert("Sign out of all accounts?", isPresented: $confirmSignOutAll) {
             Button("Cancel", role: .cancel) {}
@@ -672,45 +564,7 @@ private struct PlozziOSSettingsSplitView: View {
         }
     }
 
-    /// A Parental Controls row: goes to `destination`, or to the PIN prompt while
-    /// sealed — remembering `destination` so the unlock lands there rather than
-    /// dumping you back on the list to tap the same row again.
-    private func sealableRow(
-        _ destination: PlozziOSSettingsDestination,
-        title: LocalizedStringResource,
-        systemImage: String
-    ) -> some View {
-        Button {
-            if isParentalSealed {
-                parentalUnlockTarget = destination
-                selection = .grownUps
-            } else {
-                selection = destination
-            }
-        } label: {
-            if destination == .myLibraries {
-                PlozziOSSettingsCategoryLabel(
-                    category: .libraries, accounts: appModel.accounts,
-                    isAccountIncluded: { appModel.activeAccountIDs(
-                        for: appModel.profiles.activeProfileID
-                    ).contains($0) },
-                    isSealed: isParentalSealed
-                )
-            } else {
-                Label {
-                    Text(title)
-                } icon: {
-                    Image(systemName: isParentalSealed ? "lock.fill" : systemImage)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-        }
-        .settingsActionRow()
-        .plozziOSSidebarSelection(selection == destination)
-    }
-
-    private func settingsRow(
+private func settingsRow(
         _ destination: PlozziOSSettingsDestination,
         title: LocalizedStringResource,
         systemImage: String
@@ -747,14 +601,10 @@ private struct PlozziOSSettingsSplitView: View {
     private struct DetailIdentity: Equatable, Hashable {
         let destination: PlozziOSSettingsDestination?
         let profileID: String
-        let isParentalUnlocked: Bool
     }
 
     private var detailIdentity: DetailIdentity {
-        DetailIdentity(
-            destination: selection, profileID: appModel.profiles.activeProfileID,
-            isParentalUnlocked: isParentalUnlocked
-        )
+        DetailIdentity(destination: selection, profileID: appModel.profiles.activeProfileID)
     }
 
     @ViewBuilder
@@ -775,28 +625,12 @@ private struct PlozziOSSettingsSplitView: View {
                 appModel: appModel,
                 onAddServer: onAddServer
             )
-        case .grownUps:
-            PlozziOSGrownUpsUnlockView(appModel: appModel) {
-                isParentalUnlocked = true
-                // Carry on into the row that was tapped. Without this the pane
-                // would keep showing the PIN screen it just accepted.
-                selection = parentalUnlockTarget ?? .myLibraries
-                parentalUnlockTarget = nil
-            }
-        case .parentalPIN:
-            PlozziOSParentalPINSettingsView(appModel: appModel)
         case .profileAppearance:
             PlozziOSProfileEditorHost(
                 appModel: appModel,
                 editingProfile: appModel.profiles.activeProfile,
                 canDelete: false,
                 onFinished: { selection = .profile(.playback) }
-            )
-        case .manageProfile:
-            PlozziOSProfileSettingsView(
-                appModel: appModel,
-                profileID: appModel.profiles.activeProfileID,
-                isParentalUnlocked: isParentalUnlocked
             )
         case .myLibraries:
             PlozziOSMyLibrariesSettingsView(
@@ -807,7 +641,7 @@ private struct PlozziOSSettingsSplitView: View {
         case .profile(let category):
             PlozziOSProfileSettingsPage(
                 category: category, appModel: appModel, onAddServer: onAddServer,
-                onAddUser: onAddUser, canManageProviders: !isParentalSealed,
+                onAddUser: onAddUser, canManageProviders: appModel.isActiveProfileAuthorized,
                 isPresented: selection == .profile(category)
             )
         case .diagnostics:
@@ -880,7 +714,6 @@ struct PlozziOSCommunitySettingsSection: View {
 }
 
 private struct PlozziOSSettingsVersionSection<ReleaseLink: View>: View {
-    let isKidsProfile: Bool
     @ViewBuilder let releaseLink: () -> ReleaseLink
     @State private var showDeveloperUnlockedAlert = false
 
@@ -893,8 +726,6 @@ private struct PlozziOSSettingsVersionSection<ReleaseLink: View>: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                // Developer reset can remove parental restrictions, so Kids must never unlock it.
-                guard !isKidsProfile else { return }
                 if case .justEnabled = DeveloperModeModel.shared.registerUnlockActivation() {
                     showDeveloperUnlockedAlert = true
                 }
@@ -963,20 +794,6 @@ private struct PlozziOSSettingsCompactMenu: View {
     @FocusState private var searchFocused: Bool
     private var developerMode: DeveloperModeModel { .shared }
     private var showsSearchResults: Bool { isSearching || !searchQuery.isEmpty }
-    /// Whether the Parental PIN has been entered for the Kids Profile currently
-    /// open. View state, cleared when the profile changes.
-    @State private var isParentalUnlocked = false
-
-    /// Whether this profile shows a separate parent-controlled group. Only a
-    /// Kids Profile does, and only once a Parental PIN exists.
-    private var showsParentalControlsSection: Bool {
-        appModel.profiles.activeProfile.isKids
-            && appModel.profiles.parentalPIN != nil
-    }
-
-    private var isParentalSealed: Bool {
-        showsParentalControlsSection && !isParentalUnlocked
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1000,8 +817,6 @@ private struct PlozziOSSettingsCompactMenu: View {
                 )
 
                 PlozziOSProfileSettingsSection(
-                    showsParentalControls: showsParentalControlsSection,
-                    isKidsProfile: appModel.profiles.activeProfile.isKids,
                     appLanguage: appModel.appLanguage
                 ) {
                     PlozziOSProfileIdentityHeader(
@@ -1013,7 +828,7 @@ private struct PlozziOSSettingsCompactMenu: View {
                     SettingsPageLink {
                         PlozziOSProfileSettingsPage(
                             category: category, appModel: appModel, onAddServer: onAddServer,
-                            onAddUser: onAddUser, canManageProviders: !isParentalSealed
+                            onAddUser: onAddUser, canManageProviders: appModel.isActiveProfileAuthorized
                         )
                     } label: {
                         PlozziOSSettingsCategoryLabel(
@@ -1025,128 +840,35 @@ private struct PlozziOSSettingsCompactMenu: View {
                     }
                     .settingsActionRow()
                     .accessibilityIdentifier("settings-category-\(category.rawValue)")
-                } management: {
-                    if showsParentalControlsSection {
-                        SettingsPageLink {
-                            PlozziOSProfileAppearancePage(
-                                appModel: appModel,
-                                profileID: appModel.profiles.activeProfileID
-                            )
-                        } label: {
-                            Label(KidsProfileCopy.nameAndAvatar, systemImage: "person.crop.circle")
-                        }
-                        .settingsActionRow()
-                    } else if appModel.profiles.activeProfile.isKids {
-                        SettingsPageLink {
-                            PlozziOSProfileSettingsView(
-                                appModel: appModel,
-                                profileID: appModel.profiles.activeProfileID
-                            )
-                        } label: {
-                            Label(KidsProfileCopy.manageProfile, systemImage: "person.crop.circle")
-                        }
-                        .settingsActionRow()
-                    }
                 }
 
-                // Real rows with real names; the grouping and the lock carry the
-                // meaning. Mirrors the split view and tvOS.
-                if showsParentalControlsSection {
-                    SettingsSectionGroup(KidsProfileCopy.parentalControls) {
-                        // Stable rows; the GATE is inside the destination. Swapping
-                        // the link on `isParentalSealed` made a correct PIN delete
-                        // the page the user was standing on.
-                        SettingsPageLink {
-                            PlozziOSParentalGate(
-                                appModel: appModel,
-                                isSealed: isParentalSealed,
-                                onUnlock: { isParentalUnlocked = true }
-                            ) {
-                                PlozziOSMyLibrariesSettingsView(
-                                    appModel: appModel,
-                                    onAddServer: onAddServer,
-                                    onAddUser: onAddUser
-                                )
-                            }
-                        } label: {
-                            PlozziOSSettingsCategoryLabel(
-                                category: .libraries, accounts: appModel.accounts,
-                                isAccountIncluded: { appModel.activeAccountIDs(
-                                    for: appModel.profiles.activeProfileID
-                                ).contains($0) },
-                                isSealed: isParentalSealed
-                            )
-                        }
-                        .settingsActionRow()
-                        SettingsPageLink {
-                            PlozziOSParentalGate(
-                                appModel: appModel,
-                                isSealed: isParentalSealed,
-                                onUnlock: { isParentalUnlocked = true }
-                            ) {
-                                PlozziOSProfileSettingsView(
-                                    appModel: appModel,
-                                    profileID: appModel.profiles.activeProfileID,
-                                    isParentalUnlocked: isParentalUnlocked
-                                )
-                            }
-                        } label: {
-                            Label(
-                                KidsProfileCopy.manageProfile,
-                                systemImage: isParentalSealed ? "lock.fill" : "person.crop.circle"
-                            )
-                        }
-                        .settingsActionRow()
-                    } footer: {
-                        if !isParentalSealed {
-                            Text(KidsProfileCopy.parentalControlsOpen)
+                SettingsSectionGroup(deviceSettingsTitle) {
+                    SettingsPageLink {
+                        PlozziOSServersSettingsView(
+                            appModel: appModel,
+                            onAddServer: onAddServer
+                        )
+                    } label: {
+                        Label {
+                            Text(SettingsCopy.sources)
+                        } icon: {
+                            Image(systemName: "externaldrive.connected.to.line.below")
                         }
                     }
-                }
-
-                // Withheld on a Kids Profile: every destructive control in the app
-                // lives in here (remove server, delete profile, sign out of
-                // everything).
-                if !appModel.profiles.activeProfile.isKids {
-                    SettingsSectionGroup(deviceSettingsTitle) {
-                        SettingsPageLink {
-                            PlozziOSServersSettingsView(
-                                appModel: appModel,
-                                onAddServer: onAddServer
-                            )
-                        } label: {
-                            Label {
-                                Text(SettingsCopy.sources)
-                            } icon: {
-                                Image(systemName: "externaldrive.connected.to.line.below")
-                            }
-                        }
-                        .settingsActionRow()
-                        SettingsPageLink {
-                            PlozziOSProfilesView(
-                                appModel: appModel,
-                                onClose: { dismiss() },
-                                onSwitchTo: onSwitchTo
-                            )
-                        } label: {
-                            Label("Profiles", systemImage: "person.2")
-                        }
-                        .settingsActionRow()
-                        // Household-level, so it sits here rather than on a profile.
-                        SettingsPageLink {
-                            PlozziOSParentalPINSettingsView(appModel: appModel)
-                        } label: {
-                            Label(
-                                KidsProfileCopy.parentalPIN,
-                                systemImage: "figure.and.child.holdinghands"
-                            )
-                        }
-                        .settingsActionRow()
-
+                    .settingsActionRow()
+                    SettingsPageLink {
+                        PlozziOSProfilesView(
+                            appModel: appModel,
+                            onClose: { dismiss() },
+                            onSwitchTo: onSwitchTo
+                        )
+                    } label: {
+                        Label("Profiles", systemImage: "person.2")
                     }
+                    .settingsActionRow()
                 }
 
-                PlozziOSSettingsVersionSection(isKidsProfile: appModel.profiles.activeProfile.isKids) {
+                PlozziOSSettingsVersionSection() {
                     SettingsPageLink {
                         ReleaseNotesSettingsView(model: .shared)
                     } label: {
@@ -1180,7 +902,7 @@ private struct PlozziOSSettingsCompactMenu: View {
 
                 // Hidden until Developer Mode is unlocked (tap Version seven
                 // times). Gated on the runtime flag in every build.
-                if developerMode.isEnabled, !appModel.profiles.activeProfile.isKids {
+                if developerMode.isEnabled {
                     SettingsSectionGroup("Developer") {
                         Button("Reset to First Run") {
                             appModel.resetToFirstRunForDebugging()
@@ -1202,7 +924,7 @@ private struct PlozziOSSettingsCompactMenu: View {
                             .foregroundStyle(.red)
                     }
                 }
-                if !appModel.accounts.isEmpty, !appModel.profiles.activeProfile.isKids {
+                if !appModel.accounts.isEmpty {
                     PlozziOSSignOutSettingsSection {
                         confirmSignOutAll = true
                     }
@@ -1221,7 +943,7 @@ private struct PlozziOSSettingsCompactMenu: View {
                 SettingsSearchResults(
                     query: searchQuery,
                     platform: UIDevice.current.userInterfaceIdiom == .phone ? .phone : .tablet,
-                    isKids: appModel.profiles.activeProfile.isKids,
+                    isKids: false,
                     featureFlags: appModel.runtimeFeatureFlags
                 ) { entry, _ in
                     searchFocused = false
@@ -1256,8 +978,6 @@ private struct PlozziOSSettingsCompactMenu: View {
             if !query.isEmpty { isSearching = true }
             else if !searchFocused { isSearching = false }
         }
-        .onChange(of: appModel.profiles.activeProfileID) { _, _ in isParentalUnlocked = false }
-        .onChange(of: appModel.profiles.parentalPIN) { _, _ in isParentalUnlocked = false }
         .alert("Sign out of all accounts?", isPresented: $confirmSignOutAll) {
             Button("Cancel", role: .cancel) {}
             Button("Sign Out", role: .destructive) {
@@ -1313,7 +1033,7 @@ private struct PlozziOSSettingsSearch: ViewModifier {
                     SettingsSearchResults(
                         query: query,
                         platform: UIDevice.current.userInterfaceIdiom == .phone ? .phone : .tablet,
-                        isKids: appModel.profiles.activeProfile.isKids,
+                        isKids: false,
                         featureFlags: appModel.runtimeFeatureFlags
                     ) { entry, _ in
                         isFocused = false
@@ -1340,13 +1060,7 @@ private struct PlozziOSSettingsSearchDestination: View {
     let onAddServer: () -> Void
     let onAddUser: (MediaServer) -> Void
     let onFinish: () -> Void
-    @State private var unlockedProfileID: String?
-    @State private var showsParentalUnlock = false
     @State private var showsCustomQuality = false
-
-    private var isParentalUnlocked: Bool {
-        unlockedProfileID == appModel.profiles.activeProfileID
-    }
 
     private var targetID: String { entry.anchorID }
 
@@ -1354,41 +1068,17 @@ private struct PlozziOSSettingsSearchDestination: View {
         Group {
             if entry.isAvailable(
                 on: UIDevice.current.userInterfaceIdiom == .phone ? .phone : .tablet,
-                isKids: appModel.profiles.activeProfile.isKids
+                isKids: false
             ) {
-                if entry.page.requiresParentalAuthorization, appModel.managementRequiresParentalPIN, !isParentalUnlocked {
-                    authorizationPrompt
-                } else {
-                    SettingsSearchLanding(targetID: targetID) { destination }
-                        .id("\(appModel.profiles.activeProfileID)-\(entry.id)-\(targetID)")
-                }
+                SettingsSearchLanding(targetID: targetID) { destination }
+                    .id("\(appModel.profiles.activeProfileID)-\(entry.id)-\(targetID)")
             } else {
                 PlozzStateView(icon: "magnifyingglass", title: "Setting unavailable")
             }
         }
-        .plozzSheet(isPresented: $showsParentalUnlock) {
-            PlozziOSGrownUpsUnlockView(appModel: appModel) {
-                unlockedProfileID = appModel.profiles.activeProfileID
-            }
-        }
         .onChange(of: appModel.profiles.activeProfileID) { _, _ in
-            unlockedProfileID = nil
-            showsParentalUnlock = false
             showsCustomQuality = false
         }
-        .onChange(of: appModel.profiles.parentalPIN) { _, _ in
-            unlockedProfileID = nil
-            showsParentalUnlock = false
-        }
-    }
-
-    private var authorizationPrompt: some View {
-        List {
-            Button { showsParentalUnlock = true } label: { Text(KidsProfileCopy.parentalPIN) }
-        }
-        .settingsPageSurface()
-        .navigationTitle(Text(KidsProfileCopy.parentalPIN))
-        .task { showsParentalUnlock = true }
     }
 
     @ViewBuilder private var destination: some View {
@@ -1455,7 +1145,7 @@ private struct PlozziOSSettingsSearchDestination: View {
             } else {
             PlozziOSArtworkSettingsView(
                 appModel: appModel, cardStyle: appModel.settings.cardStyle,
-                canManageProviders: !appModel.managementRequiresParentalPIN || isParentalUnlocked
+                canManageProviders: appModel.isActiveProfileAuthorized
             )
             }
         case .circadian: PlozziOSNightShiftSettingsView(model: appModel.settings.nightShift)
@@ -1504,8 +1194,7 @@ private struct PlozziOSSettingsSearchDestination: View {
             PlozziOSProfileAppearancePage(appModel: appModel, profileID: appModel.profiles.activeProfileID)
         case .profileSettings:
             PlozziOSProfileSettingsView(
-                appModel: appModel, profileID: appModel.profiles.activeProfileID,
-                isParentalUnlocked: isParentalUnlocked
+                appModel: appModel, profileID: appModel.profiles.activeProfileID
             )
         case .accountLibraries: profilePage(.libraries)
         case .diagnostics:
@@ -1522,7 +1211,7 @@ private struct PlozziOSSettingsSearchDestination: View {
     private func profilePage(_ category: ProfileSettingsCategory) -> some View {
         PlozziOSProfileSettingsPage(
             category: category, appModel: appModel, onAddServer: onAddServer, onAddUser: onAddUser,
-            canManageProviders: !appModel.managementRequiresParentalPIN || isParentalUnlocked,
+            canManageProviders: appModel.isActiveProfileAuthorized,
             searchPage: entry.page
         )
     }
@@ -1591,12 +1280,10 @@ private struct PlozziOSProfilesView: View {
                             openSettings(for: profile)
                         } else {
                             guard profile.id != appModel.profiles.activeProfileID else { return }
-                            // Requested, not performed here. The Parental PIN and
-                            // profile lock gates are covers on the ROOT, and one
-                            // asked for from under this sheet is the arrangement
-                            // SwiftUI drops — silently, and with the gate's
-                            // binding left true so it is never re-requested. The
-                            // shell applies this in the sheet's `onDismiss`.
+                            // Requested, not performed here: the ROOT presents
+                            // profile switches outside the Settings sheet so the
+                            // presentation cannot be dropped. The shell applies
+                            // this in the sheet's `onDismiss`.
                             onSwitchTo(profile.id)
                             onClose()
                         }
@@ -1608,16 +1295,6 @@ private struct PlozziOSProfilesView: View {
                             )
                             Text(profile.name)
                             Spacer()
-                            // Glance the access state so the list answers
-                            // "who's locked?" without opening each one.
-                            if profile.isKids {
-                                Image(systemName: "figure.and.child.holdinghands")
-                                    .plozzForeground(.secondary)
-                            }
-                            if profile.isLocked {
-                                Image(systemName: "lock.fill")
-                                    .plozzForeground(.secondary)
-                            }
                             if isEditingProfiles {
                                 Image(systemName: "chevron.right")
                                     .font(.caption.weight(.semibold))
@@ -2909,7 +2586,7 @@ private struct PlozziOSLicenseBadges: View {
 ///
 /// Tapping who you are to become someone else is the convention every streaming
 /// app shares, and it puts switching at the top of Settings instead of several
-/// rows down inside a household section a Kids Profile can't even see.
+/// rows down inside a household section.
 struct PlozziOSProfileIdentityHeader: View {
     let profile: Profile
     let profileCount: Int
@@ -2922,9 +2599,7 @@ struct PlozziOSProfileIdentityHeader: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: profile.name)
                         .font(.headline)
-                    Text(KidsProfileCopy.openProfiles(
-                        profileCount: profileCount
-                    ))
+                    Text(profileCount > 1 ? "Switch profile" : "Profile settings")
                     .font(.subheadline)
                     .foregroundStyle(.tint)
                 }

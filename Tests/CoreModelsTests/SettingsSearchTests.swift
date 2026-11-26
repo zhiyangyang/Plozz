@@ -155,9 +155,6 @@ final class SettingsSearchTests: XCTestCase {
         for id in ["spatial-audio", "spatial-layout", "dolby-fel"] {
             XCTAssertNil(SettingsSearchCatalog.entry(id: id))
         }
-        XCTAssertTrue(SettingsSearchPage.accountLibraries.requiresParentalAuthorization)
-        XCTAssertTrue(SettingsSearchPage.profileSettings.requiresParentalAuthorization)
-        XCTAssertFalse(SettingsSearchPage.profileAppearance.requiresParentalAuthorization)
     }
 
     func testCircadianSearchIdentifiesPrerequisitesWithoutChangingSettings() {

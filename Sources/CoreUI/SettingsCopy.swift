@@ -29,7 +29,7 @@ public enum SettingsCopy {
     /// App management, separate from the active profile's personal preferences.
     public static let everyone = LocalizedStringResource(
         "Manage Plozz",
-        comment: "Settings section heading for managing sources, profiles, parental protection, and metadata providers, separate from personal profile preferences. Plozz is the app name and must remain unchanged."
+        comment: "Settings section heading for managing sources, profiles, and metadata providers, separate from personal profile preferences. Plozz is the app name and must remain unchanged."
     )
 
 

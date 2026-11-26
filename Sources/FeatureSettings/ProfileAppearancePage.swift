@@ -6,11 +6,9 @@ import SwiftUI
 
 /// The profile's own name, avatar and colour, as a pushed settings page.
 ///
-/// Exists so a Kids Profile can still change how it looks. Those live on the
-/// profile-management page beside the lock, the Kids flag and Delete — so
-/// sealing that page behind the Parental PIN took the avatar picker with it, and
-/// choosing your own avatar is most of the appeal of having your own profile. It
-/// can't escalate anything, so it doesn't belong behind the PIN.
+/// Exists so a profile can change how it looks without going through the
+/// profile-management page; choosing an avatar and name is the bulk of what
+/// editing a profile means.
 struct ProfileAppearancePage: View {
     let context: SettingsContext
     let profileID: String
@@ -33,7 +31,7 @@ struct ProfileAppearancePage: View {
         if let profile {
             ProfileEditorView(
                 editingProfile: profile,
-                // Deleting is a parental control; this page is not.
+                // Deleting a profile lives on the profile page, not here.
                 canDelete: false,
                 photoSourceAccounts: context.accounts,
                 plexHomeUsersFetcher: context.plexHomeUsersFetcher,

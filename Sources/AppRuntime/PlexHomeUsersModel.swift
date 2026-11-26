@@ -102,13 +102,6 @@ public final class PlexHomeUsersModel {
     @ObservationIgnored private var onboardingProfileAccess: AutomaticSignInStore.Session.ProfileAccess?
     @ObservationIgnored private var onboardingCredentialSource: CredentialSource?
 
-    /// A PIN entered to unlock a Plozz profile whose lock the user linked to
-    /// their Plex PIN, waiting to be spent on that profile's next Plex
-    /// Home-user switch so they're only asked once. Never persisted, never
-    /// logged, and dropped after a single read — see
-    /// `prefillPlexPIN(_:forProfile:)`.
-    @ObservationIgnored
-    private var prefilledPlexPIN: (profileID: String, pin: String)?
     @ObservationIgnored private var foregroundReauthenticationAccounts: Set<String> = []
 
     private struct CredentialSource: Equatable {
@@ -402,7 +395,7 @@ public final class PlexHomeUsersModel {
         }
     }
 
-    /// The shell calls this only after its local profile/parental gates succeed.
+    /// The shell calls this only after its local profile flow succeeds.
     public func beginExplicitProfileActivation() {
         profileActivationGeneration += 1
         reconciledProfileID = nil
@@ -420,7 +413,6 @@ public final class PlexHomeUsersModel {
         authenticatedProfileAccess = nil
         cancelPlexReauthentication()
         cancelPINRequirementCheck()
-        prefilledPlexPIN = nil
         pendingPlexPINRequest = nil
         plexPINError = nil
         foregroundReauthenticationAccounts = Set(accountsProviders.accounts.compactMap { account in
@@ -448,8 +440,7 @@ public final class PlexHomeUsersModel {
 
     private func automaticSignInSession() -> AutomaticSignInStore.Session? {
         let profile = profilesModel.activeProfile
-        guard !profile.needsSetup,
-              !profile.isLocked || authenticatedProfileAccess == .init(profile) else { return nil }
+        guard !profile.needsSetup else { return nil }
         var credentials: [String: AutomaticSignInStore.Session.PlexCredential] = [:]
         for account in accountsProviders.accounts
         where account.server.provider == .plex && accountsProviders.activeAccountIDs.contains(account.id) {
@@ -836,7 +827,7 @@ public final class PlexHomeUsersModel {
     public func submitPlexPIN(_ pin: String) {
         guard let request = pendingPlexPINRequest else { return }
         guard !pin.isEmpty else {
-            plexPINError = ProfileLockCopy.incorrectPIN
+            plexPINError = PlexPINCopy.incorrectPIN
             return
         }
         PlozzLog.auth.debug("submitPlexPIN len=\(pin.count) acct=\(request.accountID)")
@@ -929,14 +920,6 @@ public final class PlexHomeUsersModel {
         let boundCount = plexAccounts.filter { profile.homeUserBinding(forPlexAccount: $0.id) != nil }.count
         PlozzLog.boot("ensurePlexIdentity profile=\(profile.id) plexAccounts=\(plexAccounts.count) withBinding=\(boundCount) gen=\(self.plexIdentityGeneration)")
 
-        // Take any stashed "same PIN as Plex" value for THIS profile up front, so
-        // exactly one pass can ever see it. Reading it here rather than inside the
-        // `pinTarget` branch matters: a profile with no protected binding would
-        // otherwise leave the plaintext PIN sitting in memory for the rest of the
-        // run, to be spent on some unrelated later pass (e.g. after the user links
-        // a protected Home user in Settings).
-        let prefilledPIN = consumePrefilledPIN(forProfile: profile.id)
-
         var pinTarget: (accountID: String, binding: PlexHomeUserBinding)?
 
         for account in plexAccounts {
@@ -1019,7 +1002,7 @@ public final class PlexHomeUsersModel {
                 plexPINEntryAvailability = .checking
                 plexPINError = nil
             }
-            checkPlexPINRequirement(for: request, suppliedPIN: prefilledPIN)
+            checkPlexPINRequirement(for: request, suppliedPIN: nil)
         } else {
             cancelPINRequirementCheck()
             pendingPlexPINRequest = nil
@@ -1195,7 +1178,7 @@ public final class PlexHomeUsersModel {
             )
             if case let .failure(error) = result,
                isCurrentPINRequirementCheck(context, adminToken: adminToken) {
-                plexPINError = (error as? AppError)?.userMessage ?? ProfileLockCopy.plexSwitchFailed
+                plexPINError = (error as? AppError)?.userMessage ?? PlexPINCopy.switchFailed
                 plexPINEntryAvailability = .unavailable
             }
             return
@@ -1227,7 +1210,7 @@ public final class PlexHomeUsersModel {
                   user.pinRequirementVerified == true else {
                 invalidateCachedIdentity(for: request.accountID)
                 PlozzLog.auth.error("Plex PIN status refresh missing selected user's protection metadata acct=\(request.accountID)")
-                if plexPINError == nil { plexPINError = ProfileLockCopy.plexSwitchFailed }
+                if plexPINError == nil { plexPINError = PlexPINCopy.switchFailed }
                 plexPINEntryAvailability = .unavailable
                 return
             }
@@ -1262,7 +1245,7 @@ public final class PlexHomeUsersModel {
                     return
                 }
                 plexPINEntryAvailability = .unavailable
-                plexPINError = (error as? AppError)?.userMessage ?? ProfileLockCopy.plexSwitchFailed
+                plexPINError = (error as? AppError)?.userMessage ?? PlexPINCopy.switchFailed
             }
         } catch is CancellationError {
             return
@@ -1276,7 +1259,7 @@ public final class PlexHomeUsersModel {
                 invalidateCachedIdentity(for: request.accountID)
             }
             PlozzLog.auth.error("Plex PIN status refresh failed acct=\(request.accountID): \(error)")
-            plexPINError = (error as? AppError)?.userMessage ?? ProfileLockCopy.plexSwitchFailed
+            plexPINError = (error as? AppError)?.userMessage ?? PlexPINCopy.switchFailed
             plexPINEntryAvailability = .unavailable
         }
     }
@@ -1300,7 +1283,7 @@ public final class PlexHomeUsersModel {
                 let matches = await verifier.matchesOffMainActor(pin: pin)
                 guard isCurrentPINRequirementCheck(context, adminToken: adminToken) else { return true }
                 guard matches else {
-                    plexPINError = ProfileLockCopy.incorrectPIN
+                    plexPINError = PlexPINCopy.incorrectPIN
                     plexPINEntryAvailability = .available
                     return true
                 }
@@ -1345,72 +1328,6 @@ public final class PlexHomeUsersModel {
             homeUserName: target.binding.name.isEmpty ? "Plex User" : target.binding.name,
             homeUserAvatarURL: target.binding.avatarURL
         )
-    }
-
-    /// Hands this model the PIN the user just entered to unlock a Plozz profile,
-    /// for the case where they set that profile's lock to "same PIN as Plex".
-    ///
-    /// Read and dropped by the very next `ensurePlexIdentityForActiveProfile()`
-    /// pass — which consumes it up front whether or not it ends up being used —
-    /// so the plaintext can't linger in memory or be replayed against a later
-    /// binding. Purely an optimisation of the *prompt*: the profile is already
-    /// unlocked by the time this is called, so if Plex rejects it the person
-    /// simply gets the Plex PIN screen they'd have got anyway.
-    public func prefillPlexPIN(_ pin: String, forProfile profileID: String) {
-        prefilledPlexPIN = (profileID: profileID, pin: pin)
-    }
-
-    /// Verifies that `pin` opens every PIN-protected Plex Home user bound to the
-    /// profile, without publishing any token or changing the active identity.
-    ///
-    /// Used while creating a Profile Lock so "same as Plex" is a verified fact,
-    /// not an unchecked promise discovered to be wrong at the next login.
-    public func validatePlexPIN(
-        _ pin: String,
-        forProfile profileID: String
-    ) async -> PlexPINValidationResult {
-        guard let profile = profilesModel.profiles.first(where: { $0.id == profileID })
-        else { return .unavailable }
-
-        let targets = accountsProviders.accounts.compactMap { account
-            -> (accountID: String, homeUserID: String)? in
-            guard account.server.provider == .plex,
-                  let binding = profile.homeUserBinding(
-                      forPlexAccount: account.id
-                  ),
-                  binding.requiresPIN == true
-            else { return nil }
-            return (account.id, binding.homeUserID)
-        }
-        guard !targets.isEmpty else { return .unavailable }
-
-        for target in targets {
-            guard let adminToken = accountsProviders.accountStore.token(
-                for: target.accountID
-            ) else { return .unavailable }
-            do {
-                _ = try await plexHomeUserSwitch(
-                    target.homeUserID,
-                    pin,
-                    adminToken,
-                    accountsProviders.deviceID
-                )
-            } catch AppError.unauthorized {
-                return .invalid
-            } catch {
-                return .unavailable
-            }
-        }
-        return .valid
-    }
-
-    /// Takes the stashed PIN if it belongs to `profileID`, clearing it either way
-    /// — including when it belonged to a different profile, since a stash that
-    /// didn't match is stale by definition.
-    private func consumePrefilledPIN(forProfile profileID: String) -> String? {
-        defer { prefilledPlexPIN = nil }
-        guard let stash = prefilledPlexPIN, stash.profileID == profileID else { return nil }
-        return stash.pin
     }
 
     /// The account-level plex.tv token to use for Discover (watchlist) calls on
@@ -1633,11 +1550,11 @@ public final class PlexHomeUsersModel {
                 liveBinding.requiresPIN = true
                 liveBinding.pinRequirementVerified = true
             }
-            let verifier: ProfileLock?
+            let verifier: PlexPINVerifier?
             if !offlineSignInEnabled {
                 verifier = nil
             } else if let pin, !pin.isEmpty {
-                verifier = await Task.detached { ProfileLock.make(pin: pin) }.value
+                verifier = await Task.detached { PlexPINVerifier.make(pin: pin) }.value
             } else {
                 do {
                     let source = sharedAuthorization.flatMap { authorization in
@@ -1725,7 +1642,7 @@ public final class PlexHomeUsersModel {
             HandoffDiagnostics.emit("plex-home SWITCH failed=unauthorized")
             if refreshServerCredential, !checksWithoutPIN,
                pendingPlexPINRequest?.accountID == accountID {
-                plexPINError = ProfileLockCopy.incorrectPIN
+                plexPINError = PlexPINCopy.incorrectPIN
             }
             return .failure(AppError.unauthorized)
         } catch {
@@ -1735,7 +1652,7 @@ public final class PlexHomeUsersModel {
             PlozzLog.auth.error("Plex Home-user switch failed: \(error)")
             HandoffDiagnostics.emit("plex-home SWITCH failed=request")
             if refreshServerCredential, pendingPlexPINRequest?.accountID == accountID {
-                plexPINError = ProfileLockCopy.plexSwitchFailed
+                plexPINError = PlexPINCopy.switchFailed
             }
             return .failure(error)
         }

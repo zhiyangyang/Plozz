@@ -104,9 +104,6 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
         navigation.resetForProfile()
         XCTAssertEqual(navigation.section, .playback)
         XCTAssertFalse(navigation.isCategoryOpen)
-        XCTAssertEqual(SettingsRoute.subtitles.access(
-            activeProfileID: "child", isKids: true, isParentalSealed: true
-        ), .allowed)
     }
 
     func testProfileOrAuthorizationResetDiscardsPriorDestinations() {
@@ -146,22 +143,6 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
         XCTAssertTrue(navigation.isCategoryOpen)
     }
 
-    func testHouseholdRoutesRemainUnavailableToKidsEvenAfterUnlock() {
-        let routes: [SettingsRoute] = [
-            .servers, .server(key: "server"), .profile, .parentalPIN, .topShelf,
-            .profileSettings(profileID: "adult"),
-            .profileAppearance(profileID: "adult"), .profileLockSetup(profileID: "adult")
-        ]
-        for route in routes {
-            for sealed in [true, false] {
-                XCTAssertEqual(route.access(activeProfileID: "child", isKids: true, isParentalSealed: sealed),
-                               .adultProfile, "\(route)")
-            }
-            XCTAssertEqual(route.access(activeProfileID: "adult", isKids: false, isParentalSealed: false),
-                           .allowed, "\(route)")
-        }
-    }
-
     func testScreensKeepTheirNestedDestinationsAndProfileScope() {
         let navigation = SettingsNavigationModel()
         navigation.select(.screensNavigation)
@@ -170,29 +151,12 @@ final class SettingsWorkspaceNavigationTests: XCTestCase {
             navigation.path.append(route)
             XCTAssertEqual(navigation.section, .screensNavigation)
             XCTAssertEqual(navigation.path, [.screensNavigation, route])
-            XCTAssertEqual(route.access(activeProfileID: "child", isKids: true, isParentalSealed: true), .allowed)
             navigation.path.removeLast()
         }
         navigation.resetForProfile()
         XCTAssertTrue(navigation.path.isEmpty)
         XCTAssertEqual(navigation.section, .playback)
-        XCTAssertEqual(SettingsRoute.language.access(
-            activeProfileID: "child", isKids: true, isParentalSealed: true
-        ), .allowed)
     }
 
-    func testOnlySealedKidsRequirePINForTheirOwnRestrictedSettings() {
-        for route: SettingsRoute in [
-            .myLibraries, .plexUser(accountID: "account"), .serverUser(serverKey: "server"), .parentalPINSetup,
-            .profileSettings(profileID: "child"), .profileLockSetup(profileID: "child")
-        ] {
-            XCTAssertEqual(route.access(activeProfileID: "child", isKids: true, isParentalSealed: true),
-                           .parentalPIN, "\(route)")
-            XCTAssertEqual(route.access(activeProfileID: "child", isKids: true, isParentalSealed: false),
-                           .allowed, "\(route)")
-        }
-        XCTAssertEqual(SettingsRoute.profileAppearance(profileID: "child")
-            .access(activeProfileID: "child", isKids: true, isParentalSealed: true), .allowed)
-    }
 }
 #endif

@@ -201,28 +201,6 @@ struct PlozziOSProfileOnboardingCover: View {
                         onContinue: { appModel.advanceProfileOnboarding() }
                     )
                 }
-            case .lockOffer:
-                if let profile = appModel.profileBeingOnboarded {
-                    ProfileLockOfferView(
-                        profile: profile,
-                                                validatePlexPIN: {
-                            await appModel.plexHomeUsers.validatePlexPIN(
-                                $0,
-                                forProfile: profile.id
-                            )
-                        },
-                        onComplete: { lock in
-                            appModel.setLock(lock, forProfile: profile.id)
-                            appModel.advanceProfileOnboarding()
-                        },
-                        onSkip: { appModel.advanceProfileOnboarding() }
-                    )
-                } else {
-                    // The profile was deleted underneath the flow.
-                    Color.clear.onAppear {
-                        appModel.advanceProfileOnboarding()
-                    }
-                }
             case nil:
                 EmptyView()
             }

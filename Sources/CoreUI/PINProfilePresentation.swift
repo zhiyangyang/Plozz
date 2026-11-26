@@ -32,7 +32,6 @@ struct PINProfileEntryLayout<Badge: View, Pad: View>: View {
     let transition: PINProfileTransition
     let title: LocalizedStringResource
     let name: Text
-    let showsLock: Bool
     let availability: PINEntryAvailability
     let errorMessage: LocalizedStringResource?
     let footnote: LocalizedStringResource?
@@ -52,7 +51,7 @@ struct PINProfileEntryLayout<Badge: View, Pad: View>: View {
                         : AnyLayout(VStackLayout(spacing: 24))
                     layout {
                         PINProfileIdentity(
-                            transition: transition, title: title, name: name, showsLock: showsLock,
+                            transition: transition, title: title, name: name,
                             availability: availability, errorMessage: errorMessage,
                             footnote: footnote, sequenceStep: sequenceStep, badge: badge
                         )
@@ -89,7 +88,6 @@ private struct PINProfileIdentity<Badge: View>: View {
     let transition: PINProfileTransition
     let title: LocalizedStringResource
     let name: Text
-    let showsLock: Bool
     let availability: PINEntryAvailability
     let errorMessage: LocalizedStringResource?
     let footnote: LocalizedStringResource?
@@ -149,7 +147,7 @@ private struct PINProfileIdentity<Badge: View>: View {
     }
 
     private var identityName: some View {
-        PINIdentityName(name: name, showsLock: showsLock)
+        PINIdentityName(name: name)
     }
 }
 

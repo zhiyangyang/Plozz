@@ -68,13 +68,6 @@ struct PresentationHostApp: App {
             model = PlozziOSAppModel()
         }
         if ProcessInfo.processInfo.arguments.contains("--settings-interaction-fixture") {
-            var profile = model.profiles.activeProfile
-            profile.isKids = ProcessInfo.processInfo.arguments.contains("--kids-settings")
-            model.profiles.update(profile)
-            model.profiles.setParentalPIN(
-                ProcessInfo.processInfo.arguments.contains("--parental-pin")
-                    ? ParentalPIN.make(pin: "1234", iterations: 1) : nil
-            )
             DeveloperModeModel.shared.disable()
         }
         model.settings.density.density = .standard

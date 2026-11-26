@@ -234,8 +234,8 @@ public final class AccountsProvidersModel {
     ///
     /// The fallback is deliberately NOT applied when the profile chose to watch
     /// nothing — that's an instruction, not a gap to paper over, and honouring it
-    /// is what stops a Kids Profile with every server switched off still being
-    /// fed the household's first server.
+    /// is what stops a profile with every server switched off still being fed
+    /// the household's first server.
     public var homeAccounts: [ResolvedAccount] {
         let active = resolvedActiveAccounts
         if localProviders != nil { return active }
@@ -417,14 +417,7 @@ public final class AccountsProvidersModel {
         return provider(forAccountID: accountID)
     }
 
-    public func profileShowsPINLock(_ profile: Profile) -> Bool {
-        let plexIDs = Set(accounts.filter { $0.server.provider == .plex }.map(\.id))
-        return profile.showsPINLock(
-            activePlexAccountIDs: Set(activeAccountIDs(forProfile: profile.id)).intersection(plexIDs)
-        )
-    }
-
-    /// Reloads accounts from the store and recomputes the active set for the
+/// Reloads accounts from the store and recomputes the active set for the
     /// active profile. Invalidates the provider cache first, then fires
     /// `onActiveAccountsChanged` so the media-share runtime can update its
     /// preferred-account keys.

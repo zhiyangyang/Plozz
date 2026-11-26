@@ -23,7 +23,7 @@ struct PlozziOSPlexPINView: View {
             if pendingRequest == request, model.plexPINEntryAvailability == .unavailable {
                 PlexAccountRecoveryView(
                     name: profile?.name ?? request.homeUserName,
-                    message: model.plexPINError ?? ProfileLockCopy.plexSwitchFailed,
+                    message: model.plexPINError ?? PlexPINCopy.switchFailed,
                     signIn: model.plexReauthentication,
                     onSignIn: { model.beginPlexReauthentication() },
                     onRetry: { model.retryPlexPINRequirement() },
@@ -37,7 +37,6 @@ struct PlozziOSPlexPINView: View {
                 PINEntryScaffold(
                     title: profile == nil ? "Enter your Plex PIN" : "Plex PIN",
                     name: Text(verbatim: profile?.name ?? request.homeUserName),
-                    showsLock: true,
                     errorMessage: model.plexPINError,
                     isSubmitting: model.isSubmittingPlexPIN || pendingRequest != request,
                     availability: pendingRequest == request ? model.plexPINEntryAvailability : lastAvailability,

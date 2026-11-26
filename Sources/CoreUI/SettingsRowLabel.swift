@@ -9,7 +9,7 @@ import SwiftUI
 // from a private copy.
 //
 // The row BODY now lives here too, rather than in FeatureSettings: the profile
-// actions (Appearance / Profile Lock / Kids Profile) are rendered from
+// actions (Appearance / automatic sign-in / delete) are rendered from
 // FeatureProfiles as well as from Settings, and a second hand-rolled row would
 // have been the start of exactly the drift this file exists to prevent.
 

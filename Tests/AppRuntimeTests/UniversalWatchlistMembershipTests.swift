@@ -883,24 +883,7 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
 
 @MainActor
 final class UniversalWatchlistConnectionTests: XCTestCase {
-    func testAuthenticationResumeWaitsForUnlock() async throws {
-        let (host, destination, store) = try await makeReadyHost()
-        host.activeProfileAwaitsUnlock = true
-        await host.resumeUniversalWatchlistAuthentication()
-        let blockedMutations = await store.allMutations()
-        XCTAssertEqual(blockedMutations.first?.phase, .waitingForAuthentication)
-        XCTAssertTrue(host.universalWatchlistShouldResumeAuthentication)
-
-        host.activeProfileAwaitsUnlock = false
-        await host.resumeUniversalWatchlistAuthentication()
-        let writes = await destination.appliedStates()
-        let mutations = await store.allMutations()
-        XCTAssertEqual(writes, [.absent])
-        XCTAssertTrue(mutations.isEmpty)
-        XCTAssertFalse(host.universalWatchlistShouldResumeAuthentication)
-    }
-
-    private func makeReadyHost() async throws -> (
+private func makeReadyHost() async throws -> (
         UniversalWatchlistHostDouble, RuntimeWatchlistDestination, DurableWatchlistMutationStore
     ) {
         let host = try await UniversalWatchlistHostDouble()
@@ -977,7 +960,6 @@ final class UniversalWatchlistHostDouble: UniversalWatchlistHost {
     var universalWatchlistShouldResumeAuthentication = false
     var universalWatchlistIdentityUpdateTask: Task<Void, Never>?
     let plexDiscoverTokens = PlexDiscoverTokenBox()
-    var activeProfileAwaitsUnlock = false
 
     static let accountID = "acct"
     static let baseURL = URL(string: "http://plex.local:32400")!

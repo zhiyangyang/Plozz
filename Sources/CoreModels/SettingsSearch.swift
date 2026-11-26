@@ -130,10 +130,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         }
     }
 
-    public var requiresParentalAuthorization: Bool {
-        self == .accountLibraries || self == .profileSettings
-    }
-
     public var platform: SettingsSearchEntry.Platform? {
         switch self {
         case .downloads, .streamingAdvanced: .mobile
