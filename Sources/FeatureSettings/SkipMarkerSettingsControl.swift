@@ -93,7 +93,6 @@ public struct SkipMarkerSettingsView: View {
                 }
             }
             SettingsSectionGroup {
-                SkipMarkerCommunityControl(model: model)
             }
             .settingsSearchGroup(["community-markers"])
         }
@@ -166,20 +165,6 @@ private struct SkipMarkerContentControls: View {
                     SettingsSearchCatalog.entries.filter { $0.skipKind != nil && $0.contentCategory == category }.map(\.id)
             )
         }
-    }
-}
-
-private struct SkipMarkerCommunityControl: View {
-    @Bindable var model: PlaybackSettingsModel
-
-    var body: some View {
-        SettingsDescribedControl {
-            Toggle("Use community markers", isOn: $model.settings.useCommunityMarkers)
-                .accessibilityIdentifier("skip-community-markers")
-        } description: {
-            Text("From IntroDB and TheIntroDB when your server has none. Shares IMDb/TMDB IDs.")
-        }
-        .settingsSearchAnchor("community-markers")
     }
 }
 

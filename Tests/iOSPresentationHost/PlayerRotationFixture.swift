@@ -61,7 +61,6 @@ struct PlayerRotationFixture: View {
     init() {
         let model = PlozziOSAppModel()
         model.settings.playback.settings = .default
-        model.settings.playback.settings.useCommunityMarkers = false
         model.settings.playback.settings.syncWatchAcrossServers = false
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--force-transcoding") {

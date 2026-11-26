@@ -163,11 +163,10 @@ final class MediaSegmentTests: XCTestCase {
 }
 
 final class PlaybackSettingsTests: XCTestCase {
-    func testDefaultShowsASkipButtonForEveryKindAndUsesCommunityMarkers() {
+    func testDefaultShowsASkipButtonForEveryKind() {
         let settings = PlaybackSettings.default
         XCTAssertEqual(settings.skipIntros, .on)
         XCTAssertTrue(settings.skipModeOverrides.isEmpty)
-        XCTAssertTrue(settings.useCommunityMarkers)
         for kind in MediaSegment.Kind.skippable {
             XCTAssertEqual(settings.skipMarkerModes.mode(for: kind), .on, "\(kind)")
         }
@@ -233,11 +232,10 @@ final class PlaybackSettingsTests: XCTestCase {
         XCTAssertEqual(modes.mode(for: .commercial), .off)
     }
 
-    func testPerKindModesAndCommunitySwitchRoundTrip() throws {
+    func testPerKindModesRoundTrip() throws {
         let settings = PlaybackSettings(
             skipIntros: .autoInstant,
-            skipModeOverrides: [.intro: .autoInstant, .credits: .on, .recap: .off, .preview: .autoDelay],
-            useCommunityMarkers: false
+            skipModeOverrides: [.intro: .autoInstant, .credits: .on, .recap: .off, .preview: .autoDelay]
         )
         let decoded = try JSONDecoder().decode(
             PlaybackSettings.self, from: JSONEncoder().encode(settings)

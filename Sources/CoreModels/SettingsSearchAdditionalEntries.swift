@@ -76,8 +76,6 @@ extension SettingsSearchCatalog {
               keywords: "skip intro outro credits recap opening ending chapter markers"),
         .init("skip-default-delay", page: .skipMarkers, title: "Skip after",
               keywords: "skip intro outro credits recap opening ending chapter markers"),
-        .init("community-markers", page: .skipMarkers, title: "Use community markers",
-              keywords: "skip intro outro credits recap opening ending chapter markers"),
         .init("subtitle-separate", page: .subtitles, title: "Set separately for movies, TV shows & anime",
               keywords: "subtitles captions language preferred automatic forced"),
         .init("subtitle-download", page: .subtitles, title: "Download subtitles automatically",

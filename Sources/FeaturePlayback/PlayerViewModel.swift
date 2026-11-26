@@ -506,7 +506,6 @@ public final class PlayerViewModel {
     private var autoSkipNoticeTask: Task<Void, Never>?
     /// Community skip-marker databases (IntroDB / TheIntroDB), consulted as a
     /// backup to the server's own markers when enabled in settings.
-    private let communitySkipMarkers: any CommunitySkipMarkerFetching
     /// Explicit start position (seconds) that overrides the provider's resume
     /// point when set. `nil` keeps the default behaviour (derive from the
     /// `PlaybackRequest`); `0` forces "start over"; a positive value resumes.
@@ -804,7 +803,6 @@ public final class PlayerViewModel {
         seriesTrackStore: (any SeriesTrackPreferenceStoring)? = nil,
         seriesAccountFallbackID: String? = nil,
         startPosition: TimeInterval? = nil,
-        communitySkipMarkers: any CommunitySkipMarkerFetching = CommunitySkipMarkerService(),
         engineFactory: EngineFactory = .native,
         authenticatedHTTPResolver:
             (any AuthenticatedHTTPResourceResolving)? = nil,
@@ -849,7 +847,6 @@ public final class PlayerViewModel {
             rememberSubtitle: playbackSettings.rememberSubtitleTrackPerSeries
         )
         self.startPositionOverride = startPosition
-        self.communitySkipMarkers = communitySkipMarkers
         self.engineFactory = engineFactory
         self.authenticatedHTTPResolver = authenticatedHTTPResolver
         self.capabilities = capabilities
@@ -2350,70 +2347,15 @@ public final class PlayerViewModel {
         guard wantsMarkers else { return }
         let provider = provider
         let itemID = itemID
-        let looksUpCommunity = modes.fetchesMarkers && playbackSettings.useCommunityMarkers
         let item = request?.item
         let duration = controls.duration > 0 ? controls.duration : item?.runtime
         let seriesIDResolver = seriesIDResolver
-        let community = communitySkipMarkers
         segmentsTask = Task { @MainActor [weak self] in
             let server = ((try? await provider.mediaSegments(for: itemID)) ?? [])
                 .normalizedSkipMarkers(duration: duration)
             guard !Task.isCancelled else { return }
             self?.controls.skipSegments.segments = server.filter(\.isSkippable)
-            guard looksUpCommunity, !server.coversIntroAndCredits else { return }
-            let fallback = await Self.communitySegments(
-                for: item, sources: [.introDB, .theIntroDB], duration: duration,
-                provider: provider, seriesIDResolver: seriesIDResolver, service: community
-            )
-            guard !Task.isCancelled, !fallback.isEmpty else { return }
-            self?.controls.skipSegments.segments = server.filling(from: fallback)
-                .normalizedSkipMarkers(duration: duration)
         }
-    }
-
-    /// Community markers for `item`, or none when no source is enabled or the item
-    /// lacks the ids the databases key on. The owning provider's series supplies
-    /// missing identity and numbering context without changing the playable item.
-    static func communitySegments(
-        for item: MediaItem?,
-        sources: CommunitySkipMarkerSources,
-        duration: TimeInterval?,
-        provider: any MediaProvider,
-        seriesIDResolver: (@Sendable () async -> [String: String]?)?,
-        service: any CommunitySkipMarkerFetching
-    ) async -> [MediaSegment] {
-        guard !sources.isEmpty, !Task.isCancelled, var item else { return [] }
-        if item.kind == .episode, let end = item.episodeNumberEnd, end != item.episodeNumber {
-            PlozzLog.playback.debug("Community markers omitted for a combined or invalid episode range")
-            return []
-        }
-        var series: MediaItem?
-        let needsOrder = item.kind == .episode && sources.contains(.theIntroDB)
-            && item.episodeOrdering == nil
-        let needsTVDB = item.kind == .episode && sources.contains(.theIntroDB)
-            && item.providerID(.seriesTvdb) == nil
-        if CommunitySkipMarkerQuery.needsSeriesIDs(item) || needsOrder || needsTVDB {
-            if let seriesID = item.seriesID {
-                do {
-                    let candidate = try await provider.item(id: seriesID)
-                    guard !Task.isCancelled else { return [] }
-                    if candidate.kind == .series, candidate.id == seriesID {
-                        series = candidate
-                    } else {
-                        PlozzLog.playback.error("Community marker lookup received unrelated series metadata")
-                    }
-                } catch {
-                    guard !Task.isCancelled else { return [] }
-                    PlozzLog.playback.debug("Community marker series lookup failed; retaining known identity")
-                }
-            } else if let resolved = await seriesIDResolver?() {
-                guard !Task.isCancelled else { return [] }
-                item.providerIDs.mergeSeriesProviderIDs(from: resolved)
-            }
-        }
-        guard !Task.isCancelled,
-              let query = CommunitySkipMarkerQuery(item: item, series: series, duration: duration) else { return [] }
-        return await service.segments(for: query, sources: sources)
     }
 
     /// Seeks past the currently-active skip segment (intro/credits) to its end,

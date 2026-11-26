@@ -23,7 +23,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
             engine.capabilities.insert(.audioDelay)
             let model = PlayerViewModel(
                 provider: provider, itemID: item.id,
-                playbackSettings: .init(useCommunityMarkers: false, videoUpscaling: .standard),
+                playbackSettings: .init(videoUpscaling: .standard),
                 engineFactory: .init(makeNative: { _ in engine }, makePlozzigen: { engine })
             )
             await model.load()
@@ -57,7 +57,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         engine.canChangeVideoUpscaling = true
         let model = PlayerViewModel(
             provider: provider, itemID: item.id,
-            playbackSettings: .init(useCommunityMarkers: false),
+            playbackSettings: .init(),
             engineFactory: .init(makeNative: { _ in engine }, makePlozzigen: { engine })
         )
         await model.load()
@@ -349,7 +349,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
                 let engine = SpyVideoEngine()
                 let model = PlayerViewModel(
                     provider: provider, itemID: episode.id,
-                    playbackSettings: .init(useCommunityMarkers: false, videoUpscaling: mode),
+                    playbackSettings: .init(videoUpscaling: mode),
                     engineFactory: .init(makeNative: { _ in engine }, makePlozzigen: { engine })
                 )
                 await model.load()
@@ -370,7 +370,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
             let engine = SpyVideoEngine()
             let model = PlayerViewModel(
                 provider: provider, itemID: episode.id,
-                playbackSettings: .init(useCommunityMarkers: false, videoUpscaling: .automatic),
+                playbackSettings: .init(videoUpscaling: .automatic),
                 engineFactory: .init(makeNative: { _ in engine }, makePlozzigen: { engine })
             )
             await model.load()
@@ -397,7 +397,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
                 engine.duration = 300
                 let model = PlayerViewModel(
                     provider: provider, itemID: first.id, episodeItem: first,
-                    playbackSettings: .init(useCommunityMarkers: false, autoPlayNextEpisode: autoplay),
+                    playbackSettings: .init(autoPlayNextEpisode: autoplay),
                     engineFactory: .init(makeNative: { _ in engine }),
                     neighborResolver: { (nil, next) }
                 )
@@ -765,7 +765,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
                     let settings = PlaybackSettings(
                         skipIntros: .autoDelay,
                         skipContentCategories: enabled ? [category] : Set(ContentCategory.allCases).subtracting([category]),
-                        skipAutomaticDelaySeconds: 17, useCommunityMarkers: false,
+                        skipAutomaticDelaySeconds: 17,
                         showUpNextCard: false
                     )
                     let viewModel = PlayerViewModel(
@@ -795,7 +795,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
             (.init(id: "anime", title: "Anime", kind: .episode, providerIDs: ["AniList": "100"]), .off, 0, 9),
             (.init(id: "anime-film", title: "Anime film", kind: .movie, genres: ["Anime"]), .off, 0, 9)
         ]
-        var settings = PlaybackSettings(useCommunityMarkers: false, showUpNextCard: false)
+        var settings = PlaybackSettings(showUpNextCard: false)
         settings.setConfiguredSkipMode(.autoDelay, for: .intro, category: .movie)
         settings.setSkipAutomaticDelay(17, for: .intro, category: .movie)
         settings.setConfiguredSkipMode(.off, for: .intro, category: .anime)
@@ -849,7 +849,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         let model = PlayerViewModel(
             provider: provider, itemID: item.id,
             playbackSettings: .init(
-                skipIntros: .autoInstant, useCommunityMarkers: false, autoPlayNextEpisode: false
+                skipIntros: .autoInstant, autoPlayNextEpisode: false
             ),
             engineFactory: .init(makeNative: { _ in engine })
         )
@@ -887,7 +887,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         engine.duration = 1_800
         let model = PlayerViewModel(
             provider: provider, itemID: item.id,
-            playbackSettings: .init(skipIntros: .on, useCommunityMarkers: false),
+            playbackSettings: .init(skipIntros: .on),
             engineFactory: .init(makeNative: { _ in engine })
         )
         await model.load()
@@ -916,7 +916,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
         await model.stop()
     }
 
-    func testDisabledSkipContentStillLoadsUpNextMarkersWithoutCommunityLookupOrSkipButton() async {
+    func testDisabledSkipContentStillLoadsUpNextMarkersWithoutSkipButton() async {
         let item = MediaItem(
             id: "movie", title: "Movie", kind: .movie, providerIDs: ["Imdb": "tt1234567"]
         )
@@ -926,11 +926,9 @@ final class PlayerViewModelEOFTests: XCTestCase {
             segments: [marker]
         )
         let engine = SpyVideoEngine()
-        let community = RecordingCommunityMarkers()
         let viewModel = PlayerViewModel(
             provider: provider, itemID: item.id,
             playbackSettings: .init(skipIntros: .autoInstant, skipContentCategories: [.tvShow, .anime]),
-            communitySkipMarkers: community,
             engineFactory: .init(makeNative: { _ in engine })
         )
         await viewModel.load()
@@ -941,8 +939,6 @@ final class PlayerViewModelEOFTests: XCTestCase {
         XCTAssertEqual(viewModel.controls.skipModes, .allOff)
         viewModel.controls.currentSeconds = 20
         XCTAssertFalse(viewModel.controls.skipButtonVisible)
-        let queries = await community.queries
-        XCTAssertTrue(queries.isEmpty)
         await viewModel.stop()
     }
 
@@ -953,7 +949,7 @@ final class PlayerViewModelEOFTests: XCTestCase {
             (.init(id: "anime", title: "Anime", kind: .episode, providerIDs: ["AniList": "100"]), true),
             (.init(id: "anime-film", title: "Anime film", kind: .movie, genres: ["Anime"]), true)
         ]
-        var settings = PlaybackSettings(useCommunityMarkers: false, showUpNextCard: false)
+        var settings = PlaybackSettings(showUpNextCard: false)
         settings.setConfiguredSkipMode(.autoInstant)
         settings.setConfiguredSkipMode(.on, for: .intro, category: .anime)
         for inherits in [false, true] {
@@ -1000,91 +996,6 @@ final class PlayerViewModelEOFTests: XCTestCase {
         XCTAssertEqual(controls.automaticUpNextDelay, 27)
         controls.currentSeconds = 110
         XCTAssertEqual(controls.automaticSkipDelay, 27)
-    }
-
-    func testCommunityMarkersResolveSeriesOrderAndTVDBEvenWithExistingTMDB() async throws {
-        let item = MediaItem(id: "episode", title: "Episode", kind: .episode,
-                             seasonNumber: 1, episodeNumber: 2, seriesID: "series",
-                             providerIDs: ["SeriesTmdb": "1396", "Tvdb": "349232"])
-        let series = MediaItem(id: "series", title: "Series", kind: .series, episodeOrdering: .dvd,
-                               providerIDs: ["Tvdb": "81189", "Tmdb": "999"])
-        let provider = RecordingPlaybackProvider(request: .init(
-            item: series, streamURL: URL(string: "https://fixture.invalid/video.mp4")!
-        ))
-        let service = RecordingCommunityMarkers()
-        _ = await PlayerViewModel.communitySegments(
-            for: item, sources: [.introDB, .theIntroDB], duration: 3000, provider: provider,
-            seriesIDResolver: { XCTFail("Do not fetch the same series twice"); return nil }, service: service
-        )
-        let queries = await service.queries
-        let query = try XCTUnwrap(queries.first)
-        XCTAssertEqual(query.tvdbID, "81189")
-        XCTAssertEqual(query.tvdbEpisodeID, "349232")
-        XCTAssertEqual(query.tmdbID, "1396")
-        XCTAssertEqual(query.episodeOrdering, .dvd)
-        XCTAssertEqual(query.duration, 3000)
-        let requests = await provider.itemCallCount
-        XCTAssertEqual(requests, 1)
-    }
-
-    func testCommunityResolverFillsTVDBWithoutReplacingKnownSeriesIDs() async throws {
-        let item = MediaItem(id: "episode", title: "Episode", kind: .episode,
-                             seasonNumber: 1, episodeNumber: 2, providerIDs: ["SeriesTmdb": "1396"])
-        let provider = RecordingPlaybackProvider(request: .init(
-            item: item, streamURL: URL(string: "https://fixture.invalid/video.mp4")!
-        ))
-        let service = RecordingCommunityMarkers()
-        _ = await PlayerViewModel.communitySegments(
-            for: item, sources: [.theIntroDB], duration: nil, provider: provider,
-            seriesIDResolver: { ["Tvdb": "81189", "Tmdb": "999"] }, service: service
-        )
-        let query = await service.queries.first
-        XCTAssertEqual(query?.tvdbID, "81189")
-        XCTAssertEqual(query?.tmdbID, "1396")
-        let requests = await provider.itemCallCount
-        XCTAssertEqual(requests, 0)
-    }
-
-    func testCombinedEpisodesAndDisabledCommunityDoNotFetchMetadata() async {
-        var item = MediaItem(id: "episode", title: "Episode", kind: .episode,
-                             seasonNumber: 1, episodeNumber: 2, episodeNumberEnd: 3, seriesID: "series")
-        let provider = RecordingPlaybackProvider(request: .init(
-            item: item, streamURL: URL(string: "https://fixture.invalid/video.mp4")!
-        ))
-        let service = RecordingCommunityMarkers()
-        _ = await PlayerViewModel.communitySegments(
-            for: item, sources: [.theIntroDB], duration: 3000, provider: provider,
-            seriesIDResolver: nil, service: service
-        )
-        item.episodeNumberEnd = nil
-        _ = await PlayerViewModel.communitySegments(
-            for: item, sources: [], duration: 3000, provider: provider,
-            seriesIDResolver: nil, service: service
-        )
-        let queries = await service.queries
-        let requests = await provider.itemCallCount
-        XCTAssertTrue(queries.isEmpty)
-        XCTAssertEqual(requests, 0)
-    }
-
-    func testCancelledCommunityLookupDoesNotPublishOrCallService() async {
-        let item = MediaItem(id: "episode", title: "Episode", kind: .episode,
-                             seasonNumber: 1, episodeNumber: 2)
-        let provider = RecordingPlaybackProvider(request: .init(
-            item: item, streamURL: URL(string: "https://fixture.invalid/video.mp4")!
-        ))
-        let service = RecordingCommunityMarkers()
-        let lookup = Task { @MainActor in
-            withUnsafeCurrentTask { $0?.cancel() }
-            return await PlayerViewModel.communitySegments(
-                for: item, sources: [.theIntroDB], duration: 3000, provider: provider,
-                seriesIDResolver: nil, service: service
-            )
-        }
-        let segments = await lookup.value
-        let queries = await service.queries
-        XCTAssertTrue(segments.isEmpty)
-        XCTAssertTrue(queries.isEmpty)
     }
 
     func testCenterSpinnerDisappearsForDisplayedVideoWhileScrubSeekRemainsPending() async {
@@ -3343,14 +3254,6 @@ private final class PreCommitYieldGate {
     func releaseNext() {
         guard !continuations.isEmpty else { return }
         continuations.removeFirst().resume()
-    }
-}
-
-private actor RecordingCommunityMarkers: CommunitySkipMarkerFetching {
-    private(set) var queries: [CommunitySkipMarkerQuery] = []
-    func segments(for query: CommunitySkipMarkerQuery, sources: CommunitySkipMarkerSources) async -> [MediaSegment] {
-        queries.append(query)
-        return []
     }
 }
 

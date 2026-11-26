@@ -69,7 +69,6 @@ public struct PlaybackSettings: Codable, Equatable, Sendable {
     /// Whether to look up community markers (IntroDB, then TheIntroDB) for items
     /// whose server has no intro or credits marker. Sends the title's IMDb or TMDB
     /// id to those databases. The server's own markers always win.
-    public var useCommunityMarkers: Bool
 
     /// How many seconds a remote left-press or mobile backward gesture skips.
     public var skipBackwardInterval: SkipInterval
@@ -223,7 +222,6 @@ public struct PlaybackSettings: Codable, Equatable, Sendable {
         skipAutomaticDelaySeconds: Int? = nil,
         skipAutomaticDelayOverrides: [MediaSegment.Kind: Int]? = nil,
         skipMarkerRules: [ContentCategory: [MediaSegment.Kind: SkipMarkerRule]] = [:],
-        useCommunityMarkers: Bool = true,
         skipBackwardInterval: SkipInterval = .ten,
         skipForwardInterval: SkipInterval = .ten,
         resumeRewindInterval: ResumeRewindInterval = .five,
@@ -269,7 +267,6 @@ public struct PlaybackSettings: Codable, Equatable, Sendable {
             ?? skipModeOverrides.mapValues { $0 == .autoInstant ? 0 : (skipAutomaticDelaySeconds ?? 5) })
             .mapValues(Self.boundedSkipDelay)
         self.skipMarkerRules = skipMarkerRules
-        self.useCommunityMarkers = useCommunityMarkers
         self.skipBackwardInterval = skipBackwardInterval
         self.skipForwardInterval = skipForwardInterval
         self.resumeRewindInterval = resumeRewindInterval
@@ -445,7 +442,6 @@ public extension PlaybackSettings {
         case skipAutomaticDelaySeconds
         case skipAutomaticDelayOverrides
         case skipMarkerRules
-        case useCommunityMarkers
         case skipBackwardInterval
         case skipForwardInterval
         case resumeRewindInterval
@@ -547,9 +543,6 @@ public extension PlaybackSettings {
         self.skipMarkersEnabled = try container.decodeIfPresent(Bool.self, forKey: .skipMarkersEnabled)
             ?? (SkipMarkerModes(base: skipIntros, overrides: skipModeOverrides).fetchesMarkers
                 || skipMarkerRules.values.contains { $0.values.contains { $0.mode != .off } })
-        self.useCommunityMarkers =
-            (try? container.decodeIfPresent(Bool.self, forKey: .useCommunityMarkers))
-            .flatMap { $0 } ?? defaults.useCommunityMarkers
         self.skipBackwardInterval =
             (try? container.decodeIfPresent(SkipInterval.self, forKey: .skipBackwardInterval))
             .flatMap { $0 } ?? defaults.skipBackwardInterval
@@ -669,7 +662,6 @@ public extension PlaybackSettings {
             }),
             forKey: .skipMarkerRules
         )
-        try container.encode(useCommunityMarkers, forKey: .useCommunityMarkers)
         try container.encode(skipBackwardInterval, forKey: .skipBackwardInterval)
         try container.encode(skipForwardInterval, forKey: .skipForwardInterval)
         try container.encode(resumeRewindInterval, forKey: .resumeRewindInterval)

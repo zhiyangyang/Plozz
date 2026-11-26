@@ -41,7 +41,7 @@ final class SkipMarkerSettingsTests: XCTestCase {
             var settings = PlaybackSettings(
                 skipIntros: base, skipModeOverrides: [.intro: .autoInstant, .credits: .autoDelay],
                 skipContentCategories: [.tvShow, .anime], skipAutomaticDelaySeconds: 12,
-                skipAutomaticDelayOverrides: [.intro: 0, .credits: 23], useCommunityMarkers: false
+                skipAutomaticDelayOverrides: [.intro: 0, .credits: 23]
             )
             let original = settings
             settings.setSkipMarkersEnabled(false)
@@ -234,7 +234,6 @@ final class SkipMarkerSettingsTests: XCTestCase {
                     skipContentCategories: [.movie], skipAutomaticDelaySeconds: 12,
                     skipAutomaticDelayOverrides: [.intro: 21],
                     skipMarkerRules: [.tvShow: [.intro: .init(mode: .autoDelay, automaticDelaySeconds: 9)]],
-                    useCommunityMarkers: false
                 )
                 let original = settings
                 settings.useDefaultSkipRule(for: .intro, category: category)
@@ -243,7 +242,6 @@ final class SkipMarkerSettingsTests: XCTestCase {
                 XCTAssertEqual(settings.configuredSkipMode(for: .intro, category: category), .autoDelay)
                 XCTAssertEqual(settings.configuredSkipDelay(for: .intro, category: category), 12)
                 XCTAssertEqual(settings.skipContentCategories, original.skipContentCategories)
-                XCTAssertFalse(settings.useCommunityMarkers)
                 for other in ContentCategory.allCases where other != category {
                     XCTAssertEqual(
                         settings.skipMarkerModes(for: other).mode(for: .intro),

@@ -76,7 +76,6 @@
     "ProfileEditorView",
     "ProfileNameField",
     "ServerUserDetailView",
-    "SkipMarkerCommunityControl",
     "SkipMarkerContentControls",
     "SkipMarkerEnableControl",
     "SkipMarkerRuleControls",
@@ -1968,11 +1967,6 @@
       "covered_by": [
         "skip-default"
       ]
-    },
-    "Sources/FeatureSettings/SkipMarkerSettingsControl.swift|SkipMarkerCommunityControl|body|Toggle|\"Use community markers\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
     },
     "Sources/FeatureSettings/SkipMarkerSettingsControl.swift|SkipMarkerSettingsControl|body|Button|<dynamic>": {
       "count": 1,

@@ -146,7 +146,6 @@ private final class DiscReviewState {
         settings.discPlayback = opensMenu ? .openMenu : .playVideo
         settings.fadeOnDynamicRangeChange = false
         settings.fadeOnFrameRateChange = false
-        settings.useCommunityMarkers = false
         let engine = engine
         player = PlayerViewModel(
             provider: DiscReviewProvider(movie: item), itemID: item.id,
