@@ -49,7 +49,7 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         XCTAssertEqual(app.profiles.profiles.count, 1)
         authentication.permits = true
         app.selectPlexUserDuringOnboarding(users[selectedIndex])
-        XCTAssertEqual(app.profiles.activeProfile.name, "Parent")
+        XCTAssertEqual(app.profiles.activeProfile.name, users[selectedIndex].name)
         for _ in 0..<200 {
             if app.pendingLibrarySelection != nil { break }
             await Task.yield()
