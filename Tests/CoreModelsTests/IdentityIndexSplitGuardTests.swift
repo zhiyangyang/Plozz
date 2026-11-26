@@ -52,7 +52,7 @@ final class IdentityIndexSplitGuardTests: XCTestCase {
             let seed = MediaItem(
                 id: "discovery", title: "Same Title", kind: kind,
                 providerIDs: ["Tmdb": "123"],
-                availability: .unknown, locallyValidatedPlayableSource: false
+                locallyValidatedPlayableSource: false
             )
             var first = seed
             first.id = "first"
@@ -128,7 +128,7 @@ final class IdentityIndexSplitGuardTests: XCTestCase {
         let seed = MediaItem(
             id: "discovery", title: "Same Title", kind: .movie,
             providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         let wrong = MediaItem(
             id: "wrong", title: seed.title, kind: .movie,

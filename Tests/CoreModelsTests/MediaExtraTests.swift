@@ -13,20 +13,18 @@ final class MediaExtraTests: XCTestCase {
     func testOrderingUsesCategoriesAndPreservesOrderWithinCategory() {
         let extras = [
             extra("other", kind: .other),
-            extra("trailer-1", kind: .trailer),
             extra("deleted", kind: .deletedScene),
-            extra("trailer-2", kind: .trailer),
             extra("featurette", kind: .featurette)
         ]
 
         XCTAssertEqual(
             MediaExtra.ordered(extras).map(\.item.id),
-            ["trailer-1", "trailer-2", "featurette", "deleted", "other"]
+            ["featurette", "deleted", "other"]
         )
     }
 
     func testOrderingDeduplicatesByPlayableIdentity() {
-        let duplicate = extra("same", kind: .trailer)
+        let duplicate = extra("same", kind: .featurette)
         XCTAssertEqual(MediaExtra.ordered([duplicate, duplicate]).count, 1)
     }
 

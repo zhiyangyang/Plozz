@@ -1,17 +1,5 @@
 import Foundation
 
-/// Injected source of **featured** hero content — the seam the parallel Seerr
-/// (Overseerr/Jellyseerr) work plugs into.
-///
-/// Returns trending/popular titles that may live *outside* the user's library.
-/// The app injects a concrete implementation once a Seerr provider exists; until
-/// then `HeroFeaturedProvider.none` (returning `[]`) is used, so the `.featured`
-/// hero source is inert but present — no call site changes when Seerr lands.
-///
-/// Kept provider-agnostic (a closure over `MediaItem`) so nothing above the
-/// provider layer needs to know Seerr exists.
-public typealias FeaturedContentProviding = @Sendable (_ limit: Int) async -> [MediaItem]
-
 /// The narrow library identity a Random hero fetch needs. Home already loaded this
 /// metadata while building its rows, so carrying it into the provider avoids a
 /// second `libraries()` network request solely to rediscover each container's kind.
@@ -38,13 +26,6 @@ public typealias HeroCollectionContentProviding = @Sendable (
 
 public enum HeroCollectionProvider {
     public static let none: HeroCollectionContentProviding = { _, _ in throw AppError.notFound }
-}
-
-/// Namespaced defaults for the hero content seams, so call sites can wire an
-/// inert default without inventing an empty closure inline.
-public enum HeroFeaturedProvider {
-    /// The no-op featured provider used until Seerr is integrated.
-    public static let none: FeaturedContentProviding = { _ in [] }
 }
 
 public enum HeroRandomProvider {

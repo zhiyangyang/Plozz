@@ -10,24 +10,16 @@ final class SeriesDownloadPresentationTests: XCTestCase {
 
     func testLibraryDownloadsRemainAvailableForASeriesWithSeasons() {
         let presentation = SeriesDownloadPresentation(
-            item: item(), children: [season], isDiscoveryItem: false
+            item: item(), children: [season]
         )
         XCTAssertTrue(presentation.isVisible)
         XCTAssertTrue(presentation.hasLibraryDownloads)
     }
 
-    func testDiscoveryMetadataIsNotDownloadableMedia() {
-        let presentation = SeriesDownloadPresentation(
-            item: item(), children: [season], isDiscoveryItem: true
-        )
-        XCTAssertFalse(presentation.isVisible)
-        XCTAssertFalse(presentation.hasLibraryDownloads)
-    }
-
     func testMoviesAndEpisodesKeepTheirExistingControls() {
         for kind in [MediaItemKind.movie, .episode] {
             let presentation = SeriesDownloadPresentation(
-                item: item(kind: kind), children: [season], isDiscoveryItem: false
+                item: item(kind: kind), children: [season]
             )
             XCTAssertFalse(presentation.isVisible)
             XCTAssertFalse(presentation.hasLibraryDownloads)
@@ -37,7 +29,7 @@ final class SeriesDownloadPresentationTests: XCTestCase {
     func testLooseEpisodesStillProvideOfflineDownloads() {
         let episode = MediaItem(id: "episode-1", title: "Episode 1", kind: .episode)
         let presentation = SeriesDownloadPresentation(
-            item: item(), children: [episode], isDiscoveryItem: false
+            item: item(), children: [episode]
         )
         XCTAssertTrue(presentation.hasLibraryDownloads)
         XCTAssertTrue(presentation.isVisible)

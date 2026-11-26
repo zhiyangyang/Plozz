@@ -25,24 +25,6 @@ final class DetailInformationPreviewTests: XCTestCase {
         )
     }
 
-    func testSingleScorePromotesDetailsButAvailabilityLeadsOtherSupportingSections() {
-        var item = MediaItem(
-            id: "film", title: "Film", kind: .movie, overview: "A synopsis.", productionYear: 2020,
-            people: [.init(id: "director", name: "Director", kind: "Director")],
-            ratings: [.init(source: .tmdb, value: 8, scale: .outOfTen)]
-        )
-        let availability = ExternalTitleAvailability(regionCode: "US", watchOffers: [
-            .init(providerID: 1, providerName: "Service", kind: .subscription, regionCode: "US")
-        ])
-        func sections() -> DetailInformationSections {
-            DetailInformationSections(item: item, horizontalInset: 24, externalAvailability: availability)
-        }
-        XCTAssertEqual(sections().sectionIDs, ["about", "ratings", "details", "availability", "crew"])
-        XCTAssertEqual(sections().informationGroups.first?.id, "availability")
-        item.ratings.append(.init(source: .imdb, value: 8, scale: .outOfTen))
-        XCTAssertEqual(sections().sectionIDs, ["about", "ratings", "availability", "details", "crew"])
-    }
-
     func testConfirmedTitleFactsDoNotUseLocalCountsOrAudioTracks() throws {
         var item = MediaItem(
             id: "series", title: "Series", originalLanguage: "fr", seriesStatus: .returning,

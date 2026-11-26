@@ -11,33 +11,19 @@ import UIKit
 /// Covers which mark a card wears. A title the viewer does not own is flagged
 /// without depending on any external request service.
 final class MediaLibraryMarkTests: XCTestCase {
-    private func item(availability: MediaAvailabilityStatus?) -> MediaItem {
-        var item = MediaItem(id: "1", title: "A Title", kind: .movie)
-        item.availability = availability
-        return item
+    private func item(owned: Bool) -> MediaItem {
+        MediaItem(
+            id: "1", title: "A Title", kind: .movie,
+            locallyValidatedPlayableSource: owned
+        )
     }
 
     func testOrdinaryLibraryItemIsNeverMarked() {
-        XCTAssertNil(MediaLibraryMark.mark(for: item(availability: nil)))
-    }
-
-    func testOwnedDiscoveryTitlesAreNeverMarked() {
-        for availability in [MediaAvailabilityStatus.available, .partiallyAvailable] {
-            XCTAssertNil(
-                MediaLibraryMark.mark(for: item(availability: availability)),
-                "\(availability) is owned and must not be marked"
-            )
-        }
+        XCTAssertNil(MediaLibraryMark.mark(for: item(owned: true)))
     }
 
     func testUnownedTitlesAreMarked() {
-        for availability in [MediaAvailabilityStatus.unknown, .pending, .processing, .deleted] {
-            XCTAssertEqual(
-                MediaLibraryMark.mark(for: item(availability: availability)),
-                .notInLibrary,
-                "\(availability) must be flagged as not in the library"
-            )
-        }
+        XCTAssertEqual(MediaLibraryMark.mark(for: item(owned: false)), .notInLibrary)
     }
 
     func testNotInLibraryAccessibilityDescribesTheMissingTitle() {
@@ -60,30 +46,22 @@ final class MediaLibraryMarkTests: XCTestCase {
     #endif
 
     func testMarkAgreesWithTheItemPredicateItIsDerivedFrom() {
-        let cases: [MediaAvailabilityStatus?] = [
-            nil, .available, .partiallyAvailable, .unknown, .pending, .processing, .deleted
-        ]
-        for availability in cases {
-            let subject = item(availability: availability)
+        for owned in [true, false] {
+            let subject = item(owned: owned)
             XCTAssertEqual(
                 MediaLibraryMark.mark(for: subject) != nil,
-                subject.isNotInLibraryDiscovery,
-                "mark presence must track isNotInLibraryDiscovery for \(String(describing: availability))"
+                !subject.hasPlayableLibraryTarget()
             )
         }
     }
 
     func testIndicatorStateCarriesTheSameDecisionAsTheItem() {
-        let cases: [MediaAvailabilityStatus?] = [
-            nil, .available, .partiallyAvailable, .unknown, .pending, .processing, .deleted
-        ]
-        for availability in cases {
-            let subject = item(availability: availability)
+        for owned in [true, false] {
+            let subject = item(owned: owned)
             let state = MediaPlaybackIndicatorState(subject)
             XCTAssertEqual(
                 state.libraryMark(),
-                MediaLibraryMark.mark(for: subject),
-                "state and item disagree for \(String(describing: availability))"
+                MediaLibraryMark.mark(for: subject)
             )
         }
     }

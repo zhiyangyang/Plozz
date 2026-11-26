@@ -51,7 +51,6 @@ final class SettingsSearchTests: XCTestCase {
                 XCTAssertEqual(result?.id, "hero-enabled", query)
                 XCTAssertEqual(result?.destinationPage(on: platform), .hero, query)
             }
-            XCTAssertTrue(index.results(for: "hero").contains { $0.id == "detail-background" })
         }
     }
 

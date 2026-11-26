@@ -49,7 +49,7 @@ struct PlozziOSDetailArtworkRevisit: Equatable {
     @MainActor
     func prepare(for card: MediaItem, snapshots: DetailSnapshotCache, replay: ArtworkBitmapReplay) async {
         let subject: MediaItem
-        if (card.kind == .episode || card.kind == .season), !card.isNotInLibraryDiscovery, let seriesID = card.seriesID {
+        if (card.kind == .episode || card.kind == .season), let seriesID = card.seriesID {
             subject = SeriesEpisodeEntry.seriesSeed(from: card, seriesID: seriesID, sourceAccountID: card.sourceAccountID)
         } else {
             guard card.kind == .movie || card.kind == .series else { return }
@@ -391,118 +391,6 @@ struct PlozziOSHomeHeroSlide: View {
     }
 }
 
-struct PlozziOSHeroRequest {
-    var cta: HeroCTA
-    var isRequesting: Bool
-    var actingName: String?
-    var onRequest: (MediaItem) -> Void
-    /// The current season summary. The shared Seasons sheet owns per-season actions.
-    var seasonAvailability: MediaRequestAvailability? = nil
-    /// Home and detail heroes open the same season manager.
-    var onOpenSeasonRequests: (() -> Void)? = nil
-}
-
-/// The shared Seerr request / download-status CTA for both the Home and detail
-/// heroes, driven by the canonical `HeroCTA` (CoreModels) so iOS matches tvOS
-/// exactly: a filled "Request" button, a plain "Requested" status while queued,
-/// and a live "NN%" + progress bar (reusing `ResumeProgressCapsule`) while
-/// actually downloading. Renders nothing for owned/unavailable titles.
-struct PlozziOSHeroRequestButton: View {
-    @Environment(\.themePalette) private var palette
-    let item: MediaItem
-    let request: PlozziOSHeroRequest
-
-    var body: some View {
-        if let onOpenSeasonRequests = request.onOpenSeasonRequests {
-            Button(action: onOpenSeasonRequests) {
-                if let availability = request.seasonAvailability {
-                    PlozziOSSeasonRequestSummaryLabel(
-                        presentation: SeasonRequestPresentation(
-                            availability: availability,
-                            isSubmitting: request.isRequesting
-                        )
-                    )
-                } else {
-                    Label("Request Seasons", systemImage: "plus.circle")
-                }
-            }
-            .buttonStyle(PlozziOSHeroActionButtonStyle(kind: .primary))
-            .accessibilityHint("Choose seasons and review their request status.")
-        } else {
-            switch request.cta {
-            case .request:
-                if item.kind == .series {
-                    Label("Season Status Unavailable", systemImage: "exclamationmark.circle")
-                        .font(.subheadline)
-                } else {
-                    Button {
-                        request.onRequest(item)
-                    } label: {
-                        requestLabel
-                    }
-                    .buttonStyle(PlozziOSHeroActionButtonStyle(kind: .primary))
-                    .disabled(request.isRequesting)
-                    .accessibilityLabel(
-                        request.actingName.map { Text("Request as \($0)") }
-                            ?? Text("Request")
-                    )
-                }
-            case .requested, .awaitingRelease:
-                statusPill {
-                    Label(request.cta.requestStatusTitle, systemImage: request.cta.requestStatusSystemImage)
-                }
-            case let .downloading(progress):
-                statusPill {
-                    DownloadProgressButtonLabel(
-                        progress: progress,
-                        onLight: palette.isLight
-                    )
-                }
-            case .play, .unavailable:
-                EmptyView()
-            }
-        }
-    }
-
-    private func statusPill<Content: View>(
-        @ViewBuilder _ label: () -> Content
-    ) -> some View {
-        Button {} label: { label() }
-            .buttonStyle(PlozziOSHeroActionButtonStyle(kind: .secondary))
-            .disabled(true)
-    }
-
-    @ViewBuilder
-    private var requestLabel: some View {
-        if request.isRequesting {
-            ProgressView()
-        } else {
-            Label("Request", systemImage: "plus.circle")
-        }
-    }
-
-}
-
-struct PlozziOSSeasonRequestSummaryLabel: View {
-    let presentation: SeasonRequestPresentation
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: presentation.systemImage)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(presentation.title)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let detail = presentation.detail {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-}
-
 struct PlozziOSHeroArtworkSeed {
     let subjectID: String
     let profileID: String
@@ -566,7 +454,6 @@ struct PlozziOSDetailHeroSection: View {
     var loadVersions: MediaVersionInventoryLoader? = nil
     let actionHandler: any MediaItemActionHandling
     let onPlay: (MediaItem, Bool) -> Void
-    var heroRequest: PlozziOSHeroRequest?
     /// Forwarded to the action row — see `offersParentNavigation` there.
     var offersParentNavigation: Bool = false
     /// Forwarded to the action row — see `presentsEpisodeStill` there.
@@ -618,7 +505,6 @@ struct PlozziOSDetailHeroSection: View {
                 style: style,
                 actionHandler: actionHandler,
                 onPlay: onPlay,
-                heroRequest: heroRequest,
                 offersParentNavigation: offersParentNavigation,
                 presentsEpisodeStill: presentsEpisodeStill
             )
@@ -1811,7 +1697,6 @@ struct PlozziOSHomeHeroForeground: View {
     let presentation: HeroPresentation
     let style: HeroArtworkStyle
     let onPlay: (MediaItem) -> Void
-    var heroRequest: PlozziOSHeroRequest?
     /// Test/preview seam for a logo lookup that must stay unresolved. Production
     /// uses the shared TMDb fallback.
     var logoFallbackOverride: HeroLogoFallback? = nil
@@ -1934,8 +1819,6 @@ struct PlozziOSHomeHeroForeground: View {
             .resumePromptAnchor(id: item.id)
         }
 
-        heroRequestButton
-
         if let watchlistAction {
             let isWatchlisted = watchlistAction == .removeFromWatchlist
             Button {
@@ -1965,23 +1848,10 @@ struct PlozziOSHomeHeroForeground: View {
         }
     }
 
-    /// One-tap Seerr request CTA for a discovery movie, matching the detail hero.
-    @ViewBuilder
-    private var heroRequestButton: some View {
-        if let heroRequest {
-            PlozziOSHeroRequestButton(item: item, request: heroRequest)
-        }
-    }
-
     private var hasPlayAction: Bool {
-        !DetailOpenEnvironment.isDiscovery(
-            item,
-            identitySources:
-                appModel.identityIndex.identitySourcesProvider
-        )
-            && (item.kind == .movie
-                || item.kind == .episode
-                || item.kind == .video)
+        item.kind == .movie
+            || item.kind == .episode
+            || item.kind == .video
     }
 
     private var seasonEpisodeText: String? {
@@ -2031,7 +1901,6 @@ struct PlozziOSDetailHeroForeground: View {
     let style: HeroArtworkStyle
     let actionHandler: any MediaItemActionHandling
     let onPlay: (MediaItem, Bool) -> Void
-    var heroRequest: PlozziOSHeroRequest?
     /// Whether this hero fronts an item with a parent page worth returning to —
     /// an episode opened with "Go to Episode", where Back may leave the show
     /// entirely. See `DetailHeroView`.
@@ -2355,7 +2224,6 @@ struct PlozziOSDetailHeroForeground: View {
             alignment: style == .compactPortrait ? .center : .leading
         ) {
             playActionButton(resume: resume)
-            heroRequestButton
             ForEach(inline) { extra in
                 inlineExtraButton(extra)
             }
@@ -2373,7 +2241,6 @@ struct PlozziOSDetailHeroForeground: View {
             alignment: style == .compactPortrait ? .center : .leading
         ) {
             playActionButton(wrapsText: true)
-            heroRequestButton
             if !extras.isEmpty || hasSourceVersionOptions || fileBrowserAction != nil {
                 WrappingHStackLayout(alignment: style == .compactPortrait ? .center : .leading) {
                     ForEach(extras) { extra in
@@ -2402,14 +2269,6 @@ struct PlozziOSDetailHeroForeground: View {
         switch extra {
         case .primary(let entry):
             primaryActionButton(entry)
-        }
-    }
-
-    /// Request-only titles keep their primary request action out of overflow.
-    @ViewBuilder
-    private var heroRequestButton: some View {
-        if let heroRequest {
-            PlozziOSHeroRequestButton(item: item, request: heroRequest)
         }
     }
 

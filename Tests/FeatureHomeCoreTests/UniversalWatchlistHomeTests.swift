@@ -97,7 +97,6 @@ final class UniversalWatchlistHomeTests: XCTestCase {
             title: "Explicit only",
             kind: .movie,
             watchlistAliasID: MediaAliasID(),
-            availability: .unknown,
             locallyValidatedPlayableSource: false
         )
         let store = UniversalWatchlistHomeStore(
@@ -341,7 +340,6 @@ final class UniversalWatchlistHomeTests: XCTestCase {
             id: "unresolved",
             title: "Unresolved",
             kind: .movie,
-            availability: .unknown,
             locallyValidatedPlayableSource: false
         )
         let owned = MediaItem(

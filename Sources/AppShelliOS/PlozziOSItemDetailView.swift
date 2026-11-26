@@ -121,8 +121,7 @@ struct PlozziOSItemDetailView: View {
 
     private var shouldResolveSeries: Bool {
         guard !(presentsEpisodeAsSubject && item.kind == .episode) else { return false }
-        return !item.isNotInLibraryDiscovery
-            && (item.kind == .episode || item.kind == .season)
+        return (item.kind == .episode || item.kind == .season)
             && item.seriesID != nil
     }
 
@@ -226,7 +225,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
     /// scroll gesture; geometry changes from a navigation or inset update must not
     /// move the hero.
     @State private var isHeroScrollActive = false
-    private var isDiscoveryItem: Bool { viewModel.isDiscoveryItem }
     private let initialSeasonID: String?
     private let initialEpisode: MediaItem?
     private let playlistOrigin: VideoPlaylistPlaybackOrigin?
@@ -271,7 +269,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     }
 
     private var contentRefreshSurfaceID: ContentRefreshSurfaceID? {
-        guard !viewModel.isDiscoveryItem, let item = viewModel.state.value?.item else { return nil }
+        guard let item = viewModel.state.value?.item else { return nil }
         let kind: ContentRefreshSurfaceKind
         switch item.kind {
         case .series: kind = .seriesDetail
@@ -435,20 +433,13 @@ private struct PlozziOSCanonicalItemDetailView: View {
             initialSeasonID: initialSeasonID, initialEpisode: initialEpisode,
             resumeEpisode: viewModel.serverResumeEpisode
         )
-        let showsPlayPlaceholder = !isDiscoveryItem && !hasResolvedSeriesPlayTarget
+        let showsPlayPlaceholder = !hasResolvedSeriesPlayTarget
             && DetailPlaybackSelection.showsPlayPlaceholder(
                 for: detail.item, hasPlayTarget: playableHeroTarget != nil,
                 childrenLoaded: detail.childrenLoaded,
                 seasonLoadState: openingSeasonID.map { viewModel.seasonLoadState(for: $0) }
             )
-        let options = isDiscoveryItem
-            ? DetailPlaybackOptions(
-                sources: [],
-                selectedSourceAccountID: nil,
-                versions: [],
-                selectedVersionID: nil
-            )
-            : detailPlaybackOptions(for: versionTarget)
+        let options = detailPlaybackOptions(for: versionTarget)
         let heroStyle: HeroArtworkStyle = horizontalSizeClass == .compact
             ? .compactPortrait
             : .landscape
@@ -510,7 +501,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                         }
                         play(selected, fromBeginning: fromBeginning)
                     },
-                    heroRequest: nil,
                     // "Go to Episode" opens the episode's own page, so offer
                     // a way over to its show.
                     offersParentNavigation: showsEpisodeSubjectHero(detail.item),
@@ -523,7 +513,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     for: detail.item, profileID: appModel.profiles.activeProfileID
                 )))
 
-                if detail.item.kind == .series, !isDiscoveryItem {
+                if detail.item.kind == .series {
                     AnyView(PlozziOSInlineSeriesBrowser(
                         viewModel: viewModel,
                         seasons: detail.children.filter { $0.kind == .season },
@@ -591,13 +581,10 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     horizontalInset: pageInset,
                     selectedSource: options.sources.first {
                         $0.accountID == options.selectedSourceAccountID
-                    } ?? (isDiscoveryItem ? nil : viewModel.currentSourceForDisplay),
-                    selectedVersion: isDiscoveryItem
-                        ? nil
-                        : options.versions.first {
-                            $0.id == options.selectedVersionID
-                        } ?? MediaVersion.synthesized(from: versionTarget),
-                    externalAvailability: detail.externalAvailability,
+                    } ?? viewModel.currentSourceForDisplay,
+                    selectedVersion: options.versions.first {
+                        $0.id == options.selectedVersionID
+                    } ?? MediaVersion.synthesized(from: versionTarget),
                     spoilerSettings: appModel.settings.spoilers.settings,
                     overviewAlreadyShown: heroStyle == .compactPortrait
                         ? HeroContentPolicy.detailDescription(focused: headerPresentation, root: rootPresentation)
@@ -740,8 +727,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     ) -> SeriesDownloadPresentation {
         SeriesDownloadPresentation(
             item: detail.item,
-            children: detail.children,
-            isDiscoveryItem: isDiscoveryItem
+            children: detail.children
         )
     }
 
@@ -801,8 +787,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     }
 
     private func detailPlayableItem(for item: MediaItem) -> MediaItem? {
-        guard !isDiscoveryItem,
-              item.kind == .movie
+        guard item.kind == .movie
                 || item.kind == .episode
                 || item.kind == .video else {
             return nil
@@ -1046,7 +1031,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     }
 
     private var preparationItem: MediaItem? {
-        guard !isDiscoveryItem, let detail = viewModel.state.value,
+        guard let detail = viewModel.state.value,
               let target = detail.item.kind == .series ? seriesPlayTarget : detail.item,
               !viewModel.hasNoPlaybackStreams(for: target),
               target.sourceAccountID == viewModel.currentSourceForDisplay?.accountID,
@@ -2005,7 +1990,6 @@ private struct PlozziOSSeasonDownloadRow: View {
             title: Text(row.title),
             status: row.hasLibraryContent ? "In Library" : "Missing",
             statusSystemImage: "play.rectangle",
-            showsRequestAction: false,
             completedDownloadCount: downloadState == nil ? completedEpisodeCount : 0
         ) {
             if row.hasLibraryContent {
@@ -2179,7 +2163,7 @@ private struct PlozziOSSeasonDownloadPicker: View {
     }
 
     private var metadataContext: String {
-        "\(appModel.profiles.activeProfileID)|\(SeasonRequestState.itemKey(for: series))|\(season.id)"
+        "\(appModel.profiles.activeProfileID)|\(series.id)|\(season.id)"
     }
 
     private var isCurrentSeries: Bool {

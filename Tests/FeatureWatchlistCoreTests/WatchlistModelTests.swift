@@ -81,7 +81,6 @@ final class WatchlistModelTests: XCTestCase {
         XCTAssertEqual(row.sourceAccountID, item.sourceAccountID)
         XCTAssertEqual(row.watchlistAliasID, record.id)
         XCTAssertTrue(row.locallyValidatedPlayableSource)
-        XCTAssertFalse(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
         XCTAssertTrue(row.ownershipPresentation().canPlay)
     }
 
@@ -203,13 +202,11 @@ final class WatchlistModelTests: XCTestCase {
 
         var rejected = fresh
         rejected.locallyValidatedPlayableSource = false
-        rejected.discoverySources = [.tmdb]
-        rejected.availability = .unknown
         let rejectedRow = try localPresentationRow(
             model, aliases: aliases, candidates: [winner: rejected]
         )
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(rejectedRow, identitySources: []))
-        XCTAssertFalse(try localPresentationRow(model, aliases: aliases).locallyValidatedPlayableSource)
+        XCTAssertTrue(rejectedRow.locallyValidatedPlayableSource)
+        XCTAssertTrue(try localPresentationRow(model, aliases: aliases).locallyValidatedPlayableSource)
     }
 
     private func localPresentationRow(

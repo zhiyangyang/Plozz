@@ -33,7 +33,7 @@ public enum WatchlistPresentationResolver {
         indexedSources: ((MediaItem) -> [MediaSourceRef])? = nil,
         capabilities: MediaCapabilities? = nil
     ) -> [WatchlistPresentationEntry] {
-        union.orderedEntries.compactMap { entry in
+        union.orderedEntries.compactMap { entry -> WatchlistPresentationEntry? in
             let aliasID = entry.aliasID
             if let item = currentItemsByAliasID[aliasID] {
                 // A live candidate is not automatically a LIBRARY candidate. The
@@ -61,10 +61,6 @@ public enum WatchlistPresentationResolver {
                    let accountID = entry.artworkSourceAccountID {
                     candidate = candidate.taggingArtworkSource(accountID)
                 }
-                if !candidate.locallyValidatedPlayableSource,
-                   candidate.availability == nil {
-                    candidate.availability = .unknown
-                }
                 // The server's own answer wins, and needs nothing else to be
                 // ready. The index can only answer once a full catalogue scan
                 // has completed and published; this came back with the
@@ -79,7 +75,6 @@ public enum WatchlistPresentationResolver {
                             entry.artworkSourceAccountID,
                         to: resolved
                     )
-                    resolved.availability = nil
                     resolved.watchlistAliasID = aliasID
                     return WatchlistPresentationEntry(
                         aliasID: aliasID,
@@ -124,11 +119,6 @@ public enum WatchlistPresentationResolver {
                 posterURL: presentation.artworkURL.flatMap(URL.init(string:)),
                 backdropURL: presentation.backdropURL.flatMap(URL.init(string:)),
                 providerIDs: providerIDs,
-                // Honest until proven otherwise: no live copy has been offered for
-                // this entry. `retargetedToOwnedLibraryCopy` requires this marker,
-                // and it is also what makes the badge correct if the search below
-                // finds nothing.
-                availability: .unknown,
                 locallyValidatedPlayableSource: false,
                 artworkSourceAccountID: entry.artworkSourceAccountID
             )
@@ -148,7 +138,6 @@ public enum WatchlistPresentationResolver {
                         entry.artworkSourceAccountID,
                     to: owned
                 )
-                owned.availability = nil
                 return owned
             } ?? resolved ?? placeholder
             item.watchlistAliasID = aliasID

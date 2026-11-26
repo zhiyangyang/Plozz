@@ -397,7 +397,6 @@ public final class WatchlistModel {
                 }
                 line += "\n      item=\(item.id)"
                 line += " validated=\(item.locallyValidatedPlayableSource)"
-                line += " availability=\(String(describing: item.availability))"
                 line.append(" alias=")
                 line.append(entry.id.description)
             }

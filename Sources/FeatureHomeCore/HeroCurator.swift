@@ -522,8 +522,8 @@ public protocol HeroRankingStrategy: Sendable {
 /// Default strategy: **round-robin interleave** across sources so every enabled
 /// source gets fair, near-the-top representation (source 0's first item, then
 /// source 1's first, …, then source 0's second, …), de-duplicated across
-/// sources and capped at `limit`. When only one source has content (e.g. only
-/// Seerr `.featured` is populated) the result is simply that source's items.
+/// sources and capped at `limit`. When only one source has content, the result
+/// is simply that source's items.
 public struct InterleaveHeroStrategy: HeroRankingStrategy {
     public init() {}
 

@@ -696,7 +696,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
             title: "The Unhealer",
             kind: .movie,
             providerIDs: ["Imdb": "tt9204204"],
-            availability: .unknown,
             locallyValidatedPlayableSource: false
         )
         discovery.sourceAccountID = "plex-account"
@@ -719,7 +718,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
             item.locallyValidatedPlayableSource,
             "A watchlisted film sitting in the library must not render as one to request"
         )
-        XCTAssertNil(item.availability)
     }
 
     /// Before the index has warmed there IS no owned copy to find, and the
@@ -765,11 +763,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
 
         let item = try XCTUnwrap(resolved.first?.item)
         XCTAssertFalse(item.locallyValidatedPlayableSource)
-        XCTAssertEqual(
-            item.availability,
-            .unknown,
-            "An entry with no owned copy must present as a discovery row, not as a library title with nothing to play"
-        )
     }
 
     /// The server's own answer needs no index at all.
@@ -840,7 +833,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
             "The entry must point at the owned copy, not the Discover row"
         )
         XCTAssertTrue(item.locallyValidatedPlayableSource)
-        XCTAssertNil(item.availability)
         XCTAssertEqual(
             item.posterURL?.absoluteString,
             "https://library.example/your-honor.jpg",
@@ -933,7 +925,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
             id: "discover-2",
             title: "Ambiguous",
             kind: .movie,
-            availability: .unknown,
             locallyValidatedPlayableSource: false
         )
 
@@ -955,7 +946,6 @@ final class WatchlistPresentationRetargetTests: XCTestCase {
 
         let item = try XCTUnwrap(resolved.first?.item)
         XCTAssertFalse(item.locallyValidatedPlayableSource)
-        XCTAssertEqual(item.availability, .unknown)
     }
 
     /// v1 native-view files already on devices have an owned source but no

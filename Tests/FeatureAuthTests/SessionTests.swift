@@ -100,7 +100,7 @@ final class SessionStateMachineTests: XCTestCase {
         m.apply(.standaloneProfileConfirmed)
         XCTAssertEqual(m.state, .onboarding(.confirmProfile, canReturnToApp: true))
         m.apply(.profileConfirmed, allowsStandalonePlayback: true)
-        XCTAssertEqual(m.state, .onboarding(.selectSeerr, canReturnToApp: true))
+        XCTAssertEqual(m.state, .onboarding(.selectTheme, canReturnToApp: true))
     }
 
     func testStandaloneLastAccountRemovalRemainsReadyAndCanAddServer() {
@@ -140,8 +140,6 @@ final class SessionStateMachineTests: XCTestCase {
         m.apply(.accountAuthenticatedNeedsProfile)
         XCTAssertEqual(m.state, .onboarding(.confirmProfile, canReturnToApp: true))
         m.apply(.profileConfirmed)
-        XCTAssertEqual(m.state, .onboarding(.selectSeerr, canReturnToApp: true))
-        m.apply(.seerrSelected)
         XCTAssertEqual(m.state, .onboarding(.selectTheme, canReturnToApp: true))
         m.apply(.themeSelected)
         XCTAssertEqual(m.state, .onboarding(.selectNavigation, canReturnToApp: true))
@@ -160,7 +158,7 @@ final class SessionStateMachineTests: XCTestCase {
     }
 
     func testNavigationCannotSkipEarlierAppearanceChoices() {
-        let steps: [OnboardingStep] = [.confirmProfile, .selectSeerr, .selectTheme]
+        let steps: [OnboardingStep] = [.confirmProfile, .selectTheme]
         for step in steps {
             let state = SessionState.onboarding(step, canReturnToApp: true)
             XCTAssertEqual(SessionStateMachine.reduce(state: state, event: .navigationSelected), state)

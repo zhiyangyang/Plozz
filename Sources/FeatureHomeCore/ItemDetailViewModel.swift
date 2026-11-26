@@ -45,9 +45,6 @@ public final class ItemDetailViewModel {
         public var childrenLoaded: Bool = false
         /// Collection membership failures are not authoritative empty results.
         public var collectionMembersState: LoadState<Int>?
-        /// Regional release/watch facts for a synthetic external title. `nil` on
-        /// ordinary library details and when no provider could answer.
-        public var externalAvailability: ExternalTitleAvailability?
         /// Published with the detail so cached seasons and a later live resume
         /// answer cannot become independent, inconsistently observed states.
         public var serverResumeEpisode: MediaItem?
@@ -60,8 +57,7 @@ public final class ItemDetailViewModel {
                 "DETAILSTATE t=\(Int(ProcessInfo.processInfo.systemUptime * 1000)) "
                     + "id=\(detail.item.id) kind=\(detail.item.kind.rawValue) "
                     + "active=\(activeItemID) source=\(activeSourceAccountID ?? "-") "
-                    + "children=\(detail.children.count) sources=\(sources.count) "
-                    + "discovery=\(isDiscoveryItem)"
+                    + "children=\(detail.children.count) sources=\(sources.count)"
             )
         }
     }
@@ -277,21 +273,11 @@ public final class ItemDetailViewModel {
 
     private let provider: (any MediaProvider)?
     private let itemID: String
-    /// External until a real library source is resolved. Both shells observe this
-    /// instead of freezing the index's ownership answer at navigation time.
-    public private(set) var isDiscoveryItem: Bool
-    /// For a discovery item, fetches its current request/availability + download
-    /// progress from Seerr (by TMDB id). Called on every `load()` so reopening a
-    /// title requested in an earlier visit reflects the real "Requested"/
-    /// "Downloading" state instead of the stale "Request" seeded from the search
-    /// result. `nil` (or a `nil` result) leaves the seeded state untouched.
-    private let discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)?
     /// Loads a season's complete canonical metadata roster. Kept separate from
     /// ``seasonEpisodes`` because metadata-only rows are never playable library
     /// items and must not enter snapshots or download flows.
     private let seasonEpisodeRosterLoader:
         (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)?
-    private let availabilityRegionCode: String
 
     /// The currently *active* source the page is showing. Defaults to the base
     /// `provider`/`itemID`/`sourceAccountID` the page was opened with, but is
@@ -506,7 +492,6 @@ public final class ItemDetailViewModel {
     private let snapshotCache: DetailSnapshotCache
     @ObservationIgnored public private(set) var metadataLanguage: String
     @ObservationIgnored private var openingResolver: (@MainActor () async throws -> DetailOpeningResolution)?
-    private let discoverySeed: MediaItem?
     @ObservationIgnored private var nativeDetailItem: MediaItem?
     /// List seeds and restored snapshots do not establish the preferred artwork
     /// source. Release only this visual gate when native/discovery identity settles.
@@ -551,12 +536,8 @@ public final class ItemDetailViewModel {
         itemID: String,
         initialItem: MediaItem? = nil,
         initialResumeEpisode: MediaItem? = nil,
-        isDiscoveryItem: Bool = false,
-        discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
             (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)? = nil,
-        availabilityRegionCode: String =
-            Locale.current.region?.identifier ?? "US",
         metadataLanguage: String = "en",
         sourceAccountID: String? = nil,
         originSourceAccountID: String? = nil,
@@ -578,10 +559,7 @@ public final class ItemDetailViewModel {
         self.navigationItemID = itemID
         self.activeProvider = provider
         self.activeItemID = itemID
-        self.isDiscoveryItem = isDiscoveryItem
-        self.discoveryStatusRefresh = discoveryStatusRefresh
         self.seasonEpisodeRosterLoader = loadSeasonEpisodeRoster
-        self.availabilityRegionCode = availabilityRegionCode
         // Fall back to the library-origin account when a direct source tag is
         // absent, so a played item is always attributed to the account it was
         // browsed from (a local media share persists resume/played state keyed by
@@ -599,7 +577,6 @@ public final class ItemDetailViewModel {
         self.snapshotCache = snapshotCache
         self.openingResolver = openingResolver
         self.prefetchesOpeningSeason = prefetchesOpeningSeason
-        self.discoverySeed = isDiscoveryItem ? initialItem : nil
 
         // Seed the hero from the list item the user just tapped so the detail
         // screen's first paint is INSTANT — before `provider.item(id:)` returns.
@@ -702,13 +679,6 @@ public final class ItemDetailViewModel {
                 state = .failed(failure)
                 return
             }
-        }
-        if isDiscoveryItem {
-            let generation = sourceGeneration
-            let adoptedLibrarySource = await loadDiscoveryDetail()
-            guard !Task.isCancelled,
-                  sourceGeneration == generation || adoptedLibrarySource else { return }
-            if isDiscoveryItem { return }
         }
         alternateSourceEnrichmentTask?.cancel()
         alternateSourceEnrichmentTask = nil
@@ -952,128 +922,6 @@ public final class ItemDetailViewModel {
         }
     }
 
-
-    /// An index miss is not proof of absence: a cold or capped catalogue can miss
-    /// a title that a targeted server search finds immediately (issue #33).
-    @discardableResult
-    private func resolveDiscoveryLibrarySource() async -> Bool {
-        guard let seed = state.value?.item,
-              seed.kind == .movie || seed.kind == .series,
-              let resolver = crossServerSourceResolver else { return false }
-        let generation = sourceGeneration
-        let resolved = await resolver(seed)
-        guard !Task.isCancelled,
-              isDiscoveryItem,
-              sourceGeneration == generation,
-              state.value?.item.id == seed.id else { return false }
-
-        rejectedSourceIDs.formUnion(resolved.rejectedSourceIDs)
-        let availableSources = resolved.sources.compactMap { source -> MediaSourceRef? in
-            guard !rejectedSourceIDs.contains(source.id) else { return nil }
-            guard source.kind == nil || source.kind == seed.kind,
-                  let provider = alternateProviderResolver(source.accountID) else { return nil }
-            var source = source
-            source.locality = provider.connectionLocality
-            return source
-        }
-        var candidate = seed
-        candidate.sources = availableSources
-        candidate.rejectedSourceIDs = rejectedSourceIDs
-        let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: candidate, isDiscovery: false, libraryOrigin: nil,
-            identitySources: { _ in [] },
-            sourceLocality: { alternateProviderResolver($0)?.connectionLocality },
-            sourceIsAvailable: { alternateProviderResolver($0) != nil }
-        )
-        guard let selected = selection.selected,
-              let provider = alternateProviderResolver(selected.accountID) else {
-            PlozzLog.app.info("Detail ownership probe: no active library source id=\(seed.id)")
-            return false
-        }
-
-        invalidateSourceOperations()
-        activeProvider = provider
-        activeItemID = selected.itemID
-        activeSourceAccountID = selected.accountID
-        initialSources = selection.sources
-        var owned = seed.selectingSource(selected)
-        owned.sources = selection.sources
-        owned.rejectedSourceIDs = rejectedSourceIDs
-        owned.availability = nil
-        owned.downloadProgress = nil
-        owned.hasRequestDownloadActivity = nil
-        publish(Detail(item: owned, children: []))
-        isDiscoveryItem = false
-        PlozzLog.app.info(
-            "Detail ownership probe: resolved library source id=\(seed.id) libraryID=\(selected.itemID)"
-        )
-        return true
-    }
-
-    /// Loads a synthetic external title without ever pretending its id belongs to
-    /// a media server.
-    private func loadDiscoveryDetail() async -> Bool {
-        guard let seed = state.value?.item else {
-            if state.value == nil { state = .empty }
-            return false
-        }
-
-        let generation = sourceGeneration
-        hasPaintedFreshDetail = false
-        startSnapshotRestore()
-        if await resolveDiscoveryLibrarySource() { return true }
-        guard !Task.isCancelled, sourceGeneration == generation,
-              case var .loaded(detail) = state,
-              detail.item.id == seed.id else { return false }
-
-        detail.childrenLoaded = true
-        publish(detail)
-        hasPaintedFreshDetail = true
-        artworkSourceIsReady = true
-        persistSnapshot()
-
-        // Request status cannot establish artwork ownership or hold its first paint.
-        async let status: Void = refreshDiscoveryStatus()
-        await status
-        persistSnapshot()
-        return false
-    }
-
-private func refreshDiscoveryStatus() async {
-        guard let requestedItem = state.value?.item else {
-            if state.value == nil { state = .empty }
-            return
-        }
-        let generation = sourceGeneration
-        guard let discoveryStatusRefresh,
-              let status = await discoveryStatusRefresh(requestedItem),
-              !Task.isCancelled,
-              isDiscoveryItem,
-              sourceGeneration == generation
-        else { return }
-        // Re-read after the await. Rich metadata, cast, ratings and release facts
-        // can land while Seerr is responding; rebuilding from the pre-await item
-        // would erase all of them.
-        guard case var .loaded(latest) = state,
-              latest.item.id == requestedItem.id,
-              latest.item.availability != status.status
-                  || latest.item.downloadProgress != status.downloadProgress
-                  || latest.item.hasRequestDownloadActivity != status.hasDownloadActivity else {
-            return
-        }
-        latest.item.availability = status.status
-        latest.item.downloadProgress = status.downloadProgress
-        latest.item.hasRequestDownloadActivity = status.hasDownloadActivity
-        publish(latest)
-    }
-
-    /// Public entry so the detail view can poll a discovery title's live Seerr
-    /// status (request/download state) while it's on screen — keeping the hero
-    /// CTA in sync as a request progresses, mirroring the Home hero's poll.
-    public func refreshDiscoveryStatusNow() async {
-        guard isDiscoveryItem else { return }
-        await refreshDiscoveryStatus()
-    }
 
     /// A season must never render a page of its own. When the fetched item is a
     /// season with a resolvable parent series, transparently swap it for that
@@ -1545,7 +1393,6 @@ private func refreshDiscoveryStatus() async {
     /// after a context-menu action (e.g. mark watched) so the hero, child rail
     /// and watched badges reflect the new server state in place.
     public func reload() async {
-        guard !isDiscoveryItem else { return }
         guard case .loaded = state else { await load(); return }
         // Capture the active source identity for this reload. An in-place
         // ``switchToSource(accountID:)`` can re-point active* (and start its own
@@ -1659,7 +1506,7 @@ private func refreshDiscoveryStatus() async {
     }
 
     private func refreshAfterReturn() async {
-        guard !isDiscoveryItem, !Task.isCancelled,
+        guard !Task.isCancelled,
               case let .loaded(detail) = state, detail.childrenLoaded,
               let provider = activeProvider else { return }
         // Return-path telemetry (PLZXFAN-gated; counts and kinds only). The detail

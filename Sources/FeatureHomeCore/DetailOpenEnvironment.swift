@@ -23,8 +23,7 @@ public struct DetailOpeningResolution {
 ///
 /// Each shell builds a `DetailOpenEnvironment` **once** from its own app model
 /// (the closures below resolve providers, the identity index, cross-server
-/// discovery, ratings, Seerr availability, and the snapshot cache), then every
-/// destination calls ``makeViewModel(for:libraryOrigin:)`` /
+/// discovery, and the snapshot cache), then every destination calls ``makeViewModel(for:libraryOrigin:)`` /
 /// ``makeSeriesContextViewModel(seriesID:seed:sourceAccountID:originAccountID:)``.
 @MainActor
 public struct DetailOpenEnvironment {
@@ -43,9 +42,6 @@ public struct DetailOpenEnvironment {
     /// Discovers *other servers* hosting the same title off the critical path, to
     /// fill the cross-server picker. `nil` disables cross-server discovery.
     public let crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?
-    /// Refreshes a discovery (Seerr) title's request/availability. `nil` when Seerr
-    /// isn't wired.
-    public let discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)?
     /// Loads a series season's complete canonical episode metadata roster.
     /// `nil` leaves roster-backed season coverage unavailable.
     public let loadSeasonEpisodeRoster:
@@ -59,7 +55,6 @@ public struct DetailOpenEnvironment {
         identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
         crossServerSourceResolver: (@Sendable (MediaItem) async -> CrossServerSourceResolution)?,
         continueWatchingSnapshot: @escaping @MainActor () -> [MediaItem] = { [] },
-        discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
             (@Sendable (MediaItem, Int) async -> SeasonEpisodeRosterResult)? = nil,
         snapshotCache: DetailSnapshotCache = .ephemeral
@@ -69,35 +64,24 @@ public struct DetailOpenEnvironment {
         self.identitySources = identitySources
         self.continueWatchingSnapshot = continueWatchingSnapshot
         self.crossServerSourceResolver = crossServerSourceResolver
-        self.discoveryStatusRefresh = discoveryStatusRefresh
         self.loadSeasonEpisodeRoster = loadSeasonEpisodeRoster
         self.snapshotCache = snapshotCache
     }
 
     /// The `initialSources` to seed a detail view model from a tapped item: the
     /// item's own sources merged (deduped) with the identity index's resolved
-    /// library copies. Discovery (not-in-library Seerr) items get no enrichment —
-    /// they intentionally have no library source.
+    /// library copies.
     ///
     /// Static so shells that build `ItemDetailViewModel` directly (iOS) share the
     /// exact merge rule rather than hand-rolling it, which would silently drift
     /// if the dedupe or ordering ever changed.
     public static func initialSources(
         for item: MediaItem,
-        isDiscovery: Bool,
         identitySources: (MediaItem) -> [MediaSourceRef]
     ) -> [MediaSourceRef] {
-        // Still gated on `isDiscovery`, deliberately: a page that really is
-        // showing a title nobody owns must not be handed library sources, or the
-        // request page would point at a copy that isn't there.
-        //
-        // The fix for owned titles being treated as discovery lives at the
-        // DECISION instead — see `isDiscovery(_:)`, which resolves the index
-        // before answering, so a title the viewer owns arrives here with
-        // `isDiscovery == false` and does get its sources.
-        let indexed = isDiscovery ? [] : identitySources(item)
+        let indexed = identitySources(item)
         var own: [MediaSourceRef] = []
-        if !isDiscovery, let opening = openingSource(for: item) ?? contextSource(for: item) {
+        if let opening = openingSource(for: item) ?? contextSource(for: item) {
             var source = (item.sources + indexed).first {
                 $0.accountID == opening.accountID && $0.itemID == opening.itemID
             } ?? MediaSourceRef(
@@ -151,12 +135,8 @@ public struct DetailOpenEnvironment {
         return MediaItemSourceIdentity(accountID: account, itemID: item.id)
     }
 
-    public func initialSources(for item: MediaItem, isDiscovery: Bool) -> [MediaSourceRef] {
-        Self.initialSources(
-            for: item,
-            isDiscovery: isDiscovery,
-            identitySources: identitySources
-        )
+    public func initialSources(for item: MediaItem) -> [MediaSourceRef] {
+        Self.initialSources(for: item, identitySources: identitySources)
     }
 
     /// Membership-only index refs contain no progress. Selecting the same physical
@@ -181,7 +161,6 @@ public struct DetailOpenEnvironment {
     /// back to post-arrival retargeting.
     public static func initialSourceSelection(
         for item: MediaItem,
-        isDiscovery: Bool,
         libraryOrigin: String?,
         identitySources: (MediaItem) -> [MediaSourceRef],
         sourceLocality: (String) -> SourceLocality?,
@@ -189,7 +168,6 @@ public struct DetailOpenEnvironment {
     ) -> (sources: [MediaSourceRef], selected: MediaSourceRef?) {
         let sources = initialSources(
             for: item,
-            isDiscovery: isDiscovery,
             identitySources: identitySources
         ).filter { sourceIsAvailable($0.accountID) }.map { source in
             guard let locality = sourceLocality(source.accountID) else { return source }
@@ -198,14 +176,12 @@ public struct DetailOpenEnvironment {
             return liveSource
         }.sorted { $0.id < $1.id }
         let opening = openingSource(for: item) ?? contextSource(for: item)
-        let selected = isDiscovery
-            ? nil
-            : sources.first(where: {
-                $0.accountID == opening?.accountID && $0.itemID == opening?.itemID
-            }) ?? CrossSourceSelector.bestSelection(
-                from: sources,
-                capabilities: .detected()
-            )?.source
+        let selected = sources.first(where: {
+            $0.accountID == opening?.accountID && $0.itemID == opening?.itemID
+        }) ?? CrossSourceSelector.bestSelection(
+            from: sources,
+            capabilities: .detected()
+        )?.source
         return (sources, selected)
     }
 
@@ -216,32 +192,6 @@ public struct DetailOpenEnvironment {
     ///
     /// - Parameter libraryOrigin: owning account for an untagged native seed,
     ///   not a preference that changes ordinary detail source selection.
-    /// Whether a title should get the request-focused discovery page rather than
-    /// the ordinary library one.
-    ///
-    /// "Flagged not in the library" and "actually absent" are different questions,
-    /// and only the second should strip a page of its library affordances. An
-    /// external credit carries `availability == .unknown` because the provider
-    /// that supplied it has no idea what the viewer owns — that is a statement
-    /// about the provider, not a finding about the library.
-    ///
-    /// This is the initial, synchronous answer. The model probes for a library
-    /// copy after an index miss; views observe its `isDiscoveryItem` so a late
-    /// match restores the library layout as well as the data.
-    public func isDiscovery(_ item: MediaItem) -> Bool {
-        Self.isDiscovery(item, identitySources: identitySources)
-    }
-
-    /// Delegates to the one shared classifier in `CoreModels` — the detail page, the
-    /// action coordinator, poster corner marks and both shells must give the same
-    /// answer or a card and the page it opens disagree about ownership.
-    public static func isDiscovery(
-        _ item: MediaItem,
-        identitySources: (MediaItem) -> [MediaSourceRef]
-    ) -> Bool {
-        TitleClassifier.isDiscoveryRouting(item, identitySources: identitySources(item))
-    }
-
     public func makeViewModel(for item: MediaItem, libraryOrigin: String?) throws -> ItemDetailViewModel {
         var item = item
         if item.sourceAccountID == nil { item.sourceAccountID = libraryOrigin }
@@ -256,10 +206,8 @@ public struct DetailOpenEnvironment {
         let indexedSources = liveIdentitySources(item)
         var routingItem = item
         routingItem.sources.removeAll { resolveOptionalProvider($0.accountID) == nil }
-        let isDiscovery = Self.isDiscovery(routingItem, identitySources: { _ in indexedSources })
         let selection = Self.initialSourceSelection(
             for: routingItem,
-            isDiscovery: isDiscovery,
             libraryOrigin: libraryOrigin,
             identitySources: { _ in indexedSources },
             sourceLocality: {
@@ -271,30 +219,24 @@ public struct DetailOpenEnvironment {
         )
         let sources = selection.sources
         let selectedSource = selection.selected
-        Self.logDetailOpen(item: item, isDiscovery: isDiscovery, resolvedSources: sources)
         var selectedItem = Self.initialItem(for: routingItem, selectedSource: selectedSource)
         selectedItem.sources = sources
         let resume = DetailPlaybackSelection.resumeItem(for: selectedItem, in: continueWatchingSnapshot())
-        let openingResolver: (@MainActor () async throws -> DetailOpeningResolution)?
-        if isDiscovery {
-            openingResolver = nil
-        } else {
-            let seed = selectedItem
-            let retargeted = seed.id != routingItem.id || seed.sourceAccountID != routingItem.sourceAccountID
-            let expectedIdentity = retargeted ? routingItem : nil
-            openingResolver = { try await self.resolveOpening(for: seed, expectedIdentity: expectedIdentity) }
+        let seed = selectedItem
+        let retargeted = seed.id != routingItem.id || seed.sourceAccountID != routingItem.sourceAccountID
+        let expectedIdentity = retargeted ? routingItem : nil
+        let openingResolver: @MainActor () async throws -> DetailOpeningResolution = {
+            try await self.resolveOpening(for: seed, expectedIdentity: expectedIdentity)
         }
         return ItemDetailViewModel(
-            provider: isDiscovery ? nil : try resolveProvider(
+            provider: try resolveProvider(
                 selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin
             ),
             itemID: selectedSource?.itemID ?? item.id,
             initialItem: DetailPlaybackSelection.applyingResumeItem(resume, to: selectedItem),
             initialResumeEpisode: selectedItem.kind == .series ? resume : nil,
-            isDiscoveryItem: isDiscovery,
-            discoveryStatusRefresh: discoveryStatusRefresh,
             loadSeasonEpisodeRoster: loadSeasonEpisodeRoster,
-            sourceAccountID: isDiscovery ? nil : selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,
+            sourceAccountID: selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,
             originSourceAccountID: Self.contextSource(for: selectedItem)?.accountID,
             initialSources: sources,
             alternateProviderResolver: resolveOptionalProvider,
@@ -350,7 +292,7 @@ public struct DetailOpenEnvironment {
             item.sources = [own] + item.sources.filter { $0.id != own.id }
         }
         let selection = Self.initialSourceSelection(
-            for: item, isDiscovery: false, libraryOrigin: nil,
+            for: item, libraryOrigin: nil,
             identitySources: identitySources,
             sourceLocality: { resolveOptionalProvider($0)?.connectionLocality },
             sourceIsAvailable: { resolveOptionalProvider($0) != nil }
@@ -377,40 +319,7 @@ public struct DetailOpenEnvironment {
         )
     }
 
-    /// One line per detail open recording *why* the page chose the layout it did.
-    ///
-    /// A page with no Play button is indistinguishable, from a bug report, between
-    /// "the viewer genuinely doesn't own this", "the identity index hadn't warmed
-    /// yet", "the index has no key this item shares with the library copy" and "the
-    /// item was minted unvalidated and never rebound" (issue #33). Those need
-    /// different fixes, and the reporter can't tell them apart. These are the four
-    /// facts that separate them.
-    ///
-    /// Deliberately no title: the item id and the *names* of the id namespaces are
-    /// enough to triage, and a media title is the one thing that must never reach a
-    /// log this app also mirrors to stdout under a diagnostic env var.
-    static func logDetailOpen(
-        item: MediaItem,
-        isDiscovery: Bool,
-        resolvedSources: [MediaSourceRef]
-    ) {
-        guard isDiscovery else { return }
-        let idKeys = item.providerIDs.keys.sorted().joined(separator: ",")
-        let availability = item.availability.map { String(describing: $0) } ?? "none"
-        PlozzLog.app.info(
-            "Detail open: rendering discovery layout"
-                + " id=\(item.id)"
-                + " kind=\(item.kind)"
-                + " validated=\(item.locallyValidatedPlayableSource)"
-                + " availability=\(availability)"
-                + " itemSources=\(item.sources.count)"
-                + " resolvedSources=\(resolvedSources.count)"
-                + " watchlistAlias=\(item.watchlistAliasID != nil)"
-                + " ids=[\(idKeys)]"
-        )
-    }
-
-    /// Build the detail view model for a series opened via an episode/season
+/// Build the detail view model for a series opened via an episode/season
     /// context: the page and its first paint describe the series; the tapped
     /// child identifies the parent, not a stale override of its current resume target.
     public func makeSeriesContextViewModel(

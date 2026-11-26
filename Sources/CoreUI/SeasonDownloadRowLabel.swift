@@ -90,7 +90,6 @@ public struct SeasonDownloadRowContent<Artwork: View, Accessory: View>: View {
     private let title: Text
     private let status: LocalizedStringResource
     private let statusSystemImage: String
-    private let showsRequestAction: Bool
     private let completedDownloadCount: Int
     private let artwork: Artwork
     private let accessory: Accessory
@@ -99,14 +98,13 @@ public struct SeasonDownloadRowContent<Artwork: View, Accessory: View>: View {
         title: LocalizedStringResource,
         status: LocalizedStringResource,
         statusSystemImage: String,
-        showsRequestAction: Bool = false,
         completedDownloadCount: Int = 0,
         @ViewBuilder artwork: () -> Artwork,
         @ViewBuilder accessory: () -> Accessory
     ) {
         self.init(
             title: Text(title), status: status, statusSystemImage: statusSystemImage,
-            showsRequestAction: showsRequestAction, completedDownloadCount: completedDownloadCount,
+            completedDownloadCount: completedDownloadCount,
             artwork: artwork, accessory: accessory
         )
     }
@@ -115,7 +113,6 @@ public struct SeasonDownloadRowContent<Artwork: View, Accessory: View>: View {
         title: Text,
         status: LocalizedStringResource,
         statusSystemImage: String,
-        showsRequestAction: Bool = false,
         completedDownloadCount: Int = 0,
         @ViewBuilder artwork: () -> Artwork,
         @ViewBuilder accessory: () -> Accessory
@@ -123,7 +120,6 @@ public struct SeasonDownloadRowContent<Artwork: View, Accessory: View>: View {
         self.title = title
         self.status = status
         self.statusSystemImage = statusSystemImage
-        self.showsRequestAction = showsRequestAction
         self.completedDownloadCount = completedDownloadCount
         self.artwork = artwork()
         self.accessory = accessory()
@@ -153,14 +149,6 @@ public struct SeasonDownloadRowContent<Artwork: View, Accessory: View>: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if showsRequestAction {
-                    Text("Request")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.tint)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .layoutPriority(1)
-                }
                 accessory
             }
         }

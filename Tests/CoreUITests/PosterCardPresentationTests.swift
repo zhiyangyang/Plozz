@@ -187,16 +187,11 @@ final class PosterCardPresentationTests: XCTestCase {
     }
 
     func testMissingLibraryArtworkUsesNeutralMediaInsteadOfPlaybackSymbol() {
-        for status in [
-            MediaAvailabilityStatus.unknown, .pending, .processing,
-            .partiallyAvailable, .available,
-        ] {
-            let item = MediaItem(
-                id: "metadata", title: "Not in Library", kind: .movie,
-                availability: status, locallyValidatedPlayableSource: false
-            )
-            XCTAssertEqual(MediaArtworkPlaceholder.Symbol(for: item), .media)
-        }
+        let item = MediaItem(
+            id: "metadata", title: "Not in Library", kind: .movie,
+            locallyValidatedPlayableSource: false
+        )
+        XCTAssertEqual(MediaArtworkPlaceholder.Symbol(for: item), .media)
         XCTAssertEqual(MediaArtworkPlaceholder.Symbol.media.rawValue, "rectangle.dashed")
     }
 
@@ -345,9 +340,6 @@ func testFolderUsesDedicatedArtworkWithoutPlaybackChrome() {
                     for: MediaPlaybackIndicatorState(item), enabled: false, hidesStatus: false))
                 XCTAssertNil(MediaPlaybackIndicatorPresentation.episodeCount(
                     for: MediaPlaybackIndicatorState(item), enabled: true, hidesStatus: true))
-                item.availability = .unknown
-                XCTAssertNil(MediaPlaybackIndicatorPresentation.episodeCount(
-                    for: MediaPlaybackIndicatorState(item), enabled: true, hidesStatus: false))
             }
         }
     }

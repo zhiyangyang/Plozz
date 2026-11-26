@@ -68,7 +68,6 @@ final class WatchlistActionFastPathTests: XCTestCase {
                                 let item = MediaItem(
                                     id: discovery ? "seer:1" : "owned:1",
                                     title: "Title", kind: kind,
-                                    availability: discovery ? .unknown : nil,
                                     locallyValidatedPlayableSource: !discovery,
                                     sourceAccountID: discovery ? nil : "a",
                                     isFavorite: favorite

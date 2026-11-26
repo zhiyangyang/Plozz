@@ -8,7 +8,6 @@ struct DetailInformationFixture: View {
 
     private struct Example: Decodable {
         let item: MediaItem
-        let availability: ExternalTitleAvailability?
         let source: MediaSourceRef?
         let version: MediaVersion?
     }
@@ -207,29 +206,6 @@ struct DetailInformationFixture: View {
         return ["discover", "upcoming", "ratings-only", "three-ratings", "family-only"].contains(layoutCase)
     }
 
-    private var availability: ExternalTitleAvailability? {
-        if let example = Self.example { return example.availability }
-        guard layoutCase == "upcoming" else { return nil }
-        var events: [TitleReleaseEvent] = [
-            .init(kind: .theatrical, date: Date(timeIntervalSince1970: 1_787_875_200), regionCode: "US"),
-            .init(kind: .digital, date: Date(timeIntervalSince1970: 1_793_059_200), regionCode: "US"),
-            .init(kind: .physical, date: Date(timeIntervalSince1970: 1_796_083_200), regionCode: "US")
-        ]
-        if ProcessInfo.processInfo.arguments.contains("--detail-many-release-events") {
-            events += (1...9).map {
-                .init(kind: .theatrical, date: Date(timeIntervalSince1970: 1_787_875_200 + Double($0) * 86_400),
-                      regionCode: "US")
-            }
-        }
-        return ExternalTitleAvailability(
-            regionCode: "US",
-            releaseEvents: events,
-            watchOffers: ["Prime Video", "Apple TV", "Fandango at Home"].enumerated().map {
-                .init(providerID: $0.offset, providerName: $0.element, kind: .rent, regionCode: "US")
-            }
-        )
-    }
-
     private var selectedSource: MediaSourceRef? {
         if let example = Self.example { return example.source }
         guard layoutCase != nil, !isUnowned else { return nil }
@@ -274,7 +250,6 @@ struct DetailInformationFixture: View {
                         item: item, horizontalInset: horizontalInset,
                         selectedSource: selectedSource,
                         selectedVersion: selectedVersion,
-                        externalAvailability: availability,
                         spoilerSettings: .init(hideRatingsUntilWatched:
                             ProcessInfo.processInfo.arguments.contains("--detail-layout-hide-ratings"))
                     )

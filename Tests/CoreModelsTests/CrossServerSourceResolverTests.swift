@@ -83,7 +83,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
                 let seed = MediaItem(
                     id: "discover-id", title: "Fixture", kind: kind,
                     providerIDs: ["Imdb": "tt1234567"],
-                    availability: .unknown, locallyValidatedPlayableSource: false,
+                    locallyValidatedPlayableSource: false,
                     sourceAccountID: accountID
                 )
                 let owned = MediaItem(
@@ -136,7 +136,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
                 let seed = MediaItem(
                     id: "discovery", title: "Same Title", kind: kind,
                     productionYear: 2020, providerIDs: ids,
-                    availability: .unknown, locallyValidatedPlayableSource: false,
+                    locallyValidatedPlayableSource: false,
                     sourceAccountID: plexAccount
                 )
                 var hit = MediaItem(
@@ -159,7 +159,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
         let seed = MediaItem(
             id: "discovery", title: "Localized Title", originalTitle: "Original Title",
             kind: .movie, providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         let wrong = MediaItem(
             id: "wrong", title: seed.title, kind: .movie,
@@ -183,7 +183,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
         let seed = MediaItem(
             id: "discovery", title: "Same Title", kind: .movie,
             providerIDs: ["IMDb": " TT111 ", "TMDb ID": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         for ids in [["imdbid": "tt111"], ["imdb": "tt111", "themoviedb": "123", "tvdbid": "456"]] {
             let hit = MediaItem(
@@ -203,7 +203,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
         let seed = MediaItem(
             id: "discovery", title: "Same Title", kind: .movie,
             providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         let bridge = MediaItem(
             id: "bridge", title: seed.title, kind: .movie,
@@ -225,7 +225,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
         let seed = MediaItem(
             id: "alias", title: "Fixture", kind: .movie,
             providerIDs: ["Tmdb": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         let unrelated = MediaItem(
             id: seed.id, title: "Another Film", kind: .movie,
@@ -250,7 +250,7 @@ final class CrossServerSourceResolverTests: XCTestCase {
         let seed = MediaItem(
             id: "alias", title: "Original Film", kind: .movie,
             productionYear: 1980, providerIDs: ["Tmdb": "123"],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         let unrelated = MediaItem(
             id: "impostor", title: "Unrelated Sequel", kind: .movie,

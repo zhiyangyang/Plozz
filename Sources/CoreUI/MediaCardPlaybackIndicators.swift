@@ -569,10 +569,7 @@ public struct MediaPlaybackIndicatorState: Equatable, Sendable {
     public let playedPercentage: Double?
     public let unwatchedEpisodeCount: Int?
     public let resumePosition: Double?
-    /// Ownership and request availability are separate: a pending request is
-    /// still unowned, but must invalidate the snapshot to replace the plus.
     public let isNotInLibrary: Bool
-    private let availability: MediaAvailabilityStatus?
 
     public init(_ item: MediaItem) {
         kind = item.kind
@@ -585,7 +582,6 @@ public struct MediaPlaybackIndicatorState: Equatable, Sendable {
         // and its page can't disagree. Cards judge the item alone (no index work in
         // a card path), which is exactly `identitySources: []`.
         isNotInLibrary = TitleClassifier.isNotOwnedForBadge(item)
-        availability = item.availability
     }
 
     public func episodeCountAccessibilityLabel(enabled: Bool, hidesStatus: Bool) -> LocalizedStringResource? {

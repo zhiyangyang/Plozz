@@ -381,10 +381,7 @@ final class SettingsInteractionTests: XCTestCase {
         field.tap()
         field.typeText("hero")
         let result = app.buttons["settings-search-result-hero-enabled"]
-        let background = app.buttons["settings-search-result-detail-background"]
         XCTAssertTrue(result.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(background.exists)
-        XCTAssertLessThan(result.frame.minY, background.frame.minY)
         capture("settings-search-hero-results")
         result.tap()
 
@@ -405,9 +402,6 @@ final class SettingsInteractionTests: XCTestCase {
                     withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)
                 ))
         }
-        background.tap()
-        XCTAssertTrue(app.navigationBars["Movie & show details"].waitForExistence(timeout: 5))
-        if UIDevice.current.userInterfaceIdiom == .phone { app.buttons["BackButton"].tap() }
         if UIDevice.current.userInterfaceIdiom == .phone {
             app.collectionViews["settings-search-results"].swipeDown()
         }
@@ -2458,8 +2452,7 @@ final class SettingsInteractionTests: XCTestCase {
         openSettingsPage("Customize Home")
         app.buttons["home-section-hero"].tap()
         for (page, title, setting) in [
-            ("ratings", "Ratings", "hero-ratings"),
-            ("trailers", "Trailers", "hero-trailers")
+            ("ratings", "Ratings", "hero-ratings")
         ] {
             let link = app.buttons["hero-settings-\(page)"]
             reveal(link)

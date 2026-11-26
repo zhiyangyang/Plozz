@@ -444,7 +444,7 @@ public struct PersonDetailView: View {
     /// servers — a very common setup — collapses into one shelf instead of two
     /// identically titled ones.
     private var ownedShelves: [(key: String, title: ShelfTitle, items: [MediaItem])] {
-        let owned = viewModel.libraryCredits.filter { $0.availability != .unknown }
+        let owned = viewModel.libraryCredits
         guard !owned.isEmpty else { return [] }
 
         var groups: [String: [MediaItem]] = [:]

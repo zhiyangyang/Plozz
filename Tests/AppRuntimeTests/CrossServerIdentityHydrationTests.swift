@@ -34,7 +34,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
     for kind in [MediaItemKind.movie, .series] {
       let seed = MediaItem(
         id: "discovery", title: "Same Title", kind: kind, providerIDs: ["Tmdb": "123"],
-        availability: .unknown, locallyValidatedPlayableSource: false
+        locallyValidatedPlayableSource: false
       )
       let full = MediaItem(
         id: "owned", title: seed.title, kind: kind,
@@ -57,7 +57,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
           ))
           let sources = await resolve(seed).sources
           XCTAssertEqual(sources.map(\.itemID), [full.id])
-          XCTAssertFalse(TitleClassifier.isDiscoveryRouting(seed, identitySources: sources))
+          XCTAssertTrue(seed.hasPlayableLibraryTarget(additionalSources: sources))
           if searchEnabled && !sparseIDs.isEmpty {
             XCTAssertFalse(sources.first?.versions.isEmpty ?? true, "Keep the fresh source, not just a cached ref")
           }
@@ -148,7 +148,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
         let seed = MediaItem(
           id: "discovery", title: "Same Title", kind: kind,
           people: seedIsRicher ? [MediaPerson(id: "actor", name: "Actor", kind: "Actor")] : [],
-          providerIDs: ["Tmdb": "123"], availability: .unknown,
+          providerIDs: ["Tmdb": "123"],
           locallyValidatedPlayableSource: false
         )
         let first = MediaItem(
@@ -184,7 +184,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
               sources.map(\.itemID), expected,
               "\(kind), seed richer: \(seedIsRicher), warm: \(!snapshot.isEmpty)"
             )
-            XCTAssertFalse(TitleClassifier.isDiscoveryRouting(seed, identitySources: sources))
+            XCTAssertTrue(seed.hasPlayableLibraryTarget(additionalSources: sources))
           }
         }
       }
@@ -195,7 +195,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
     let seed = MediaItem(
       id: "discovery", title: "Same Title", kind: .movie,
       providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-      availability: .unknown, locallyValidatedPlayableSource: false
+      locallyValidatedPlayableSource: false
     )
     let wrong = MediaItem(
       id: "wrong", title: seed.title, kind: .movie,
@@ -239,7 +239,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
 
     let sources = await resolve(fresh).sources
     XCTAssertTrue(sources.isEmpty)
-    XCTAssertFalse(TitleClassifier.isDiscoveryRouting(fresh, identitySources: sources))
+    XCTAssertTrue(fresh.locallyValidatedPlayableSource)
     XCTAssertEqual(fresh.sourceAccountID, "server")
     XCTAssertEqual(fresh.id, "retagged")
   }
@@ -248,7 +248,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
     let seed = MediaItem(
       id: "discovery", title: "Same Title", kind: .movie,
       providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-      availability: .unknown, locallyValidatedPlayableSource: false
+      locallyValidatedPlayableSource: false
     )
     let owned = MediaItem(
       id: "owned", title: seed.title, kind: .movie, providerIDs: seed.providerIDs
@@ -282,7 +282,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
       let seed = MediaItem(
         id: "discovery", title: "Same Title", kind: kind,
         providerIDs: ["Imdb": "tt111", "Tmdb": "123"],
-        availability: .unknown, locallyValidatedPlayableSource: false
+        locallyValidatedPlayableSource: false
       )
       let hit = MediaItem(
         id: "wrong", title: seed.title, kind: kind,
@@ -305,7 +305,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
         ))
         let sources = await resolve(seed).sources
         XCTAssertTrue(sources.isEmpty, "\(kind), warm: \(!snapshot.isEmpty)")
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(seed, identitySources: sources))
+        XCTAssertFalse(seed.locallyValidatedPlayableSource)
       }
     }
   }
@@ -313,7 +313,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
   func testSourceLookupHydratesPartialIDsWithoutTitleOnlyMatching() async throws {
     let primary = MediaItem(
       id: "tmdb:series:202879", title: "Star Wars: Skeleton Crew", kind: .series,
-      productionYear: 2024, providerIDs: ["Tmdb": "202879"], availability: .unknown
+      productionYear: 2024, providerIDs: ["Tmdb": "202879"]
     )
     let sparse = MediaItem(
       id: "series-tvdb-420600", title: primary.title, kind: .series,
@@ -346,7 +346,7 @@ func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
     for kind in [MediaItemKind.movie, .series] {
       let primary = MediaItem(
         id: "discovery", title: "Title", kind: kind,
-        providerIDs: ["Tmdb": "123"], availability: .unknown
+        providerIDs: ["Tmdb": "123"],
       )
       var catalog = MediaItem(
         id: "owned", title: primary.title, kind: kind,

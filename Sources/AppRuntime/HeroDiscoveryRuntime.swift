@@ -101,9 +101,6 @@ public struct HeroDiscoveryRuntime: Sendable {
             }
             merged.fillingMissingPresentation(from: Self.presentationDonor(item, for: merged))
             Self.fillMissingProviderIDs(on: &merged, from: item)
-            merged.availability = nil
-            merged.downloadProgress = nil
-            merged.hasRequestDownloadActivity = nil
             merged.locallyValidatedPlayableSource = true
             let state = MediaItemMerger.unifiedWatchState(from: merged.sources)
             merged.resumePosition = state.resumePosition
@@ -177,9 +174,6 @@ public struct HeroDiscoveryRuntime: Sendable {
         external.versions = []
         external.selectedVersionID = nil
         external.locallyValidatedPlayableSource = false
-        external.availability = .unknown
-        external.downloadProgress = nil
-        external.hasRequestDownloadActivity = nil
         external.isPlayed = false
         external.hasBeenPlayed = false
         external.resumePosition = nil
@@ -227,9 +221,6 @@ public struct HeroDiscoveryRuntime: Sendable {
         owned.selectedSourceAccountID = nil
         owned.explicitSourceSelection = false
         owned.selectedVersionID = nil
-        owned.availability = nil
-        owned.downloadProgress = nil
-        owned.hasRequestDownloadActivity = nil
         owned.hasBeenPlayed = record.hasBeenPlayed || record.isPlayed
         // Neither the index's resume positions nor refs carried by a provider
         // response may import another account/profile's cached watch state.

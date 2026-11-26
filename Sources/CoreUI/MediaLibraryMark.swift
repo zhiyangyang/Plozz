@@ -3,20 +3,12 @@ import CoreModels
 import SwiftUI
 
 /// The corner mark a card wears when the title behind it **isn't in your
-/// library** — in search, discovery rows, a person's credits, or the in-player
-/// cast panel.
+/// library** — in search, a person's credits, or the in-player cast panel.
 ///
-/// Distinguishes absence, requestability, and an existing request:
+/// ``notInLibrary`` is purely informational: the mark only has to answer "why
+/// can't I play this?" before the viewer selects it.
 ///
-/// - ``notInLibrary`` is purely informational. Most viewers will never run
-///   Seerr, so for them an unowned title is simply not actionable, and the mark
-///   only has to answer "why can't I play this?" before they select it.
-/// - ``requestable`` is an affordance, shown only while Seerr is connected: the
-///   title isn't yours *yet* and you can ask for it.
-/// - ``requested`` indicates an existing pending or approved request, not another
-///   invitation to submit the same title.
-///
-/// These sit in the artwork's **top-trailing** corner — the watch-status slot,
+/// It sits in the artwork's **top-trailing** corner — the watch-status slot,
 /// which is free here rather than contested: watch state cannot apply to a title
 /// you don't have (you have neither watched it nor left it unwatched), so an
 /// unowned card shows this instead of a check or an unwatched flag.
@@ -37,9 +29,6 @@ public enum MediaLibraryMark: Equatable, Sendable {
     }
 
     /// The mark for an item, or `nil` when it's an ordinary library title.
-    ///
-    /// A title you don't own remains worth flagging when Seerr is absent.
-    /// While connected, existing requests take precedence over the plus.
     public static func mark(for item: MediaItem) -> MediaLibraryMark? {
         TitleClassifier.isNotOwnedForBadge(item) ? .notInLibrary : nil
     }

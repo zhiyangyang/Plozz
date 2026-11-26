@@ -52,7 +52,6 @@ final class DetailOpenEnvironmentTests: XCTestCase {
 
         let selection = DetailOpenEnvironment.initialSourceSelection(
             for: item,
-            isDiscovery: false,
             libraryOrigin: nil,
             identitySources: { _ in [remote, local] },
             sourceLocality: { $0 == "local" ? .local : .remote }
@@ -60,55 +59,6 @@ final class DetailOpenEnvironmentTests: XCTestCase {
 
         XCTAssertEqual(selection.selected?.accountID, "local")
         XCTAssertEqual(selection.selected?.itemID, "local-series")
-    }
-
-    func testDiscoveryItemIsNeverRetargeted() {
-        let item = MediaItem(id: "seerr:1", title: "Missing", kind: .movie)
-        let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: item,
-            isDiscovery: true,
-            libraryOrigin: nil,
-            identitySources: { _ in
-                [MediaSourceRef(accountID: "local", itemID: "library-copy")]
-            },
-            sourceLocality: { _ in .local }
-        )
-
-        XCTAssertTrue(selection.sources.isEmpty)
-        XCTAssertNil(selection.selected)
-    }
-
-    func testAccountTaggedGlobalItemWithoutLocalProofUsesExternalDetail() {
-        let item = MediaItem(
-            id: "global-discover-id",
-            title: "The Legend of Hei",
-            kind: .movie,
-            providerIDs: ["PlexGuid": "plex://movie/global-discover-id"],
-            locallyValidatedPlayableSource: false,
-            sourceAccountID: "plex-account"
-        )
-
-        XCTAssertTrue(DetailOpenEnvironment.isDiscovery(
-            item,
-            identitySources: { _ in [] }
-        ))
-        let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: item,
-            isDiscovery: true,
-            libraryOrigin: nil,
-            identitySources: { _ in [] },
-            sourceLocality: { _ in .local }
-        )
-        XCTAssertTrue(selection.sources.isEmpty)
-        XCTAssertNil(selection.selected)
-        XCTAssertEqual(
-            item.ownershipPresentation().showsPlaybackDetails,
-            false
-        )
-        XCTAssertEqual(
-            item.ownershipPresentation().showsProviderManagement,
-            false
-        )
     }
 
     func testValidatedIdentityIndexCopyRestoresLibraryDetail() {
@@ -126,10 +76,6 @@ final class DetailOpenEnvironmentTests: XCTestCase {
             providerKind: .plex
         )
 
-        XCTAssertFalse(DetailOpenEnvironment.isDiscovery(
-            item,
-            identitySources: { _ in [local] }
-        ))
         let presentation = item.ownershipPresentation(
             additionalSources: [local]
         )

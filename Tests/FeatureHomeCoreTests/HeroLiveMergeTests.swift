@@ -78,7 +78,8 @@ final class HeroLiveMergeTests: XCTestCase {
         XCTAssertTrue(upgraded.locallyValidatedPlayableSource)
 
         var rejected = showing
-        rejected.availability = .unknown
+        rejected.locallyValidatedPlayableSource = false
+        rejected.sources = []
         let revoked = try XCTUnwrap(HeroLiveMerge.merge(
             showing: [upgraded], fresh: [rejected], limit: 20, preservesLineup: true
         ).items.first)

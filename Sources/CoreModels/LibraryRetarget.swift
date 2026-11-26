@@ -27,9 +27,9 @@ public extension MediaItem {
         indexedSources: (MediaItem) -> [MediaSourceRef],
         capabilities: MediaCapabilities? = nil
     ) -> MediaItem? {
-        // Only a discovery row is a candidate: an ordinary library item is already
-        // pointed at its own server, and `availability` is what marks the difference.
-        guard isNotInLibraryDiscovery else { return nil }
+        // An already-owned copy needs no retargeting. This also keeps ordinary
+        // library items on their own server instead of rewriting them from an index.
+        guard !locallyValidatedPlayableSource else { return nil }
 
         // A strong external id is required. A title/year-only match is not enough to
         // retarget on, because being wrong here doesn't just mislabel a card — it
@@ -55,10 +55,6 @@ public extension MediaItem {
             ) else { return nil }
             resolved = resolved.selectingSource(selected.source)
         }
-        // `.unknown`/`.pending` describes the metadata provider's view, not the copy
-        // the index just vouched for. Keeping it would leave the item claiming both,
-        // and the card badge is deliberately fail-closed on that field.
-        resolved.availability = nil
         resolved.locallyValidatedPlayableSource = true
         var seen = Set<String>()
         resolved.sources = (sources + owned).filter { seen.insert($0.id).inserted }

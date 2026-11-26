@@ -41,7 +41,7 @@ final class EditionDetailSelectionTests: XCTestCase {
         let clicked = movie()
         let better = movie("20", edition: "Extended", height: 1800)
         let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: clicked, isDiscovery: false, libraryOrigin: "plex",
+            for: clicked, libraryOrigin: "plex",
             identitySources: { _ in [self.source(better), self.source(clicked)] },
             sourceLocality: { _ in .local }
         )
@@ -57,7 +57,7 @@ final class EditionDetailSelectionTests: XCTestCase {
         let better = movie("20", edition: "Extended", height: 1800)
         let merged = try XCTUnwrap(MediaItemMerger.merge([clicked, better]).first)
         let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: merged, isDiscovery: false, libraryOrigin: nil,
+            for: merged, libraryOrigin: nil,
             identitySources: { _ in [] }, sourceLocality: { _ in .local }
         )
         XCTAssertTrue(merged.isMergedTitle)
@@ -70,7 +70,7 @@ final class EditionDetailSelectionTests: XCTestCase {
         let better = movie("20", edition: "Extended", height: 1800)
         XCTAssertTrue(representative.sources.isEmpty)
         let selection = DetailOpenEnvironment.initialSourceSelection(
-            for: representative, isDiscovery: false, libraryOrigin: nil,
+            for: representative, libraryOrigin: nil,
             identitySources: { _ in [self.source(self.movie()), self.source(better)] },
             sourceLocality: { _ in .local }
         )
@@ -98,7 +98,7 @@ final class EditionDetailSelectionTests: XCTestCase {
         indexed.providerKind = .plex
         indexed.serverName = "Living Room"
         let sources = DetailOpenEnvironment.initialSources(
-            for: clicked, isDiscovery: false, identitySources: { _ in [indexed] }
+            for: clicked, identitySources: { _ in [indexed] }
         )
         XCTAssertEqual(sources.count, 1)
         XCTAssertEqual(sources[0].serverName, "Living Room")

@@ -721,13 +721,6 @@ struct PlozziOSHomeView: View {
                     autoAdvanceSeconds:
                         appModel.settings.hero.settings.autoAdvanceSeconds,
                     onPlay: { play($0, resumeAnchorID: $0.id) },
-                    isRequesting: false,
-                    requestStatus: { _ in nil },
-                    onRequest: { _ in false },
-                    onOpenSeasonRequests: nil,
-                    seasonRequestState: { _ in nil },
-                    seasonRefreshFailed: { _ in false },
-                    onRefreshSeasonRequests: { _ in false },
                     onPinnedItemsChanged: { heroPinnedItemIDs = $0 },
                     onItemExposed: { viewModel.recordHeroExposure($0) },
                     exposureScopeID: ObjectIdentifier(viewModel),
@@ -1310,13 +1303,6 @@ struct PlozziOSHomeHeroCarousel: View {
     let autoAdvance: Bool
     let autoAdvanceSeconds: Int
     let onPlay: (MediaItem) -> Void
-    var isRequesting: Bool = false
-    var requestStatus: (MediaItem) -> MediaAvailabilityStatus? = { _ in nil }
-    var onRequest: ((MediaItem) -> Void)?
-    var onOpenSeasonRequests: ((MediaItem) -> Void)?
-    var seasonRequestState: (MediaItem) -> SeasonRequestState? = { _ in nil }
-    var seasonRefreshFailed: (MediaItem) -> Bool = { _ in false }
-    var onRefreshSeasonRequests: ((MediaItem) async -> Bool)?
     /// Reports the slides on screen, so a background curation can fold new media
     /// in without displacing what the viewer is looking at (see `HeroLiveMerge`).
     var onPinnedItemsChanged: (Set<String>) -> Void = { _ in }
@@ -1449,7 +1435,6 @@ struct PlozziOSHomeHeroCarousel: View {
                         ),
                         style: style,
                         onPlay: onPlay,
-                        heroRequest: heroRequest(for: currentItem),
                     )
                     .id(currentItem.id)
                     .transition(.identity)
@@ -1711,11 +1696,6 @@ struct PlozziOSHomeHeroCarousel: View {
         guard let resumption else { return }
         dwellStart += resumption.pausedDuration
     }
-
-    /// Request CTA descriptor for a discovery **movie or series** hero. Movies get
-    /// a one-tap whole-title Request; series open the shared Seasons sheet.
-    /// In-library items keep their normal playback actions.
-    private func heroRequest(for item: MediaItem) -> PlozziOSHeroRequest? { nil }
 
     private var currentItem: MediaItem? {
         guard let selectedItemID else { return items.first }
@@ -2352,23 +2332,6 @@ private struct PlozziOSHeroTimerID: Equatable {
     let itemIDs: [String]
     let autoAdvance: Bool
     let seconds: Int
-}
-
-@MainActor
-func plozziOSPollHeroSeasonRequests(
-    interval: Duration = .seconds(20),
-    refresh: () async -> Void,
-    shouldContinue: () -> Bool
-) async {
-    while !Task.isCancelled {
-        await refresh()
-        guard !Task.isCancelled, shouldContinue() else { return }
-        do {
-            try await Task.sleep(for: interval)
-        } catch {
-            return
-        }
-    }
 }
 
 private struct PlozziOSFeaturedRow: View {

@@ -100,9 +100,6 @@ public extension MediaItem {
                 recordArtworkSource(accountID: accountID, for: [url])
             }
         }
-        if availability == nil { availability = donor.availability }
-        if downloadProgress == nil { downloadProgress = donor.downloadProgress }
-        if hasRequestDownloadActivity == nil { hasRequestDownloadActivity = donor.hasRequestDownloadActivity }
         if mediaInfo == nil { mediaInfo = donor.mediaInfo }
     }
 }

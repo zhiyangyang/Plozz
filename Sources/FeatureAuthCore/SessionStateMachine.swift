@@ -41,9 +41,6 @@ public enum OnboardingStep: Equatable, Sendable {
     /// First-ever account was just added on a brand-new install; confirm (or
     /// edit) the profile we seeded from the sign-in before entering the app.
     case confirmProfile
-    /// First run: optionally connect Seerr and choose the active profile's acting
-    /// user before entering the app.
-    case selectSeerr
     /// Brand-new install only: after the profile is confirmed, pick the app's
     /// theme before entering the app.
     case selectTheme
@@ -91,9 +88,8 @@ public enum SessionEvent: Sendable {
     case librarySelectionRequired
     /// The user confirmed (or edited) their seeded profile on first run.
     case profileConfirmed
-    /// No media accounts exist, so standalone setup skips server-only Seerr.
+    /// No media accounts exist, so standalone setup skips library selection.
     case standaloneProfileConfirmed
-    case seerrSelected
     /// The user picked an app theme on the one-time first-run theme step.
     case themeSelected
     /// The user confirmed a navigation style on first run.
@@ -208,13 +204,11 @@ public struct SessionStateMachine: Sendable {
         case (.onboarding(.selectPlexUser, _), .accountAuthenticated):
             return .ready
 
-        // First profile: choose Seerr request identity, then theme.
+        // First profile: pick the app's theme before entering the app.
         case (.onboarding(.confirmProfile, _), .profileConfirmed):
-            return .onboarding(.selectSeerr, canReturnToApp: true)
+            return .onboarding(.selectTheme, canReturnToApp: true)
         case (.onboarding(.confirmProfile, _), .standaloneProfileConfirmed):
             guard allowsStandalonePlayback else { return state }
-            return .onboarding(.selectTheme, canReturnToApp: true)
-        case (.onboarding(.selectSeerr, _), .seerrSelected):
             return .onboarding(.selectTheme, canReturnToApp: true)
 
         // Navigation finishes appearance setup; Home can be customized in Settings.

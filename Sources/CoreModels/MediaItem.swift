@@ -32,38 +32,6 @@ public extension MediaItemKind {
     }
 }
 
-/// Library-availability of a title, independent of any single provider.
-///
-/// Mirrors Overseerr/Jellyseerr's `MediaStatus` enum (raw values are wire-stable
-/// with that API) so a Seerr-sourced **featured** item can carry whether it's
-/// already in the library, in-flight, or requestable. `nil` on a `MediaItem`
-/// means "not applicable / unknown" (e.g. an ordinary library item that never
-/// came from Seerr). Used to pick the right hero CTA — Request vs. Pending vs.
-/// Available — without the UI importing the Seerr module.
-public enum MediaAvailabilityStatus: Int, Codable, Sendable, Equatable, CaseIterable {
-    /// Never requested / not tracked by the discovery backend.
-    case unknown = 1
-    /// A request exists and is awaiting approval.
-    case pending = 2
-    /// Approved and handed to Radarr/Sonarr (downloading).
-    case processing = 3
-    /// Some seasons (TV) or parts are available.
-    case partiallyAvailable = 4
-    /// Fully available to stream in the library.
-    case available = 5
-    /// Was available, since removed.
-    case deleted = 6
-
-    /// Whether a one-tap "Request" makes sense for this state (nothing is in
-    /// flight or already available).
-    public var isRequestable: Bool {
-        switch self {
-        case .unknown, .deleted: return true
-        case .pending, .processing, .partiallyAvailable, .available: return false
-        }
-    }
-}
-
 /// A provider-agnostic cast/crew member shown on a detail page. For anime the
 /// `Actor` entries are the voice cast, with `role` holding the voiced character.
 public struct MediaPerson: Codable, Hashable, Identifiable, Sendable {
@@ -358,26 +326,12 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// while the legacy URL fields remain intact as remote fallback.
     public var artworkSelections: [ArtworkSelection]
 
-    /// Library-availability of this title as reported by a discovery backend
-    /// (Seerr/Overseerr's `mediaInfo.status`). `nil` for ordinary library items
-    /// that never came from discovery. Lets the hero pick Request vs. Pending vs.
-    /// Available for a **featured** item without importing the Seerr module.
-    public var availability: MediaAvailabilityStatus?
     /// Explicit local ownership/playback proof. A provider library fetch or a
     /// locally validated identity-index source sets this true. Global discovery
     /// records and synced/unvalidated binding hints set it false; account metadata
     /// alone never upgrades it.
     public var locallyValidatedPlayableSource: Bool
 
-    /// Aggregate download progress (`0..<1`) for a not-yet-available **featured**
-    /// title currently being fetched by the discovery backend's downloaders
-    /// (Seerr → Radarr/Sonarr queue), or `nil` when nothing is downloading. Lets
-    /// the hero draw a live progress bar for a requested title without importing
-    /// the Seerr module. Transient/live — not part of a title's identity.
-    public var downloadProgress: Double?
-    /// Request-service queue evidence, including queued items with no measurable
-    /// progress. `nil` means this snapshot did not include queue information.
-    public var hasRequestDownloadActivity: Bool?
 
     /// Source-of-truth technical facts about the underlying file (resolution,
     /// HDR/Dolby Vision range, audio codec/channels, …) when the provider reports
@@ -579,10 +533,7 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         allowsTitleBasedMetadataMatching: Bool = true,
         metadataProvenance: MetadataProvenance = MetadataProvenance(),
         artworkSelections: [ArtworkSelection] = [],
-        availability: MediaAvailabilityStatus? = nil,
         locallyValidatedPlayableSource: Bool = true,
-        downloadProgress: Double? = nil,
-        hasRequestDownloadActivity: Bool? = nil,
         mediaInfo: MediaSourceMetadata? = nil,
         sourceAccountID: String? = nil,
         artworkSourceAccountID: String? = nil,
@@ -652,10 +603,7 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         self.allowsTitleBasedMetadataMatching = allowsTitleBasedMetadataMatching
         self.metadataProvenance = metadataProvenance
         self.artworkSelections = artworkSelections
-        self.availability = availability
         self.locallyValidatedPlayableSource = locallyValidatedPlayableSource
-        self.downloadProgress = downloadProgress
-        self.hasRequestDownloadActivity = hasRequestDownloadActivity
         self.mediaInfo = mediaInfo
         self.sourceAccountID = sourceAccountID
         self.artworkSourceAccountIDsByURL = artworkSourceAccountIDsByURL
@@ -706,8 +654,7 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         case usesProviderRatings
         case allowsTitleBasedMetadataMatching
         case artworkSelections, mediaInfo
-        case availability, locallyValidatedPlayableSource
-        case downloadProgress, hasRequestDownloadActivity
+        case locallyValidatedPlayableSource
         case sourceAccountID, artworkSourceAccountIDsByURL, artworkMetadataSourcesByURL
         case additionalSourceAccountIDs, versions, edition, isMergedTitle, isFavorite
         case sources, rejectedSourceIDs, lastPlayedAt, libraryID
@@ -810,7 +757,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
             [ArtworkSelection].self,
             forKey: .artworkSelections
         )) ?? []
-        availability = try container.decodeIfPresent(MediaAvailabilityStatus.self, forKey: .availability)
         if let persistedValidation = try container.decodeIfPresent(
             Bool.self,
             forKey: .locallyValidatedPlayableSource
@@ -827,8 +773,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
             locallyValidatedPlayableSource =
                 !(guidTail == id || (guidTail != nil && isBareDiscoverID))
         }
-        downloadProgress = try container.decodeIfPresent(Double.self, forKey: .downloadProgress)
-        hasRequestDownloadActivity = try container.decodeIfPresent(Bool.self, forKey: .hasRequestDownloadActivity)
         mediaInfo = try container.decodeIfPresent(MediaSourceMetadata.self, forKey: .mediaInfo)
         sourceAccountID = try container.decodeIfPresent(String.self, forKey: .sourceAccountID)
         artworkLookupSubject = try container.decodeIfPresent(ArtworkLookupSubject.self, forKey: .artworkLookupSubject)

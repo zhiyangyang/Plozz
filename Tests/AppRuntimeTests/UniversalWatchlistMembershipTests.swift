@@ -251,18 +251,17 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         XCTAssertEqual(row.sourceAccountID, searched.sourceAccountID)
         XCTAssertEqual(row.overview, searched.overview)
         XCTAssertEqual(row.backdropURL, searched.backdropURL)
-        XCTAssertFalse(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
+        XCTAssertTrue(row.locallyValidatedPlayableSource)
 
         let rediscovered = try XCTUnwrap(
             host.resolvedUniversalWatchlistItems(candidates: [searched]).first
         )
         XCTAssertEqual(rediscovered.id, searched.id)
-        XCTAssertFalse(TitleClassifier.isDiscoveryRouting(rediscovered, identitySources: []))
+        XCTAssertTrue(rediscovered.locallyValidatedPlayableSource)
 
         var discover = searched
         discover.id = "discover-show"
         discover.locallyValidatedPlayableSource = false
-        discover.availability = .unknown
         discover.backdropURL = URL(string: "https://metadata.example/other-art.jpg")!
         let refreshed = try XCTUnwrap(
             host.resolvedUniversalWatchlistItems(candidates: [discover]).first
@@ -278,7 +277,6 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
             crossServerSourceResolver: nil
         )
         let detail = try environment.makeViewModel(for: refreshed, libraryOrigin: nil)
-        XCTAssertFalse(detail.isDiscoveryItem)
         XCTAssertEqual(detail.currentSourceForDisplay?.itemID, searched.id)
         XCTAssertEqual(detail.currentSourceForDisplay?.accountID, searched.sourceAccountID)
     }
@@ -291,7 +289,7 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
             let row = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
             XCTAssertEqual(row.id, promotedSeries.id, "\(kind)")
             XCTAssertEqual(row.sourceAccountID, promotedSeries.sourceAccountID, "\(kind)")
-            XCTAssertFalse(TitleClassifier.isDiscoveryRouting(row, identitySources: []), "\(kind)")
+            XCTAssertTrue(row.locallyValidatedPlayableSource, "\(kind)")
         }
     }
 
@@ -299,11 +297,10 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         let host = try await UniversalWatchlistHostDouble()
         var discover = promotedSeries
         discover.locallyValidatedPlayableSource = false
-        discover.availability = .unknown
         let added = await host.performUniversalWatchlist(adding: true, item: discover)
         XCTAssertTrue(added)
         let row = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
+        XCTAssertFalse(row.locallyValidatedPlayableSource)
         XCTAssertFalse(row.locallyValidatedPlayableSource)
         XCTAssertNil(row.sourceAccountID)
     }
@@ -316,7 +313,7 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         host.accountsProviders.credentialRevision = { _ in revision }
 
         let row = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
+        XCTAssertFalse(row.locallyValidatedPlayableSource)
         XCTAssertNil(row.sourceAccountID)
     }
 
@@ -327,7 +324,7 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         host.plexWatchlistIdentityGeneration += 1
 
         let row = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
+        XCTAssertFalse(row.locallyValidatedPlayableSource)
         XCTAssertNil(row.sourceAccountID)
     }
 
@@ -340,13 +337,13 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         XCTAssertTrue(host.accountsProviders.resolvedActiveAccounts.isEmpty)
 
         let row = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(row, identitySources: []))
+        XCTAssertFalse(row.locallyValidatedPlayableSource)
         XCTAssertNil(row.sourceAccountID)
 
         let readded = await host.performUniversalWatchlist(adding: true, item: promotedSeries)
         XCTAssertTrue(readded)
         let readdedRow = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(TitleClassifier.isDiscoveryRouting(readdedRow, identitySources: []))
+        XCTAssertTrue(readdedRow.locallyValidatedPlayableSource)
     }
 
     /// And the alias the write addressed is the one the read answers from — the

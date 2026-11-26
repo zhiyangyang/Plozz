@@ -254,23 +254,18 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
     }
 
     public func actions(for item: MediaItem, context: MediaItemActionContext) -> [MediaItemAction] {
-        // A not-in-library discovery (Seerr) title has a synthetic `seer:<tmdbId>`
-        // id that isn't addressable on any provider, so watch-state / watchlist /
-        // refresh actions would silently fail — offer none (the discovery detail
-        // page surfaces a Request affordance instead). This deliberately excludes
-        // *owned* featured titles (available/partiallyAvailable), which resolve to a
-        // real library copy via the identity index and keep their working actions.
-        let isExternalDiscovery = TitleClassifier.isDiscoveryRouting(
-            item,
-            identitySources: additionalSources(item)
+        // A title with no playable library copy has no server to address for
+        // watch state, metadata refresh or downloads. It may still be watchlisted.
+        let isPlayableLibraryItem = item.hasPlayableLibraryTarget(
+            additionalSources: additionalSources(item)
         )
-        let capabilities = isExternalDiscovery
-            ? ProviderCapabilities(
+        let capabilities = isPlayableLibraryItem
+            ? capabilities(for: item)
+            : ProviderCapabilities(
                 supportsWatchState: false,
                 supportsWatchlist: false,
                 supportsMetadataRefresh: false
             )
-            : capabilities(for: item)
         let universalEnabled = universalWatchlistEnabled()
         return MediaItemActionCatalog.actions(
             for: item,
@@ -282,7 +277,7 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
                 ? cachedWatchlistMembership(item)
                 : nil,
             supportsMetadataRefresh: capabilities.supportsMetadataRefresh,
-            downloadState: isExternalDiscovery ? nil : downloadState(item),
+            downloadState: isPlayableLibraryItem ? downloadState(item) : nil,
             context: context
         )
     }

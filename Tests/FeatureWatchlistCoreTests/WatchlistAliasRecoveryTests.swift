@@ -44,7 +44,7 @@ final class WatchlistAliasRecoveryTests: XCTestCase {
         )
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows.first?.item.id, source.itemID)
-        XCTAssertFalse(rows.first?.item.isNotInLibraryDiscovery ?? true)
+        XCTAssertTrue(rows.first?.item.locallyValidatedPlayableSource ?? false)
         let reloaded = try MediaAliasLedger(profileID: "p", store: store)
         let persisted = await reloaded.snapshot()
         XCTAssertEqual(persisted.resolvedAliasID(for: legacy.aliasID), aliases.resolvedAliasID(for: legacy.aliasID))

@@ -6,9 +6,8 @@ public struct SeriesDownloadPresentation: Equatable, Sendable {
 
     public var isVisible: Bool { hasLibraryDownloads }
 
-    public init(item: MediaItem, children: [MediaItem], isDiscoveryItem: Bool) {
+    public init(item: MediaItem, children: [MediaItem]) {
         hasLibraryDownloads = item.kind == .series
-            && !isDiscoveryItem
             && children.contains {
                 ($0.kind == .season || $0.kind == .episode) && $0.locallyValidatedPlayableSource
             }

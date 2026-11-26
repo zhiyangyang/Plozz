@@ -105,7 +105,7 @@ func testNewProfileScopeReloadsEvenWhenIndexRevisionAndSettingsMatch() {
     private func item(_ id: String = "42") -> MediaItem {
         MediaItem(
             id: id, title: "Movie", kind: .movie, providerIDs: ["Tmdb": id],
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
     }
 
@@ -116,7 +116,6 @@ func testPinnedPlaybackResolutionRestartsWhenOwnershipChangesWithoutChangingDisp
         var owned = external
         owned.locallyValidatedPlayableSource = true
         owned.sources = [.init(accountID: "a", itemID: "physical-series", kind: .series)]
-        owned.availability = nil
         let verified = resolution(owned)
         XCTAssertEqual(owned.id, external.id)
         XCTAssertNotEqual(cold, verified)
@@ -134,8 +133,6 @@ func testPinnedPlaybackResolutionRestartsWhenOwnershipChangesWithoutChangingDisp
         let key = resolution(original)
         var presentation = original
         presentation.title = "Updated title"
-        presentation.availability = .processing
-        presentation.downloadProgress = 0.5
         presentation.posterURL = URL(string: "https://images.example.test/new.jpg")
         XCTAssertEqual(key, resolution(presentation))
         presentation.selectedVersionID = "version-b"

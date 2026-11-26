@@ -27,7 +27,6 @@ public struct DetailInformationSections: View {
     private let horizontalInset: CGFloat
     private let selectedSource: MediaSourceRef?
     private let selectedVersion: MediaVersion?
-    private let externalAvailability: ExternalTitleAvailability?
     /// The viewer's spoiler protection. Ratings honour it here exactly as the
     /// heroes above do — the section is blurred, not removed, so a deliberate
     /// press can still lift it.
@@ -53,7 +52,6 @@ public struct DetailInformationSections: View {
         horizontalInset: CGFloat,
         selectedSource: MediaSourceRef? = nil,
         selectedVersion: MediaVersion? = nil,
-        externalAvailability: ExternalTitleAvailability? = nil,
         spoilerSettings: SpoilerSettings = .default,
         overviewAlreadyShown: String? = nil
     ) {
@@ -61,7 +59,6 @@ public struct DetailInformationSections: View {
         self.horizontalInset = horizontalInset
         self.selectedSource = selectedSource
         self.selectedVersion = selectedVersion
-        self.externalAvailability = externalAvailability
         self.spoilerSettings = spoilerSettings
         self.overviewAlreadyShown = overviewAlreadyShown
     }
@@ -553,11 +550,6 @@ public struct DetailInformationSections: View {
 
     var informationGroups: [InformationGroup] {
         [
-            InformationGroup(
-                id: "availability",
-                title: "Release & Availability",
-                facts: availabilityFacts
-            ),
             InformationGroup(id: "details", title: "Details", facts: detailFacts),
             InformationGroup(id: "crew", title: "Crew", facts: crewFacts),
             InformationGroup(id: "playback", title: "Playback", facts: playbackFacts)
@@ -644,90 +636,6 @@ public struct DetailInformationSections: View {
         appendListFact(id: "writers", label: "Written By", values: crew(kind: "writer"), to: &facts)
         appendListFact(id: "studios", label: "Studios", values: item.studios, to: &facts)
         return facts
-    }
-
-    private var availabilityFacts: [InformationFact] {
-        guard let availability = externalAvailability else { return [] }
-        let locale = Locale.current
-        let region = locale.localizedString(
-            forRegionCode: availability.regionCode
-        ) ?? availability.regionCode
-        var facts: [InformationFact] = []
-        for event in availability.releaseEvents.sorted(by: { $0.date < $1.date }) {
-            let label: LocalizedStringResource
-            switch event.kind {
-            case .premiere: label = "Premiere"
-            case .theatricalLimited: label = "Limited Theatrical"
-            case .theatrical: label = "Theatrical"
-            case .digital: label = "Digital"
-            case .physical: label = "Physical"
-            case .television: label = "TV Premiere"
-            }
-            facts.append(InformationFact(
-                id: "release-\(event.kind.rawValue)-\(event.date.timeIntervalSinceReferenceDate)",
-                label: label,
-                value: "\(event.date.formatted(.dateTime.month(.abbreviated).day().year())) · \(region)"
-            ))
-        }
-        func offerFact(
-            id: String,
-            label: LocalizedStringResource,
-            _ matching: (TitleWatchOffer) -> Bool
-        ) -> InformationFact? {
-            let offers = availability.watchOffers.filter(matching)
-            let names = providerNames(offers)
-            guard !names.isEmpty else { return nil }
-            return InformationFact(
-                id: id,
-                label: label,
-                value: names.joined(separator: " · "),
-                listValues: names,
-                logos: providerLogos(offers)
-            )
-        }
-        if let fact = offerFact(id: "streaming", label: "Streaming", {
-            $0.kind == .subscription || $0.kind == .free || $0.kind == .ads
-        }) {
-            facts.append(fact)
-        }
-        if let fact = offerFact(id: "rent", label: "Rent", { $0.kind == .rent }) {
-            facts.append(fact)
-        }
-        if let fact = offerFact(id: "buy", label: "Buy", { $0.kind == .buy }) {
-            facts.append(fact)
-        }
-        if !availability.watchOffers.isEmpty {
-            facts.append(InformationFact(
-                id: "availability-attribution",
-                label: "Availability Data",
-                value: "JustWatch",
-                isRequiredAttribution: true
-            ))
-        }
-        return facts
-    }
-
-    /// Collapsed by SERVICE, not by the source's provider id.
-    ///
-    /// Starz sells through its own app and as an add-on channel on Apple TV, Roku
-    /// and Amazon; each carries a different id, so an id-keyed dedupe listed it four
-    /// times and pushed the genuinely different services off the end of the line.
-    /// One mark per SERVICE, in the source's order, collapsed the same way the
-    /// names are so the logo row and the text fallback can never disagree.
-    private func providerLogos(_ offers: [TitleWatchOffer]) -> [WatchProviderLogo] {
-        var seen = Set<String>()
-        return offers.compactMap { offer in
-            let name = ExternalTitleAvailability.collapsedServiceName(offer.providerName)
-            guard seen.insert(name).inserted, let url = offer.logoURL else { return nil }
-            return WatchProviderLogo(id: name, name: name, url: url)
-        }
-    }
-
-    private func providerNames(_ offers: [TitleWatchOffer]) -> [String] {
-        var seen = Set<String>()
-        return offers
-            .map { ExternalTitleAvailability.collapsedServiceName($0.providerName) }
-            .filter { seen.insert($0).inserted }
     }
 
     /// "Playback" — everything about *this copy* in one place: where it streams

@@ -21,7 +21,6 @@ final class LibraryRetargetTests: XCTestCase {
             title: "Perfect Blue",
             kind: kind,
             providerIDs: providerIDs ?? ["PlexGuid": plexGuid],
-            availability: .unknown,
             locallyValidatedPlayableSource: false
         )
     }
@@ -43,9 +42,6 @@ final class LibraryRetargetTests: XCTestCase {
         )
         let item = try XCTUnwrap(resolved, "a PlexGuid-only row must be able to bind to an owned copy")
         XCTAssertTrue(item.locallyValidatedPlayableSource)
-        // Availability described the metadata provider's view, not the copy the
-        // index just vouched for — keeping it would leave the item claiming both.
-        XCTAssertNil(item.availability)
         XCTAssertEqual(item.sources.first?.itemID, "51234")
     }
 

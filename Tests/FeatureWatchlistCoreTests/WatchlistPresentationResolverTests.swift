@@ -117,7 +117,7 @@ final class WatchlistPresentationResolverTests: XCTestCase {
         let discovery = MediaItem(
             id: "discovery", title: owned.title, kind: .movie,
             watchlistAliasID: record.id,
-            availability: .unknown, locallyValidatedPlayableSource: false
+            locallyValidatedPlayableSource: false
         )
         for items in [[owned, discovery], [discovery, owned]] {
             XCTAssertEqual(WatchlistPresentationResolver.indexCurrentItems(

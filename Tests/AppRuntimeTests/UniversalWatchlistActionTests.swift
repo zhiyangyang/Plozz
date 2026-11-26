@@ -52,7 +52,7 @@ final class UniversalWatchlistActionTests: XCTestCase {
             id: "seer:10",
             title: "External",
             kind: .movie,
-            availability: .unknown
+            locallyValidatedPlayableSource: false
         )
 
         let actions = coordinator.actions(for: external, context: .none)
@@ -141,7 +141,7 @@ final class UniversalWatchlistActionTests: XCTestCase {
             id: "seer:20",
             title: "External",
             kind: .series,
-            availability: .unknown
+            locallyValidatedPlayableSource: false
         )
 
         coordinator.perform(.addToWatchlist, on: item, context: .none)
