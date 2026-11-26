@@ -1923,7 +1923,7 @@ final class NativeSettingsToggleTests: XCTestCase {
         for width: CGFloat in [390, 834] {
             for (target, enabled) in [
                 ("hero-source-collection", false), ("hero-source-collection", true),
-                ("hero-choose-collections", false), ("hero-source-featured", true)
+                ("hero-choose-collections", false), ("hero-source-watchlist", true)
             ] {
                 let model = Model()
                 let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
@@ -1983,8 +1983,7 @@ final class NativeSettingsToggleTests: XCTestCase {
         for width: CGFloat in [390, 834] {
             let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
             let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
-            hero.settings.sources = [.randomFromLibrary, .collection, .featured]
-            hero.settings.setEnabled(.featured, enabled: true)
+            hero.settings.sources = [.randomFromLibrary, .collection]
             window.frame = CGRect(x: 0, y: 0, width: width, height: 1200)
             window.rootViewController = UIHostingController(rootView: NavigationStack {
                 HeroSettingsScreen(page: .titles, libraries: [], accounts: [])
@@ -1997,13 +1996,13 @@ final class NativeSettingsToggleTests: XCTestCase {
             window.makeKeyAndVisible()
             try await settle(window)
             let sourceText = try captureText(window, name: "hero-sources-mobile-\(Int(width))")
-            for title in ["Random from Library", "Choose libraries", "Choose collections", "Discovery providers"] {
+            for title in ["Random from Library", "Choose libraries", "Choose collections"] {
                 XCTAssertTrue(sourceText.contains(title), sourceText)
             }
             let switches = listedSwitches(in: window).sorted {
                 $0.convert($0.bounds, to: window).minY < $1.convert($1.bounds, to: window).minY
             }
-            XCTAssertEqual(switches.count, 6)
+            XCTAssertEqual(switches.count, 5)
             for control in switches where control.isOn {
                 try assertGreenOnState(control, in: window)
             }
@@ -2014,11 +2013,9 @@ final class NativeSettingsToggleTests: XCTestCase {
             try await settle(window)
             XCTAssertFalse(hero.settings.sources.contains(.randomFromLibrary))
             XCTAssertTrue(hero.settings.sources.contains(.collection))
-            XCTAssertTrue(hero.settings.sources.contains(.featured))
             let collapsed = try captureText(window, name: "hero-sources-collapsed-mobile-\(Int(width))")
             XCTAssertFalse(collapsed.contains("Choose libraries"), collapsed)
             XCTAssertTrue(collapsed.contains("Choose collections"), collapsed)
-            XCTAssertTrue(collapsed.contains("Discovery providers"), collapsed)
 
             window.rootViewController = UIHostingController(rootView: NavigationStack {
                 SettingsPageList {
@@ -2035,55 +2032,7 @@ final class NativeSettingsToggleTests: XCTestCase {
         }
     }
 
-    func testHeroSubpagesUseNativeSwitchesAndLiveKidsPolicyAtPhoneAndTabletWidths() async throws {
-        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive })
-        let previous = scene.windows.first(where: \.isKeyWindow)
-        let window = UIWindow(windowScene: scene)
-        defer {
-            window.isHidden = true
-            window.rootViewController = nil
-            previous?.makeKeyAndVisible()
-        }
-        for width: CGFloat in [390, 834] {
-            let hero = HeroSettingsModel(store: InMemoryHeroSettingsStore())
-            let background = HeroBackgroundSettingsModel(store: InMemoryHeroBackgroundSettingsStore())
-            window.frame = CGRect(x: 0, y: 0, width: width, height: 1200)
-            window.rootViewController = UIHostingController(rootView: NavigationStack {
-                HeroSettingsScreen(page: .discovery, libraries: [], accounts: [])
-            }
-            .environment(hero)
-            .environment(background)
-            .environment(\.colorScheme, .dark))
-            window.makeKeyAndVisible()
-            try await settle(window)
-            XCTAssertEqual(listedSwitches(in: window).count, 5, "Attribution plus four providers use native switches.")
-            let labels = try XCTUnwrap(listedSwitches(in: window).min {
-                $0.convert($0.bounds, to: window).minY < $1.convert($1.bounds, to: window).minY
-            })
-            labels.setOn(true, animated: false)
-            labels.sendActions(for: .valueChanged)
-            try await settle(window)
-            XCTAssertTrue(hero.settings.showsDiscoverySources)
-            XCTAssertEqual(hero.settings.discoverySources, HeroDiscoverySource.defaultSelection)
-            hero.setDiscoveryPolicy { false }
-            let deadline = ContinuousClock.now + .seconds(2)
-            repeat {
-                try await settle(window)
-            } while !listedSwitches(in: window).isEmpty && ContinuousClock.now < deadline
-            let attachment = XCTAttachment(image: UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-            })
-            attachment.name = "kids-discovery-mobile-\(Int(width))"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-            XCTAssertTrue(listedSwitches(in: window).isEmpty, "An open Discovery page must lose its controls in Kids mode.")
-            XCTAssertTrue(hero.settings.showsDiscoverySources, "Restricting Discovery must not erase saved preferences.")
-            XCTAssertFalse(hero.effectiveSettings.showsDiscoverySources)
-        }
-    }
-
-    private func verifyNativeSwitch(grouped: Bool) async throws {
+private func verifyNativeSwitch(grouped: Bool) async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive })
         let previous = scene.windows.first(where: \.isKeyWindow)

@@ -123,7 +123,6 @@ public extension MediaItem {
     /// watchlist art from `(account, item id)` before render.
     func sanitizingArtworkCredentials() -> Self {
         var copy = self
-        copy.discoveryURLs = HeroDiscoverySource.validatedURLs(discoveryURLs)
         let sanitizedProvenance: [String: String] = Dictionary(
             artworkSourceAccountIDsByURL.compactMap {
                 key, accountID -> (String, String)? in

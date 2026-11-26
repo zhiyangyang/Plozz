@@ -84,8 +84,7 @@ public func crossServerSourceResolver(
 public func heroLibraryTargetResolver(
     in accounts: [ResolvedAccount],
     identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
-    visibility: @escaping @Sendable () async -> HomeLibraryVisibility = { .default },
-    allowsDiscovery: @escaping @Sendable () async -> Bool = { true }
+    visibility: @escaping @Sendable () async -> HomeLibraryVisibility = { .default }
 ) -> (@Sendable (MediaItem) async -> MediaItem?)? {
     guard !accounts.isEmpty else { return nil }
     let serverInfo = accounts.sourceServerInfo()
@@ -93,8 +92,7 @@ public func heroLibraryTargetResolver(
         guard !Task.isCancelled, !item.locallyValidatedPlayableSource,
               item.kind == .movie || item.kind == .series,
               MediaItemIdentity.hasStrongRetargetIdentity(item),
-              identitySources(item).isEmpty,
-              await allowsDiscovery() else { return nil }
+              identitySources(item).isEmpty else { return nil }
         let initialVisibility = await visibility()
         let recovered = await withTaskGroup(of: (Int, MediaItem?).self) { group in
             for (index, account) in accounts.enumerated() {
@@ -116,8 +114,7 @@ public func heroLibraryTargetResolver(
                         )
                         guard !Task.isCancelled, !resolution.sources.isEmpty else { return nil }
                         let verification = HeroDiscoveryRuntime(
-                            accounts: [account], identitySources: { _ in resolution.sources },
-                            allowsDiscovery: allowsDiscovery
+                            accounts: [account], identitySources: { _ in resolution.sources }
                         )
                         let verified = await verification.resolveLibrarySources(
                             in: [item], visibility: initialVisibility
@@ -146,12 +143,11 @@ public func heroLibraryTargetResolver(
             for await (index, result) in group { byIndex[index] = result }
             return accounts.indices.compactMap { byIndex[$0] }
         }
-        guard await allowsDiscovery(), await visibility() == initialVisibility,
-              !Task.isCancelled else { return nil }
+        guard await visibility() == initialVisibility, !Task.isCancelled else { return nil }
         var verified: [MediaItem] = []
         for copy in recovered {
             guard !verified.contains(where: {
-                HeroDiscoveryIdentityVerification.hasConflictingStrongIdentity($0, copy)
+                MediaIdentityVerification.hasConflictingStrongIdentity($0, copy)
             }) else {
                 PlozzLog.app.error("Hero library recovery ignored conflicting cross-account identity.")
                 continue

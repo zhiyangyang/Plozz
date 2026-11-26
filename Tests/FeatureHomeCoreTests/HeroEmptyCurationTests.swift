@@ -36,7 +36,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
             )
         )
     }
@@ -50,7 +49,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
             )
         )
         XCTAssertFalse(
@@ -60,7 +58,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [item("a")],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
             )
         )
     }
@@ -73,7 +70,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [library],
-                seerConnected: false
             )
         )
         XCTAssertTrue(
@@ -83,57 +79,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
-            )
-        )
-    }
-
-    func testAConnectedSeerrBlocksAuthorityRatherThanGrantingIt() {
-        // A Featured-only hero makes Seerr the ONLY vote, so treating its empty
-        // answer as authoritative would let an outage blank the carousel.
-        XCTAssertFalse(
-            HeroEmptyCuration.isAuthoritative(
-                settings: settings([.featured]),
-                continueWatching: [],
-                watchlist: [],
-                recentlyAdded: [],
-                randomLibraries: [],
-                seerConnected: true
-            )
-        )
-        XCTAssertFalse(
-            HeroEmptyCuration.isAuthoritative(
-                settings: settings(HeroSourceKind.allCases),
-                continueWatching: [],
-                watchlist: [],
-                recentlyAdded: [],
-                randomLibraries: [],
-                seerConnected: true
-            )
-        )
-    }
-
-    func testAnUnconfiguredSeerrAbstainsSoTheOtherSourcesDecide() {
-        // With no Seerr there is genuinely no pool, so it must not keep a hero
-        // alive that every local source has stopped feeding.
-        XCTAssertTrue(
-            HeroEmptyCuration.isAuthoritative(
-                settings: settings([.featured]),
-                continueWatching: [],
-                watchlist: [],
-                recentlyAdded: [],
-                randomLibraries: [],
-                seerConnected: false
-            )
-        )
-        XCTAssertFalse(
-            HeroEmptyCuration.isAuthoritative(
-                settings: settings([.featured, .continueWatching]),
-                continueWatching: [item("a")],
-                watchlist: [],
-                recentlyAdded: [],
-                randomLibraries: [],
-                seerConnected: false
             )
         )
     }
@@ -146,7 +91,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
             )
         )
     }
@@ -159,7 +103,6 @@ final class HeroEmptyCurationTests: XCTestCase {
                 watchlist: [],
                 recentlyAdded: [],
                 randomLibraries: [],
-                seerConnected: false
             )
         )
     }

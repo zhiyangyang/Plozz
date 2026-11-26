@@ -5,62 +5,7 @@ import XCTest
 @testable import AppRuntime
 
 final class CrossServerIdentityHydrationTests: XCTestCase {
-  func testRelatedIndexedLookupUsesOnlyTheNamedActiveAccount() async throws {
-    let session = sourceLookupSession()
-    let first = MediaItem(id: "shared-id", title: "First account", kind: .movie)
-    let second = MediaItem(id: "shared-id", title: "Second account", kind: .movie)
-    let firstCalls = IdentityDetailRequests()
-    let secondCalls = IdentityDetailRequests()
-    let firstProvider = PartialIdentityProvider(
-      session: session, sparse: first, full: first, detailRequests: firstCalls
-    )
-    let secondProvider = PartialIdentityProvider(
-      session: session, sparse: second, full: second, detailRequests: secondCalls
-    )
-    let fetch = relatedTitleLibraryItemLoader(in: [
-      ResolvedAccount(account: Account(id: "one", from: session), provider: firstProvider),
-      ResolvedAccount(account: Account(id: "two", from: session), provider: secondProvider)
-    ])
-    let result = await fetch(.init(accountID: "two", itemID: "shared-id", kind: .movie))
-    XCTAssertEqual(result?.title, second.title)
-    XCTAssertEqual(result?.sourceAccountID, "two")
-    let missing = await fetch(.init(accountID: "inactive", itemID: "shared-id", kind: .movie))
-    XCTAssertNil(missing)
-    let firstRequests = await firstCalls.ids
-    let secondRequests = await secondCalls.ids
-    XCTAssertTrue(firstRequests.isEmpty)
-    XCTAssertEqual(secondRequests, ["shared-id"])
-  }
-
-  func testRelatedIndexedLookupPropagatesCancellationAndDeadline() async {
-    for cancelOwner in [true, false] {
-      let started = expectation(description: "Native request started")
-      let cancelled = expectation(description: "Native request cancelled")
-      let session = sourceLookupSession()
-      let item = MediaItem(id: "owned", title: "Owned", kind: .movie)
-      let provider = PartialIdentityProvider(
-        session: session, sparse: item, full: item,
-        itemHandler: {
-          started.fulfill()
-          do { try await Task.sleep(for: .seconds(30)) }
-          catch { cancelled.fulfill(); throw error }
-          return item
-        }
-      )
-      let fetch = relatedTitleLibraryItemLoader(in: [
-        ResolvedAccount(account: Account(id: "server", from: session), provider: provider)
-      ])
-      let task = Task { await fetch(.init(accountID: "server", itemID: "owned", kind: .movie)) }
-      defer { task.cancel() }
-      await fulfillment(of: [started], timeout: 1)
-      if cancelOwner { task.cancel() }
-      await fulfillment(of: [cancelled], timeout: cancelOwner ? 1 : 6)
-      let result = await task.value
-      XCTAssertNil(result)
-    }
-  }
-
-  func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
+func testRejectedSparseSourceCannotBridgeToAnotherWatchTarget() async throws {
     var a = MediaItem(id: "a", title: "Movie", kind: .movie,
                       providerIDs: ["Imdb": "tt111", "Tmdb": "123"], sourceAccountID: "server")
     let b = MediaItem(id: "b", title: "Movie", kind: .movie,
@@ -394,14 +339,10 @@ final class CrossServerIdentityHydrationTests: XCTestCase {
       let sources = await resolve(primary).sources
       XCTAssertEqual(
         sources.contains { $0.accountID == "silo" && $0.itemID == sparse.id }, acceptsMatch)
-      let search = try XCTUnwrap(relatedTitleLibrarySearch(in: accounts))
-      let matches = await search(primary.title, 25)
-      XCTAssertEqual(
-        matches.first?.libraryID, "shows", "Hydration must preserve the search's library scope")
     }
   }
 
-  func testCompleteCatalogSourceAndRelatedLookupKeepOwnershipWithoutDetails() async throws {
+  func testCompleteCatalogSourceKeepsOwnershipWithoutDetails() async throws {
     for kind in [MediaItemKind.movie, .series] {
       let primary = MediaItem(
         id: "discovery", title: "Title", kind: kind,
@@ -424,12 +365,6 @@ final class CrossServerIdentityHydrationTests: XCTestCase {
       let sources = await resolve(primary).sources
       XCTAssertEqual(sources.map(\.itemID), ["owned"])
       XCTAssertEqual(sources.map(\.accountID), ["server"])
-      let search = try XCTUnwrap(relatedTitleLibrarySearch(in: accounts))
-      let matches = await search(primary.title, 25)
-      XCTAssertEqual(matches.map(\.id), ["owned"])
-      XCTAssertEqual(matches.first?.libraryID, "library")
-      XCTAssertEqual(matches.first?.sourceAccountID, "server")
-      XCTAssertEqual(matches.first?.providerIDs, catalog.providerIDs)
       let requested = await requests.ids
       XCTAssertTrue(requested.isEmpty)
     }

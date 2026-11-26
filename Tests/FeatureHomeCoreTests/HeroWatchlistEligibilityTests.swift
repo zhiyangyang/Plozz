@@ -43,7 +43,7 @@ final class HeroWatchlistEligibilityTests: XCTestCase {
         let candidate = item("removed", tmdb: "42")
         var support = item("other-source", tmdb: "42")
         let index = HeroSupportingSourceIndex()
-        let configuration = settings([.watchlist, .recentlyAdded, .featured])
+        let configuration = settings([.watchlist, .recentlyAdded, .continueWatching])
         func capture(
             settings: HeroSettings, rows: [MediaItem] = [],
             pool: HeroFreshnessCandidatePool = .empty, membership: Bool?
@@ -61,7 +61,7 @@ final class HeroWatchlistEligibilityTests: XCTestCase {
         XCTAssertFalse(capture(settings: configuration, rows: [support], membership: false).allows(candidate),
                        "Current membership is re-read, never memoized.")
         support.providerIDs = ["Tmdb": "42"]
-        let pool = HeroFreshnessCandidatePool(buckets: [.init(source: .featured, items: [support])])
+        let pool = HeroFreshnessCandidatePool(buckets: [.init(source: .continueWatching, items: [support])])
         XCTAssertTrue(capture(settings: configuration, pool: pool, membership: false).allows(candidate))
         XCTAssertFalse(capture(settings: settings(), pool: pool, membership: false).allows(candidate),
                        "Disabled sources must not preserve a removed title.")
@@ -237,36 +237,15 @@ final class HeroWatchlistEligibilityTests: XCTestCase {
         XCTAssertTrue(eligibility.allows(series))
     }
 
-    func testFeaturedNeedsSourceEvidenceNotMerelyEnabledToggle() {
-        var a = item("a")
-        let noEvidence = HeroSourceEligibility(
-            settings: settings([.watchlist, .featured]), removedFromWatchlist: [a]
-        )
-        XCTAssertFalse(noEvidence.allows(a))
-        a.discoverySources = [.tmdb]
-        XCTAssertTrue(noEvidence.allows(a))
-        var requestableWatchlistTitle = item("a")
-        requestableWatchlistTitle.availability = .unknown
-        XCTAssertFalse(noEvidence.allows(requestableWatchlistTitle),
-                       "Availability is also carried by Watchlist titles; it is not proof of a Featured source.")
-        let supported = HeroSourceEligibility(
-            settings: settings([.watchlist, .featured]), removedFromWatchlist: [item("a")],
-            supportingCandidates: HeroFreshnessCandidatePool(buckets: [
-                .init(source: .featured, items: [item("a")])
-            ])
-        )
-        XCTAssertTrue(supported.allows(item("a")))
-    }
-
-    func testPoolDropsRemovedWatchlistProvenanceButKeepsFeaturedCopy() {
+func testPoolDropsRemovedWatchlistProvenanceButKeepsOtherSourceCopy() {
         let a = item("a")
         let b = item("b")
         let pool = HeroFreshnessCandidatePool(buckets: [
             .init(source: .watchlist, items: [a, b]),
-            .init(source: .featured, items: [a])
+            .init(source: .continueWatching, items: [a])
         ])
         let eligibility = HeroSourceEligibility(
-            settings: settings([.watchlist, .featured]), removedFromWatchlist: [a],
+            settings: settings([.watchlist, .continueWatching]), removedFromWatchlist: [a],
             supportingCandidates: pool
         )
         let filtered = eligibility.filtering(pool)

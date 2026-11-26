@@ -7,10 +7,8 @@ final class HeroLoadKeyTests: XCTestCase {
     private let scope = NSObject()
     private let connection = UUID()
 
-    private var featured: HeroSettings {
-        var settings = HeroSettings.default
-        settings.sources = [.featured]
-        return settings
+    private var baseSettings: HeroSettings {
+        HeroSettings.default
     }
 
     private func curation(
@@ -19,15 +17,14 @@ final class HeroLoadKeyTests: XCTestCase {
         membershipRevision: Int = 0,
         scopeID: ObjectIdentifier? = nil,
         isPreparingHome: Bool = false,
-        loadingRows: Set<HomeRowKind> = [],
-        language: String = "en"
+        loadingRows: Set<HomeRowKind> = []
     ) -> HeroCurationLoadKey {
         HeroCurationLoadKey(
             content: content, settings: settings, visibility: .default,
             freshnessRevision: 0, identityIndexRevision: revision,
             watchlistMembershipRevision: membershipRevision,
             scopeID: scopeID ?? ObjectIdentifier(scope),
-            isPreparingHome: isPreparingHome, loadingRows: loadingRows, language: language
+            isPreparingHome: isPreparingHome, loadingRows: loadingRows
         )
     }
 
@@ -55,107 +52,46 @@ final class HeroLoadKeyTests: XCTestCase {
 
     }
 
-    func testDiscoveryLanguageSwitchRestartsCurationAndSeparatesRegionalCaches() throws {
-        for (first, second) in [("en", "fr"), ("pt-PT", "pt-BR"), ("zh-Hans", "zh-Hant")] {
-            let initial = curation(featured, revision: 0, language: first)
-            let changed = curation(featured, revision: 0, language: second)
-            XCTAssertNotEqual(initial, changed)
-            let restored = try JSONDecoder().decode(
-                HeroConfigurationKey.self,
-                from: JSONEncoder().encode(HeroConfigurationKey(settings: featured, language: first))
-            )
-            XCTAssertNotEqual(restored, HeroConfigurationKey(settings: featured, language: second))
-        }
-        XCTAssertEqual(
-            curation(featured, revision: 0, language: "pt_BR"),
-            curation(featured, revision: 0, language: "pt-BR")
-        )
-        var nativeOnly = featured
-        nativeOnly.sources = [.recentlyAdded]
-        XCTAssertEqual(
-            curation(nativeOnly, revision: 0, language: "en"),
-            curation(nativeOnly, revision: 0, language: "fr")
-        )
-        var disabled = featured
-        disabled.isEnabled = false
-        XCTAssertEqual(
-            curation(disabled, revision: 0, language: "en"),
-            curation(disabled, revision: 0, language: "fr")
-        )
-        XCTAssertEqual(HeroConfigurationKey(settings: featured, language: "pt-BR").metadataLanguage, "pt-BR")
-    }
-
-    func testAsyncHeroSourcesWaitForPreparationButNotUnrelatedRows() {
-        for source: HeroSourceKind in [.featured, .collection] {
+func testAsyncHeroSourcesWaitForPreparationButNotUnrelatedRows() {
+        for source: HeroSourceKind in [.collection] {
             var settings = HeroSettings.default
             settings.sources = [source]
             let preparing = curation(settings, revision: 0, isPreparingHome: true)
             let pendingRows = curation(settings, revision: 0, loadingRows: Set(HomeRowKind.allCases))
             XCTAssertTrue(preparing.isAwaitingSources)
-            XCTAssertEqual(pendingRows.isAwaitingSources, settings.usesDiscoveryWatchlistSeeds)
+            XCTAssertFalse(pendingRows.isAwaitingSources)
             XCTAssertFalse(curation(settings, revision: 0).isAwaitingSources)
         }
-        var settings = featured
+        var settings = baseSettings
         settings.isEnabled = false
         XCTAssertFalse(curation(settings, revision: 0, loadingRows: Set(HomeRowKind.allCases)).isAwaitingSources)
     }
 
-    func testFeaturedOnlyReloadsWhenItsIndexWarmsWithoutHomeRowChanges() {
-        let cold = curation(featured, revision: 0)
-        let unrelated = HomeViewModel.Content(
-            watchlist: [MediaItem(id: "saved", title: "Saved", kind: .movie)]
-        )
-        XCTAssertEqual(cold, curation(featured, revision: 0, content: unrelated))
-        XCTAssertNotEqual(cold, curation(featured, revision: 1))
-        XCTAssertEqual(curation(featured, revision: 1), curation(featured, revision: 1))
-        var unfiltered = featured
-        unfiltered.hideWatched = false
-        XCTAssertNotEqual(curation(unfiltered, revision: 0), curation(unfiltered, revision: 1))
-    }
-
-    func testIndexUpdatesDoNotRestartDisabledOrNonDiscoveryHeroes() {
-        var settings = featured
-        settings.sources = [.watchlist]
-        XCTAssertEqual(curation(settings, revision: 1), curation(settings, revision: 2))
-        settings = featured
-        settings.isEnabled = false
-        XCTAssertEqual(curation(settings, revision: 1), curation(settings, revision: 2))
-        settings = featured
-        settings.discoverySources = []
-        XCTAssertEqual(curation(settings, revision: 1), curation(settings, revision: 2))
-    }
-
-    func testNewProfileScopeReloadsEvenWhenIndexRevisionAndSettingsMatch() {
+func testNewProfileScopeReloadsEvenWhenIndexRevisionAndSettingsMatch() {
         let otherScope = NSObject()
         XCTAssertNotEqual(
-            curation(featured, revision: 1),
-            curation(featured, revision: 1, scopeID: ObjectIdentifier(otherScope))
+            curation(baseSettings, revision: 1),
+            curation(baseSettings, revision: 1, scopeID: ObjectIdentifier(otherScope))
         )
     }
 
     func testWatchlistIntentRollbackReloadsWithoutRowIDChanges() {
-        var settings = featured
+        var settings = baseSettings
         settings.sources = [.watchlist]
         XCTAssertNotEqual(
             curation(settings, revision: 0, membershipRevision: 1),
             curation(settings, revision: 0, membershipRevision: 2)
         )
+        var withoutWatchlist = baseSettings
+        withoutWatchlist.sources = [.randomFromLibrary]
         XCTAssertEqual(
-            curation(featured, revision: 0, membershipRevision: 1),
-            curation(featured, revision: 0, membershipRevision: 2)
+            curation(withoutWatchlist, revision: 0, membershipRevision: 1),
+            curation(withoutWatchlist, revision: 0, membershipRevision: 2)
         )
     }
 
-    func testPresentationPreferencesCannotRestartDiscoveryVerification() {
-        var restyled = featured
-        restyled.showsDiscoverySources = true
-        restyled.showsRatings = true
-        restyled.autoAdvance.toggle()
-        XCTAssertEqual(curation(featured, revision: 1), curation(restyled, revision: 1))
-    }
-
     func testCollectionSelectionAndHistoryRevisionRestartCuration() {
-        var settings = featured
+        var settings = baseSettings
         settings.sources = [.collection]
         settings.collections = [.init(accountID: "a", libraryID: "l", collectionID: "c", title: "Collection")]
         let initial = curation(settings, revision: 0)
@@ -166,16 +102,6 @@ final class HeroLoadKeyTests: XCTestCase {
         XCTAssertEqual(curation(settings, revision: 0), curation(settings, revision: 1))
     }
 
-    private func status(
-        _ items: [MediaItem], context: String = "profile-a/connection-a",
-        configured: Bool = true, settings: HeroSettings? = nil
-    ) -> HeroStatusRefreshKey {
-        HeroStatusRefreshKey(
-            requestableItems: items, settings: settings ?? featured,
-            isConfigured: configured, contextID: context, scopeID: ObjectIdentifier(scope)
-        )
-    }
-
     private func item(_ id: String = "42") -> MediaItem {
         MediaItem(
             id: id, title: "Movie", kind: .movie, providerIDs: ["Tmdb": id],
@@ -183,52 +109,9 @@ final class HeroLoadKeyTests: XCTestCase {
         )
     }
 
-    func testPublishingHeroStartsStatusTaskButReceivingStatusDoesNotRestartIt() {
-        let empty = status([])
-        let published = status([item()])
-        XCTAssertFalse(empty.isActive)
-        XCTAssertTrue(published.isActive)
-        XCTAssertNotEqual(empty, published)
-        var downloading = item()
-        downloading.availability = .processing
-        downloading.downloadProgress = 0.35
-        XCTAssertEqual(published, status([downloading]))
-        XCTAssertNotEqual(published, status([item("43")]))
-    }
-
-    func testStatusTaskRestartsForChangedRequestIdentityAndProfileOrConnection() {
-        let original = status([item()])
-        var changed = item()
-        changed.providerIDs = ["Tmdb": "99"]
-        XCTAssertNotEqual(original, status([changed]))
-        changed = item()
-        changed.kind = .series
-        XCTAssertNotEqual(original, status([changed]))
-        XCTAssertNotEqual(original, status([item()], context: "profile-b/connection-a"))
-        XCTAssertNotEqual(original, status([item()], context: "profile-a/connection-b"))
-    }
-
-    func testStatusTaskIsInactiveWithoutConfiguredFeaturedAndIgnoresCosmeticChanges() {
-        XCTAssertFalse(status([item()], configured: false).isActive)
-        XCTAssertFalse(HeroStatusRefreshKey(
-            requestableItems: [item()], settings: nil, isConfigured: true,
-            contextID: "profile", scopeID: ObjectIdentifier(scope)
-        ).isActive)
-        var settings = featured
-        settings.isEnabled = false
-        XCTAssertFalse(status([item()], settings: settings).isActive)
-        settings = featured
-        settings.sources = [.watchlist]
-        XCTAssertFalse(status([item()], settings: settings).isActive)
-        settings = featured
-        settings.showsDiscoverySources = true
-        XCTAssertEqual(status([item()]), status([item()], settings: settings))
-    }
-
-    func testPinnedPlaybackResolutionRestartsWhenOwnershipChangesWithoutChangingDisplayID() {
+func testPinnedPlaybackResolutionRestartsWhenOwnershipChangesWithoutChangingDisplayID() {
         var external = item()
         external.kind = .series
-        external.discoverySources = [.tmdb]
         let cold = resolution(external)
         var owned = external
         owned.locallyValidatedPlayableSource = true

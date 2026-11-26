@@ -14,21 +14,6 @@ import Observation
 /// persisted blob as "that field at its default" instead of failing the whole
 /// decode and resetting every setting.
 public struct HeroSettings: Codable, Equatable, Sendable {
-    /// Runtime policy, never synced as a preference or lifted by a settings edit.
-    public private(set) var allowsDiscovery = true
-
-    public func applyingDiscoveryPolicy(allowed: Bool) -> Self {
-        var settings = self
-        settings.allowsDiscovery = allowed
-        if !allowed {
-            settings.sources.removeAll { $0 == .featured }
-            settings.discoverySources = []
-            settings.showsDiscoverySources = false
-            settings.showsDiscoverRow = false
-        }
-        return settings
-    }
-
     /// Enables the featured section where the selected style supports it.
     /// Disabling it does not change Classic versus Showcase rows.
     public var isEnabled: Bool
@@ -36,10 +21,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     /// The enabled sources, in carousel order. Empty means "nothing to show" —
     /// the hero hides itself even when `isEnabled`.
     public var sources: [HeroSourceKind]
-
-    /// New profiles follow the household Seerr connection until Discovery is
-    /// explicitly toggled. The resolved connection state is never persisted.
-    public private(set) var discoveryFollowsSeerr: Bool
 
     /// Maximum number of items the carousel rotates through (clamped to
     /// ``maxItemsRange``).
@@ -55,12 +36,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     public var hideWatched: Bool
 
     /// Uses unseen/least-recently-shown picks instead of the established Watchlist order.
-    public var watchlistDiscoveryEnabled: Bool
-    public var discoverySources: [HeroDiscoverySource]
-
-    /// Optional catalog credits on Home.
-    public var showsDiscoverySources: Bool
-
     /// Scores are optional Home chrome, independent of detail-page rating preferences.
     public var showsRatings: Bool
     public var ratingPreferences: DetailPageSettings
@@ -111,24 +86,18 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     /// Legacy migration input. CardCaptionSettings now owns visual card labels.
     public var showsCardCaptions: Bool
 
-    /// Whether the Showcase layout adds a row of discovery picks — what the
-    /// Fullscreen Hero's Featured source would show. Off by default.
-    public var showsDiscoverRow: Bool
-
-    /// Fresh profiles use Spotlight + Showcase, library categories enabled, Discovery following Seerr, a modest
-    /// rotation, and gentle auto-advance. Optional discovery credits are hidden.
-    /// Feed defaults are defined by ``HeroDiscoverySource/defaultSelection``.
+    /// Fresh profiles use Spotlight + Showcase, library categories enabled, a
+    /// modest rotation, and gentle auto-advance.
     public static let `default` = HeroSettings(
         isEnabled: true,
-        sources: HeroSourceKind.allCases.filter { $0 != .collection && $0 != .featured },
+        sources: HeroSourceKind.allCases.filter { $0 != .collection },
         maxItems: 8,
         trailersEnabled: false,
         hideWatched: true,
         randomLibraryKeys: [],
         autoAdvance: true,
         autoAdvanceSeconds: 12,
-        style: .heroShowcase,
-        discoveryFollowsSeerr: true
+        style: .heroShowcase
     )
 
     /// Allowed range for ``maxItems``.
@@ -142,9 +111,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         maxItems: Int,
         trailersEnabled: Bool,
         hideWatched: Bool = true,
-        watchlistDiscoveryEnabled: Bool = false,
-        discoverySources: [HeroDiscoverySource] = HeroDiscoverySource.defaultSelection,
-        showsDiscoverySources: Bool = false,
         showsRatings: Bool = false,
         ratingPreferences: DetailPageSettings = .default,
         randomLibraryKeys: Set<String>,
@@ -156,22 +122,16 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         textSize: HeroTextSize = .default,
         showcaseTextSize: HeroTextSize = .default,
         showsCardCaptions: Bool = false,
-        showsDiscoverRow: Bool = false,
-        collections: [HeroCollectionSelection] = [],
-        discoveryFollowsSeerr: Bool = false
+        collections: [HeroCollectionSelection] = []
     ) {
         self.isEnabled = isEnabled
         // De-duplicate while preserving order so the picker can't persist a
         // source twice.
         var seen = Set<HeroSourceKind>()
         self.sources = sources.filter { seen.insert($0).inserted }
-        self.discoveryFollowsSeerr = discoveryFollowsSeerr
         self.maxItems = maxItems.clamped(to: HeroSettings.maxItemsRange)
         self.trailersEnabled = trailersEnabled
         self.hideWatched = hideWatched
-        self.watchlistDiscoveryEnabled = watchlistDiscoveryEnabled
-        self.discoverySources = HeroDiscoverySource.normalized(discoverySources)
-        self.showsDiscoverySources = showsDiscoverySources
         self.showsRatings = showsRatings
         self.ratingPreferences = ratingPreferences
         self.randomLibraryKeys = randomLibraryKeys
@@ -184,17 +144,13 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         self.textSize = textSize
         self.showcaseTextSize = showcaseTextSize
         self.showsCardCaptions = showsCardCaptions
-        self.showsDiscoverRow = showsDiscoverRow
     }
 
     private enum CodingKeys: String, CodingKey {
         case isEnabled, sources, maxItems, trailersEnabled, hideWatched, showsRatings
-        case watchlistDiscoveryEnabled
-        case discoverySources, showsDiscoverySources
-        case discoveryFollowsSeerr
         case ratingPreferences
         case randomLibraryKeys, autoAdvance, autoAdvanceSeconds
-        case style, showsCardCaptions, showsDiscoverRow
+        case style, showsCardCaptions
         case logoSize, showcaseLogoSize
         case textSize, showcaseTextSize
         case offeredSourcesVersion
@@ -220,15 +176,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
             maxItems: value(Int.self, .maxItems, d.maxItems),
             trailersEnabled: value(Bool.self, .trailersEnabled, d.trailersEnabled),
             hideWatched: value(Bool.self, .hideWatched, d.hideWatched),
-            watchlistDiscoveryEnabled: value(
-                Bool.self, .watchlistDiscoveryEnabled, d.watchlistDiscoveryEnabled
-            ),
-            discoverySources: value(
-                [String].self, .discoverySources, d.discoverySources.map(\.rawValue)
-            ).compactMap(HeroDiscoverySource.init(rawValue:)),
-            showsDiscoverySources: value(
-                Bool.self, .showsDiscoverySources, d.showsDiscoverySources
-            ),
             showsRatings: value(Bool.self, .showsRatings, d.showsRatings),
             ratingPreferences: value(DetailPageSettings.self, .ratingPreferences, d.ratingPreferences),
             randomLibraryKeys: value(Set<String>.self, .randomLibraryKeys, d.randomLibraryKeys),
@@ -241,13 +188,9 @@ public struct HeroSettings: Codable, Equatable, Sendable {
             textSize: value(HeroTextSize.self, .textSize, d.textSize),
             showcaseTextSize: value(HeroTextSize.self, .showcaseTextSize, d.showcaseTextSize),
             showsCardCaptions: value(Bool.self, .showsCardCaptions, d.showsCardCaptions),
-            showsDiscoverRow: value(Bool.self, .showsDiscoverRow, d.showsDiscoverRow),
             collections: c.contains(.collections)
                 ? value([HeroCollectionSelection].self, .collections, [])
-                : value(HeroCollectionSelection?.self, .collection, nil).map { [$0] } ?? [],
-            // Older source lists cannot distinguish an explicit choice from the
-            // former default, so retain them instead of changing existing users.
-            discoveryFollowsSeerr: value(Bool.self, .discoveryFollowsSeerr, !c.contains(.sources))
+                : value(HeroCollectionSelection?.self, .collection, nil).map { [$0] } ?? []
         )
     }
 
@@ -293,13 +236,9 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(isEnabled, forKey: .isEnabled)
         try c.encode(sources, forKey: .sources)
-        try c.encode(discoveryFollowsSeerr, forKey: .discoveryFollowsSeerr)
         try c.encode(maxItems, forKey: .maxItems)
         try c.encode(trailersEnabled, forKey: .trailersEnabled)
         try c.encode(hideWatched, forKey: .hideWatched)
-        try c.encode(watchlistDiscoveryEnabled, forKey: .watchlistDiscoveryEnabled)
-        try c.encode(discoverySources, forKey: .discoverySources)
-        try c.encode(showsDiscoverySources, forKey: .showsDiscoverySources)
         try c.encode(showsRatings, forKey: .showsRatings)
         try c.encode(ratingPreferences, forKey: .ratingPreferences)
         try c.encode(randomLibraryKeys, forKey: .randomLibraryKeys)
@@ -312,7 +251,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         try c.encode(textSize, forKey: .textSize)
         try c.encode(showcaseTextSize, forKey: .showcaseTextSize)
         try c.encode(showsCardCaptions, forKey: .showsCardCaptions)
-        try c.encode(showsDiscoverRow, forKey: .showsDiscoverRow)
         try c.encode(Self.currentOfferedSourcesVersion, forKey: .offeredSourcesVersion)
     }
 
@@ -322,18 +260,9 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     }
 
     public mutating func setEnabled(_ source: HeroSourceKind, enabled: Bool) {
-        if source == .featured { discoveryFollowsSeerr = false }
         var selected = Set(sources)
         if enabled { selected.insert(source) } else { selected.remove(source) }
         sources = HeroSourceKind.allCases.filter(selected.contains)
-    }
-
-    public func applyingSeerrDefault(isConfigured: Bool) -> Self {
-        guard discoveryFollowsSeerr else { return self }
-        var settings = self
-        settings.sources.removeAll { $0 == .featured }
-        if isConfigured { settings.sources.insert(.featured, at: 0) }
-        return settings
     }
 
     /// Whether the hero should actually render: switched on **and** has at least
@@ -349,32 +278,18 @@ public struct HeroSettings: Codable, Equatable, Sendable {
 
     public var hasFeaturedHero: Bool { style != .followsFocus && isActive }
 
-    public var usesDiscoveryWatchlistSeeds: Bool {
-        isActive && isEnabled(.featured) && discoverySources.contains(where: \.usesTitleSeeds)
-    }
-
-    public var requiresDiscoveryVerification: Bool {
-        isActive && isEnabled(.featured) && !discoverySources.isEmpty
-    }
-
     public func shouldShowRatings(for item: MediaItem, spoilerSettings: SpoilerSettings) -> Bool {
         showsRatings && !spoilerSettings.shouldHideRatings(for: item)
     }
 
-    /// Credit actual contributors, including cached or library-bound titles.
-    public func discoveryAttributionSources(for item: MediaItem) -> [HeroDiscoverySource] {
-        showsDiscoverySources ? HeroDiscoverySource.normalized(item.discoverySources) : []
-    }
-
     /// Whether honoring Hide Watched requires live external watch history beyond
-    /// the already-resolved Continue Watching / Watchlist sources. Only the async
-    /// discovery sources — Featured and Random-from-library — surface
-    /// titles whose current per-profile watch state isn't already known, so this
-    /// is the single predicate that gates the extra provider watch-state fetch and
+    /// the already-resolved Continue Watching / Watchlist sources. Random-from-
+    /// library and collections can surface titles whose current watch state is
+    /// not already known, so this gates the extra provider watch-state fetch and
     /// the hero's `externalRefreshRevision` bump.
     public var requiresExternalWatchHistory: Bool {
         isActive && hideWatched
-            && (isEnabled(.featured) || isEnabled(.randomFromLibrary) || isEnabled(.collection))
+            && (isEnabled(.randomFromLibrary) || isEnabled(.collection))
     }
 }
 
@@ -456,21 +371,9 @@ public final class HeroSettingsModel {
     }
 
     private let store: HeroSettingsStoring
-    private var discoveryAllowed: @MainActor () -> Bool = { true }
 
     public init(store: HeroSettingsStoring = HeroSettingsStore()) {
         self.store = store
         self.settings = store.load()
-    }
-
-    public var allowsDiscovery: Bool { discoveryAllowed() }
-
-    public var effectiveSettings: HeroSettings {
-        settings.applyingDiscoveryPolicy(allowed: allowsDiscovery)
-    }
-
-    /// Read the live profile so local edits apply immediately.
-    public func setDiscoveryPolicy(_ allowed: @escaping @MainActor () -> Bool) {
-        discoveryAllowed = allowed
     }
 }

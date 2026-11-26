@@ -132,7 +132,7 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         if selectedIndex == 1 {
             XCTAssertEqual(app.profiles.activeNamespace, selectedID)
             XCTAssertTrue(try XCTUnwrap(app.profiles.profiles.first).needsSetup)
-            XCTAssertEqual(app.settings.hero.effectiveSettings.sources,
+            XCTAssertEqual(app.settings.hero.settings.sources,
                            [.continueWatching, .recentlyAdded, .randomFromLibrary, .watchlist])
         }
         await app.plexHomeUsers.waitForPlexPINRequirementCheck()

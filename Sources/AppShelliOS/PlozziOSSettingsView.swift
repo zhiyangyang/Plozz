@@ -1466,7 +1466,7 @@ private struct PlozziOSSettingsSearchDestination: View {
         case .navigation: PlozziOSNavigationSettingsView(appModel: appModel)
         case .heroTrailers:
             TrailersSettingsView(background: appModel.settings.heroBackground)
-        case .home, .hero, .heroContent, .heroRatings, .heroDiscovery,
+        case .home, .hero, .heroContent, .heroRatings,
              .heroLibraries, .heroCollections, .homeRows, .homeRowStyle, .homeFiltering, .homeLabels, .continueWatching:
             PlozziOSHomeSettingsView(
                 hero: appModel.settings.hero, heroBackground: appModel.settings.heroBackground,

@@ -119,8 +119,7 @@ public struct HeroFreshnessSnapshot: Equatable, Sendable {
     }
 
     public func ranksDiscovery(_ source: HeroSourceKind, settings: HeroSettings) -> Bool {
-        isEnabled && (source == .featured || source == .randomFromLibrary || source == .collection
-            || (source == .watchlist && settings.watchlistDiscoveryEnabled))
+        isEnabled && (source == .randomFromLibrary || source == .collection)
     }
 
     public func ranked(
@@ -152,7 +151,7 @@ public struct HeroFreshnessSnapshot: Equatable, Sendable {
 }
 
 /// Validated alternatives retain source provenance so cached startup can vary
-/// discovery titles without shuffling Continue Watching, recency or Watchlist.
+/// library titles without shuffling Continue Watching, recency or Watchlist.
 public struct HeroFreshnessCandidatePool: Codable, Equatable, Sendable {
     public static let maximumItemsPerSource = 40
 
@@ -231,8 +230,6 @@ public struct HeroFreshnessCandidatePool: Codable, Equatable, Sendable {
                 guard history.lastSeenAt(for: item) == nil else { return false }
                 let tokens = HeroDedupe.tokens(for: item)
                 return !freshTokens.contains { !tokens.isDisjoint(with: $0) }
-            }.map { item in
-                item.discoverySources.isEmpty ? item : item.removingDiscoveryOwnership()
             }
             return Bucket(source: bucket.source, items: retained + bucket.items)
         })

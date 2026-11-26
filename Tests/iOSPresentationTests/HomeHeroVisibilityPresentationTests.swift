@@ -826,7 +826,7 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                             id: "cached-\($0)", title: $0 == 0 ? "Cached sunrise" : "Cached sunset", kind: .movie,
                             allowsTitleBasedMetadataMatching: false
                         )
-                    }, for: HeroConfigurationKey(settings: app.settings.hero.effectiveSettings))
+                    }, for: HeroConfigurationKey(settings: app.settings.hero.settings))
                 }
                 let model = HomeViewModel(
                     accounts: [ResolvedAccount(account: provider.account, provider: provider)],

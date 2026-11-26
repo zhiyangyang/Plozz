@@ -28,8 +28,6 @@ public enum HeroEmptyCuration {
         watchlist: [MediaItem],
         recentlyAdded: [MediaItem],
         randomLibraries: [HeroRandomLibrary],
-        seerConnected: Bool,
-        featuredDiscoveryEnabled: Bool? = nil,
         collectionState: LoadState<[MediaItem]> = .idle
     ) -> Bool {
         guard settings.isActive else { return true }
@@ -45,11 +43,6 @@ public enum HeroEmptyCuration {
                 if !randomLibraries.isEmpty { return false }
             case .collection:
                 if !settings.collections.isEmpty, collectionState != .empty { return false }
-            case .featured:
-                // An enabled external feed may be empty or temporarily failing.
-                // Only an explicitly empty feed selection grants authority.
-                // Legacy callers still use their Seerr connection as that signal.
-                if featuredDiscoveryEnabled ?? seerConnected { return false }
             }
         }
         return true

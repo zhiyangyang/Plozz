@@ -532,10 +532,7 @@ final class PlozziOSAppModel {
                 : Self.universalWatchlistStorageDirectory()
         )
         self.requiresLaunchProfileSelection = requiresLaunchProfileSelection
-        let initialSettings = PlozziOSSettingsModel(
-            namespace: profiles.activeNamespace,
-            allowsDiscovery: { !profiles.activeProfile.isKids }
-        )
+        let initialSettings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
         self.settings = initialSettings
         boot("settings")
         self.seriesTrackStore = SeriesTrackPreferenceStore(
@@ -1516,10 +1513,7 @@ final class PlozziOSAppModel {
     }
 
     func refreshActiveProfileSettings() {
-        settings = PlozziOSSettingsModel(
-            namespace: profiles.activeNamespace,
-            allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids }
-        )
+        settings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
         seriesTrackStore = SeriesTrackPreferenceStore(
             namespace: profiles.activeNamespace
         )
@@ -2330,10 +2324,7 @@ final class PlozziOSAppModel {
                 reloadAccountsAndHeroCache()
                 return
             }
-            settings = PlozziOSSettingsModel(
-                namespace: profiles.activeNamespace,
-                allowsDiscovery: { [profiles] in !profiles.activeProfile.isKids }
-            )
+            settings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
             seriesTrackStore = SeriesTrackPreferenceStore(
                 namespace: profiles.activeNamespace
             )

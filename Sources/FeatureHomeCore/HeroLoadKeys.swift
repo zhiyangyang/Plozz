@@ -18,7 +18,6 @@ public struct HeroPlaybackResolutionKey: Equatable, Sendable {
     private let isPlayed: Bool
     private let hasBeenPlayed: Bool
     private let lastPlayedAt: Date?
-    private let isDiscovery: Bool
     private let hasValidatedSource: Bool
     private let scopeID: ObjectIdentifier?
     private let identityIndexRevision: Int
@@ -38,7 +37,6 @@ public struct HeroPlaybackResolutionKey: Equatable, Sendable {
         isPlayed = item.isPlayed
         hasBeenPlayed = item.hasBeenPlayed
         lastPlayedAt = item.lastPlayedAt
-        isDiscovery = !item.discoverySources.isEmpty
         hasValidatedSource = item.locallyValidatedPlayableSource
         self.scopeID = scopeID
         self.identityIndexRevision = identityIndexRevision
@@ -80,7 +78,6 @@ public struct HeroCurationLoadKey: Equatable, Sendable {
     private let identityIndexRevision: Int
     private let watchlistMembershipRevision: Int
     private let scopeID: ObjectIdentifier
-    private let discoverySeeds: [HeroDiscoveryRequest.SeedIdentity]
 
     public init(
         content: HomeViewModel.Content,
@@ -91,61 +88,24 @@ public struct HeroCurationLoadKey: Equatable, Sendable {
         watchlistMembershipRevision: Int = 0,
         scopeID: ObjectIdentifier,
         isPreparingHome: Bool = false,
-        loadingRows: Set<HomeRowKind> = [],
-        language: String = "en"
+        loadingRows: Set<HomeRowKind> = []
     ) {
         continueWatchingIDs = settings.isEnabled(.continueWatching) ? content.continueWatching.map(\.id) : []
         watchlistIDs = settings.isEnabled(.watchlist) ? content.watchlist.map(\.id) : []
         recentlyAddedIDs = settings.isEnabled(.recentlyAdded) ? content.latest.map(\.id) : []
         libraries = settings.isEnabled(.randomFromLibrary) || settings.isEnabled(.collection)
             ? content.libraries : []
-        configuration = HeroConfigurationKey(settings: settings, language: language)
+        configuration = HeroConfigurationKey(settings: settings)
         self.visibility = visibility
         self.freshnessRevision = freshnessRevision
         isAwaitingSources = isPreparingHome || HomeHeroLaunchPolicy.isAwaitingSources(
             settings: settings, loadingRows: loadingRows
         )
         let enrichesCollectionHistory = settings.isEnabled(.collection) && settings.hideWatched
-        self.identityIndexRevision = settings.requiresDiscoveryVerification
-            || (settings.isActive && enrichesCollectionHistory)
+        self.identityIndexRevision = settings.isActive && enrichesCollectionHistory
             ? identityIndexRevision : 0
         self.watchlistMembershipRevision = settings.isActive && settings.isEnabled(.watchlist)
             ? watchlistMembershipRevision : 0
         self.scopeID = scopeID
-        discoverySeeds = settings.usesDiscoveryWatchlistSeeds
-            ? HeroDiscoveryRequest(seeds: content.watchlist).seedIdentities : []
-    }
-}
-
-/// Restarts optional status work when published titles or request scope change,
-/// never when a response merely changes availability or download progress.
-public struct HeroStatusRefreshKey: Equatable, Sendable {
-    public let isActive: Bool
-    private let configuration: HeroConfigurationKey
-    private let contextID: String
-    private let scopeID: ObjectIdentifier
-    private let candidates: [Candidate]
-
-    private struct Candidate: Equatable, Sendable {
-        let id: String
-        let kind: MediaItemKind
-        let tmdbID: String?
-    }
-
-    public init(
-        requestableItems: [MediaItem],
-        settings: HeroSettings?,
-        isConfigured: Bool,
-        contextID: String,
-        scopeID: ObjectIdentifier
-    ) {
-        configuration = HeroConfigurationKey(settings: settings)
-        self.contextID = contextID
-        self.scopeID = scopeID
-        let enabled = isConfigured && settings?.isActive == true && settings?.isEnabled(.featured) == true
-        candidates = enabled ? requestableItems.prefix(HeroSettings.maxItemsRange.upperBound).map {
-            Candidate(id: $0.id, kind: $0.kind, tmdbID: $0.providerIDs.providerID(.tmdb))
-        } : []
-        isActive = enabled && !candidates.isEmpty
     }
 }

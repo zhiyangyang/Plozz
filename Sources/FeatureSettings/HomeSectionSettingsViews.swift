@@ -568,9 +568,8 @@ public struct HomeHeroSettingsView: View {
         guard let initialPage else { return nil }
         guard hero.settings.isEnabled else { return nil }
         switch initialPage {
-        case .libraries where !hero.effectiveSettings.isEnabled(.randomFromLibrary): return .titles
-        case .collections where !hero.effectiveSettings.isEnabled(.collection): return .titles
-        case .discovery where !hero.effectiveSettings.isEnabled(.featured): return .titles
+        case .libraries where !hero.settings.isEnabled(.randomFromLibrary): return .titles
+        case .collections where !hero.settings.isEnabled(.collection): return .titles
         default: return initialPage
         }
     }

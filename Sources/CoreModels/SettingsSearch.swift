@@ -52,7 +52,7 @@ public enum SettingsSearchSubtitlePage: String, CaseIterable, Sendable {
 public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case playback, subtitles, subtitleStyle, theme, cards, artwork, circadian
     case allScreens, navigation, home, hero, detail, language
-    case heroContent, heroRatings, heroTrailers, heroDiscovery, heroLibraries, heroCollections
+    case heroContent, heroRatings, heroTrailers, heroLibraries, heroCollections
     case homeRows, homeRowStyle, homeFiltering, homeLabels, continueWatching, libraries, cardLabels
     case externalPlayer, skipMarkers, topShelf
     case downloads, profiles, diagnostics
@@ -80,7 +80,6 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .heroContent: ["Screens & Navigation", "Home", "Hero", "Hero content sources"]
         case .heroRatings: ["Screens & Navigation", "Home", "Hero", "Ratings"]
         case .heroTrailers: ["Screens & Navigation", "Movie & show details", "Trailers"]
-        case .heroDiscovery: ["Screens & Navigation", "Home", "Hero", "Discovery providers"]
         case .heroLibraries: ["Screens & Navigation", "Home", "Hero", "Random libraries"]
         case .heroCollections: ["Screens & Navigation", "Home", "Hero", "Collections"]
         case .homeRows: ["Screens & Navigation", "Home", "Rows"]
@@ -113,7 +112,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .subtitles, .subtitleStyle: "captions.bubble"
         case .theme, .cards, .artwork, .circadian, .cardLabels: "paintpalette"
         case .allScreens, .navigation, .home, .hero, .detail, .heroContent, .heroRatings,
-             .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
+             .heroTrailers, .heroLibraries, .heroCollections, .homeRows, .homeRowStyle,
              .homeFiltering, .homeLabels, .continueWatching, .libraries, .topShelf,
              .accountLibraries:
             "rectangle.3.group"
@@ -362,7 +361,7 @@ public enum SettingsSearchCatalog {
 
     public static var carouselHeroTargets: [String] {
         entries.filter {
-            [.hero, .heroContent, .heroRatings, .heroDiscovery,
+            [.hero, .heroContent, .heroRatings,
              .heroLibraries, .heroCollections].contains($0.page)
                 && !$0.id.hasPrefix("showcase-") && $0.id != "home-layout"
         }.map(\.id)
@@ -580,10 +579,6 @@ public enum SettingsSearchCatalog {
               keywords: "hero trailer sound audio silent background"),
         .init("hero-content", page: .hero, title: "Hero content sources",
               keywords: "hero banner carousel choose featured titles movies shows"),
-        .init("hero-watchlist-rotation", page: .heroContent, title: "Prefer less recently shown Watchlist items",
-              keywords: "hero watchlist fresh unseen rotation shuffle variety"),
-        .init("hero-provider-labels", page: .heroDiscovery, title: "Show provider labels",
-              keywords: "discovery recommendations provider name badges", requiresAdultProfile: true),
         .init("hero-all-libraries", page: .heroLibraries, title: "All libraries on Home",
               keywords: "hero random libraries select include movies shows"),
         .init("hero-choose-libraries", page: .heroContent, title: "Choose libraries",
@@ -608,8 +603,8 @@ public enum SettingsSearchCatalog {
               keywords: "home hide watched completed finished"),
         .init("home-hide-watched-recently-added", page: .homeFiltering, title: "Recently Added",
               keywords: "hide watched recently added home rows"),
-        .init("hero-hide-watched", page: .homeFiltering, title: "Hero & discovery",
-              keywords: "hide watched completed finished hero discovery"),
+        .init("hero-hide-watched", page: .homeFiltering, title: "Hero",
+              keywords: "hide watched completed finished hero"),
         .init("home-row-preset", page: .homeRows, title: "Preset",
               keywords: "home rows shelves hubs sections reset standard customize"),
         .init("home-row-arrangement", page: .homeRows, title: "Home rows",
@@ -626,12 +621,7 @@ public enum SettingsSearchCatalog {
               keywords: "continue watching tap click center button play details resume")
     ] + HeroSourceKind.allCases.map { source in
         .init("hero-source-\(source.rawValue)", page: .heroContent, title: source.displayName,
-              keywords: "hero banner carousel featured content source include exclude enable disable",
-              requiresAdultProfile: source == .featured)
-    } + HeroDiscoverySource.allCases.map { source in
-        .init("hero-discovery-\(source.rawValue)", page: .heroDiscovery, title: .verbatim(source.displayName),
-              keywords: "discovery suggestions recommendations provider enable disable",
-              requiresAdultProfile: true)
+              keywords: "hero banner carousel content source include exclude enable disable")
     }
 
     public static func entry(id: String) -> SettingsSearchEntry? {

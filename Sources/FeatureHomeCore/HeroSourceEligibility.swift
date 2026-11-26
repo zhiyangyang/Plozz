@@ -117,9 +117,6 @@ public struct HeroSourceEligibility: Sendable {
         guard isExcludedFromWatchlist(item) else { return true }
         let tokens = HeroDedupe.tokens(for: item)
         if !tokens.isDisjoint(with: otherSourceTokens) { return true }
-        if settings.isEnabled(.featured) {
-            if item.discoverySources.contains(where: settings.discoverySources.contains) { return true }
-        }
         guard item.locallyValidatedPlayableSource else { return false }
         let libraryKind: MediaItemKind
         switch item.kind {

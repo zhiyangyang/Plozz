@@ -14,7 +14,6 @@ public enum HomeHeroLaunchPolicy {
             case .recentlyAdded: loadingRows.contains(.recentlyAdded)
             case .watchlist: loadingRows.contains(.watchlist)
             case .randomFromLibrary: loadingRows.contains(.libraries)
-            case .featured: settings.usesDiscoveryWatchlistSeeds && loadingRows.contains(.watchlist)
             case .collection: false
             }
         }

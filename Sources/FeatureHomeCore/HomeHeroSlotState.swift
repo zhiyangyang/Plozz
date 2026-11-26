@@ -24,7 +24,6 @@ public enum HomeHeroSlotState: Equatable, Sendable {
         let hasConfiguredSource = settings.sources.contains { source in
             switch source {
             case .collection: !settings.collections.isEmpty
-            case .featured: !settings.discoverySources.isEmpty
             case .continueWatching, .recentlyAdded, .randomFromLibrary, .watchlist: true
             }
         }

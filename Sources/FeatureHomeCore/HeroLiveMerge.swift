@@ -148,9 +148,6 @@ public enum HeroLiveMerge {
     ///   - preservesLineup: retain every loaded slot for the app session, including
     ///     off-screen cards. Refresh matching payloads without admitting, aging,
     ///     or retiring titles just because discovery offered a different set.
-    ///   - preservesRequestStatus: the caller has verified that both sets belong
-    ///     to the same profile/Seerr request context. Public unknown status then
-    ///     cannot erase a live request-status response.
     ///   - sourceEligibility: authoritative source removal overrides pinning;
     ///     ordinary refresh absence still follows the retention policy below.
     public static func merge(
@@ -162,13 +159,8 @@ public enum HeroLiveMerge {
         freshIsAuthoritative: Bool = false,
         preservesPinnedItems: Bool = false,
         preservesLineup: Bool = false,
-        preservesRequestStatus: Bool = false,
         sourceEligibility: HeroSourceEligibility = .unrestricted
     ) -> Outcome {
-        let fresh = preservesRequestStatus
-            ? HeroDiscoveryStatus.retainingRequestStatus(
-                in: fresh, from: showing, sameRequestContext: true
-            ) : fresh
         let eligibleShowing = sourceEligibility.filtering(showing)
         if preservesLineup, !eligibleShowing.isEmpty, limit > 0 {
             let candidates = sourceEligibility.filtering(fresh).map {
@@ -374,34 +366,7 @@ public enum HeroLiveMerge {
     ) -> MediaItem {
         guard fresh.stablePresentationID == showing.stablePresentationID || !isPinned else {
             var kept = showing
-            var verifiedRouting = false
-            if !fresh.discoverySources.isEmpty || !showing.discoverySources.isEmpty {
-                if fresh.locallyValidatedPlayableSource,
-                   let retained = fresh.sources.first(where: {
-                       $0.accountID == showing.sourceAccountID && $0.itemID == showing.id
-                   }) {
-                    kept.sources = fresh.sources
-                    kept = kept.selectingSource(retained)
-                    verifiedRouting = true
-                } else if fresh.locallyValidatedPlayableSource,
-                          isExternalPresentation(showing),
-                          HeroDiscoveryIdentityVerification.matches(showing, fresh),
-                          let upgraded = adoptingVerifiedDiscoverySources(showing, from: fresh) {
-                    kept = upgraded
-                    verifiedRouting = true
-                } else {
-                    kept = kept.removingDiscoveryOwnership()
-                    kept.availability = fresh.availability ?? .unknown
-                    kept.downloadProgress = fresh.downloadProgress
-                    kept.hasRequestDownloadActivity = fresh.hasRequestDownloadActivity
-                }
-            }
             kept.fillingMissingPresentation(from: fresh)
-            if verifiedRouting {
-                kept.availability = nil
-                kept.downloadProgress = nil
-                kept.hasRequestDownloadActivity = nil
-            }
             return kept
         }
         var upgraded = fresh
@@ -409,52 +374,4 @@ public enum HeroLiveMerge {
         return upgraded
     }
 
-    private static func isExternalPresentation(_ item: MediaItem) -> Bool {
-        guard item.sourceAccountID == nil, item.kind == .movie || item.kind == .series else { return false }
-        // Revocation clears routing fields but deliberately keeps a library id.
-        // Only catalog-namespaced ids are presentation-only: do not mistake a
-        // previously rejected physical copy for a never-owned discovery slide.
-        let namespaces = HeroDiscoverySource.allCases.map(\.rawValue) + ["discovery", "seer"]
-        return namespaces.contains { item.id.hasPrefix("\($0):\(item.kind.rawValue):") }
-    }
-
-    private static func adoptingVerifiedDiscoverySources(
-        _ showing: MediaItem,
-        from fresh: MediaItem
-    ) -> MediaItem? {
-        var seen = Set<String>()
-        let verified = fresh.sources.compactMap { source -> MediaSourceRef? in
-            guard !source.accountID.isEmpty, !source.itemID.isEmpty,
-                  source.itemID != showing.id else { return nil }
-            let isFreshSelf = source.accountID == fresh.sourceAccountID && source.itemID == fresh.id
-            let kindMatches = source.kind == showing.kind || (source.kind == nil && isFreshSelf)
-            guard kindMatches, seen.insert(source.id).inserted else { return nil }
-            var verified = source
-            // The presentation-only id cannot act as an untyped ref's self-id
-            // during playback selection. Its verified physical record supplies
-            // the kind; untyped peer refs above remain rejected.
-            if verified.kind == nil { verified.kind = fresh.kind }
-            return verified
-        }
-        guard !verified.isEmpty else { return nil }
-        var kept = showing.removingDiscoveryOwnership()
-        kept.sources = verified
-        kept.locallyValidatedPlayableSource = true
-        kept.providerIDs = fresh.providerIDs
-        kept.runtime = fresh.runtime ?? kept.runtime
-        var accounts = Set<String>()
-        kept.additionalSourceAccountIDs = verified.map(\.accountID).filter { accounts.insert($0).inserted }
-        let state = MediaItemMerger.unifiedWatchState(from: verified)
-        kept.resumePosition = state.resumePosition
-        kept.playedPercentage = state.playedPercentage
-        kept.unwatchedEpisodeCount = state.unwatchedEpisodeCount
-        kept.isPlayed = state.isPlayed
-        kept.lastPlayedAt = state.lastPlayedAt
-        kept.hasBeenPlayed = fresh.hasBeenPlayed || verified.contains { $0.hasBeenPlayed || $0.isPlayed }
-        kept.isFavorite = fresh.isFavorite || verified.contains(where: \.isFavorite)
-        // The visible catalog id is not paired with an account. Playback resolves
-        // one of these real refs before it can ask a provider to load an item.
-        kept.availability = nil
-        return kept
-    }
 }

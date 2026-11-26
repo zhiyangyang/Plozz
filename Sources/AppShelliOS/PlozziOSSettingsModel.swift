@@ -27,10 +27,7 @@ final class PlozziOSSettingsModel {
     let homeVisibility: HomeLibraryVisibilityModel
     let diagnostics: DiagnosticsSettingsModel
 
-    init(
-        namespace: String? = nil,
-        allowsDiscovery: @escaping @MainActor () -> Bool = { true }
-    ) {
+    init(namespace: String? = nil) {
         theme = ThemeSettingsModel(
             store: ThemeSettingsStore(namespace: namespace)
         )
@@ -87,7 +84,6 @@ final class PlozziOSSettingsModel {
         hero = HeroSettingsModel(
             store: HeroSettingsStore(namespace: namespace)
         )
-        hero.setDiscoveryPolicy(allowsDiscovery)
         heroBackground = HeroBackgroundSettingsModel(
             store: HeroBackgroundSettingsStore(namespace: namespace)
         )

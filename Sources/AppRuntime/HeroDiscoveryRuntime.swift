@@ -1,11 +1,12 @@
 import CoreModels
 import CoreNetworking
-import CoreSecureStore
 import Foundation
-import MetadataKit
 
-/// Public discovery is cached upstream. Ownership and watch state are resolved
-/// here, per active account/profile, and never written back to that public cache.
+/// Resolves a title to live, verified copies in the viewer's accounts.
+///
+/// The identity index can be stale, so a hero or watchlist title missing from it
+/// is looked up by its strong external ids. Everything here is per active
+/// account/profile: no library or watch state is shared across servers.
 public struct HeroDiscoveryRuntime: Sendable {
     private struct LookupKey: Hashable, Sendable {
         let accountID: String
@@ -20,75 +21,26 @@ public struct HeroDiscoveryRuntime: Sendable {
 
     private let accountsByID: [String: ResolvedAccount]
     private let identitySources: @Sendable (MediaItem) -> [MediaSourceRef]
-    private let discovery: HeroDiscoveryContentProviding
-    private let allowsDiscovery: @Sendable () async -> Bool
     private static let maximumConcurrentLookups = 4
 
     public init(
         accounts: [ResolvedAccount],
-        identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef],
-        discovery: HeroDiscoveryContentProviding? = nil,
-        allowsDiscovery: @escaping @Sendable () async -> Bool = { true }
+        identitySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef]
     ) {
         accountsByID = Dictionary(
             accounts.map { ($0.account.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         self.identitySources = identitySources
-        self.allowsDiscovery = allowsDiscovery
-        self.discovery = discovery ?? { request, sources in
-            await Self.discoverPublicCandidates(request, sources: sources)
-        }
     }
 
-    public func candidates(
-        _ request: HeroDiscoveryRequest,
-        sources: [HeroDiscoverySource],
-        hideWatched: Bool,
-        visibility: HomeLibraryVisibility = .default
-    ) async -> [MediaItem] {
-        let enabled = HeroDiscoverySource.normalized(sources)
-        guard !Task.isCancelled, request.limit > 0, !enabled.isEmpty,
-              await allowsDiscovery() else { return [] }
-        let fetched = await discovery(request, enabled)
-        // Simplify toward upstream (testing step): the fork's library-copy
-        // resolution runs as an extra hop BEFORE resolveLibrarySources, which
-        // rewrites hero candidate identity after first paint — the hero + row
-        // artwork leaves and the page resizes again (the observed flicker).
-        // `resolveLibraryCopies` stays for its other callers; the Home/hero
-        // feed composes exactly as upstream main here. Re-introduce the fork
-        // improvement incrementally once the settled flicker is gone.
-        guard !Task.isCancelled, await allowsDiscovery() else { return [] }
-        let external = Array(fetched.lazy
-            .filter { $0.kind == .movie || $0.kind == .series }
-            .prefix(request.limit)
-            .map(Self.publicCandidate))
-        return await resolveLibrarySources(in: external, hideWatched: hideWatched, visibility: visibility)
-    }
-
-    public func resolveLibraryCopies(
-        of items: [MediaItem], hideWatched: Bool, visibility: HomeLibraryVisibility = .default
-    ) async -> [MediaItem] {
-        guard !Task.isCancelled, await allowsDiscovery() else { return [] }
-        let external = Array(items.lazy
-            .filter { $0.kind == .movie || $0.kind == .series }
-            .map(Self.publicCandidate))
-        return await resolveLibrarySources(in: external, hideWatched: hideWatched, visibility: visibility)
-    }
-
-    /// Reuses the same live identity verification for dedicated discovery feeds.
+    /// Live identity verification for hero and watchlist titles.
     public func resolveLibrarySources(
         in candidates: [MediaItem], hideWatched: Bool = false,
         visibility: HomeLibraryVisibility = .default
     ) async -> [MediaItem] {
-        guard !Task.isCancelled, await allowsDiscovery() else { return [] }
-        let external = candidates.map { candidate in
-            var item = Self.publicCandidate(candidate)
-            item.availability = candidate.availability ?? .unknown
-            item.downloadProgress = candidate.downloadProgress
-            item.hasRequestDownloadActivity = candidate.hasRequestDownloadActivity
-            return item
-        }
+        guard !Task.isCancelled else { return [] }
+        let external = candidates.map(Self.libraryProbe)
         guard !accountsByID.isEmpty else { return external }
 
         var jobs: [LookupKey] = []
@@ -112,7 +64,7 @@ public struct HeroDiscoveryRuntime: Sendable {
             }
         }
         let resolved = await resolve(jobs)
-        guard !Task.isCancelled, await allowsDiscovery() else { return [] }
+        guard !Task.isCancelled else { return [] }
 
         var rejectedIdentity = false
         var result: [MediaItem] = []
@@ -124,9 +76,9 @@ public struct HeroDiscoveryRuntime: Sendable {
                 guard record.id == key.itemID,
                       record.kind == item.kind,
                       record.locallyValidatedPlayableSource,
-                      HeroDiscoveryIdentityVerification.matches(item, record),
+                      MediaIdentityVerification.matches(item, record),
                       !owned.contains(where: {
-                          HeroDiscoveryIdentityVerification.hasConflictingStrongIdentity($0, record)
+                          MediaIdentityVerification.hasConflictingStrongIdentity($0, record)
                       }) else {
                     rejectedIdentity = true
                     continue
@@ -149,11 +101,6 @@ public struct HeroDiscoveryRuntime: Sendable {
             }
             merged.fillingMissingPresentation(from: Self.presentationDonor(item, for: merged))
             Self.fillMissingProviderIDs(on: &merged, from: item)
-            merged.discoverySources = HeroDiscoverySource.normalized(
-                merged.discoverySources + item.discoverySources
-            )
-            // Filling presentation may copy discovery availability into a nil
-            // field. Live library proof, not a global availability flag, owns it.
             merged.availability = nil
             merged.downloadProgress = nil
             merged.hasRequestDownloadActivity = nil
@@ -168,9 +115,9 @@ public struct HeroDiscoveryRuntime: Sendable {
             if !hideWatched || !merged.hasBeenPlayed { result.append(merged) }
         }
         if rejectedIdentity {
-            PlozzLog.app.error("Hero discovery: unverified or conflicting library identity was ignored.")
+            PlozzLog.app.error("Library source verification ignored an unverified or conflicting identity.")
         }
-        guard !Task.isCancelled, await allowsDiscovery() else { return [] }
+        guard !Task.isCancelled else { return [] }
         return result
     }
 
@@ -211,13 +158,13 @@ public struct HeroDiscoveryRuntime: Sendable {
                 }
             }
             if hadFailure, !Task.isCancelled {
-                PlozzLog.app.error("Hero discovery: library verification was unavailable; unverified titles remain external.")
+                PlozzLog.app.error("Library source verification was unavailable; unverified titles remain external.")
             }
             return result
         }
     }
 
-    private static func publicCandidate(_ item: MediaItem) -> MediaItem {
+    private static func libraryProbe(_ item: MediaItem) -> MediaItem {
         var external = item
         external.sourceAccountID = nil
         external.selectedSourceAccountID = nil
@@ -239,7 +186,6 @@ public struct HeroDiscoveryRuntime: Sendable {
         external.playedPercentage = nil
         external.lastPlayedAt = nil
         external.isFavorite = false
-        external.discoverySources = HeroDiscoverySource.normalized(external.discoverySources)
         return external
     }
 
@@ -340,36 +286,6 @@ public struct HeroDiscoveryRuntime: Sendable {
             }) {
                 owned.providerIDs[key] = value
             }
-        }
-    }
-
-    private static func discoverPublicCandidates(
-        _ request: HeroDiscoveryRequest, sources: [HeroDiscoverySource]
-    ) async -> [MediaItem] {
-        await productionCandidates(request, sources: sources, configurationLoader: {
-            MetadataProviderConfig.resolved()
-        }, discover: { request, sources, config in
-            await ProductionHeroDiscovery.discover(request, sources: sources, providerConfig: config)
-        })
-    }
-
-    /// The small seam keeps synchronous secure-store access off MainActor and
-    /// lets tests verify that boundary without touching the real Keychain.
-    static func productionCandidates(
-        _ request: HeroDiscoveryRequest,
-        sources: [HeroDiscoverySource],
-        configurationLoader: @escaping @Sendable () -> MetadataProviderConfig,
-        discover: @escaping @Sendable (HeroDiscoveryRequest, [HeroDiscoverySource], MetadataProviderConfig) async -> [MediaItem]
-    ) async -> [MediaItem] {
-        guard !Task.isCancelled else { return [] }
-        let configTask = Task.detached(priority: .utility) { configurationLoader() }
-        return await withTaskCancellationHandler {
-            let config = await configTask.value
-            guard !Task.isCancelled else { return [] }
-            let items = await discover(request, sources, config)
-            return Task.isCancelled ? [] : items
-        } onCancel: {
-            configTask.cancel()
         }
     }
 }

@@ -56,9 +56,6 @@ public struct HeroMetadataEnricher: Sendable {
         let targets = Dictionary(
             uniqueKeysWithValues: items.indices.compactMap { index -> (Int, MediaItem)? in
                 let item = items[index]
-                guard item.discoverySources.isEmpty || item.locallyValidatedPlayableSource else {
-                    return nil
-                }
                 // Keep recovered root watch evidence for the live set and launch
                 // cache; resolving an unwatched episode here would erase it.
                 guard !hideWatched || !item.hasBeenPlayed else { return nil }
@@ -154,19 +151,11 @@ public struct HeroMetadataEnricher: Sendable {
         var enriched = items
         for (index, detail) in details {
             let originalProviderIDs = enriched[index].providerIDs
-            let discoverySources = enriched[index].discoverySources
-            let discoveryURLs = enriched[index].discoveryURLs
             let originalCarriesSeriesIDs = enriched[index].kind == .series
             let preservesSeries = Self.preservesVerifiedSeries(
                 enriched[index], root: detail.root, whilePinned: pinnedSeries
             )
             if !preservesSeries, var playTarget = detail.playTarget {
-                playTarget.discoverySources = HeroDiscoverySource.normalized(
-                    playTarget.discoverySources + discoverySources
-                )
-                playTarget.discoveryURLs = HeroDiscoverySource.validatedURLs(
-                    playTarget.discoveryURLs.merging(discoveryURLs) { existing, _ in existing }
-                )
                 if playTarget.sourceAccountID == nil,
                    let sourceAccountID = detail.root.sourceAccountID {
                     playTarget = playTarget.taggingSource(sourceAccountID)
@@ -270,7 +259,7 @@ public struct HeroMetadataEnricher: Sendable {
                 if let target, target.locallyValidatedPlayableSource,
                    let accountID = target.sourceAccountID,
                    providersByAccount[accountID] != nil,
-                   HeroDiscoveryIdentityVerification.matches(items[index], target) {
+                   MediaIdentityVerification.matches(items[index], target) {
                     enriched[index] = target
                 }
                 if next < candidates.count {
@@ -304,7 +293,7 @@ public struct HeroMetadataEnricher: Sendable {
                item.sourceAccountID == accountID, item.id == presentation.id {
                 return true
             }
-            return HeroDiscoveryIdentityVerification.matches(presentation, item)
+            return MediaIdentityVerification.matches(presentation, item)
         }
     }
 
@@ -369,9 +358,7 @@ public struct HeroMetadataEnricher: Sendable {
     private func applyingCachedRatings(to items: [MediaItem]) async -> [MediaItem] {
         var enriched = items
         for index in enriched.indices {
-            guard !enriched[index].usesProviderRatings,
-                  enriched[index].discoverySources.isEmpty || enriched[index].locallyValidatedPlayableSource
-            else { continue }
+            guard !enriched[index].usesProviderRatings else { continue }
             let target = targetSelector(enriched[index])
             guard let accountID = target.sourceAccountID,
                   let provider = providersByAccount[accountID] else { continue }

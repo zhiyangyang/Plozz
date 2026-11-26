@@ -16,7 +16,7 @@ final class HeroRequestIdentityTests: XCTestCase {
         )
         let item = MediaItem(
             id: "tvmaze:series:9", title: "A show", kind: .series,
-            providerIDs: ["Tvdb": "17"], discoverySources: [.tvmaze],
+            providerIDs: ["Tvdb": "17"],
             availability: .unknown, locallyValidatedPlayableSource: false
         )
         let id = await resolver.tmdbID(for: item)

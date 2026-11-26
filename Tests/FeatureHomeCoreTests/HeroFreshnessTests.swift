@@ -12,14 +12,14 @@ final class HeroFreshnessTests: XCTestCase {
         )
     }
 
-    private func settings(_ sources: [HeroSourceKind] = [.featured], limit: Int = 8) -> HeroSettings {
+    private func settings(_ sources: [HeroSourceKind] = [.randomFromLibrary], limit: Int = 8) -> HeroSettings {
         var settings = HeroSettings.default
         settings.sources = sources
         settings.maxItems = limit
         return settings
     }
 
-    private func pool(_ items: [MediaItem], source: HeroSourceKind = .featured) -> HeroFreshnessCandidatePool {
+    private func pool(_ items: [MediaItem], source: HeroSourceKind = .randomFromLibrary) -> HeroFreshnessCandidatePool {
         HeroFreshnessCandidatePool(buckets: [.init(source: source, items: items)])
     }
 
@@ -35,9 +35,8 @@ final class HeroFreshnessTests: XCTestCase {
         XCTAssertEqual(selected.map(\.id), ["unseen", "older", "recent"])
     }
 
-    func testUnseenRetentionUsesFreshMatchesAndRevokesUnrefreshedOwnership() throws {
+    func testUnseenRetentionUsesFreshMatchesAndKeepsUnrefreshedOwnership() throws {
         var retained = item("retained", account: "old-server")
-        retained.discoverySources = [.tmdb]
         retained.locallyValidatedPlayableSource = true
         retained.sources = [.init(accountID: "old-server", itemID: retained.id, kind: .movie)]
         var old = item("old-id")
@@ -51,9 +50,8 @@ final class HeroFreshnessTests: XCTestCase {
         let merged = pool([fresh]).preservingUnseen(from: previous, history: history)
         let items = try XCTUnwrap(merged.buckets.first?.items)
         XCTAssertEqual(items.map(\.id), ["retained", "new-id"])
-        XCTAssertFalse(items[0].locallyValidatedPlayableSource)
-        XCTAssertNil(items[0].sourceAccountID)
-        XCTAssertTrue(items[0].sources.isEmpty)
+        XCTAssertTrue(items[0].locallyValidatedPlayableSource)
+        XCTAssertEqual(items[0].sourceAccountID, "old-server")
         XCTAssertEqual(items[1], fresh)
     }
 
@@ -110,23 +108,7 @@ final class HeroFreshnessTests: XCTestCase {
         ).map(\.id), ["w1", "cw1", "r1", "w2", "cw2", "r2"])
     }
 
-    func testWatchlistDiscoveryIsOptInAndDisabledSnapshotPreservesLegacyOrder() {
-        let items = [item("seen"), item("unseen")]
-        var history = HeroExposureHistory()
-        history.record(items[0])
-        var config = settings([.watchlist])
-        let candidates = pool(items, source: .watchlist)
-        let freshness = HeroFreshnessSnapshot(history: history, sessionSeed: 1)
-        XCTAssertEqual(candidates.select(settings: config, freshness: freshness), items)
-        config.watchlistDiscoveryEnabled = true
-        XCTAssertEqual(
-            candidates.select(settings: config, freshness: freshness).map(\.id),
-            ["unseen", "seen"]
-        )
-        XCTAssertEqual(candidates.select(settings: config), items)
-    }
-
-    func testHistoryFollowsProviderAliasesWithoutMixingKinds() {
+func testHistoryFollowsProviderAliasesWithoutMixingKinds() {
         var first = item("plex-a", account: "plex")
         first.providerIDs = ["Tmdb": "42"]
         var second = item("jellyfin-b", account: "jellyfin")
@@ -196,11 +178,11 @@ final class HeroFreshnessTests: XCTestCase {
         noArtwork.backdropURL = nil
         let shared = item("shared")
         let candidates = HeroFreshnessCandidatePool(buckets: [
-            .init(source: .featured, items: [watched, noArtwork, shared]),
+            .init(source: .watchlist, items: [watched, noArtwork, shared]),
             .init(source: .randomFromLibrary, items: [item("hidden"), shared, item("other")])
         ])
         let result = candidates.select(
-            settings: settings([.featured, .randomFromLibrary]),
+            settings: settings([.watchlist, .randomFromLibrary]),
             freshness: .init(sessionSeed: 1),
             isEligible: { _, item in item.id != "hidden" }
         )
@@ -213,14 +195,14 @@ final class HeroFreshnessTests: XCTestCase {
         resume.resumePosition = 10
         let candidates = HeroFreshnessCandidatePool(buckets: [
             .init(source: .continueWatching, items: [item("cw")]),
-            .init(source: .featured, items: [resume, item("safe")])
+            .init(source: .randomFromLibrary, items: [resume, item("safe")])
         ]).durable()
-        XCTAssertEqual(candidates.buckets.map(\.source), [.featured])
+        XCTAssertEqual(candidates.buckets.map(\.source), [.randomFromLibrary])
         XCTAssertEqual(candidates.buckets[0].items.map(\.id), ["safe"])
         var enriched = item("safe")
         enriched.overview = "Hydrated"
         let updated = candidates.updatingItems([enriched])
-        XCTAssertEqual(updated.buckets[0].source, .featured)
+        XCTAssertEqual(updated.buckets[0].source, .randomFromLibrary)
         XCTAssertEqual(updated.buckets[0].items.first?.overview, "Hydrated")
     }
 
@@ -239,8 +221,8 @@ final class HeroFreshnessTests: XCTestCase {
     func testCandidatePoolBoundsAlsoApplyWhenDecoding() throws {
         struct Payload: Encodable { let buckets: [HeroFreshnessCandidatePool.Bucket] }
         let data = try JSONEncoder().encode(Payload(buckets: [
-            .init(source: .featured, items: (0..<100).map { item("\($0)") }),
-            .init(source: .featured, items: [item("duplicate-bucket")])
+            .init(source: .randomFromLibrary, items: (0..<100).map { item("\($0)") }),
+            .init(source: .randomFromLibrary, items: [item("duplicate-bucket")])
         ]))
         let decoded = try JSONDecoder().decode(HeroFreshnessCandidatePool.self, from: data)
         XCTAssertEqual(decoded.buckets.count, 1)
@@ -263,26 +245,14 @@ final class HeroFreshnessTests: XCTestCase {
         XCTAssertTrue(decoded.entries.allSatisfy { $0.aliases.count == HeroExposureHistory.maximumAliases })
     }
 
-    func testSynchronousCurationUsesTheSameDiscoveryRanking() {
-        let items = [item("seen"), item("fresh")]
-        var history = HeroExposureHistory()
-        history.record(items[0])
-        XCTAssertEqual(HeroCurator().curateSync(
-            settings: settings(limit: 1),
-            featured: items,
-            continueWatching: [],
-            watchlist: [],
-            freshness: .init(history: history, sessionSeed: 1)
-        ).map(\.id), ["fresh"])
-    }
-
-    func testCurationRequestsLargerPoolAndRetainsValidatedSingleSlideAlternatives() async {
+func testCurationRequestsLargerPoolAndRetainsValidatedSingleSlideAlternatives() async {
         let request = IntRecorder()
         let candidates = (0..<48).map { item("candidate-\($0)") }
         let result = await HeroCurator().curateResult(
             settings: settings(limit: 1), continueWatching: [], watchlist: [],
+            randomLibraries: [.init(accountID: "a", libraryID: "b", kind: .movie)],
             freshness: .init(sessionSeed: 1),
-            featuredProvider: { limit in
+            randomProvider: { _, limit in
                 await request.append(limit)
                 return candidates
             }
@@ -300,8 +270,9 @@ final class HeroFreshnessTests: XCTestCase {
         let checks = StringRecorder()
         let result = await HeroCurator().curateResult(
             settings: settings(limit: 1), continueWatching: [], watchlist: [],
+            randomLibraries: [.init(accountID: "a", libraryID: "b", kind: .movie)],
             freshness: .init(history: history, sessionSeed: 1),
-            featuredProvider: { _ in candidates },
+            randomProvider: { _, _ in candidates },
             artworkValidator: { urls in
                 guard let url = urls.first else { return false }
                 await checks.append(url.deletingPathExtension().lastPathComponent)
@@ -319,8 +290,9 @@ final class HeroFreshnessTests: XCTestCase {
         let allowed = Set(candidates.suffix(8).map(\.id))
         let result = await HeroCurator().curateResult(
             settings: settings(limit: 1), continueWatching: [], watchlist: [],
+            randomLibraries: [.init(accountID: "a", libraryID: "b", kind: .movie)],
             freshness: .init(sessionSeed: 4),
-            featuredProvider: { _ in candidates },
+            randomProvider: { _, _ in candidates },
             artworkValidator: { urls in
                 urls.first.map { allowed.contains($0.deletingPathExtension().lastPathComponent) } ?? false
             }

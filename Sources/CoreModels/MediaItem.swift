@@ -351,9 +351,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// A fresh catalog response includes all external IDs the provider knows.
     /// Transient: persisted cards must not suppress a later identity refresh.
     public var catalogIdentityIsComplete = false
-    /// Discovery-feed attribution, independent of playable server ownership.
-    public var discoverySources: [HeroDiscoverySource]
-    public var discoveryURLs: [String: URL]
     /// Whether metadata services may identify this item by a fuzzy title search.
     ///
     /// Exact provider-id lookups remain allowed. Direct-share folders and
@@ -600,8 +597,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         ratings: [ExternalRating] = [],
         usesProviderRatings: Bool = false,
         providerIDs: [String: String] = [:],
-        discoverySources: [HeroDiscoverySource] = [],
-        discoveryURLs: [String: URL] = [:],
         allowsTitleBasedMetadataMatching: Bool = true,
         metadataProvenance: MetadataProvenance = MetadataProvenance(),
         artworkSelections: [ArtworkSelection] = [],
@@ -682,8 +677,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         self.ratings = ratings
         self.usesProviderRatings = usesProviderRatings
         self.providerIDs = providerIDs
-        self.discoverySources = HeroDiscoverySource.normalized(discoverySources)
-        self.discoveryURLs = HeroDiscoverySource.validatedURLs(discoveryURLs)
         self.allowsTitleBasedMetadataMatching = allowsTitleBasedMetadataMatching
         self.metadataProvenance = metadataProvenance
         self.artworkSelections = artworkSelections
@@ -740,8 +733,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         case posterURL, primaryImageAspectRatio, seriesPosterURL, backdropURL, heroBackdropURL
         case fallbackArtworkURL, logoURL, ratings, providerIDs, metadataProvenance
         case usesProviderRatings
-        case discoverySources
-        case discoveryURLs
         case allowsTitleBasedMetadataMatching
         case artworkSelections, mediaInfo
         case availability, locallyValidatedPlayableSource
@@ -815,13 +806,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         ratings = try container.decodeIfPresent([ExternalRating].self, forKey: .ratings) ?? []
         usesProviderRatings = try container.decodeIfPresent(Bool.self, forKey: .usesProviderRatings) ?? false
         providerIDs = try container.decodeIfPresent([String: String].self, forKey: .providerIDs) ?? [:]
-        discoverySources = HeroDiscoverySource.normalized(
-            (try container.decodeIfPresent([String].self, forKey: .discoverySources) ?? [])
-                .compactMap(HeroDiscoverySource.init(rawValue:))
-        )
-        discoveryURLs = HeroDiscoverySource.validatedURLs(
-            try container.decodeIfPresent([String: URL].self, forKey: .discoveryURLs) ?? [:]
-        )
         allowsTitleBasedMetadataMatching = try container.decodeIfPresent(
             Bool.self,
             forKey: .allowsTitleBasedMetadataMatching

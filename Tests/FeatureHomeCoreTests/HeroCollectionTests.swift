@@ -486,7 +486,7 @@ final class HeroCollectionTests: XCTestCase {
     private func isAuthoritative(_ result: HeroCurationResult) -> Bool {
         HeroEmptyCuration.isAuthoritative(
             settings: settings, continueWatching: [], watchlist: [], recentlyAdded: [],
-            randomLibraries: [], seerConnected: false, collectionState: result.collectionState
+            randomLibraries: [], collectionState: result.collectionState
         )
     }
 }

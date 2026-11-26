@@ -41,13 +41,7 @@ public enum PlaybackSourceSelection {
         accounts: [ResolvedAccount],
         identitySources: (MediaItem) -> [MediaSourceRef]
     ) -> MediaItem {
-        if !item.discoverySources.isEmpty, !item.locallyValidatedPlayableSource {
-            return item.removingDiscoveryOwnership()
-        }
         let activeAccountIDs = Set(accounts.map(\.account.id))
-        if !item.discoverySources.isEmpty, activeAccountIDs.isEmpty {
-            return item.removingDiscoveryOwnership()
-        }
         let liveLocality: [String: SourceLocality] = Dictionary(
             accounts.map { ($0.account.id, $0.provider.connectionLocality) },
             uniquingKeysWith: { first, _ in first }
@@ -62,7 +56,7 @@ public enum PlaybackSourceSelection {
         }
 
         var unioned = item.sources
-        let indexed = item.discoverySources.isEmpty ? identitySources(item) : []
+        let indexed = identitySources(item)
         var seen = Set(unioned.map(\.id))
         for ref in indexed where seen.insert(ref.id).inserted {
             unioned.append(ref)
@@ -100,11 +94,6 @@ public enum PlaybackSourceSelection {
                 }
         )
         .map(withLiveLocality)
-        if !item.discoverySources.isEmpty, liveSources.isEmpty,
-           !activeAccountIDs.contains(item.sourceAccountID ?? "") {
-            return item.removingDiscoveryOwnership()
-        }
-
         if item.explicitSourceSelection,
            let picked = item.selectedSourceAccountID,
            liveSources.contains(where: { $0.accountID == picked }) {

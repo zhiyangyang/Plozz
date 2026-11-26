@@ -64,11 +64,9 @@ final class HeroLiveMergeTests: XCTestCase {
 
     func testSessionLineupKeepsCatalogIdentityWhenOwnershipArrives() throws {
         var showing = item("tmdb:movie:42")
-        showing.discoverySources = [.tmdb]
         showing.providerIDs = ["Tmdb": "42"]
         showing.locallyValidatedPlayableSource = false
         var fresh = item("physical", account: "server")
-        fresh.discoverySources = [.tmdb]
         fresh.providerIDs = showing.providerIDs
         fresh.sources = [.init(accountID: "server", itemID: "physical", kind: .movie)]
         fresh.locallyValidatedPlayableSource = true
@@ -91,7 +89,6 @@ final class HeroLiveMergeTests: XCTestCase {
 
     func testSessionLineupDoesNotSwapAccountsWithTheSameProviderItemID() throws {
         var showing = item("42", account: "original")
-        showing.discoverySources = [.tmdb]
         showing.providerIDs = ["Tmdb": "movie-42"]
         showing.locallyValidatedPlayableSource = true
         let original = MediaSourceRef(accountID: "original", itemID: "42", kind: .movie)

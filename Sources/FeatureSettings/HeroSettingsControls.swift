@@ -4,7 +4,7 @@ import CoreUI
 import SwiftUI
 
 public enum HeroSettingsPage: String, CaseIterable {
-    case titles, ratings, trailers, discovery, libraries, collections
+    case titles, ratings, trailers, libraries, collections
 
     var title: LocalizedStringResource {
         switch self {
@@ -12,7 +12,6 @@ public enum HeroSettingsPage: String, CaseIterable {
             "Hero content sources"
         case .ratings: "Ratings"
         case .trailers: "Trailers"
-        case .discovery: "Discovery"
         case .libraries: "Random libraries"
         case .collections: "Collections"
         }
@@ -21,7 +20,6 @@ public enum HeroSettingsPage: String, CaseIterable {
     var linkTitle: LocalizedStringResource {
         switch self {
         case .titles, .ratings, .trailers: title
-        case .discovery: "Discovery providers"
         case .libraries: "Choose libraries"
         case .collections: "Choose collections"
         }
@@ -32,7 +30,6 @@ public enum HeroSettingsPage: String, CaseIterable {
         case .titles: "hero-source-continueWatching"
         case .ratings: "hero-ratings"
         case .trailers: "hero-trailers"
-        case .discovery: "hero-provider-labels"
         case .libraries: "hero-all-libraries"
         case .collections: "hero-collection-done"
         }
@@ -276,7 +273,7 @@ struct HeroSettingsLink: View {
                 Text(page.linkTitle)
                     .font(SettingsRowMetrics.titleFont)
                 if page == .titles {
-                    HeroTitleSourceSummary(sources: hero.effectiveSettings.sources)
+                    HeroTitleSourceSummary(sources: hero.settings.sources)
                         .font(.footnote)
                         .settingsRowSecondary()
                         .fixedSize(horizontal: false, vertical: true)
@@ -357,7 +354,6 @@ struct HeroSettingsScreen: View {
     }
 
     private var initialRowID: String {
-        if page == .discovery && !hero.allowsDiscovery { return "view-customization-back" }
         if page == .libraries && eligibleLibraries.isEmpty { return "view-customization-back" }
         return page.initialRowID
     }
@@ -367,56 +363,9 @@ struct HeroSettingsScreen: View {
         case .titles: HeroTitleSources(libraries: libraries, accounts: accounts)
         case .ratings: HeroRatingControls()
         case .trailers: EmptyView()
-        case .discovery: discovery
         case .libraries: randomLibraries
         case .collections: EmptyView()
         }
-    }
-
-    @ViewBuilder private var discovery: some View {
-        @Bindable var hero = hero
-        if hero.allowsDiscovery {
-            HeroSettingsGroup(
-                title: "Provider labels",
-                detail: "Show provider names on Discovery content. This does not change what appears.",
-                searchTargets: ["hero-provider-labels"]
-            ) {
-                Toggle("Show provider labels", isOn: $hero.settings.showsDiscoverySources)
-                    .modifier(ViewCustomizationRowFocus(id: "hero-provider-labels"))
-                    .settingsSearchAnchor("hero-provider-labels")
-            }
-            HeroSettingsGroup(
-                title: "Discovery providers",
-                detail: "Recommendations may include content outside your libraries.",
-                searchTargets: HeroDiscoverySource.allCases.map { "hero-discovery-\($0.rawValue)" }
-            ) {
-                ForEach(HeroDiscoverySource.allCases) { source in
-                    Toggle(isOn: discoveryBinding(source)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(verbatim: source.displayName)
-                            Text(source.detail)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(nil)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .settingsSearchAnchor("hero-discovery-\(source.rawValue)")
-                }
-                if hero.settings.discoverySources.isEmpty {
-                    Text("Select a provider to see Discovery recommendations.")
-                }
-            }
-        } else {
-            kidsExplanation
-        }
-    }
-
-    private var kidsExplanation: some View {
-        Text("Discovery is unavailable in Kids profiles. Library content follows the connected server user's restrictions.")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var eligibleLibraries: [AggregatedLibrary] {
@@ -459,17 +408,6 @@ struct HeroSettingsScreen: View {
         }
     }
 
-    private func discoveryBinding(_ source: HeroDiscoverySource) -> Binding<Bool> {
-        Binding(
-            get: { hero.settings.discoverySources.contains(source) },
-            set: { selected in
-                guard hero.allowsDiscovery else { return }
-                var sources = Set(hero.settings.discoverySources)
-                if selected { sources.insert(source) } else { sources.remove(source) }
-                hero.settings.discoverySources = HeroDiscoverySource.allCases.filter(sources.contains)
-            }
-        )
-    }
 }
 
 private struct HeroTitleSources: View {
@@ -479,45 +417,33 @@ private struct HeroTitleSources: View {
 
     var body: some View {
         @Bindable var hero = hero
-        ForEach(HeroSourceKind.allCases.filter { $0 != .featured } + (hero.allowsDiscovery ? [.featured] : [])) { source in
+        ForEach(HeroSourceKind.allCases) { source in
             ViewPreferenceChoiceGroup(rowSize: .contained) {
                 Toggle(source.displayName, isOn: sourceBinding(source))
                     .modifier(ViewCustomizationRowFocus(id: "hero-source-\(source.rawValue)"))
                     .settingsSearchAnchor(
                         "hero-source-\(source.rawValue)",
-                        fallbackFor: hero.effectiveSettings.isEnabled(source) ? [] : dependentTargets(for: source)
+                        fallbackFor: hero.settings.isEnabled(source) ? [] : dependentTargets(for: source)
                     )
-                if hero.effectiveSettings.isEnabled(source) {
+                if hero.settings.isEnabled(source) {
                     switch source {
-                    case .featured:
-                        HeroSettingsLink(page: .discovery, libraries: libraries, accounts: accounts)
                     case .randomFromLibrary:
                         HeroSettingsLink(page: .libraries, libraries: libraries, accounts: accounts)
                     case .collection:
                         HeroSettingsLink(page: .collections, libraries: libraries, accounts: accounts)
-                    case .watchlist:
-                        Toggle("Prefer less recently shown Watchlist items", isOn: $hero.settings.watchlistDiscoveryEnabled)
-                            .settingsSearchAnchor("hero-watchlist-rotation")
-                    case .continueWatching, .recentlyAdded:
+                    case .watchlist, .continueWatching, .recentlyAdded:
                         EmptyView()
                     }
                 }
             }
             .settingsSearchGroup(["hero-source-\(source.rawValue)"] + dependentTargets(for: source))
         }
-        if !hero.allowsDiscovery {
-            Text("Discovery is unavailable in Kids profiles. Library content follows the connected server user's restrictions.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 
     private func sourceBinding(_ source: HeroSourceKind) -> Binding<Bool> {
         Binding(
-            get: { hero.effectiveSettings.isEnabled(source) },
+            get: { hero.settings.isEnabled(source) },
             set: { selected in
-                guard source != .featured || hero.allowsDiscovery else { return }
                 hero.settings.setEnabled(source, enabled: selected)
             }
         )
@@ -527,8 +453,6 @@ private struct HeroTitleSources: View {
         switch source {
         case .randomFromLibrary: return ["hero-choose-libraries"] + SettingsSearchCatalog.targets(on: .heroLibraries)
         case .collection: return ["hero-choose-collections"] + SettingsSearchCatalog.targets(on: .heroCollections)
-        case .featured: return SettingsSearchCatalog.targets(on: .heroDiscovery)
-        case .watchlist: return ["hero-watchlist-rotation"]
         default: return []
         }
     }

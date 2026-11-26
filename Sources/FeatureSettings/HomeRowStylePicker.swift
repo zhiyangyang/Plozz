@@ -45,7 +45,6 @@ struct HomeRowStylePicker: View {
                     immersive == option ? "home-layout" : "home-layout-\(option ? "showcase" : "classic")",
                     fallbackFor: option && !immersive
                         ? SettingsSearchCatalog.targets(on: .homeRowStyle).filter { $0 != "home-layout" }
-                            + SettingsSearchCatalog.targets(on: .heroDiscovery)
                         : []
                 )
             }

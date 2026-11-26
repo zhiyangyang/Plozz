@@ -3,7 +3,6 @@ import CoreModels
 import CoreNetworking
 
 public typealias HeroArtworkProviding = @Sendable (MediaItem) async -> URL?
-public typealias HeroFeaturedStatusProviding = @Sendable ([MediaItem]) async -> [MediaItem]
 
 public enum HeroArtworkProvider {
     public static let none: HeroArtworkProviding = { _ in nil }
@@ -24,7 +23,6 @@ public enum HeroArtworkValidator {
 
 public struct HeroCurationResult: Sendable, Equatable {
     public var items: [MediaItem]
-    public var featuredItems: [MediaItem]
     /// The curated set with the volatile Continue Watching slides removed, in the
     /// order they were composed.
     ///
@@ -38,13 +36,11 @@ public struct HeroCurationResult: Sendable, Equatable {
 
     public init(
         items: [MediaItem],
-        featuredItems: [MediaItem],
         durableItems: [MediaItem] = [],
         candidatePool: HeroFreshnessCandidatePool = .empty,
         collectionState: LoadState<[MediaItem]> = .idle
     ) {
         self.items = items
-        self.featuredItems = featuredItems
         self.durableItems = durableItems
         self.candidatePool = candidatePool
         self.collectionState = collectionState
@@ -52,14 +48,13 @@ public struct HeroCurationResult: Sendable, Equatable {
 
     public static let empty = HeroCurationResult(
         items: [],
-        featuredItems: [],
         durableItems: []
     )
 }
 
 /// Builds the ordered list of items the Home **hero** carousel rotates through,
-/// mixing the user's enabled sources (Featured/Seerr, Continue Watching, Random,
-/// Watchlist) per their per-profile ``HeroSettings``.
+/// mixing the user's enabled sources (Continue Watching, Recently Added, Random,
+/// Watchlist, Collections) per their per-profile ``HeroSettings``.
 ///
 /// The *ranking/composition* step is deliberately isolated behind
 /// ``HeroRankingStrategy`` so a future "smart"/personalized strategy is a
@@ -78,14 +73,12 @@ public struct HeroCurator: Sendable {
     ///
     /// - `continueWatching` / `watchlist` / `recentlyAdded`: already-aggregated Home
     ///   content (both providers, cross-server merged) — passed in, not fetched.
-    /// - `featuredProvider`: the Seerr seam — returns `[]` until Seerr exists.
     /// - `randomLibraries`: the already-loaded, settings-filtered library containers
     ///   available to the Random source.
     /// - `randomProvider`: random-from-library fetch across both providers.
     ///
-    /// The featured and random sources are fetched **concurrently** (and only
-    /// when their source is enabled) so an offline Seerr or a slow random query
-    /// never serializes the other.
+    /// The asynchronous sources are fetched **concurrently** (and only when
+    /// their source is enabled) so a slow query never serializes another.
     public func curate(
         settings: HeroSettings,
         continueWatching: [MediaItem],
@@ -95,7 +88,6 @@ public struct HeroCurator: Sendable {
         watchMutations: [MediaItemMutation] = [],
         freshness: HeroFreshnessSnapshot = .disabled,
         sourceEligibility: HeroSourceEligibility = .unrestricted,
-        featuredProvider: FeaturedContentProviding = HeroFeaturedProvider.none,
         randomProvider: RandomLibraryContentProviding = HeroRandomProvider.none,
         collectionProvider: HeroCollectionContentProviding = HeroCollectionProvider.none,
         artworkProvider: @escaping HeroArtworkProviding = HeroArtworkProvider.none,
@@ -110,7 +102,6 @@ public struct HeroCurator: Sendable {
             watchMutations: watchMutations,
             freshness: freshness,
             sourceEligibility: sourceEligibility,
-            featuredProvider: featuredProvider,
             randomProvider: randomProvider,
             collectionProvider: collectionProvider,
             artworkProvider: artworkProvider,
@@ -118,9 +109,9 @@ public struct HeroCurator: Sendable {
         ).items
     }
 
-    /// Full curation plus the validated Featured bucket that is safe to persist
-    /// across launches. Volatile library-backed sources—especially Continue
-    /// Watching—are deliberately excluded from that snapshot.
+    /// Full curation plus the durable snapshot. Volatile library-backed
+    /// sources—especially Continue Watching—are deliberately excluded from that
+    /// snapshot.
     public func curateResult(
         settings: HeroSettings,
         continueWatching: [MediaItem],
@@ -130,7 +121,6 @@ public struct HeroCurator: Sendable {
         watchMutations: [MediaItemMutation] = [],
         freshness: HeroFreshnessSnapshot = .disabled,
         sourceEligibility: HeroSourceEligibility = .unrestricted,
-        featuredProvider: FeaturedContentProviding = HeroFeaturedProvider.none,
         randomProvider: RandomLibraryContentProviding = HeroRandomProvider.none,
         collectionProvider: HeroCollectionContentProviding = HeroCollectionProvider.none,
         artworkProvider: @escaping HeroArtworkProviding = HeroArtworkProvider.none,
@@ -143,19 +133,14 @@ public struct HeroCurator: Sendable {
 
         // Fetch the async sources up front (concurrently), guarded on being
         // enabled so we never pay for a source the user turned off.
-        async let featuredItems: [MediaItem] = settings.allowsDiscovery && settings.isEnabled(.featured)
-            ? featuredProvider(discoveryLimit) : []
         async let randomItems: [MediaItem] = settings.isEnabled(.randomFromLibrary)
             ? randomProvider(randomLibraries, discoveryLimit) : []
         async let collectionResult = Self.loadCollection(
             settings: settings, limit: discoveryLimit, provider: collectionProvider
         )
 
-        let fetchedFeatured = await featuredItems
         let fetchedRandom = await randomItems
         let collectionState = await collectionResult
-        let featured = freshness.isEnabled
-            ? Array(fetchedFeatured.prefix(discoveryLimit)) : fetchedFeatured
         let random = freshness.isEnabled
             ? Array(fetchedRandom.prefix(discoveryLimit)) : fetchedRandom
 
@@ -163,7 +148,6 @@ public struct HeroCurator: Sendable {
         // router/cache/network work finding a full-bleed backdrop.
         let perSource: [[MediaItem]] = settings.sources.map { source in
             switch source {
-            case .featured: return settings.allowsDiscovery ? featured : []
             case .continueWatching: return continueWatching
             case .recentlyAdded: return recentlyAdded
             case .randomFromLibrary: return random
@@ -195,9 +179,6 @@ public struct HeroCurator: Sendable {
             artworkProvider: artworkProvider,
             validate: artworkValidator
         )
-        let featuredBuckets = zip(settings.sources, eligible).compactMap {
-            $0.0 == .featured ? $0.1 : nil
-        }
         let items = strategy.compose(eligible, limit: limit)
         // Attribute by which bucket actually WON each slot, not by which buckets
         // contained the title. A show offered by both Continue Watching and the
@@ -213,7 +194,6 @@ public struct HeroCurator: Sendable {
         )
         return HeroCurationResult(
             items: items,
-            featuredItems: strategy.compose(featuredBuckets, limit: limit),
             durableItems: HeroDurableSnapshot.filter(
                 items.filter { !continueWatchingIDs.contains($0.id) }
             ),
@@ -253,18 +233,17 @@ public struct HeroCurator: Sendable {
         }
     }
 
-    /// A **synchronous** seed built from already-loaded Home rows plus an optional
-    /// persisted Featured bucket. Random has no row-backed synchronous candidates;
-    /// its draw is owned by the caller's asynchronous refresh policy.
+    /// A **synchronous** seed built from already-loaded Home rows. Random has no
+    /// row-backed synchronous candidates; its draw is owned by the caller's
+    /// asynchronous refresh policy.
     ///
     /// Home renders this instantly the moment its content is available so the
     /// hero appears in the *same frame* as the rest of the page (no pop-in), then
-    /// ``curate(settings:continueWatching:watchlist:featuredProvider:randomProvider:)``
+    /// ``curate(settings:continueWatching:watchlist:randomProvider:)``
     /// refines it with the async sources. When no async sources are enabled the
     /// seed already equals the final result, so nothing visibly changes.
     public func curateSync(
         settings: HeroSettings,
-        featured: [MediaItem] = [],
         continueWatching: [MediaItem],
         watchlist: [MediaItem],
         recentlyAdded: [MediaItem] = [],
@@ -275,11 +254,10 @@ public struct HeroCurator: Sendable {
         guard settings.isActive else { return [] }
         let perSource: [[MediaItem]] = settings.sources.map { source in
             switch source {
-            case .featured: return settings.allowsDiscovery ? featured : []
-            case .randomFromLibrary, .collection: return []
+            case .randomFromLibrary, .collection: return [] as [MediaItem]
             case .continueWatching: return continueWatching
-            // Already aggregated for the Recently Added rail, so unlike Featured and
-            // Random this source needs no fetch and can join the instant seed —
+            // Already aggregated for the Recently Added rail, so unlike Random
+            // this source needs no fetch and can join the instant seed —
             // the hero shows it in the first frame rather than popping in later.
             case .recentlyAdded: return recentlyAdded
             case .watchlist: return watchlist
@@ -325,7 +303,7 @@ public struct HeroCurator: Sendable {
             let tokens = HeroDedupe.tokens(for: item)
             if watchedRoots.contains(where: {
                 !tokens.isDisjoint(with: $0.tokens)
-                    && !HeroDiscoveryIdentityVerification.hasConflictingStrongIdentity(item, $0.item)
+                    && !MediaIdentityVerification.hasConflictingStrongIdentity(item, $0.item)
             }) {
                 // Watch exclusions apply across series/episode presentation
                 // changes without altering a pinned slide's playback routing.
@@ -365,8 +343,7 @@ public struct HeroCurator: Sendable {
             // `map`ped per mutation reallocated the whole array once per mutation;
             // this folds them in one allocation so a growing session overlay can't
             // inflate the cost of a reconcile that runs during view updates.)
-            let permitted = settings.allowsDiscovery ? items : items.filter { $0.discoverySources.isEmpty }
-            let reconciled = mutations.isEmpty ? permitted : permitted.map { item in
+            let reconciled = mutations.isEmpty ? items : items.map { item in
                 mutations.reduce(item) { current, mutation in mutation.applied(to: current) }
             }
 

@@ -4,11 +4,7 @@ import Foundation
 /// model). Ordered, per-profile-configurable, and additive: a new source is a
 /// new case plus its curation branch, never a rewrite of the hero.
 ///
-/// Featured combines configured external discovery feeds. Seerr is optional
-/// and supplies request/availability context rather than deciding every pick.
 public enum HeroSourceKind: String, CaseIterable, Identifiable, Codable, Sendable {
-    /// External discovery picks, matched to the user's own copies when available.
-    case featured
     /// Your in-progress, resumable titles presented in a featured format.
     case continueWatching
     /// The newest titles to land in your libraries.
@@ -25,12 +21,6 @@ public enum HeroSourceKind: String, CaseIterable, Identifiable, Codable, Sendabl
     /// User-facing label for the Settings source picker.
     public var displayName: LocalizedStringResource {
         switch self {
-        case .featured:
-            return LocalizedStringResource(
-                "heroSource.discovery",
-                defaultValue: "Discovery",
-                comment: "Home content source: recommendations from external catalogs, not necessarily in the user's libraries."
-            )
         case .continueWatching:
             return LocalizedStringResource(
                 "heroSource.continueWatching",
@@ -63,11 +53,6 @@ public enum HeroSourceKind: String, CaseIterable, Identifiable, Codable, Sendabl
     /// One-line explanation shown under the option in Settings.
     public var detail: LocalizedStringResource {
         switch self {
-        case .featured:
-            return LocalizedStringResource(
-                "Recommendations from external catalogs. Titles may not be in your libraries.",
-                comment: "Explanation of the Discovery source in Home settings."
-            )
         case .continueWatching:
             return LocalizedStringResource(
                 "Pick up where you left off, front and centre.",
@@ -99,19 +84,11 @@ public enum HeroSourceKind: String, CaseIterable, Identifiable, Codable, Sendabl
     /// SF Symbol shown next to the option in Settings.
     public var symbolName: String {
         switch self {
-        case .featured: return "sparkles.tv"
         case .continueWatching: return "play.circle"
         case .recentlyAdded: return "sparkles"
         case .randomFromLibrary: return "shuffle"
         case .watchlist: return "bookmark"
         case .collection: return "rectangle.stack"
         }
-    }
-
-    /// Whether this source draws from local library content (as opposed to the
-    /// external `.featured` feeds). Used by the curator to know which
-    /// sources depend on already-aggregated Home content vs. an injected fetch.
-    public var isLibrarySourced: Bool {
-        self != .featured
     }
 }

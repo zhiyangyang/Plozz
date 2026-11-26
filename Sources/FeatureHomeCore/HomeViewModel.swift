@@ -2334,9 +2334,9 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     /// not just on the way in, so a file written by a build that predates the rule
     /// (or by one whose enrichment added a resumable source ref afterwards) cannot
     /// repaint a stale playback position either.
-    public func cachedHeroItems(for settings: HeroSettings, language: String = "en") -> [MediaItem]? {
+    public func cachedHeroItems(for settings: HeroSettings) -> [MediaItem]? {
         guard settings.isActive, !cachedHeroIsInvalidated else { return nil }
-        let key = HeroConfigurationKey(settings: settings, language: language)
+        let key = HeroConfigurationKey(settings: settings)
         let visibility = currentVisibility()
         let selectionKey = HeroLaunchSelectionKey(
             configuration: key, disabledLibraryKeys: visibility.disabledKeys
@@ -2346,18 +2346,13 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         }
         let stored: [MediaItem]
         if let pool = contentStore.loadHeroCandidatePool(for: key) {
-            let activeAccounts = Set(accounts.map(\.account.id))
             let rehydratedPool = pool.durable().mapItems { item in
-                let rehydrated = mediaItemActionHandler?.rehydratePersistedArtwork([item]).first ?? item
-                return Self.scopedCachedDiscovery(
-                    rehydrated, activeAccounts: activeAccounts, visibility: visibility
-                )
+                mediaItemActionHandler?.rehydratePersistedArtwork([item]).first ?? item
             }
             stored = rehydratedPool.select(
                 settings: settings,
                 freshness: heroFreshnessSnapshot(),
                 isEligible: { source, item in
-                    guard source != .featured else { return true }
                     if source == .collection {
                         // The cached bucket has no per-collection membership. If
                         // any selection loses access, require a fresh sample.
@@ -2381,49 +2376,19 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
                 }
             )
         } else {
-            // Legacy blobs have no source provenance. Reordering them would
-            // silently turn recency/Continue Watching into discovery.
+            // Legacy blobs have no source provenance; keep only titles that are
+            // still visible in the current library selection.
             guard let legacy = contentStore.loadHero(for: key) else { return nil }
-            stored = settings.sources == [.featured] ? legacy : legacy.filter {
+            stored = legacy.filter {
                 $0.isVisibleOnHome(isLibraryVisible: visibility.isEnabled)
             }
         }
-        let permitted = settings.allowsDiscovery ? stored : stored.filter { $0.discoverySources.isEmpty }
-        let durable = HeroDurableSnapshot.filter(permitted)
+        let durable = HeroDurableSnapshot.filter(stored)
         let rehydrated = mediaItemActionHandler?
             .rehydratePersistedArtwork(durable) ?? durable
         if cachedHeroSelections.count >= 8 { cachedHeroSelections.removeAll() }
         cachedHeroSelections[selectionKey] = rehydrated
         return rehydrated.isEmpty ? nil : rehydrated
-    }
-
-    private static func scopedCachedDiscovery(
-        _ item: MediaItem, activeAccounts: Set<String>, visibility: HomeLibraryVisibility
-    ) -> MediaItem {
-        guard !item.discoverySources.isEmpty, item.locallyValidatedPlayableSource else { return item }
-        let references: [MediaSourceRef]
-        if item.sources.isEmpty, let accountID = item.sourceAccountID {
-            references = [.init(
-                accountID: accountID, itemID: item.id, libraryID: item.libraryID, kind: item.kind
-            )]
-        } else {
-            references = item.sources
-        }
-        let eligible = references.filter { source in
-            guard activeAccounts.contains(source.accountID),
-                  source.kind == nil || source.kind == item.kind else { return false }
-            let libraryID = source.libraryID
-                ?? (source.accountID == item.sourceAccountID && source.itemID == item.id ? item.libraryID : nil)
-            if let libraryID { return visibility.isEnabled("\(source.accountID):\(libraryID)") }
-            return !visibility.disabledKeys.contains { $0.hasPrefix("\(source.accountID):") }
-        }
-        guard let first = eligible.first else { return item.removingDiscoveryOwnership() }
-        var scoped = item
-        scoped.sources = eligible
-        if !eligible.contains(where: { $0.accountID == item.sourceAccountID && $0.itemID == item.id }) {
-            scoped = scoped.selectingSource(first)
-        }
-        return scoped
     }
 
     @ObservationIgnored private let recommendationContext = HomeRecommendationScope()
@@ -2554,8 +2519,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
     public func cacheHeroCandidatePool(
         _ pool: HeroFreshnessCandidatePool,
         for settings: HeroSettings,
-        preservingUnseen: Bool = false,
-        language: String = "en"
+        preservingUnseen: Bool = false
     ) {
         guard settings.isActive else { return }
         let durable = pool.durable()
@@ -2563,7 +2527,7 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         let generation = Self.nextSnapshotPersistenceGeneration()
         heroPersistenceGeneration = generation
         let store = contentStore
-        let key = HeroConfigurationKey(settings: settings, language: language)
+        let key = HeroConfigurationKey(settings: settings)
         let history = preservingUnseen ? heroExposureState.history : nil
         heroPersistenceTask = Task { [weak self] in
             await HomeSnapshotPersistence.shared.saveHeroCandidatePool(
@@ -2576,12 +2540,12 @@ public final class HomeViewModel: HomeContentSnapshotProviding {
         }
     }
 
-    public func cacheHeroItems(_ items: [MediaItem], for settings: HeroSettings, language: String = "en") {
+    public func cacheHeroItems(_ items: [MediaItem], for settings: HeroSettings) {
         guard settings.isActive, !items.isEmpty else { return }
         let generation = Self.nextSnapshotPersistenceGeneration()
         heroPersistenceGeneration = generation
         let store = contentStore
-        let key = HeroConfigurationKey(settings: settings, language: language)
+        let key = HeroConfigurationKey(settings: settings)
         heroPersistenceTask = Task { [weak self] in
             await HomeSnapshotPersistence.shared.saveHero(
                 items, for: key, generation: generation, to: store

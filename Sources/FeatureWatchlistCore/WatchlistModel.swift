@@ -371,9 +371,7 @@ public final class WatchlistModel {
         }
         let current = localPresentationItems.merging(currentItemsByAliasID) {
             retained, candidate in
-            // A verified Discovery rejection is not an unresolved native row.
-            candidate.locallyValidatedPlayableSource || !candidate.discoverySources.isEmpty
-                ? candidate : retained
+            candidate.locallyValidatedPlayableSource ? candidate : retained
         }
         for aliasID in localPresentationItems.keys {
             let refreshed = current[aliasID]

@@ -136,14 +136,9 @@ public actor HomeContentPrewarmer {
 /// excluded: changing them does not change which titles can appear, and must not
 /// throw away a good carousel.
 public struct HeroConfigurationKey: Codable, Hashable, Sendable {
-    public var allowsDiscovery: Bool
     public var sources: [HeroSourceKind]
     public var maxItems: Int
     public var hideWatched: Bool
-    public var watchlistDiscoveryEnabled: Bool
-    public var discoverySources: [HeroDiscoverySource]
-    public var discoveryContentVersion: Int
-    public var metadataLanguage: String
     /// The libraries the viewer restricted the Random source to. Empty means "all
     /// currently-visible libraries". Included because narrowing it is a request
     /// for different titles — unlike the *resolved* library list, which changes
@@ -151,17 +146,11 @@ public struct HeroConfigurationKey: Codable, Hashable, Sendable {
     public var randomLibraryKeys: Set<String>
     public var collections: [HeroCollectionSelection]
 
-    public init(settings: HeroSettings?, language: String = "en") {
-        allowsDiscovery = settings?.allowsDiscovery ?? true
-        metadataLanguage = settings?.isActive == true && settings?.isEnabled(.featured) == true
-            ? Locale.canonicalLanguageIdentifier(from: language) : "en"
+    public init(settings: HeroSettings?) {
         guard let settings, settings.isActive else {
             sources = []
             maxItems = 0
             hideWatched = false
-            watchlistDiscoveryEnabled = false
-            discoverySources = []
-            discoveryContentVersion = 0
             randomLibraryKeys = []
             collections = []
             return
@@ -169,10 +158,6 @@ public struct HeroConfigurationKey: Codable, Hashable, Sendable {
         sources = settings.sources
         maxItems = settings.maxItems
         hideWatched = settings.hideWatched
-        watchlistDiscoveryEnabled = settings.isEnabled(.watchlist)
-            && settings.watchlistDiscoveryEnabled
-        discoverySources = settings.isEnabled(.featured) ? settings.discoverySources : []
-        discoveryContentVersion = settings.isEnabled(.featured) ? HeroDiscoveryRecency.contentVersion : 0
         randomLibraryKeys = settings.isEnabled(.randomFromLibrary)
             ? settings.randomLibraryKeys
             : []
@@ -181,10 +166,8 @@ public struct HeroConfigurationKey: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case sources, maxItems, hideWatched, randomLibraryKeys, watchlistDiscoveryEnabled, discoverySources
-        case discoveryContentVersion, metadataLanguage
+        case sources, maxItems, hideWatched, randomLibraryKeys
         case collections
-        case allowsDiscovery
     }
 
     private enum LegacyCodingKeys: String, CodingKey { case collection }
@@ -194,23 +177,9 @@ public struct HeroConfigurationKey: Codable, Hashable, Sendable {
     /// and discarding an otherwise usable seed.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        allowsDiscovery = try container.decodeIfPresent(Bool.self, forKey: .allowsDiscovery) ?? true
         sources = try container.decode([HeroSourceKind].self, forKey: .sources)
-        metadataLanguage = sources.contains(.featured)
-            ? try container.decodeIfPresent(String.self, forKey: .metadataLanguage) ?? "en" : "en"
         maxItems = try container.decode(Int.self, forKey: .maxItems)
         hideWatched = try container.decode(Bool.self, forKey: .hideWatched)
-        watchlistDiscoveryEnabled = try container.decodeIfPresent(
-            Bool.self, forKey: .watchlistDiscoveryEnabled
-        ) ?? false
-        let discoveryNames = try container.decodeIfPresent([String].self, forKey: .discoverySources)
-            ?? HeroDiscoverySource.defaultSelection.map(\.rawValue)
-        discoverySources = sources.contains(.featured)
-            ? HeroDiscoverySource.normalized(discoveryNames.compactMap(HeroDiscoverySource.init(rawValue:)))
-            : []
-        discoveryContentVersion = sources.contains(.featured)
-            ? try container.decodeIfPresent(Int.self, forKey: .discoveryContentVersion) ?? 0
-            : 0
         randomLibraryKeys =
             ((try? container.decodeIfPresent(
                 Set<String>.self,

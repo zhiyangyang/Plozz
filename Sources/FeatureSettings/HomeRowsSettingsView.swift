@@ -80,7 +80,7 @@ public struct HomeRowsSettingsView: View {
     public var body: some View {
         switch searchPage {
         case .home: menu
-        case .hero, .heroContent, .heroRatings, .heroTrailers, .heroDiscovery, .heroLibraries, .heroCollections:
+        case .hero, .heroContent, .heroRatings, .heroTrailers, .heroLibraries, .heroCollections:
             HomeHeroSettingsView(
                 libraries: libraries, accounts: accounts, visibility: visibility, initialPage: heroPage
             )
@@ -112,7 +112,6 @@ public struct HomeRowsSettingsView: View {
         case .heroContent: .titles
         case .heroRatings: .ratings
         case .heroTrailers: .trailers
-        case .heroDiscovery: .discovery
         case .heroLibraries: .libraries
         case .heroCollections: .collections
         default: nil
@@ -187,7 +186,7 @@ struct HomeFilteringSettingsView: View {
                 ))
                 .accessibilityIdentifier("home-hide-watched-recently-added")
                 .settingsSearchAnchor("home-hide-watched-recently-added")
-                Toggle("Hero & discovery", isOn: $hero.settings.hideWatched)
+                Toggle("Hero", isOn: $hero.settings.hideWatched)
                     .accessibilityIdentifier("hero-hide-watched")
                     .settingsSearchAnchor("hero-hide-watched")
             }

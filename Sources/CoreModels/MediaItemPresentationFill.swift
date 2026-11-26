@@ -24,11 +24,6 @@ public extension MediaItem {
     /// where every fold can use it.
     mutating func fillingMissingPresentation(from donor: MediaItem) {
         var adoptedArtwork: [URL] = []
-        discoverySources = HeroDiscoverySource.normalized(discoverySources + donor.discoverySources)
-        discoveryURLs = HeroDiscoverySource.validatedURLs(
-            HeroDiscoverySource.validatedURLs(discoveryURLs)
-                .merging(HeroDiscoverySource.validatedURLs(donor.discoveryURLs)) { existing, _ in existing }
-        )
         if originalTitle?.isEmpty != false { originalTitle = donor.originalTitle }
         if overview?.isEmpty != false { overview = donor.overview }
         if seriesSynopsis?.matches(self) != true,

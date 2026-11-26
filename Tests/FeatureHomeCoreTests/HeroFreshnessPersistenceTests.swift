@@ -15,13 +15,13 @@ final class HeroFreshnessPersistenceTests: XCTestCase {
 
     private func settings(limit: Int = 1) -> HeroSettings {
         var settings = HeroSettings.default
-        settings.sources = [.featured]
+        settings.sources = [.randomFromLibrary]
         settings.maxItems = limit
         return settings
     }
 
     private func pool(_ ids: [String]) -> HeroFreshnessCandidatePool {
-        HeroFreshnessCandidatePool(buckets: [.init(source: .featured, items: ids.map(item))])
+        HeroFreshnessCandidatePool(buckets: [.init(source: .randomFromLibrary, items: ids.map(item))])
     }
 
     private func model(_ store: any HomeContentStoring) -> HomeViewModel {
@@ -240,20 +240,7 @@ final class HeroFreshnessPersistenceTests: XCTestCase {
         await model.waitForHeroExposurePersistence()
     }
 
-    func testConfigurationIncludesWatchlistDiscoveryOnlyWhenSourceEnabled() throws {
-        var config = settings()
-        let original = HeroConfigurationKey(settings: config)
-        config.watchlistDiscoveryEnabled = true
-        XCTAssertEqual(HeroConfigurationKey(settings: config), original)
-        config.sources = [.watchlist]
-        let discovery = HeroConfigurationKey(settings: config)
-        config.watchlistDiscoveryEnabled = false
-        XCTAssertNotEqual(discovery, HeroConfigurationKey(settings: config))
-        let legacy = Data(#"{"sources":["watchlist"],"maxItems":8,"hideWatched":true,"randomLibraryKeys":[]}"#.utf8)
-        XCTAssertFalse(try JSONDecoder().decode(HeroConfigurationKey.self, from: legacy).watchlistDiscoveryEnabled)
-    }
-
-    func testDiskPoolAndHistoryRoundTripAreBoundedScopedAndCredentialFree() throws {
+func testDiskPoolAndHistoryRoundTripAreBoundedScopedAndCredentialFree() throws {
         let directory = try ownedDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = HomeContentStore(namespace: "one", directory: directory)
@@ -264,14 +251,14 @@ final class HeroFreshnessPersistenceTests: XCTestCase {
         var history = HeroExposureHistory()
         history.record(secret)
         let candidates = HeroFreshnessCandidatePool(buckets: [
-            .init(source: .featured, items: [secret] + (0..<99).map { item("candidate-\($0)") }),
+            .init(source: .randomFromLibrary, items: [secret] + (0..<99).map { item("candidate-\($0)") }),
             .init(source: .continueWatching, items: [item("resume")])
         ])
         store.saveHeroCandidatePool(candidates, for: .init(settings: config))
         store.saveHeroExposureHistory(history)
         let replacement = HomeContentStore(namespace: "one", directory: directory)
         let restored = try XCTUnwrap(replacement.loadHeroCandidatePool(for: .init(settings: config)))
-        XCTAssertEqual(restored.buckets.map(\.source), [.featured])
+        XCTAssertEqual(restored.buckets.map(\.source), [.randomFromLibrary])
         XCTAssertEqual(restored.buckets[0].items.count, 40)
         XCTAssertEqual(replacement.loadHeroExposureHistory(), history)
         XCTAssertNil(other.loadHeroCandidatePool(for: .init(settings: config)))
