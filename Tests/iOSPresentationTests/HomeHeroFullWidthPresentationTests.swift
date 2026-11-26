@@ -362,24 +362,7 @@ final class HomeHeroFullWidthPresentationTests: XCTestCase {
         XCTAssertNil(activity.resumeIfIdle(at: deadline))
     }
 
-    func testPointerPauseHoldsTrailerProgressAndDefersItsEndOnlyOnce() throws {
-        let activity = HeroPointerActivity()
-        let start = Date(timeIntervalSinceReferenceDate: 100)
-        func trailerGauge(elapsed: Double) -> HeroGaugeState {
-            HeroGaugeState.resolve(
-                autoAdvance: true, dwellStart: start, dwellDuration: 10, now: start,
-                trailerElapsed: elapsed, trailerDuration: 120
-            )
-        }
-        activity.recordMovement(at: start, gauge: trailerGauge(elapsed: 30))
-        activity.recordMovement(at: start.addingTimeInterval(1), gauge: trailerGauge(elapsed: 60))
-        XCTAssertEqual(activity.frozenGauge, HeroGaugeState(fraction: 0.25, remaining: nil))
-        let deadline = try XCTUnwrap(activity.resumeDeadline)
-        let resumption = try XCTUnwrap(activity.resumeIfIdle(at: deadline))
-        XCTAssertNil(activity.resumeIfIdle(at: deadline))
-    }
-
-    func testManualPagingDiscardsDeferredTrailerAndStartsANewPausedDwell() throws {
+func testManualPagingDiscardsDeferredTrailerAndStartsANewPausedDwell() throws {
         let activity = HeroPointerActivity()
         let start = Date(timeIntervalSinceReferenceDate: 100)
         activity.recordMovement(at: start, gauge: HeroGaugeState(fraction: 0.8, remaining: 2))

@@ -96,35 +96,35 @@ final class HeroSettingsTests: XCTestCase {
     }
 
     func testMaxItemsIsClamped() {
-        let low = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 0, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
+        let low = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 0, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
         XCTAssertEqual(low.maxItems, HeroSettings.maxItemsRange.lowerBound)
-        let high = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 999, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
+        let high = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 999, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
         XCTAssertEqual(high.maxItems, HeroSettings.maxItemsRange.upperBound)
     }
 
     func testAutoAdvanceSecondsIsClamped() {
-        let s = HeroSettings(isEnabled: true, sources: [.watchlist], maxItems: 5, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 1)
+        let s = HeroSettings(isEnabled: true, sources: [.watchlist], maxItems: 5, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 1)
         XCTAssertEqual(s.autoAdvanceSeconds, HeroSettings.autoAdvanceRange.lowerBound)
     }
 
     func testDuplicateSourcesAreCollapsedPreservingOrder() {
-        let s = HeroSettings(isEnabled: true, sources: [.watchlist, .continueWatching, .watchlist], maxItems: 5, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
+        let s = HeroSettings(isEnabled: true, sources: [.watchlist, .continueWatching, .watchlist], maxItems: 5, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
         XCTAssertEqual(s.sources, [.watchlist, .continueWatching])
     }
 
     func testEmptySourcesIsNotActive() {
-        let s = HeroSettings(isEnabled: true, sources: [], maxItems: 5, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
+        let s = HeroSettings(isEnabled: true, sources: [], maxItems: 5, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
         XCTAssertFalse(s.isActive)
     }
 
     func testDisabledIsNotActive() {
-        let s = HeroSettings(isEnabled: false, sources: [.watchlist], maxItems: 5, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
+        let s = HeroSettings(isEnabled: false, sources: [.watchlist], maxItems: 5, randomLibraryKeys: [], autoAdvance: false, autoAdvanceSeconds: 10)
         XCTAssertFalse(s.isActive)
     }
 
     func testStoreRoundTrip() {
         let store = HeroSettingsStore(defaults: defaults, namespace: nil)
-        let settings = HeroSettings(isEnabled: true, sources: [.watchlist, .randomFromLibrary], maxItems: 6, trailersEnabled: true, hideWatched: false, randomLibraryKeys: ["a:1", "a:2"], autoAdvance: false, autoAdvanceSeconds: 20)
+        let settings = HeroSettings(isEnabled: true, sources: [.watchlist, .randomFromLibrary], maxItems: 6, hideWatched: false, randomLibraryKeys: ["a:1", "a:2"], autoAdvance: false, autoAdvanceSeconds: 20)
         store.save(settings)
         XCTAssertEqual(store.load(), settings)
     }
@@ -137,8 +137,8 @@ final class HeroSettingsTests: XCTestCase {
     func testNamespacesAreIsolated() {
         let primary = HeroSettingsStore(defaults: defaults, namespace: nil)
         let other = HeroSettingsStore(defaults: defaults, namespace: "profile-2")
-        let a = HeroSettings(isEnabled: true, sources: [.watchlist], maxItems: 3, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
-        let b = HeroSettings(isEnabled: false, sources: [.watchlist], maxItems: 9, trailersEnabled: true, randomLibraryKeys: ["x:1"], autoAdvance: false, autoAdvanceSeconds: 30)
+        let a = HeroSettings(isEnabled: true, sources: [.watchlist], maxItems: 3, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 10)
+        let b = HeroSettings(isEnabled: false, sources: [.watchlist], maxItems: 9, randomLibraryKeys: ["x:1"], autoAdvance: false, autoAdvanceSeconds: 30)
         primary.save(a)
         other.save(b)
         XCTAssertEqual(primary.load(), a)
@@ -271,7 +271,7 @@ final class HeroSettingsTests: XCTestCase {
     func testInMemoryStoreRoundTrips() {
         let store = InMemoryHeroSettingsStore()
         XCTAssertEqual(store.load(), .default)
-        let s = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 2, trailersEnabled: false, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 8)
+        let s = HeroSettings(isEnabled: true, sources: [.continueWatching], maxItems: 2, randomLibraryKeys: [], autoAdvance: true, autoAdvanceSeconds: 8)
         store.save(s)
         XCTAssertEqual(store.load(), s)
     }

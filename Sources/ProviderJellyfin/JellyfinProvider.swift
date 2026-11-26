@@ -807,12 +807,18 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
         return item
     }
 
-public func extras(for itemID: String) async throws -> [MediaExtra] {
+private static func isTrailerExtra(_ dto: BaseItemDto) -> Bool {
+        let raw = (dto.ExtraType ?? dto.`Type` ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return raw == "trailer" || raw == "trailers"
+    }
+
+    public func extras(for itemID: String) async throws -> [MediaExtra] {
         let features = try await client.specialFeatures(userID: session.userID, id: itemID)
         let specialFeatures = features
             .filter { dto in
                 dto.`Type`?.caseInsensitiveCompare("Audio") != .orderedSame
                     && dto.MediaType?.caseInsensitiveCompare("Audio") != .orderedSame
+                    && !Self.isTrailerExtra(dto)
             }
             .map { dto in
             let rawType = dto.ExtraType ?? dto.`Type`

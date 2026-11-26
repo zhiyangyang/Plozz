@@ -39,7 +39,7 @@ struct CatalogExtraCandidate: Sendable, Equatable {
     var ownerFileRelPath: String?
 
     var supportsResume: Bool {
-        kind != .trailer && kind != .sample
+        kind != .sample
     }
 
     var canonicalPath: String {
@@ -54,7 +54,6 @@ enum ShareExtraDiscoveryPolicy {
     }
 
     private static let typedFolders: [String: MediaExtraKind] = [
-        "trailers": .trailer,
         "featurettes": .featurette,
         "behind the scenes": .behindTheScenes,
         "deleted scenes": .deletedScene,
@@ -83,8 +82,6 @@ enum ShareExtraDiscoveryPolicy {
         "featurette": .featurette,
         "interviews": .interview,
         "interview": .interview,
-        "trailers": .trailer,
-        "trailer": .trailer,
         "samples": .sample,
         "sample": .sample,
         "scenes": .scene,
@@ -167,12 +164,12 @@ enum ShareExtraDiscoveryPolicy {
     static func resumeBehavior(forItemID itemID: String) -> Bool? {
         guard let relPath = ShareCatalogID.relPath(forFileID: itemID) else { return nil }
         if let suffix = terminalSuffix(inFileName: (relPath as NSString).lastPathComponent) {
-            return suffix.kind != .trailer && suffix.kind != .sample
+            return suffix.kind != .sample
         }
         for component in relPath.split(separator: "/").dropLast().reversed() {
             guard let folder = folderKind(String(component)) else { continue }
             let kind = folder.defaultKind
-            return kind != .trailer && kind != .sample
+            return kind != .sample
         }
         return nil
     }
@@ -205,7 +202,6 @@ enum ShareExtraDiscoveryPolicy {
 
     private static func defaultTitle(for kind: MediaExtraKind) -> String {
         switch kind {
-        case .trailer: return "Trailer"
         case .featurette: return "Featurette"
         case .behindTheScenes: return "Behind the Scenes"
         case .deletedScene: return "Deleted Scene"
@@ -377,7 +373,6 @@ struct ShareExtraRepository {
         WHERE owner_id=?
         ORDER BY
           CASE kind
-            WHEN 'trailer' THEN 0
             WHEN 'featurette' THEN 1
             WHEN 'behindTheScenes' THEN 2
             WHEN 'deletedScene' THEN 3
@@ -427,6 +422,7 @@ struct ShareExtraRepository {
               let ownerID = CatalogConnection.columnText(statement, 4),
               let ownerKindText = CatalogConnection.columnText(statement, 5)
         else { return nil }
+        if ["trailer", "trailers"].contains(kindText.lowercased()) { return nil }
         let kind = MediaExtraKind(rawProviderValue: kindText)
         let ownerKind: MediaExtraOwnerKind
         switch ownerKindText {

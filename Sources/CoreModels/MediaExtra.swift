@@ -1,7 +1,6 @@
 import Foundation
 
 public enum MediaExtraKind: String, Codable, Hashable, Sendable {
-    case trailer
     case featurette
     case behindTheScenes
     case deletedScene
@@ -21,8 +20,6 @@ public enum MediaExtraKind: String, Codable, Hashable, Sendable {
             .filter(\.isLetter)
 
         switch normalized {
-        case "trailer", "trailers":
-            self = .trailer
         case "featurette", "featurettes":
             self = .featurette
         case "behindthescenes", "behindscene":
@@ -53,7 +50,6 @@ public enum MediaExtraKind: String, Codable, Hashable, Sendable {
 
     public var displayName: LocalizedStringResource {
         switch self {
-        case .trailer: "Trailer"
         case .featurette: "Featurette"
         case .behindTheScenes: "Behind the Scenes"
         case .deletedScene: "Deleted Scene"
@@ -69,15 +65,14 @@ public enum MediaExtraKind: String, Codable, Hashable, Sendable {
 
     public var sortOrder: Int {
         switch self {
-        case .trailer: 0
-        case .featurette: 1
-        case .behindTheScenes: 2
-        case .deletedScene: 3
-        case .interview: 4
-        case .scene, .sample, .sceneOrSample: 5
-        case .musicPerformance: 6
-        case .short: 7
-        case .other, .unknown: 8
+        case .featurette: 0
+        case .behindTheScenes: 1
+        case .deletedScene: 2
+        case .interview: 3
+        case .scene, .sample, .sceneOrSample: 4
+        case .musicPerformance: 5
+        case .short: 6
+        case .other, .unknown: 7
         }
     }
 }
@@ -178,7 +173,6 @@ public struct MediaExtra: Codable, Hashable, Identifiable, Sendable {
     public static func ordered(_ extras: [MediaExtra]) -> [MediaExtra] {
         var seen = Set<String>()
         return extras.enumerated()
-            .filter { $0.element.kind != .trailer }
             .filter { seen.insert($0.element.id).inserted }
             .sorted {
                 let left = $0.element.kind.sortOrder

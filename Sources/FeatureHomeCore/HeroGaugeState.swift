@@ -3,10 +3,8 @@ import Foundation
 
 /// What the hero's auto-advance gauge should show, and how long it has left.
 ///
-/// The gauge has two possible sources — the slide's dwell timer, or a trailer's
-/// own playback clock — and the decision between them caused every bug this type
-/// exists to prevent. It lives here, above both shells, so tvOS and iPhone cannot
-/// disagree about it and so the rules can be tested without a running hero.
+/// Derived purely from the slide's dwell timer, above both shells, so tvOS and
+/// iPhone cannot disagree and the rules can be tested without a running hero.
 public struct HeroGaugeState: Equatable, Sendable {
     /// How far along the bar is, `0...1`.
     public let fraction: CGFloat
@@ -25,30 +23,15 @@ public struct HeroGaugeState: Equatable, Sendable {
     ///     belongs to the outgoing one, so the elapsed time reads as a finished
     ///     dwell. Treated as a dwell that has not begun rather than one that is
     ///     over, which is what stopped the incoming bar being drawn full.
-    ///   - trailerElapsed/trailerDuration: the trailer's clock, when one is
-    ///     playing AND has reported a usable duration. Until it does it says
-    ///     nothing about progress, so the dwell keeps driving the bar instead of
-    ///     the bar emptying and restarting when the clock finally arrives.
     public static func resolve(
         autoAdvance: Bool,
         dwellStart: Date,
         dwellDuration: TimeInterval,
         now: Date,
-        isTransitioning: Bool = false,
-        trailerElapsed: Double? = nil,
-        trailerDuration: Double? = nil
+        isTransitioning: Bool = false
     ) -> HeroGaugeState {
         // Nothing is counting down, so the pill reads as a solid full pill.
         guard autoAdvance else { return HeroGaugeState(fraction: 1, remaining: nil) }
-
-        if let trailerDuration, let trailerElapsed,
-           trailerDuration > 0, trailerElapsed.isFinite, trailerElapsed >= 0 {
-            let fraction = clamp(CGFloat(trailerElapsed / trailerDuration))
-            return HeroGaugeState(
-                fraction: fraction,
-                remaining: max(0, trailerDuration - trailerElapsed)
-            )
-        }
 
         let duration = max(dwellDuration, 1)
         let elapsed = now.timeIntervalSince(dwellStart)

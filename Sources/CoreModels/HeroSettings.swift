@@ -26,11 +26,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     /// ``maxItemsRange``).
     public var maxItems: Int
 
-    /// Whether the background trailer autoplay (phased-in) is allowed. The view
-    /// exposes the slot regardless; this gates whether a trailer is resolved and
-    /// played once that feature ships.
-    public var trailersEnabled: Bool
-
     /// Whether previously completed movies, series, and episodes are excluded
     /// from every hero source.
     public var hideWatched: Bool
@@ -92,7 +87,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         isEnabled: true,
         sources: HeroSourceKind.allCases.filter { $0 != .collection },
         maxItems: 8,
-        trailersEnabled: false,
         hideWatched: true,
         randomLibraryKeys: [],
         autoAdvance: true,
@@ -109,7 +103,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         isEnabled: Bool,
         sources: [HeroSourceKind],
         maxItems: Int,
-        trailersEnabled: Bool,
         hideWatched: Bool = true,
         showsRatings: Bool = false,
         ratingPreferences: DetailPageSettings = .default,
@@ -130,7 +123,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         var seen = Set<HeroSourceKind>()
         self.sources = sources.filter { seen.insert($0).inserted }
         self.maxItems = maxItems.clamped(to: HeroSettings.maxItemsRange)
-        self.trailersEnabled = trailersEnabled
         self.hideWatched = hideWatched
         self.showsRatings = showsRatings
         self.ratingPreferences = ratingPreferences
@@ -147,7 +139,7 @@ public struct HeroSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case isEnabled, sources, maxItems, trailersEnabled, hideWatched, showsRatings
+        case isEnabled, sources, maxItems, hideWatched, showsRatings
         case ratingPreferences
         case randomLibraryKeys, autoAdvance, autoAdvanceSeconds
         case style, showsCardCaptions
@@ -174,7 +166,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
                 offeredVersion: value(Int.self, .offeredSourcesVersion, 0)
             ),
             maxItems: value(Int.self, .maxItems, d.maxItems),
-            trailersEnabled: value(Bool.self, .trailersEnabled, d.trailersEnabled),
             hideWatched: value(Bool.self, .hideWatched, d.hideWatched),
             showsRatings: value(Bool.self, .showsRatings, d.showsRatings),
             ratingPreferences: value(DetailPageSettings.self, .ratingPreferences, d.ratingPreferences),
@@ -237,7 +228,6 @@ public struct HeroSettings: Codable, Equatable, Sendable {
         try c.encode(isEnabled, forKey: .isEnabled)
         try c.encode(sources, forKey: .sources)
         try c.encode(maxItems, forKey: .maxItems)
-        try c.encode(trailersEnabled, forKey: .trailersEnabled)
         try c.encode(hideWatched, forKey: .hideWatched)
         try c.encode(showsRatings, forKey: .showsRatings)
         try c.encode(ratingPreferences, forKey: .ratingPreferences)

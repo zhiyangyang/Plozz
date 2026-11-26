@@ -27,10 +27,6 @@ public struct MetadataEnrichmentDiagnosticsSnapshot: Sendable, Equatable {
     /// (`CoreUI.LocalArtworkDerivedCache`). `nil` when unavailable on this platform.
     public var artworkCacheBytes: Int?
 
-    /// Current size, in bytes, of the resolved-URL metadata cache
-    /// (`MetadataKit.MetadataDiskCache`).
-    public var metadataCacheBytes: Int?
-
     /// Live entry count of the in-memory provider result cache
     /// (`MetadataKit.ProviderResultCache`).
     public var resultCacheEntryCount: Int?
@@ -46,7 +42,6 @@ public struct MetadataEnrichmentDiagnosticsSnapshot: Sendable, Equatable {
         capturedAt: Date = Date(),
         metadataCountPerSource: [MetadataSource: Int] = [:],
         artworkCacheBytes: Int? = nil,
-        metadataCacheBytes: Int? = nil,
         resultCacheEntryCount: Int? = nil,
         providerBreakers: [ProviderBreakerState] = [],
         work: WorkStatus = WorkStatus()
@@ -54,7 +49,6 @@ public struct MetadataEnrichmentDiagnosticsSnapshot: Sendable, Equatable {
         self.capturedAt = capturedAt
         self.metadataCountPerSource = metadataCountPerSource
         self.artworkCacheBytes = artworkCacheBytes
-        self.metadataCacheBytes = metadataCacheBytes
         self.resultCacheEntryCount = resultCacheEntryCount
         self.providerBreakers = providerBreakers
         self.work = work

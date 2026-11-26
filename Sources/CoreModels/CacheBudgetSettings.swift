@@ -1,13 +1,10 @@
 import Foundation
-import Observation
 
 /// User-adjustable byte budgets for the metadata subsystem's on-device caches.
 ///
-/// Two independent caches carry a size budget:
-///   * the **derived artwork** cache (right-sized image derivatives of direct-share
-///     artwork — `CoreUI.LocalArtworkDerivedCache`, whose build hard-cap is 64 MiB), and
-///   * the **resolved-URL metadata** cache (the small JSON of resolved artwork URLs
-///     and remembered negatives — `MetadataKit.MetadataDiskCache`, build default 16 MiB).
+/// The **derived artwork** cache (right-sized image derivatives of direct-share
+/// artwork — `CoreUI.LocalArtworkDerivedCache`, whose build hard-cap is 64 MiB)
+/// carries a user-adjustable size budget.
 ///
 /// The values here are *budgets the user chose*; `AppShell` applies them to the live
 /// actors at composition time (and whenever they change) via `setByteCap`/`setMaxBytes`,
@@ -19,40 +16,27 @@ public struct CacheBudgetSettings: Codable, Equatable, Sendable {
     /// [``artworkBounds``]. Default matches the build hard-cap (64 MiB).
     public var artworkCacheBytes: Int
 
-    /// Byte budget for the resolved-URL metadata cache. Clamped to
-    /// [``metadataBounds``]. Default matches the build default (16 MiB).
-    public var metadataCacheBytes: Int
-
     /// Inclusive [min, max] the artwork budget is clamped to: 16 MiB … 256 MiB.
     public static let artworkBounds = 16 * 1024 * 1024 ... 256 * 1024 * 1024
-    /// Inclusive [min, max] the metadata-URL budget is clamped to: 4 MiB … 64 MiB.
-    public static let metadataBounds = 4 * 1024 * 1024 ... 64 * 1024 * 1024
-
     public static let defaultArtworkCacheBytes = 64 * 1024 * 1024
-    public static let defaultMetadataCacheBytes = 16 * 1024 * 1024
 
     public init(
-        artworkCacheBytes: Int = CacheBudgetSettings.defaultArtworkCacheBytes,
-        metadataCacheBytes: Int = CacheBudgetSettings.defaultMetadataCacheBytes
+        artworkCacheBytes: Int = CacheBudgetSettings.defaultArtworkCacheBytes
     ) {
         self.artworkCacheBytes = Self.artworkBounds.clamping(artworkCacheBytes)
-        self.metadataCacheBytes = Self.metadataBounds.clamping(metadataCacheBytes)
     }
 
     public static let `default` = CacheBudgetSettings()
 
     private enum CodingKeys: String, CodingKey {
-        case artworkCacheBytes, metadataCacheBytes
+        case artworkCacheBytes
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let artwork = try container.decodeIfPresent(Int.self, forKey: .artworkCacheBytes)
             ?? Self.defaultArtworkCacheBytes
-        let metadata = try container.decodeIfPresent(Int.self, forKey: .metadataCacheBytes)
-            ?? Self.defaultMetadataCacheBytes
         self.artworkCacheBytes = Self.artworkBounds.clamping(artwork)
-        self.metadataCacheBytes = Self.metadataBounds.clamping(metadata)
     }
 }
 
@@ -89,27 +73,5 @@ public final class CacheBudgetSettingsStore: CacheBudgetSettingsStoring, @unchec
         if let data = try? JSONEncoder().encode(settings) {
             defaults.set(data, forKey: key)
         }
-    }
-}
-
-/// Observable wrapper so a Settings screen can two-way bind the cache budgets and
-/// have changes persisted. The caller observes `settings` and forwards changes to
-/// the live cache actors (see `AppShell`).
-@MainActor
-@Observable
-public final class CacheBudgetSettingsModel {
-    public var settings: CacheBudgetSettings {
-        didSet { store.save(settings) }
-    }
-
-    private let store: CacheBudgetSettingsStoring
-
-    public init(store: CacheBudgetSettingsStoring = CacheBudgetSettingsStore()) {
-        self.store = store
-        self.settings = store.load()
-    }
-
-    public func resetToDefaults() {
-        settings = .default
     }
 }

@@ -711,6 +711,7 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
 public func extras(for itemID: String) async throws -> [MediaExtra] {
         var extras = try await client.extras(ratingKey: itemID, includeExternalMedia: false)
             .filter(Self.isLocalExtra)
+            .filter { !Self.isTrailerExtra($0) }
             .map { dto in
                 let rawType = dto.subtype ?? dto.extraType.map(String.init)
                 return MediaExtra(
@@ -2765,7 +2766,6 @@ public func extras(for itemID: String) async throws -> [MediaExtra] {
             return MediaExtraKind(rawProviderValue: subtype)
         }
         switch dto.extraType {
-        case 1: return .trailer
         case 2: return .deletedScene
         case 3: return .interview
         case 5: return .behindTheScenes
@@ -2774,6 +2774,12 @@ public func extras(for itemID: String) async throws -> [MediaExtra] {
         case 11: return .short
         default: return .unknown
         }
+    }
+
+    private static func isTrailerExtra(_ dto: PlexMetadata) -> Bool {
+        if dto.extraType == 1 { return true }
+        let raw = (dto.subtype ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return raw == "trailer" || raw == "trailers"
     }
 
     private static func ratingKey(fromPrimaryExtraKey key: String?) -> String? {

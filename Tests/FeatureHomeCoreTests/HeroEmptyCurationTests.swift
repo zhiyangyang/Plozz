@@ -10,7 +10,6 @@ final class HeroEmptyCurationTests: XCTestCase {
             isEnabled: true,
             sources: sources,
             maxItems: 8,
-            trailersEnabled: false,
             hideWatched: true,
             randomLibraryKeys: [],
             autoAdvance: true,

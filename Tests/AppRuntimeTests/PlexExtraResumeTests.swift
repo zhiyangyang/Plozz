@@ -20,7 +20,7 @@ final class PlexExtraResumeTests: XCTestCase {
         )
     }
 
-    private func extra(_ kind: MediaExtraKind = .trailer) -> MediaItem {
+    private func extra(_ kind: MediaExtraKind = .featurette) -> MediaItem {
         MediaExtra(
             item: MediaItem(id: "extra", title: "Extra", kind: .movie, runtime: 45),
             kind: kind
@@ -28,7 +28,7 @@ final class PlexExtraResumeTests: XCTestCase {
     }
 
     func testShortExtrasSurviveRecreationAndTokenRefresh() async throws {
-        for kind in [MediaExtraKind.trailer, .featurette] {
+        for kind in [MediaExtraKind.featurette, .behindTheScenes] {
             let backend = InMemorySecureStore()
             let item = extra(kind)
             let state = PlexExtraWatchState(

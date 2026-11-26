@@ -381,7 +381,7 @@ func testRecommendedDetailHeroesUseMetadataWithoutChangingRelatedCards() async t
                             references: [.remote(library)], asyncFallbackURL: { online },
                             height: 160, scrimTone: .clear, ignoresOverscan: false,
                             pinIdentity: UUID().uuidString
-                        ) { EmptyView() }
+                        )
                         FallbackAsyncImage(
                             references: [.remote(library)], variant: .posterCard,
                             asyncFallbackURL: { online }, pinIdentity: UUID().uuidString
@@ -858,7 +858,7 @@ private struct HydratingDetailBackdrop: View {
             asyncFallbackURL: { await model.recordLookup(); return fallback },
             height: 180, scrimTone: .black, ignoresOverscan: false,
             pinIdentity: "detail:\(model.id)"
-        ) { EmptyView() }
+        )
         .frame(width: 320, height: 180)
         .heroArtworkSource(id: "detail:\(model.id)")
         .environment(\.heroArtworkDisplayState, model.display)

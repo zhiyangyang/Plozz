@@ -202,7 +202,6 @@ final class PlozziOSAppModel {
     /// Household-wide metadata provider roles/order override (mirrors tvOS `AppState`).
     /// App-wide like the enrichment pipeline itself, so created once.
     /// Household-wide metadata/artwork cache byte budgets. Device-level, created once.
-    let cacheBudgetSettingsModel = CacheBudgetSettingsModel()
     /// Household-wide optional user-supplied TMDB API key (bring-your-own-key). Stored
     /// in the same `com.plozz.app.household` Keychain service as tvOS so the key matches
     /// across platforms.

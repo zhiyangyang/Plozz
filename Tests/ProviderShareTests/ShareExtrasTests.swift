@@ -59,13 +59,8 @@ final class ShareExtrasTests: XCTestCase {
             "Movies": [dir("The Film (2020)")],
             "Movies/The Film (2020)": [
                 file("The Film (2020).mkv"),
-                dir("Trailers"),
                 dir("Extras"),
                 dir("Bonus Features"),
-            ],
-            "Movies/The Film (2020)/Trailers": [
-                file("Official Trailer.mkv"),
-                file("Official Trailer.en.srt"),
             ],
             "Movies/The Film (2020)/Extras": [
                 file("Commentary.mkv"),
@@ -84,7 +79,6 @@ final class ShareExtrasTests: XCTestCase {
         ]
         if !includeTrailer {
             tree["Movies/The Film (2020)"] = [file("The Film (2020).mkv")]
-            tree.removeValue(forKey: "Movies/The Film (2020)/Trailers")
             tree.removeValue(forKey: "Movies/The Film (2020)/Extras")
             tree.removeValue(forKey: "Movies/The Film (2020)/Extras/Behind The Scenes")
             tree.removeValue(forKey: "Movies/The Film (2020)/Extras/Nested")
@@ -94,9 +88,8 @@ final class ShareExtrasTests: XCTestCase {
     }
 
     func testTerminalSuffixesAreExactAndSeparatorBound() {
-        XCTAssertEqual(
-            ShareExtraDiscoveryPolicy.terminalSuffix(inFileName: "Movie - Trailer.mkv")?.kind,
-            .trailer
+        XCTAssertNil(
+            ShareExtraDiscoveryPolicy.terminalSuffix(inFileName: "Movie - Trailer.mkv")
         )
         XCTAssertEqual(
             ShareExtraDiscoveryPolicy.terminalSuffix(inFileName: "Movie.behind_the_scenes.mp4")?.kind,
@@ -134,7 +127,7 @@ final class ShareExtrasTests: XCTestCase {
             ShareExtraDiscoveryPolicy.resumeBehavior(
                 forItemID: "f:Movies/Film/Extras/Trailers/Preview.mkv"
             ),
-            false
+            true
         )
         XCTAssertFalse(
             ShareExtraDiscoveryPolicy.movieFolderProvesOwner(
@@ -157,14 +150,14 @@ final class ShareExtrasTests: XCTestCase {
     }
 
     func testTypedExtraDirectoryProducesOnlyExtraCandidates() async {
-        let extraFile = file("Official Trailer.mkv")
+        let extraFile = file("Making Of.mkv")
         let result = await ShareScanner.processDirectory(
             ShareScanner.FrontierEntry(
-                relPath: "Movies/Film/Trailers",
+                relPath: "Movies/Film/Behind The Scenes",
                 extraTraversal: ShareExtraTraversal(
                     ownerPath: "Movies/Film",
                     ownerFileRelPath: "Movies/Film/Film.mkv",
-                    defaultKind: .trailer,
+                    defaultKind: .behindTheScenes,
                     permitsTypedChildren: false
                 )
             ),
@@ -176,16 +169,16 @@ final class ShareExtrasTests: XCTestCase {
 
         XCTAssertEqual(result.assets, [])
         XCTAssertEqual(result.extras.count, 1)
-        XCTAssertEqual(result.extras.first?.kind, .trailer)
+        XCTAssertEqual(result.extras.first?.kind, .behindTheScenes)
     }
 
     func testMovieDirectoryProducesBoundedExtraFrontiers() async {
         let movie = file("Film (2020).mkv")
-        let trailers = dir("Trailers")
+        let extras = dir("Extras")
         let result = await ShareScanner.processDirectory(
             ShareScanner.FrontierEntry(relPath: "Movies/Film (2020)"),
             using: ShareScanner.ScanLister(
-                list: { _ in [movie, trailers] },
+                list: { _ in [movie, extras] },
                 close: {}
             )
         )
@@ -208,13 +201,12 @@ final class ShareExtrasTests: XCTestCase {
         )
 
         let extras = await store.extras(ownerID: movieID)
-        XCTAssertEqual(extras.count, 4)
+        XCTAssertEqual(extras.count, 3)
         XCTAssertEqual(
             Set(extras.map(\.kind)),
-            [.trailer, .behindTheScenes, .other]
+            [.behindTheScenes, .other]
         )
         XCTAssertTrue(extras.allSatisfy { $0.item.id.hasPrefix("f:") })
-        XCTAssertFalse(extras.first(where: { $0.kind == .trailer })?.supportsResume ?? true)
         XCTAssertTrue(extras.first(where: { $0.kind == .behindTheScenes })?.supportsResume == true)
 
         let counts = await store.libraryCounts()
@@ -224,10 +216,7 @@ final class ShareExtrasTests: XCTestCase {
         XCTAssertEqual(search, [])
         XCTAssertEqual(latest.map(\.title), ["The Film"])
         let listed = await fake.listed
-        XCTAssertTrue(
-            listed.contains("Movies/The Film (2020)/Trailers"),
-            "listed paths: \(listed)"
-        )
+        XCTAssertFalse(listed.contains("Movies/The Film (2020)/Trailers"))
         XCTAssertFalse(listed.contains("Movies/The Film (2020)/Extras/Nested"))
     }
 
@@ -245,8 +234,8 @@ final class ShareExtrasTests: XCTestCase {
         let extras = await store.extras(ownerID: movieID)
 
         XCTAssertEqual(outcome, .completedPartial)
-        XCTAssertEqual(count, 4)
-        XCTAssertEqual(extras.count, 4)
+        XCTAssertEqual(count, 3)
+        XCTAssertEqual(extras.count, 3)
     }
 
     func testSeriesSeasonSpecialsEpisodeAndExplicitCollectionOwners() async {
@@ -260,18 +249,18 @@ final class ShareExtrasTests: XCTestCase {
             "TV/Show/Extras": [file("Show Overview.mkv")],
             "TV/Show/Season 01": [
                 file("Show.S01E01.mkv"),
-                file("Show.S01E01-trailer.mkv"),
+                file("Show.S01E01-featurette.mkv"),
                 dir("Featurettes"),
             ],
             "TV/Show/Season 01/Featurettes": [file("Season Feature.mkv")],
             "TV/Show/Specials": [
                 file("Show.S00E01.mkv"),
-                dir("Trailers"),
+                dir("Featurettes"),
             ],
-            "TV/Show/Specials/Trailers": [file("Special Preview.mkv")],
+            "TV/Show/Specials/Featurettes": [file("Special Feature.mkv")],
             "Collections": [dir("Favorites")],
-            "Collections/Favorites": [dir("Trailers")],
-            "Collections/Favorites/Trailers": [file("Collection Reel.mkv")],
+            "Collections/Favorites": [dir("Featurettes")],
+            "Collections/Favorites/Featurettes": [file("Collection Feature.mkv")],
             "Loose": [dir("Trailers")],
             "Loose/Trailers": [file("Orphan.mkv")],
         ]
@@ -288,12 +277,12 @@ final class ShareExtrasTests: XCTestCase {
         let looseExtras = await store.extras(ownerID: "d:Loose")
         let extraCount = await store.extraCount()
         let promoted = await store.item(
-            id: ShareCatalogID.file("TV/Show/Season 01/Show.S01E01-trailer.mkv")
+            id: ShareCatalogID.file("TV/Show/Season 01/Show.S01E01-featurette.mkv")
         )
         XCTAssertEqual(seriesExtras.count, 1)
         XCTAssertEqual(seasonExtras.count, 1)
         XCTAssertEqual(specialsExtras.count, 1)
-        XCTAssertEqual(episodeExtras.map(\.kind), [.trailer])
+        XCTAssertEqual(episodeExtras.map(\.kind), [.featurette])
         XCTAssertEqual(collectionExtras.count, 1)
         XCTAssertEqual(looseExtras, [])
         XCTAssertEqual(extraCount, 5)
@@ -330,7 +319,7 @@ final class ShareExtrasTests: XCTestCase {
         )
         await scan(movieTree(), store: store)
         let initialExtras = await store.extras(ownerID: movieID)
-        XCTAssertEqual(initialExtras.count, 4)
+        XCTAssertEqual(initialExtras.count, 3)
 
         var partialTree = movieTree()
         partialTree["", default: []].append(dir("Broken"))
@@ -341,7 +330,7 @@ final class ShareExtrasTests: XCTestCase {
         )
         let partialExtras = await store.extras(ownerID: movieID)
         XCTAssertEqual(partial.0, .completedPartial)
-        XCTAssertEqual(partialExtras.count, 4)
+        XCTAssertEqual(partialExtras.count, 3)
 
         await scan(movieTree(includeTrailer: false), store: store)
         let prunedExtras = await store.extras(ownerID: movieID)
@@ -369,9 +358,9 @@ final class ShareExtrasTests: XCTestCase {
         let listed = await fake.listed
 
         XCTAssertEqual(outcome, .completedClean)
-        XCTAssertEqual(extras.count, 4)
+        XCTAssertEqual(extras.count, 3)
         XCTAssertTrue(listed.contains("Movies/The Film (2020)"))
-        XCTAssertTrue(listed.contains("Movies/The Film (2020)/Trailers"))
+        XCTAssertFalse(listed.contains("Movies/The Film (2020)/Trailers"))
     }
 
     func testPartialUpgradeRemovesResolvedExtraFromLegacyAssets() async {
@@ -392,8 +381,8 @@ final class ShareExtrasTests: XCTestCase {
                 basename: "The Film (2020)-trailer.mkv",
                 size: 1_000,
                 modifiedAt: Date(timeIntervalSince1970: 100),
-                kind: .trailer,
-                title: "Trailer",
+                kind: .behindTheScenes,
+                title: "Behind the Scenes",
                 ownerPath: ownerPath,
                 ownerFileRelPath: ownerFile
             )
@@ -421,28 +410,28 @@ final class ShareExtrasTests: XCTestCase {
             entry: file("Café (2020).mkv")
         )
         await store.upsert([asset], scanID: 1)
-        let composed = "\(ownerPath)/Trailers/Café Trailer.mkv"
+        let composed = "\(ownerPath)/Extras/Café Extra.mkv"
         let decomposed = composed.decomposedStringWithCanonicalMapping
         await store.upsertExtras([
             CatalogExtraCandidate(
                 relPath: composed,
-                parentDir: "\(ownerPath)/Trailers",
-                basename: "Café Trailer.mkv",
+                parentDir: "\(ownerPath)/Extras",
+                basename: "Café Extra.mkv",
                 size: 1,
                 modifiedAt: .distantPast,
-                kind: .trailer,
-                title: "Trailer",
+                kind: .behindTheScenes,
+                title: "Behind the Scenes",
                 ownerPath: ownerPath,
                 ownerFileRelPath: ownerFile
             ),
             CatalogExtraCandidate(
                 relPath: decomposed,
-                parentDir: "\(ownerPath)/Trailers".decomposedStringWithCanonicalMapping,
-                basename: "Café Trailer.mkv".decomposedStringWithCanonicalMapping,
+                parentDir: "\(ownerPath)/Extras".decomposedStringWithCanonicalMapping,
+                basename: "Café Extra.mkv".decomposedStringWithCanonicalMapping,
                 size: 1,
                 modifiedAt: .distantPast,
-                kind: .trailer,
-                title: "Trailer",
+                kind: .behindTheScenes,
+                title: "Behind the Scenes",
                 ownerPath: ownerPath,
                 ownerFileRelPath: ownerFile
             ),
@@ -456,13 +445,13 @@ final class ShareExtrasTests: XCTestCase {
     func testLegacyStringFrontierDecodesWithExtraContext() throws {
         let data = try JSONEncoder().encode([
             "Movies/The Film (2020)",
-            "Movies/The Film (2020)/Extras/Trailers",
+            "Movies/The Film (2020)/Extras",
         ])
         let decoded = try XCTUnwrap(ShareScanner.decodeFrontier(data))
 
         XCTAssertNil(decoded[0].extraTraversal)
         XCTAssertEqual(decoded[1].extraTraversal?.ownerPath, "Movies/The Film (2020)")
-        XCTAssertEqual(decoded[1].extraTraversal?.defaultKind, .trailer)
+        XCTAssertEqual(decoded[1].extraTraversal?.defaultKind, .other)
     }
 
     func testSchemaMigratesToVersionFourWithSeparateExtrasTable() async throws {
@@ -493,24 +482,27 @@ final class ShareExtrasTests: XCTestCase {
             catalogStore: store
         )
         let extras = try await provider.extras(for: movieID)
-        let trailer = try XCTUnwrap(extras.first(where: { $0.kind == .trailer }))
-        let longExtra = try XCTUnwrap(extras.first(where: { $0.kind == .behindTheScenes }))
+        let behindTheScenes = try XCTUnwrap(extras.first(where: { $0.kind == .behindTheScenes }))
+        let other = try XCTUnwrap(extras.first(where: { $0.kind == .other }))
 
-        try await provider.setResumePosition(30, itemID: trailer.item.id, capturedAt: Date())
-        try await provider.setResumePosition(60, itemID: longExtra.item.id, capturedAt: Date())
+        try await provider.setResumePosition(30, itemID: behindTheScenes.item.id, capturedAt: Date())
+        try await provider.setResumePosition(60, itemID: other.item.id, capturedAt: Date())
 
         let refreshed = try await provider.extras(for: movieID)
-        XCTAssertNil(refreshed.first(where: { $0.item.id == trailer.item.id })?.item.resumePosition)
         XCTAssertEqual(
-            refreshed.first(where: { $0.item.id == longExtra.item.id })?.item.resumePosition,
+            refreshed.first(where: { $0.item.id == behindTheScenes.item.id })?.item.resumePosition,
+            30
+        )
+        XCTAssertEqual(
+            refreshed.first(where: { $0.item.id == other.item.id })?.item.resumePosition,
             60
         )
         let continueWatching = try await provider.continueWatching(limit: 10)
         XCTAssertTrue(continueWatching.isEmpty)
         XCTAssertTrue(
             ShareProvider.sidecarMatchesVideo(
-                sidecarStem: "Official Trailer",
-                videoStem: "Official Trailer",
+                sidecarStem: "Making The Film",
+                videoStem: "Making The Film",
                 dedicatedFolder: false
             )
         )
@@ -524,22 +516,22 @@ final class ShareExtrasTests: XCTestCase {
         let movieKey = ShareCatalogID.movieKey(fromTitle: "The Film", year: 2020)
         let movieID = ShareCatalogID.movie(movieKey)
         let storedExtras = await store.extras(ownerID: movieID)
-        let trailerID = try XCTUnwrap(
+        let extraID = try XCTUnwrap(
             storedExtras
-                .first(where: { $0.kind == .trailer })?
+                .first(where: { $0.kind == .behindTheScenes })?
                 .item.id
         )
-        let trailerPath = try XCTUnwrap(ShareCatalogID.relPath(forFileID: trailerID))
+        let extraPath = try XCTUnwrap(ShareCatalogID.relPath(forFileID: extraID))
         try fixture.execute("""
         INSERT OR REPLACE INTO movie_alias(alias_id, group_key)
-        VALUES('\(trailerID)', '\(movieKey)');
+        VALUES('\(extraID)', '\(movieKey)');
         """)
-        let legacyCanonicalID = await store.canonicalItemID(trailerID)
+        let legacyCanonicalID = await store.canonicalItemID(extraID)
         XCTAssertEqual(legacyCanonicalID, movieID)
 
         let fileSystem = ExtraPlaybackFileSystem(
-            trailerPath: trailerPath,
-            trailerDirectory: (trailerPath as NSString).deletingLastPathComponent
+            trailerPath: extraPath,
+            trailerDirectory: (extraPath as NSString).deletingLastPathComponent
         )
         let session = ExtraPlaybackSession(fileSystem: fileSystem)
         let provider = ShareProvider(
@@ -548,15 +540,14 @@ final class ShareExtrasTests: XCTestCase {
             catalogStore: store
         )
 
-        let request = try await provider.playbackInfo(for: trailerID)
+        let request = try await provider.playbackInfo(for: extraID)
         guard case .networkFile(let locator)? = request.playbackSource else {
             return XCTFail("share extra must use network-file playback")
         }
-        XCTAssertEqual(locator.relativePath, trailerPath)
-        XCTAssertEqual(request.item.id, trailerID)
+        XCTAssertEqual(locator.relativePath, extraPath)
+        XCTAssertEqual(request.item.id, extraID)
         XCTAssertEqual(request.item.kind, .video)
-        XCTAssertEqual(request.subtitleTracks.count, 1)
-        XCTAssertEqual(request.subtitleTracks.first?.language, "en")
+        XCTAssertTrue(request.subtitleTracks.isEmpty)
     }
 
     private func makeSession() -> UserSession {

@@ -21,13 +21,7 @@ public extension View {
 /// size that would inflate its parent's layout width — matching how the detail
 /// hero hosts its backdrop.
 ///
-/// ### Background-video slot (phased trailer support)
-/// The optional `backgroundVideo` view builder overlays the static image and
-/// receives the exact same scrim + dissolve + clip treatment, so a muted looping
-/// trailer can later be faded in on top of the still without any rework. It is an
-/// `EmptyView` by default (today), so the image-only path is byte-for-byte the
-/// same as the detail hero's original backdrop.
-public struct HeroBackdropLayer<Video: View>: View {
+public struct HeroBackdropLayer: View {
     @Environment(\.plozzArtworkPolicy) private var artworkPolicy
     /// Ordered candidate backdrop URLs (first that loads and is wide enough wins).
     private let references: [ArtworkReference]
@@ -56,19 +50,11 @@ public struct HeroBackdropLayer<Video: View>: View {
     /// so the strip tiles correctly, and the *container* applies the overscan
     /// breakout once for the whole strip.
     private let ignoresOverscan: Bool
-    /// Opacity of the still image beneath the video slot. Detail handoff sets
-    /// this to zero while the shared trailer is already playing, letting the
-    /// existing Home video remain visible through the navigation transition
-    /// until the newly-mounted AVPlayerLayer presents its first frame.
-    private let stillImageOpacity: Double
     private let pinIdentity: String?
     private let lookupIdentity: String?
     /// Overrides the platform default for embedding and controlled comparisons.
     /// Unsupported tones/directions still retain the original analytic shading.
     private let prefersCachedScrim: Bool?
-    /// Overlaid on the still image; empty today, hosts a faded-in trailer later.
-    private let backgroundVideo: () -> Video
-
     public init(
         urls: [URL],
         asyncFallbackURL: (@Sendable () async -> URL?)? = nil,
@@ -77,11 +63,9 @@ public struct HeroBackdropLayer<Video: View>: View {
         verticalOffset: CGFloat = 0,
         dissolveStart: CGFloat = 0.33,
         ignoresOverscan: Bool = true,
-        stillImageOpacity: Double = 1,
         pinIdentity: String? = nil,
         lookupIdentity: String? = nil,
         prefersCachedScrim: Bool? = nil,
-        @ViewBuilder backgroundVideo: @escaping () -> Video
     ) {
         self.references = urls.map(ArtworkReference.remote)
         self.asyncFallbackURL = asyncFallbackURL
@@ -90,11 +74,9 @@ public struct HeroBackdropLayer<Video: View>: View {
         self.verticalOffset = verticalOffset
         self.dissolveStart = dissolveStart
         self.ignoresOverscan = ignoresOverscan
-        self.stillImageOpacity = stillImageOpacity
         self.pinIdentity = pinIdentity
         self.lookupIdentity = lookupIdentity
         self.prefersCachedScrim = prefersCachedScrim
-        self.backgroundVideo = backgroundVideo
     }
 
     public init(
@@ -105,11 +87,9 @@ public struct HeroBackdropLayer<Video: View>: View {
         verticalOffset: CGFloat = 0,
         dissolveStart: CGFloat = 0.33,
         ignoresOverscan: Bool = true,
-        stillImageOpacity: Double = 1,
         pinIdentity: String? = nil,
         lookupIdentity: String? = nil,
         prefersCachedScrim: Bool? = nil,
-        @ViewBuilder backgroundVideo: @escaping () -> Video
     ) {
         self.references = references
         self.asyncFallbackURL = asyncFallbackURL
@@ -118,11 +98,9 @@ public struct HeroBackdropLayer<Video: View>: View {
         self.verticalOffset = verticalOffset
         self.dissolveStart = dissolveStart
         self.ignoresOverscan = ignoresOverscan
-        self.stillImageOpacity = stillImageOpacity
         self.pinIdentity = pinIdentity
         self.lookupIdentity = lookupIdentity
         self.prefersCachedScrim = prefersCachedScrim
-        self.backgroundVideo = backgroundVideo
     }
 
     public var body: some View {
@@ -142,13 +120,9 @@ public struct HeroBackdropLayer<Video: View>: View {
             placeholder: { ambientPlaceholder }
         )
         .reportingHeroArtwork(id: pinIdentity)
-        .opacity(stillImageOpacity)
         .frame(height: height)
         .frame(maxWidth: .infinity)
         .clipped()
-        // Trailer slot: overlays the still (and so inherits the scrim + dissolve
-        // below). Empty today — no layout or visual effect on the image-only path.
-        .overlay { backgroundVideo() }
         .overlay(scrim)
         .mask(dissolveMask)
         .offset(y: verticalOffset)
@@ -232,56 +206,4 @@ private struct OverscanBreakout: ViewModifier {
     }
 }
 
-public extension HeroBackdropLayer where Video == EmptyView {
-    /// Image-only backdrop (no trailer slot) — the default today.
-    init(
-        urls: [URL],
-        asyncFallbackURL: (@Sendable () async -> URL?)? = nil,
-        height: CGFloat,
-        scrimTone: Color,
-        verticalOffset: CGFloat = 0,
-        dissolveStart: CGFloat = 0.33,
-        ignoresOverscan: Bool = true,
-        stillImageOpacity: Double = 1,
-        prefersCachedScrim: Bool? = nil
-    ) {
-        self.init(
-            urls: urls,
-            asyncFallbackURL: asyncFallbackURL,
-            height: height,
-            scrimTone: scrimTone,
-            verticalOffset: verticalOffset,
-            dissolveStart: dissolveStart,
-            ignoresOverscan: ignoresOverscan,
-            stillImageOpacity: stillImageOpacity,
-            prefersCachedScrim: prefersCachedScrim,
-            backgroundVideo: { EmptyView() }
-        )
-    }
-
-    init(
-        references: [ArtworkReference],
-        asyncFallbackURL: (@Sendable () async -> URL?)? = nil,
-        height: CGFloat,
-        scrimTone: Color,
-        verticalOffset: CGFloat = 0,
-        dissolveStart: CGFloat = 0.33,
-        ignoresOverscan: Bool = true,
-        stillImageOpacity: Double = 1,
-        prefersCachedScrim: Bool? = nil
-    ) {
-        self.init(
-            references: references,
-            asyncFallbackURL: asyncFallbackURL,
-            height: height,
-            scrimTone: scrimTone,
-            verticalOffset: verticalOffset,
-            dissolveStart: dissolveStart,
-            ignoresOverscan: ignoresOverscan,
-            stillImageOpacity: stillImageOpacity,
-            prefersCachedScrim: prefersCachedScrim,
-            backgroundVideo: { EmptyView() }
-        )
-    }
-}
 #endif

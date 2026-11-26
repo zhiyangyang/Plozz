@@ -568,41 +568,7 @@ final class ShareCatalogBrowseProjectionTests: XCTestCase {
         XCTAssertEqual(duringScan.providerIDs, completed.first?.providerIDs)
     }
 
-    func testRecognizedShowWithUnclassifiedContentKeepsPosterWithoutHidingFiles() async throws {
-        let directory = try catalogDirectory()
-        let store = ShareCatalogStore(accountKey: "extra-poster", directory: directory)
-        let root = "TV Shows/Animanimals"
-        let path = "\(root)/Season 01/E01.mkv"
-        await store.upsert([
-            episode(path, series: "Animanimals", season: 1, number: 1, metadataRoot: root)
-        ], scanID: 1)
-        let posterURL = try XCTUnwrap(URL(string: "https://example.com/animanimals.jpg"))
-        let metadata = EnrichmentRecord.sourced(posterURL: .init(value: posterURL, source: .tvdb))
-        let saved = await store.saveEnrichment(
-            itemID: ShareCatalogID.series("animanimals"), metadata, version: 18
-        )
-        XCTAssertTrue(saved)
-        let inventorySaved = await store.upsertPlayablePaths(
-            [path, "\(root)/unclassified.mp4"], scanID: 1
-        )
-        XCTAssertTrue(inventorySaved)
-        await completeScan(store, directories: ["TV Shows", root])
-
-        let projected = await store.browseItems([folder("TV Shows"), folder(root)])
-        XCTAssertEqual(projected[0], folder("TV Shows"), "a library must not inherit one show's poster")
-        XCTAssertEqual(projected[1].id, "d:\(root)")
-        XCTAssertEqual(projected[1].kind, .folder)
-        XCTAssertEqual(projected[1].posterURL, metadata.posterURL)
-        XCTAssertEqual(projected[1].artworkMetadataSource(for: posterURL), .tvdb)
-        XCTAssertTrue(projected[1].artworkReferences(for: .poster).isEmpty,
-                      "A recognized folder must not relabel external art as a library selection.")
-        XCTAssertEqual(projected[1].metadataArtworkURLs(for: .poster), [.init(value: posterURL, source: .tvdb)])
-        XCTAssertEqual(projected[1].artworkLookupSubject?.id, ShareCatalogID.series("animanimals"))
-        XCTAssertEqual(projected[1].artworkLookupSubject?.kind, .series)
-        XCTAssertEqual(projected[1].artworkLookupItem.title, "Animanimals")
-
-    }
-    private final class BrowseSQLWork {
+private final class BrowseSQLWork {
         var steps = 0
     }
 

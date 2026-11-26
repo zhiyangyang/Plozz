@@ -260,7 +260,6 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
             capturedAt: capturedAt,
             metadataCountPerSource: counts,
             artworkCacheBytes: artworkBytes,
-            metadataCacheBytes: 0,
             work: work
         )
     }
