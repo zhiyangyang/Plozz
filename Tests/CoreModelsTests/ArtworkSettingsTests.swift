@@ -195,24 +195,7 @@ final class ArtworkSettingsTests: XCTestCase {
         XCTAssertTrue(settings.prefersOnlineArtwork(in: .browse))
     }
 
-    func testMigrationPreservesLibraryPreferenceWithoutChangingProviderSettings() throws {
-        let name = "ArtworkSettingsTests.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defer { defaults.removePersistentDomain(forName: name) }
-        let legacy = MetadataProviderSettings(orderMode: .custom, preferOnlineArtwork: false, disabledOrder: ["tmdb"])
-        let data = try JSONEncoder().encode(legacy)
-        defaults.set(data, forKey: "com.plozz.metadataProviderSettings")
-        let primary = ArtworkSettingsStore(defaults: defaults)
-        let other = ArtworkSettingsStore(defaults: defaults, namespace: "other")
-        XCTAssertEqual(primary.load().preference, .library)
-        XCTAssertEqual(other.load().preference, .library)
-        primary.save(.init(preference: .online))
-        XCTAssertEqual(primary.load().preference, .online)
-        XCTAssertEqual(other.load().preference, .library)
-        XCTAssertEqual(defaults.data(forKey: "com.plozz.metadataProviderSettings"), data)
-    }
-
-    func testRecommendedVariesAvailableDetailsButLibraryKeepsTheSelectedBackdrop() throws {
+func testRecommendedVariesAvailableDetailsButLibraryKeepsTheSelectedBackdrop() throws {
         let selected = try XCTUnwrap(URL(string: "https://library.example.test/selected.jpg"))
         let alternate = try XCTUnwrap(URL(string: "https://metadata.example.test/alternate.jpg"))
         let item = MediaItem(
@@ -240,49 +223,4 @@ final class ArtworkSettingsTests: XCTestCase {
                        [.remote(selected)], "A single available image stays usable on both screens.")
     }
 
-    func testProfileTransferAndSyncedResetDoNotRepeatLegacyMigration() throws {
-        let name = "ArtworkSettingsTests.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defer { defaults.removePersistentDomain(forName: name) }
-        let source = ArtworkSettingsStore(defaults: defaults, namespace: "source")
-        let destination = ArtworkSettingsStore(defaults: defaults, namespace: "destination")
-        source.save(.init(preference: .library, overrides: [.browse: .online]))
-        ProfileSettingsTransfer.apply(
-            ProfileSettingsTransfer.capture(namespace: "source", defaults: defaults),
-            namespace: "destination", defaults: defaults
-        )
-        XCTAssertEqual(destination.load(), source.load())
-        ProfileSettingsTransfer.removeOne(
-            baseKey: ArtworkSettingsStore.storageKey, namespace: "destination", defaults: defaults
-        )
-        XCTAssertEqual(destination.load(), .default)
-        XCTAssertEqual(source.load().preference, .library)
-    }
-
-    func testSyncedResetBeforeFirstProfileLoadConsumesLegacyMigration() throws {
-        let name = "ArtworkSettingsTests.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defer { defaults.removePersistentDomain(forName: name) }
-        let legacy = try JSONEncoder().encode(MetadataProviderSettings(preferOnlineArtwork: false))
-        defaults.set(legacy, forKey: "com.plozz.metadataProviderSettings")
-        let source = ArtworkSettingsStore(defaults: defaults, namespace: "source")
-        source.save(.init(preference: .online, overrides: [.browse: .library]))
-        ProfileSettingsTransfer.apply(
-            ProfileSettingsTransfer.capture(namespace: "source", defaults: defaults),
-            namespace: "inactive", defaults: defaults
-        )
-        for namespace in ["inactive", "never-received"] {
-            ProfileSettingsTransfer.removeOne(
-                baseKey: ArtworkSettingsStore.storageKey, namespace: namespace, defaults: defaults
-            )
-            let store = ArtworkSettingsStore(defaults: defaults, namespace: namespace)
-            XCTAssertEqual(store.load(), .default)
-            XCTAssertEqual(store.load(), .default)
-            XCTAssertFalse(ProfileSettingsTransfer.capture(namespace: namespace, defaults: defaults).keys
-                .contains { $0.hasSuffix(".migrated") })
-        }
-        XCTAssertEqual(ArtworkSettingsStore(defaults: defaults, namespace: "fresh").load().preference, .library)
-        XCTAssertEqual(source.load().overrides, [.browse: .library])
-        XCTAssertEqual(defaults.data(forKey: "com.plozz.metadataProviderSettings"), legacy)
-    }
 }

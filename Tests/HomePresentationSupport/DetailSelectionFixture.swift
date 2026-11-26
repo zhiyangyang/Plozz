@@ -57,10 +57,6 @@ struct DetailSelectionFixture: View {
         model.settings.playback.settings.resumeRewindInterval = .off
         model.settings.playback.settings.versionSelectionMode = .automatic
         model.settings.heroBackground.settings.detailMode = .off
-        model.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         _app = State(initialValue: model)
     }
 

@@ -23,7 +23,6 @@ public extension EnvironmentValues {
         plozzContinueWatchingPresentation = source.plozzContinueWatchingPresentation
         plozzContinueWatchingPlaybackDetails = source.plozzContinueWatchingPlaybackDetails
         plozzArtworkSettings = source.plozzArtworkSettings
-        plozzArtworkProviders = source.plozzArtworkProviders
         plozzArtworkArea = source.plozzArtworkArea
         plozzWatchStatusIndicator = source.plozzWatchStatusIndicator
         plozzWatchIndicatorColor = source.plozzWatchIndicatorColor

@@ -83,10 +83,6 @@ struct ContinueWatchingDetailsFixture: View {
         model.settings.homeVisibility.setContinueWatchingLayout(
             ProcessInfo.processInfo.arguments.contains("--portrait") ? .portrait : .landscape
         )
-        model.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         let visibility = model.settings.homeVisibility
         _home = State(initialValue: HomeViewModel(
             accounts: model.accountsProviders.homeAccounts,

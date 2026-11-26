@@ -484,10 +484,7 @@ private struct PlayerInfoArtwork: View {
     let policy: ArtworkPresentationPolicy
     let cornerRadius: CGFloat
     let height: CGFloat
-    @State private var policyRevision = 0
-
     var body: some View {
-        let _ = policyRevision
         let policy = self.policy.forArea(.playback)
         let references = item.map { InfoPanelView.artworkReferences(for: $0, policy: policy) }
             ?? urls.map(ArtworkReference.remote)
@@ -512,10 +509,6 @@ private struct PlayerInfoArtwork: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .plozzMediaEdge(cornerRadius: cornerRadius)
-            .onReceive(NotificationCenter.default.publisher(for: .metadataProviderSettingsDidChange)
-                .receive(on: DispatchQueue.main)) { _ in
-                policyRevision &+= 1
-            }
     }
 }
 #endif

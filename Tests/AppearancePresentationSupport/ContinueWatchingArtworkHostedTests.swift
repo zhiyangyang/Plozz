@@ -4,25 +4,9 @@ import UIKit
 import Vision
 import XCTest
 @testable import CoreUI
-@testable import MetadataKit
 
 @MainActor
 final class ContinueWatchingArtworkHostedTests: XCTestCase {
-    private var savedProviders = MetadataProviderSettings.default
-
-    override func setUp() async throws {
-        try await super.setUp()
-        let settings = MetadataProviderSettingsStore()
-        savedProviders = settings.load()
-        settings.save(.init(
-            orderMode: .custom, enabledOrder: ["tmdb"], disabledOrder: []
-        ))
-    }
-
-    override func tearDown() async throws {
-        MetadataProviderSettingsStore().save(savedProviders)
-        try await super.tearDown()
-    }
 
     func testPlaybackDetailsAppliesToEveryContinueWatchingLayout() async throws {
         let art = try await cacheImage(.red, size: CGSize(width: 120, height: 180))
@@ -39,7 +23,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                         showsSeriesArtwork: presentation.showsSeriesArtwork
                     )
                     try await withCard(
-                        item, store: makeStore { _ in nil }, style: style,
+                        item, style: style,
                         settings: .init(preference: .library), shape: presentation.layout.cardStyle,
                         width: width,
                         showsSeriesArtwork: presentation.showsSeriesArtwork,
@@ -75,7 +59,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         )
         for style in [CardStyle.borderless, .framed] {
             try await withCard(
-                item, store: makeStore { _ in nil }, style: style,
+                item, style: style,
                 settings: .init(preference: .library),
                 width: PlozzMetrics.standard.cardSlotWidth(for: .landscape, cardStyle: style),
                 showsSeriesArtwork: false,
@@ -105,7 +89,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         ] {
             for style in [CardStyle.borderless, .framed] {
                 try await withCard(
-                    item, store: makeStore { _ in nil }, style: style,
+                    item, style: style,
                     settings: .init(preference: .library), shape: .poster, width: width,
                     metrics: .touch(density: density, dynamicTypeSize: textSize),
                     captions: .init(overrides: [.home: false, .continueWatching: false])
@@ -132,7 +116,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         )
         let width: CGFloat = 300
         try await withCard(
-            item, store: makeStore { _ in nil }, style: .borderless,
+            item, style: .borderless,
             settings: .init(preference: .library), shape: .poster, width: width
         ) { window in
             try await waitUntil { try self.coloredPixels(window)[0] > 10_000 }
@@ -168,14 +152,11 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                 seriesPosterURL: kind == .episode ? poster : nil,
                 backdropURL: backdrop, fallbackArtworkURL: backdrop
             )
-            let gate = TextlessLookupGate()
-            defer { Task { await gate.finish(nil) } }
-            let store = makeStore { _ in await gate.lookup() }
             let settings = ArtworkSettings(preference: .library)
             let source = ContinueWatchingArtworkSource(
                 item: item, style: .poster, policy: .init(area: .continueWatching, settings: settings)
             )
-            await source.prepare(store: store)
+            await source.prepare()
             let key = ArtworkResolveKey.make(
                 references: source.references(textlessBackdrop: nil), variant: .posterCard,
                 maxAspectRatio: source.aspectGuard, pinIdentity: source.pinIdentity,
@@ -189,7 +170,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             }
             for (style, details) in presentations {
                 try await withCard(
-                    item, store: store, style: style, settings: settings,
+                    item, style: style, settings: settings,
                     shape: .poster, width: width, metrics: metrics, playbackDetails: details
                 ) { window in
                     try await waitUntil { try self.coloredPixels(window)[0] > 10_000 }
@@ -216,8 +197,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                     add(attachment)
                 }
             }
-            let requests = await gate.requests
-            XCTAssertEqual(requests, 0)
         }
     }
 
@@ -231,7 +210,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             runtime: 3600, resumePosition: 900, posterURL: backdrop, seriesPosterURL: poster,
             backdropURL: backdrop, logoURL: logo
         )
-        let store = makeStore { _ in nil }
         let metrics = PlozzMetrics.touch(density: .standard)
         for parent in [CardCaptionView.home, .recommended] {
             for choice in CardCaptionView.continueWatching.customizationChoices {
@@ -247,7 +225,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
                             showsSeriesArtwork: artwork.showsSeriesArtwork
                         )
                         try await withCard(
-                            item, store: store, style: style, settings: .init(preference: .library),
+                            item, style: style, settings: .init(preference: .library),
                             shape: artwork.layout.cardStyle, width: width, metrics: metrics,
                             showsSeriesArtwork: artwork.showsSeriesArtwork,
                             showsResumeChip: true, artworkArea: .continueWatching,
@@ -276,7 +254,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         let modes: [ContinueWatchingPlaybackDetails] = [.detailed, .progressOnly, .detailed]
         var step = 0
         try await withCard(
-            item, store: makeStore { _ in nil }, style: .borderless,
+            item, style: .borderless,
             settings: .init(preference: .library), shape: .poster,
             detailsChanges: Array(modes.dropFirst())
         ) { window in
@@ -294,237 +272,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             step += 1
         }
         XCTAssertEqual(step, modes.count)
-    }
-
-    func testPreparationSeedsTheExactCardWinnerForEachSourcePreference() async throws {
-        for preference in [ArtworkPreference.recommended, .library, .online] {
-            let fixture = try await makeArtwork()
-            let store = makeStore { _ in fixture.clean }
-            let policy = ArtworkPresentationPolicy(
-                area: .continueWatching, settings: .init(preference: preference),
-                providers: MetadataProviderSettingsStore().load()
-            )
-            let source = ContinueWatchingArtworkSource(item: fixture.item, style: .landscape, policy: policy)
-            await source.prepare(store: store)
-            let references = source.references(textlessBackdrop: store.backdrop(for: fixture.item))
-            let key = ArtworkResolveKey.make(
-                references: references, variant: .landscapeCard, maxAspectRatio: nil,
-                pinIdentity: source.pinIdentity, providerPolicyIdentity: policy.identity,
-                prefersPrimaryReference: source.primaryReference(textlessBackdrop: store.backdrop(for: fixture.item)) != nil
-            )
-            let prepared = try XCTUnwrap(ArtworkSeedMemo.prepared(for: key, variant: .landscapeCard))
-            XCTAssertEqual(prepared.reference, preference == .library
-                ? fixture.item.backdropURL.map(ArtworkReference.remote) : .remote(fixture.clean))
-            let renderer = ImageRenderer(content:
-                FallbackAsyncImage(
-                    references: references,
-                    prefersPrimaryReference: source.primaryReference(textlessBackdrop: store.backdrop(for: fixture.item)) != nil,
-                    variant: .landscapeCard, artworkPolicy: policy,
-                    asyncFallbackURL: { nil }, pinIdentity: source.pinIdentity
-                ) { Color.green }
-                .frame(width: 160, height: 90)
-            )
-            let expected = preference == .library ? 0 : 2
-            let firstPaint = try XCTUnwrap(renderer.uiImage)
-            XCTAssertGreaterThan(try artworkPixels(firstPaint).colors[expected], 500,
-                                 "The resolver must paint the prepared winner without an asynchronous image load.")
-            for cardStyle in [CardStyle.borderless, .framed] {
-                try await withCard(fixture.item, store: store, style: cardStyle, settings: policy.settings) { window in
-                    XCTAssertGreaterThan(
-                        try coloredPixels(window)[expected], 500,
-                        "Prepared card winner: \(preference) / \(cardStyle)"
-                    )
-                }
-            }
-        }
-    }
-
-    func testCancellingPrefetchDoesNotCancelAVisibleTextlessConsumer() async throws {
-        let fixture = try await makeArtwork()
-        let gate = TextlessLookupGate()
-        defer { Task { await gate.finish(nil) } }
-        let store = makeStore { _ in await gate.lookup() }
-        let prefetch = Task { await store.prepare(for: fixture.item, variant: .landscapeCard, background: true) }
-        let deadline = ContinuousClock.now + .seconds(3)
-        while await gate.requests == 0, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        let visible = Task { await store.prepare(for: fixture.item, variant: .landscapeCard) }
-        try await waitUntil { store.preparationConsumerCount(for: fixture.item) == 2 }
-        prefetch.cancel()
-        await gate.finish(fixture.clean)
-        await prefetch.value
-        await visible.value
-        XCTAssertEqual(store.backdrop(for: fixture.item), fixture.clean)
-        let requests = await gate.requests
-        XCTAssertEqual(requests, 1)
-    }
-
-    func testCancelledTextlessPreparationLeavesTheAnswerUnknownAndRetryable() async throws {
-        let fixture = try await makeArtwork()
-        let gate = TextlessLookupGate()
-        defer { Task { await gate.finish(nil) } }
-        let store = makeStore { _ in await gate.lookup() }
-        let task = Task { await store.prepare(for: fixture.item, variant: .landscapeCard, background: true) }
-        try await waitUntil { store.preparationConsumerCount(for: fixture.item) == 1 }
-        task.cancel()
-        try await waitUntil { store.preparationConsumerCount(for: fixture.item) == 0 }
-        await gate.finish(nil)
-        await task.value
-        XCTAssertFalse(store.hasAnswer(for: fixture.item))
-    }
-
-    func testKnownTextlessArtworkBeatsGenericMetadataForEveryRenderer() async throws {
-        for kind in [MediaItemKind.episode, .movie] {
-            let fixture = try await makeArtwork(kind: kind)
-            let store = makeStore()
-            store.recordForTesting(.available(fixture.clean), for: fixture.item)
-            for style in [CardStyle.borderless, .framed] {
-                for focus in CardFocusStyle.allCases {
-                    try await withCard(fixture.item, store: store, style: style, focus: focus) { window in
-                        try await waitUntil { try self.coloredPixels(window)[2] > 500 }
-                        let counts = try coloredPixels(window)
-                        XCTAssertEqual(counts[0], 0, "Library artwork must not displace the textless background.")
-                        XCTAssertEqual(counts[1], 0, "Generic metadata artwork must not displace the textless background.")
-                    }
-                }
-            }
-        }
-    }
-
-    func testColdTextlessLookupDoesNotPinTheGenericBackground() async throws {
-        for style in [CardStyle.borderless, .framed] {
-            let fixture = try await makeArtwork()
-            let gate = TextlessLookupGate()
-            defer { Task { await gate.finish(nil) } }
-            let store = makeStore { _ in await gate.lookup() }
-            try await withCard(fixture.item, store: store, style: style) { window in
-                let deadline = ContinuousClock.now + .seconds(3)
-                while await gate.requests == 0, ContinuousClock.now < deadline {
-                    try await Task.sleep(for: .milliseconds(20))
-                }
-                let requests = await gate.requests
-                XCTAssertEqual(requests, 1, "The card must start its own textless lookup, without row prefetch.")
-                let before = try coloredPixels(window)
-                XCTAssertEqual(before[0], 0)
-                XCTAssertEqual(before[1], 0, "Do not paint and pin the generic background while textless art is pending.")
-                await gate.finish(fixture.clean)
-                try await waitUntil { try self.coloredPixels(window)[2] > 500 }
-            }
-            await gate.finish(nil)
-        }
-    }
-
-    func testLibraryOverrideSkipsTextlessLookupAndKeepsCuratedArtwork() async throws {
-        let fixture = try await makeArtwork()
-        let gate = TextlessLookupGate()
-        let store = makeStore { _ in await gate.lookup() }
-        store.recordForTesting(.available(fixture.clean), for: fixture.item)
-        for style in [CardStyle.borderless, .framed] {
-            try await withCard(
-                fixture.item, store: store, style: style,
-                settings: .init(overrides: [.continueWatching: .library])
-            ) { window in
-                try await waitUntil { try self.coloredPixels(window)[0] > 500 }
-                let counts = try coloredPixels(window)
-                XCTAssertEqual(counts[1], 0)
-                XCTAssertEqual(counts[2], 0)
-            }
-        }
-        let count = await gate.requests
-        XCTAssertEqual(count, 0)
-        await gate.finish(nil)
-    }
-
-    func testRecommendedKeepsLibraryBackdropWhenOnlyMetadataPosterExists() async throws {
-        for kind in [MediaItemKind.episode, .movie] {
-            let fixture = try await makeArtwork(kind: kind, hasProviderBackdrop: false)
-            let store = makeStore { _ in nil }
-            for style in [CardStyle.borderless, .framed] {
-                try await withCard(fixture.item, store: store, style: style) { window in
-                    try await waitUntil { try self.coloredPixels(window)[0] > 500 }
-                    XCTAssertEqual(try coloredPixels(window)[1], 0, "Do not crop a titled provider poster over a library backdrop.")
-                }
-            }
-        }
-    }
-
-    func testMissingLibraryBackdropStillFallsBackToMetadataPoster() async throws {
-        for kind in [MediaItemKind.episode, .movie] {
-            for hasLibraryBackdrop in [true, false] {
-                var fixture = try await makeArtwork(kind: kind, hasProviderBackdrop: false)
-                let missing = try await cacheImage(nil)
-                fixture.item.backdropURL = hasLibraryBackdrop ? missing : nil
-                fixture.item.fallbackArtworkURL = hasLibraryBackdrop ? missing : nil
-                let store = makeStore { _ in nil }
-                for style in [CardStyle.borderless, .framed] {
-                    try await withCard(fixture.item, store: store, style: style) { window in
-                        try await waitUntil("\(kind) / library \(hasLibraryBackdrop) / \(style)") {
-                            try self.coloredPixels(window)[1] > 500
-                        }
-                        XCTAssertEqual(try coloredPixels(window)[0], 0)
-                    }
-                }
-            }
-        }
-    }
-
-    func testChangingRecommendedToMetadataAndBackReplacesThePinnedArtwork() async throws {
-        let fixture = try await makeArtwork(hasProviderBackdrop: false)
-        let store = makeStore { _ in nil }
-        for style in [CardStyle.borderless, .framed] {
-            var appearance = 0
-            try await withCard(
-                fixture.item, store: store, style: style,
-                settingsChanges: [.init(overrides: [.continueWatching: .online]), .default]
-            ) { window in
-                let expectedChannel = appearance == 1 ? 1 : 0
-                try await waitUntil { try self.coloredPixels(window)[expectedChannel] > 500 }
-                XCTAssertEqual(try coloredPixels(window)[1 - expectedChannel], 0)
-                appearance += 1
-            }
-        }
-    }
-
-    func testUnresponsiveTextlessLookupFallsBackWithoutReplacingTheNativePoster() async throws {
-        let fixture = try await makeArtwork()
-        let gate = TextlessLookupGate()
-        defer { Task { await gate.finish(nil) } }
-        let store = makeStore { _ in await gate.lookup() }
-        try await withCard(fixture.item, store: store, style: .borderless) { window in
-            window.layoutIfNeeded()
-            try await waitUntil { try self.coloredPixels(window)[0] > 500 }
-        }
-        await gate.finish(nil)
-    }
-
-    private func makeStore(
-        resolve: (@Sendable (MediaItem) async -> URL?)? = nil
-    ) -> TextlessBackdropStore {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("textless-hosted-\(UUID())")
-        let index = TextlessBackdropIndex(directory: directory)
-        addTeardownBlock { @MainActor in
-            try await index.flushForTesting()
-            if FileManager.default.fileExists(atPath: directory.path) {
-                try FileManager.default.removeItem(at: directory)
-            }
-        }
-        return TextlessBackdropStore(store: index, resolveArtwork: resolve)
-    }
-
-    private func makeArtwork(
-        kind: MediaItemKind = .episode, hasProviderBackdrop: Bool = true
-    ) async throws -> (item: MediaItem, clean: URL) {
-        let library = try await cacheImage(.red)
-        let clean = try await cacheImage(.blue)
-        let id = UUID().uuidString
-        let item = MediaItem(
-            id: id, title: "Artwork fixture \(id)", kind: kind,
-            parentTitle: "Series \(id)", seasonNumber: 1, episodeNumber: 2,
-            seriesID: "series-\(id)", isPlayed: true,
-            backdropURL: library, fallbackArtworkURL: library
-        )
-        return (item, clean)
     }
 
     private func cacheImage(
@@ -564,7 +311,7 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
     }
 
     private func withCard(
-        _ item: MediaItem, store: TextlessBackdropStore, style: CardStyle,
+        _ item: MediaItem, style: CardStyle,
         focus: CardFocusStyle = .system, settings: ArtworkSettings = .default,
         shape: PosterCardView.Style = .landscape,
         width: CGFloat = 300,
@@ -592,12 +339,11 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             PosterCardView(
                 item: item, style: shape, showsSeriesArtwork: showsSeriesArtwork,
                 showsResumeChip: showsResumeChip ?? (shape == .poster),
-                textlessBackdropStore: store, action: {}
+                action: {}
             )
             .environment(\.plozzArtworkSettings, settings)
             .environment(\.plozzArtworkArea, artworkArea)
             .environment(\.plozzMetrics, metrics)
-            .environment(\.plozzArtworkProviders, MetadataProviderSettingsStore().load())
             .environment(\.plozzCardStyle, style)
             .environment(\.plozzCardFocusStyle, focus)
             .environment(\.plozzCardCaptionView, captionView)
@@ -709,19 +455,4 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         XCTAssertTrue(try condition(), "Continue Watching did not reach the expected artwork. \(context)")
     }
 
-}
-
-private actor TextlessLookupGate {
-    private(set) var requests = 0
-    private var continuation: CheckedContinuation<URL?, Never>?
-
-    func lookup() async -> URL? {
-        requests += 1
-        return await withCheckedContinuation { continuation = $0 }
-    }
-
-    func finish(_ url: URL?) {
-        continuation?.resume(returning: url)
-        continuation = nil
-    }
 }

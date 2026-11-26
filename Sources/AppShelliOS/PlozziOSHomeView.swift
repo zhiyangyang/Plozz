@@ -2917,8 +2917,7 @@ struct PlozziOSHomeMediaRail: View {
             language: locale.identifier,
             style: horizontalSizeClass == .compact ? .compactPortrait : .landscape,
             policy: ArtworkPresentationPolicy(
-                area: .details, settings: appModel.settings.cardStyle.artwork,
-                providers: appModel.metadataProviderSettingsModel.settings, logoLanguage: locale.identifier
+                area: .details, settings: appModel.settings.cardStyle.artwork, logoLanguage: locale.identifier
             )
         )
         return PlozziOSMediaSection(
@@ -3003,7 +3002,6 @@ struct PlozziOSHomeMediaRail: View {
         .environment(\.continueWatchingLogoScope, detailLogoScope)
         .environment(\.plozzCardCaptionSettings, appModel.settings.cardStyle.captions)
         .environment(\.plozzArtworkSettings, appModel.settings.cardStyle.artwork)
-        .environment(\.plozzArtworkProviders, appModel.metadataProviderSettingsModel.settings)
     }
 
     private func provider(for item: MediaItem) -> (any MediaProvider)? {
@@ -3026,7 +3024,6 @@ struct PlozziOSHomeMediaRail: View {
             showsSeriesArtwork: showsSeriesArtwork,
             spoilers: appModel.settings.spoilers.settings,
             artwork: appModel.settings.cardStyle.artwork,
-            providers: appModel.metadataProviderSettingsModel.settings
         )
     }
 
@@ -3144,7 +3141,7 @@ struct PlozziOSHomeMediaRail: View {
             policy: .init(
                 area: .continueWatching,
                 settings: appModel.settings.cardStyle.artwork,
-                providers: appModel.metadataProviderSettingsModel.settings,
+
                 logoLanguage: locale.identifier
             )
         )
@@ -3168,7 +3165,6 @@ private struct PlozziOSArtworkPrefetchIdentity: Equatable {
     let showsSeriesArtwork: Bool
     let spoilers: SpoilerSettings
     let artwork: ArtworkSettings
-    let providers: MetadataProviderSettings
 }
 
 private final class PlozziOSArtworkPrefetchTasks {

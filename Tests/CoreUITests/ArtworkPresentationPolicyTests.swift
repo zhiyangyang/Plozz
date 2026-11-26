@@ -2,7 +2,6 @@ import CoreModels
 import SwiftUI
 import XCTest
 @testable import CoreUI
-@testable import MetadataKit
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -244,35 +243,7 @@ final class ArtworkPresentationPolicyTests: XCTestCase {
         XCTAssertEqual(library.heroPolicy.heroPolicy, library.heroPolicy)
     }
 
-    func testRecommendedDetailHeroPolicyIsScopedAndPreservesProviderPermissions() {
-        let providers = MetadataProviderSettings(orderMode: .custom, enabledOrder: ["tvdb"], disabledOrder: ["tmdb"])
-        let cards = ArtworkPresentationPolicy(area: .details, providers: providers)
-        let hero = cards.forPlacement(.detailBackdrop)
-        let logo = cards.forPlacement(.logo)
-        XCTAssertFalse(cards.prefersOnlineArtwork)
-        XCTAssertTrue(hero.prefersOnlineArtwork)
-        XCTAssertTrue(logo.prefersOnlineArtwork)
-        XCTAssertEqual(hero.providers, cards.providers)
-        XCTAssertEqual(hero.metadataSettings.disabledOrder, ["tmdb"])
-        XCTAssertNotEqual(hero.identity, cards.identity)
-        XCTAssertEqual(hero.metadataSettings.artworkPolicyIdentity, logo.metadataSettings.artworkPolicyIdentity)
-        XCTAssertNotEqual(logo.identity, hero.identity)
-        XCTAssertNotEqual(
-            hero.identity,
-            ArtworkPresentationPolicy(area: .details, providers: providers, placement: .detailBackdrop, logoLanguage: "fr").identity
-        )
-        XCTAssertNotEqual(
-            hero.identity,
-            ArtworkPresentationPolicy(area: .details, settings: .init(preference: .online), providers: providers, placement: .detailBackdrop).identity
-        )
-        XCTAssertFalse(hero.forPlacement(.poster).prefersOnlineArtwork)
-        XCTAssertFalse(hero.forArea(.episodes).prefersOnlineArtwork)
-        let item = MediaItem(id: "detail", title: "Detail", kind: .movie)
-        XCTAssertTrue(MediaArtworkSource(item: item, placement: .detailBackdrop, policy: cards).policy.prefersOnlineArtwork)
-        XCTAssertFalse(MediaArtworkSource(item: item, placement: .poster, policy: cards).policy.prefersOnlineArtwork)
-    }
-
-    func testContinueWatchingRowScopeDoesNotDependOnItsParentPage() {
+func testContinueWatchingRowScopeDoesNotDependOnItsParentPage() {
         for view in [CardCaptionView.home, .recommended] {
             var environment = EnvironmentValues()
             environment.plozzCardCaptionView = view
@@ -316,24 +287,7 @@ final class ArtworkPresentationPolicyTests: XCTestCase {
     }
     #endif
 
-    func testAreaOverrideChangesSelectionWithoutChangingProviderPermissions() {
-        var settings = ArtworkSettings(preference: .online)
-        settings.setOverride(.library, for: .continueWatching)
-        let providers = MetadataProviderSettings(
-            orderMode: .custom, enabledOrder: ["tvdb"], disabledOrder: ["tmdb"]
-        )
-        let home = ArtworkPresentationPolicy(area: .home, settings: settings, providers: providers)
-        let resume = home.forArea(.continueWatching)
-        XCTAssertTrue(home.prefersOnlineArtwork)
-        XCTAssertFalse(resume.prefersOnlineArtwork)
-        XCTAssertFalse(resume.prefersTextlessArtwork)
-        XCTAssertEqual(resume.providers, providers)
-        XCTAssertEqual(resume.metadataSettings.disabledOrder, ["tmdb"])
-        XCTAssertNotEqual(home.identity, resume.identity)
-        XCTAssertEqual(home.identity, home.forArea(.search).identity)
-    }
-
-    func testCaptionContextAndExplicitAreaSelectTheCorrectOverride() {
+func testCaptionContextAndExplicitAreaSelectTheCorrectOverride() {
         var environment = EnvironmentValues()
         var settings = ArtworkSettings(preference: .library)
         settings.setOverride(.online, for: .search)
@@ -345,27 +299,6 @@ final class ArtworkPresentationPolicyTests: XCTestCase {
         XCTAssertFalse(environment.plozzArtworkPolicy.prefersOnlineArtwork)
         environment.plozzArtworkArea = nil
         XCTAssertTrue(environment.plozzArtworkPolicy.prefersOnlineArtwork)
-    }
-
-    func testEpisodePreparationDoesNotReuseAnOppositeProfileChoice() {
-        let item = MediaItem(id: "episode", title: "Episode", kind: .episode)
-        let online = EpisodeArtworkSource(
-            item: item, spoilerSettings: .default,
-            policy: .init(area: .episodes, settings: .init(preference: .online))
-        )
-        let library = EpisodeArtworkSource(
-            item: item, spoilerSettings: .default,
-            policy: .init(area: .episodes, settings: .init(preference: .library))
-        )
-        XCTAssertNotEqual(online.requestIdentity, library.requestIdentity)
-        var providers = MetadataProviderSettings.default
-        providers.orderMode = .custom
-        providers.disabledOrder = ["tmdb"]
-        let disabled = EpisodeArtworkSource(
-            item: item, spoilerSettings: .default,
-            policy: .init(area: .episodes, providers: providers)
-        )
-        XCTAssertNotEqual(online.requestIdentity, disabled.requestIdentity)
     }
 
 func testBackdropSourcesRespectPerAreaLibraryOverrides() throws {
@@ -405,13 +338,6 @@ private actor PolicyOnlineProbe {
     }
 }
 
-private final class PolicyArtworkSettings: MetadataProviderSettingsStoring, @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: MetadataProviderSettings
-    init(_ value: MetadataProviderSettings) { self.value = value }
-    func load() -> MetadataProviderSettings { lock.lock(); defer { lock.unlock() }; return value }
-    func save(_ value: MetadataProviderSettings) { lock.lock(); self.value = value; lock.unlock() }
-}
 
 private actor PolicyOnlineGate {
     private(set) var requests = 0

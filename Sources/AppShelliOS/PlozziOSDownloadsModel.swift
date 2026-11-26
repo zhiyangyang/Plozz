@@ -1147,7 +1147,6 @@ final class PlozziOSDownloadsModel {
         }
         let artworkPolicy = ArtworkPresentationPolicy(
             area: .downloads, settings: artworkSettings(),
-            providers: MetadataProviderSettingsStore().load()
         )
         let taskID = UUID()
         let task = Task { @MainActor [weak self] in

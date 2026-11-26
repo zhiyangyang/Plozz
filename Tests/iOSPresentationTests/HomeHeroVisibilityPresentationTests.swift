@@ -2,7 +2,6 @@
 import CoreModels
 import CoreUI
 import FeatureHomeCore
-@testable import MetadataKit
 import Observation
 import SwiftUI
 import Synchronization
@@ -814,22 +813,6 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
     }
 }
 
-private final class HeroArtworkProviderSettings: MetadataProviderSettingsStoring, @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = MetadataProviderSettings(orderMode: .custom, enabledOrder: ["tmdb"])
-
-    func load() -> MetadataProviderSettings {
-        lock.lock()
-        defer { lock.unlock() }
-        return value
-    }
-
-    func save(_ value: MetadataProviderSettings) {
-        lock.lock()
-        defer { lock.unlock() }
-        self.value = value
-    }
-}
 
 @MainActor
 @Observable

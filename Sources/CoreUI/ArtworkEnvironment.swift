@@ -5,20 +5,17 @@ import SwiftUI
 public struct ArtworkPresentationPolicy: Equatable, Sendable {
     public let area: ArtworkArea
     public let settings: ArtworkSettings
-    public let providers: MetadataProviderSettings
     public let placement: ArtworkPlacement?
     public let logoLanguage: String
 
     public init(
         area: ArtworkArea = .browse,
         settings: ArtworkSettings = .default,
-        providers: MetadataProviderSettings = .default,
         placement: ArtworkPlacement? = nil,
         logoLanguage: String = Locale.current.identifier
     ) {
         self.area = area
         self.settings = settings
-        self.providers = providers
         self.placement = placement
         self.logoLanguage = MetadataQuery.normalizedArtworkLanguage(logoLanguage)
     }
@@ -30,25 +27,18 @@ public struct ArtworkPresentationPolicy: Equatable, Sendable {
         settings.artworkReferences(for: item, placement: placement, in: area)
     }
 
-    public var metadataSettings: MetadataProviderSettings {
-        var value = providers
-        value.preferOnlineArtwork = prefersOnlineArtwork
-        return value
-    }
-
     public var identity: String {
-        metadataSettings.artworkPolicyIdentity
-            + "|placement:\(placement?.rawValue ?? "_")"
+        "placement:\(placement?.rawValue ?? "_")"
             + "|preference:\(settings.preference(in: area).rawValue)"
             + "|artwork-language:\(logoLanguage)"
     }
 
     public func forArea(_ area: ArtworkArea) -> Self {
-        Self(area: area, settings: settings, providers: providers, placement: placement, logoLanguage: logoLanguage)
+        Self(area: area, settings: settings, placement: placement, logoLanguage: logoLanguage)
     }
 
     public func forPlacement(_ placement: ArtworkPlacement?) -> Self {
-        Self(area: area, settings: settings, providers: providers, placement: placement, logoLanguage: logoLanguage)
+        Self(area: area, settings: settings, placement: placement, logoLanguage: logoLanguage)
     }
 
     public var heroPolicy: Self {
@@ -66,10 +56,6 @@ private struct ArtworkSourceReadyKey: EnvironmentKey {
 
 private struct ArtworkAreaKey: EnvironmentKey {
     static let defaultValue: ArtworkArea? = nil
-}
-
-private struct ArtworkProvidersKey: EnvironmentKey {
-    static let defaultValue = MetadataProviderSettings.default
 }
 
 private struct LandscapeTitleLogoKey: EnvironmentKey {
@@ -99,11 +85,6 @@ public extension EnvironmentValues {
         set { self[ArtworkAreaKey.self] = newValue }
     }
 
-    var plozzArtworkProviders: MetadataProviderSettings {
-        get { self[ArtworkProvidersKey.self] }
-        set { self[ArtworkProvidersKey.self] = newValue }
-    }
-
     var plozzArtworkPolicy: ArtworkPresentationPolicy {
         let area: ArtworkArea
         if let explicit = plozzArtworkArea {
@@ -123,7 +104,7 @@ public extension EnvironmentValues {
             }
         }
         return ArtworkPresentationPolicy(
-            area: area, settings: plozzArtworkSettings, providers: plozzArtworkProviders,
+            area: area, settings: plozzArtworkSettings,
             logoLanguage: locale.identifier
         )
     }

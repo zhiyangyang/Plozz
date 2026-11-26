@@ -42,10 +42,6 @@ struct SearchKeyboardInteractionFixture: View {
         model.accountsProviders.reloadAccounts()
         model.settings.cardStyle.captions = .default
         model.settings.heroBackground.settings.detailMode = .off
-        model.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         _appModel = State(initialValue: model)
     }
 

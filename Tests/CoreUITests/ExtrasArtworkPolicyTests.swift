@@ -246,45 +246,7 @@ final class ExtrasArtworkPolicyTests: XCTestCase {
         XCTAssertNil(exhausted)
     }
 
-    func testActualCardPaintsThumbnailInsteadOfGenericOnlineMemoForEitherPreference() async throws {
-        let settingsStore = MetadataProviderSettingsStore()
-        let originalSettings = settingsStore.load()
-        defer { settingsStore.save(originalSettings) }
-        let primary = try networkReference()
-        let loader = FixtureArtworkLoader(data: [
-            primary.catalogArtworkID: try XCTUnwrap(image(.green).pngData())
-        ])
-        ArtworkImageCache.shared.configure(networkFileService: ArtworkNetworkFileService(loader: loader))
-        defer { ArtworkImageCache.shared.configure(networkFileService: nil) }
-        let item = networkItem(primary: primary, parent: primary)
-        let standardReferences = CardArtworkPolicy.standard.references(for: item, style: .landscape)
-        XCTAssertEqual(standardReferences, references(item))
-        let decoded = await ArtworkImageCache.shared.image(for: .networkFile(primary), variant: .landscapeCard)
-        XCTAssertNotNil(decoded)
-        for prefersOnline in [false, true] {
-            var settings = originalSettings
-            settings.preferOnlineArtwork = prefersOnline
-            settingsStore.save(settings)
-            let genericKey = ArtworkResolveKey.make(
-                references: standardReferences, variant: .landscapeCard, maxAspectRatio: nil,
-                pinIdentity: CardArtworkPolicy.standard.pinIdentity(for: item),
-                providerPolicyIdentity: ArtworkPresentationPolicy(providers: settings).identity
-            )
-            ArtworkSeedMemo.store(
-                FirstPaintArtwork(image: image(.red), reference: .remote(url("wrong-online.jpg")), variant: .landscapeCard),
-                for: genericKey
-            )
-            let renderer = ImageRenderer(content: card(item).realArtwork.frame(width: 16, height: 9))
-            renderer.scale = 1
-            let rendered = try XCTUnwrap(renderer.uiImage)
-            let pixel = try centerPixel(rendered)
-            XCTAssertLessThan(pixel[0], 10)
-            XCTAssertGreaterThan(pixel[1], 240)
-            XCTAssertLessThan(pixel[2], 10)
-        }
-    }
-
-    private actor FixtureArtworkLoader: ArtworkNetworkFileLoading {
+private actor FixtureArtworkLoader: ArtworkNetworkFileLoading {
         let data: [String: Data]
         private(set) var requests: [String] = []
 

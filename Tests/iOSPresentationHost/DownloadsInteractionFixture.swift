@@ -29,10 +29,6 @@ struct DownloadsInteractionFixture: View {
             app.profiles.markFirstRunProfileSetupComplete()
             app.selectProfile(app.profiles.activeProfileID)
             app.settings.heroBackground.settings.detailMode = .off
-            app.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-                orderMode: .custom, preferOnlineArtwork: false,
-                disabledOrder: MetadataSourceAttribution.all.map(\.id)
-            )
         }
         let count = ProcessInfo.processInfo.arguments.contains("--download-scroll") ? 24 : 12
         var records = (1...count).map { index in

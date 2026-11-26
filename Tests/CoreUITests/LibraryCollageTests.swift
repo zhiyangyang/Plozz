@@ -1,7 +1,6 @@
 #if canImport(UIKit)
 import CoreModels
 @testable import CoreUI
-@testable import MetadataKit
 import UIKit
 import XCTest
 
@@ -188,13 +187,6 @@ private actor CollageArtworkLoader {
     }
 }
 
-private final class CollageArtworkSettings: MetadataProviderSettingsStoring, @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: MetadataProviderSettings
-    init(_ value: MetadataProviderSettings) { self.value = value }
-    func load() -> MetadataProviderSettings { lock.lock(); defer { lock.unlock() }; return value }
-    func save(_ value: MetadataProviderSettings) { lock.lock(); self.value = value; lock.unlock() }
-}
 
 private actor CollageProvider: MediaProvider, MediaFileBrowsing {
     nonisolated let kind: ProviderKind = .jellyfin

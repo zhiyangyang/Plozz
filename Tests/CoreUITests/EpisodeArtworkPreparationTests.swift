@@ -95,54 +95,7 @@ final class EpisodeArtworkPreparationTests: XCTestCase {
         XCTAssertNotEqual(identity(item), identity(changed))
     }
 
-    func testEpisodeResolutionKeepsServerArtworkWhenOnlineSourcesAreUnavailable() async throws {
-        let store = MetadataProviderSettingsStore()
-        let original = store.load()
-        defer {
-            store.save(original)
-            ArtworkImageCache.shared.configure(networkFileService: nil)
-        }
-        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 9)).image {
-            UIColor.green.setFill()
-            $0.fill(CGRect(x: 0, y: 0, width: 16, height: 9))
-        }
-        let loader = EpisodeArtworkLoader(data: try XCTUnwrap(image.pngData()))
-        ArtworkImageCache.shared.configure(networkFileService: ArtworkNetworkFileService(loader: loader))
-        for online in [false, true] {
-            store.save(.init(
-                orderMode: .custom, preferOnlineArtwork: online,
-                disabledOrder: MetadataSourceAttribution.all.map(\.source.rawValue)
-            ))
-            let reference = try NetworkArtworkReference(
-                accountID: UUID().uuidString, credentialRevision: CredentialRevision(),
-                catalogArtworkID: UUID().uuidString,
-                representation: RemoteFileRepresentation(
-                    size: 1_024,
-                    identity: RemoteFileIdentity(kind: .modificationTime, modifiedAt: .distantPast),
-                    consistency: .changeDetecting
-                ),
-                sourceRevision: UUID().uuidString
-            )
-            var item = MediaItem(id: UUID().uuidString, title: "Episode", kind: .episode)
-            item.artworkSelections = [
-                ArtworkSelection(placement: .episodeThumbnail, references: [.networkFile(reference)])
-            ]
-            let source = EpisodeArtworkSource(
-                item: item, spoilerSettings: .default,
-                policy: .init(
-                    area: .episodes, settings: .init(preference: online ? .online : .library),
-                    providers: store.load()
-                )
-            )
-            XCTAssertNil(source.preparedArtwork)
-            let resolved = await source.resolve()
-            XCTAssertEqual(resolved?.reference, .networkFile(reference))
-            XCTAssertTrue(source.preparedArtwork?.image === resolved?.image)
-            XCTAssertGreaterThan(try centerPixel(XCTUnwrap(resolved?.image))[1], 240)
-        }
-    }
-
-    func testNativeResolutionReusesTheDetailWinnersWithoutConflatingSharedFallbacks() async throws {
+func testNativeResolutionReusesTheDetailWinnersWithoutConflatingSharedFallbacks() async throws {
         let shared = URL(string: "https://art.example.test/\(UUID())/shared.jpg")!
         let first = MediaItem(id: UUID().uuidString, title: "First", kind: .episode, posterURL: shared)
         var second = first

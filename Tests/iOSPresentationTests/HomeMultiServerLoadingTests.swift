@@ -148,13 +148,7 @@ final class HomeMultiServerLoadingTests: XCTestCase {
         app.selectProfile(profile.id)
         app.profiles.markFirstRunProfileSetupComplete()
         app.settings.hero.settings.isEnabled = false
-        let metadata = app.metadataProviderSettingsModel.settings
-        app.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         defer {
-            app.metadataProviderSettingsModel.settings = metadata
             defaults.removePersistentDomain(forName: suite)
             for key in UserDefaults.standard.dictionaryRepresentation().keys
             where key.components(separatedBy: ".").contains(profile.id) {
@@ -410,13 +404,7 @@ final class HomeSettingsReturnTests: XCTestCase {
         app.selectProfile(profile.id)
         app.profiles.markFirstRunProfileSetupComplete()
         app.settings.hero.settings.isEnabled = false
-        let metadata = app.metadataProviderSettingsModel.settings
-        app.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         defer {
-            app.metadataProviderSettingsModel.settings = metadata
             defaults.removePersistentDomain(forName: suite)
             for key in UserDefaults.standard.dictionaryRepresentation().keys
             where key.components(separatedBy: ".").contains(profile.id) {

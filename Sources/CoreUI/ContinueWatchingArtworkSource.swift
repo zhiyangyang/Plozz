@@ -37,11 +37,7 @@ public struct ContinueWatchingArtworkSource: Sendable {
     var variant: ArtworkImageVariant { style == .poster ? .posterCard : .landscapeCard }
     var aspectGuard: CGFloat? { style == .poster ? 0.9 : nil }
     var logoReferences: [ArtworkReference] { item.artworkReferences(for: .logo) }
-    var prefersTextlessBackdrop: Bool {
-        guard style == .landscape else { return false }
-        guard let titleLogo else { return policy.prefersTextlessArtwork }
-        return titleLogo == .on && policy.settings.preference(in: policy.area) != .library
-    }
+    var prefersTextlessBackdrop: Bool { false }
 
     func suppressesLogo(
         artworkAlreadyCarriesTitle: Bool, hasCurrentArtwork: Bool, textlessBackdropSuppressesLogo: Bool
@@ -65,12 +61,9 @@ public struct ContinueWatchingArtworkSource: Sendable {
 
     func primaryReference(textlessBackdrop: URL?) -> ArtworkReference? {
         guard style == .landscape else { return nil }
-        if titleLogo != nil {
-            return prefersTextlessBackdrop ? textlessBackdrop.map(ArtworkReference.remote) : nil
-        }
+        if titleLogo != nil { return nil }
         return PosterCardPresentation.continueWatchingPrimaryReference(
-            for: item, policy: policy,
-            textlessBackdrop: policy.prefersTextlessArtwork ? textlessBackdrop : nil
+            for: item, policy: policy, textlessBackdrop: nil
         )
     }
 
@@ -106,29 +99,25 @@ public struct ContinueWatchingArtworkSource: Sendable {
     }
 
     @MainActor
-    public func prepare(store: TextlessBackdropStore = .shared, detailLogoScope: String? = nil) async {
+    public func prepare(detailLogoScope: String? = nil) async {
         guard style == .landscape else {
-            await prepareBackground(store: store)
+            await prepareBackground()
             return
         }
         async let logo: Void = HeroLogoPreloader.prepare(
             references: logoReferences, fallback: logoFallback(background: true), policy: policy,
             visit: logoVisit(in: detailLogoScope)
         )
-        await prepareBackground(store: store)
+        await prepareBackground()
         await logo
     }
 
     @MainActor
-    private func prepareBackground(store: TextlessBackdropStore) async {
-        if allowsFallback, prefersTextlessBackdrop {
-            await store.prepare(for: item, variant: variant, background: true)
-        }
+    private func prepareBackground() async {
         guard !Task.isCancelled else { return }
-        let textless = prefersTextlessBackdrop ? store.backdrop(for: item) : nil
         await ArtworkFirstPaintResolver.prepare(
-            references: references(textlessBackdrop: textless),
-            prefersPrimaryReference: primaryReference(textlessBackdrop: textless) != nil,
+            references: references(textlessBackdrop: nil),
+            prefersPrimaryReference: primaryReference(textlessBackdrop: nil) != nil,
             variant: variant, maxAspectRatio: aspectGuard,
             asyncOnlineURL: fallback(background: true),
             pinIdentity: pinIdentity, policy: policy

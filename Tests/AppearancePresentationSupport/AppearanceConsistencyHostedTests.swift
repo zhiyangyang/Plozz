@@ -362,51 +362,7 @@ final class AppearanceConsistencyHostedTests: XCTestCase {
         )
     }
 
-    func testSharedHeroAppearanceReevaluatesChangedProviderPolicy() async throws {
-        let fixture = try await makeFixture()
-        defer { fixture.close() }
-        let library = try seedArtwork(color: .red)
-        let metadata = try seedArtwork(color: .blue)
-        let appearanceID = UUID().uuidString
-        for providerEnabled in [true, false, true] {
-            let providers = MetadataProviderSettings(
-                orderMode: .custom,
-                enabledOrder: providerEnabled ? ["tmdb"] : [],
-                disabledOrder: providerEnabled ? [] : ["tmdb"]
-            )
-            let policy = ArtworkPresentationPolicy(
-                area: .details, providers: providers, placement: .detailBackdrop
-            )
-            let online = providerEnabled ? metadata : nil
-            fixture.host.rootView = AnyView(
-                VStack(spacing: 0) {
-                    ForEach(0..<2) { index in
-                        FallbackAsyncImage(
-                            references: [.remote(library)], variant: .heroBackdrop,
-                            artworkPolicy: policy, asyncFallbackURL: { online },
-                            pinIdentity: "\(appearanceID)-\(index)",
-                            sharedResolutionIdentity: appearanceID
-                        ) { Color.clear }
-                        .frame(height: 160)
-                    }
-                }
-                .frame(width: 300, height: 320)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(.black)
-            )
-            try await waitUntil("shared hero provider enabled=\(providerEnabled)") {
-                guard let image = try? self.capture(fixture.window) else { return false }
-                return [50.0, 220.0].allSatisfy { y in
-                    guard let pixel = try? self.pixel(
-                        image, x: 50 / fixture.window.bounds.width, y: y / fixture.window.bounds.height
-                    ) else { return false }
-                    return pixel[providerEnabled ? 2 : 0] > 100 && pixel[providerEnabled ? 0 : 2] < 20
-                }
-            }
-        }
-    }
-
-    func testRecommendedDetailHeroesUseMetadataWithoutChangingRelatedCards() async throws {
+func testRecommendedDetailHeroesUseMetadataWithoutChangingRelatedCards() async throws {
         let fixture = try await makeFixture()
         defer { fixture.close() }
         let library = try seedArtwork(color: .red)

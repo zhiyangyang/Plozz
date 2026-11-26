@@ -540,7 +540,7 @@ struct PlozziOSHeroArtworkSeed {
     ) -> UIImage? {
         guard let artwork, subjectID == item.stablePresentationID,
               self.profileID == profileID,
-              self.policy.metadataSettings.artworkPolicyIdentity == policy.metadataSettings.artworkPolicyIdentity,
+              self.policy.identity == policy.identity,
               self.policy.settings.preference(in: self.policy.area) == policy.settings.preference(in: policy.area),
               self.policy.logoLanguage == policy.logoLanguage,
               style == .compactPortrait || artwork.isLandscape else { return nil }

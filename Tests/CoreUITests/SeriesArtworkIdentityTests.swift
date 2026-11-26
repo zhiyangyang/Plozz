@@ -93,7 +93,7 @@ final class SeriesArtworkIdentityTests: XCTestCase {
         XCTAssertNotEqual(key(first), key(anotherAccount))
     }
 
-func testConversionKeepsMatchingRestrictionsAndLeavesRealSeriesUntouched() {
+    func testConversionKeepsMatchingRestrictionsAndLeavesRealSeriesUntouched() {
         var child = episode(ids: [:])
         child.allowsTitleBasedMetadataMatching = false
         let target = PosterCardView.seriesArtworkItem(for: child)
@@ -117,38 +117,5 @@ func testConversionKeepsMatchingRestrictionsAndLeavesRealSeriesUntouched() {
             XCTAssertEqual(exact.providerIDs.providerID(.tmdb), "show-id",
                            "Missing display metadata must not discard an authoritative show ID.")
         }
-    }
-
-    func testLegacyBackdropMissCannotKeepSuppressingTheCorrectedLogo() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let index = TextlessBackdropIndex(directory: directory)
-        index.save(.none, for: "series-1")
-        let store = TextlessBackdropStore(store: index)
-        var item = episode(ids: ["Tmdb": "child-123", "SeriesTmdb": "show-456"])
-        item.genres = ["Anime"]
-        XCTAssertFalse(store.hasAnswer(for: item), "Legacy ID-only answers do not prove a correctly scoped lookup ran.")
-        XCTAssertFalse(store.suppressesLogo(for: item))
-        XCTAssertEqual(index.load()["series-1"], TextlessBackdropStore.Outcome.none,
-                       "Unrelated cache entries are retained rather than cleared.")
-        try await index.flushForTesting()
-    }
-
-    func testBackdropAnswersAreScopedToTheAccountAndCorrectedSeriesIdentity() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let index = TextlessBackdropIndex(directory: directory)
-        let store = TextlessBackdropStore(store: index)
-        let first = episode(ids: ["Tmdb": "child-123", "SeriesTmdb": "show-456"])
-        store.recordForTesting(.none, for: first)
-        let sibling = episode("episode-2", ids: ["Tmdb": "child-999", "SeriesTmdb": "show-456"])
-        XCTAssertTrue(store.hasAnswer(for: sibling))
-        var corrected = first
-        corrected.providerIDs["SeriesTmdb"] = "show-789"
-        XCTAssertFalse(store.hasAnswer(for: corrected))
-        var otherAccount = first
-        otherAccount.sourceAccountID = "different-server"
-        XCTAssertFalse(store.hasAnswer(for: otherAccount))
-        try await index.flushForTesting()
     }
 }

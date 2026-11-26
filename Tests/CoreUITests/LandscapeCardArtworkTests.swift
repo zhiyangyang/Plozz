@@ -2,7 +2,6 @@ import CoreModels
 import SwiftUI
 import XCTest
 @testable import CoreUI
-@testable import MetadataKit
 #if canImport(UIKit)
 import UIKit
 

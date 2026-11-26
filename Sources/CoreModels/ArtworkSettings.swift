@@ -251,16 +251,7 @@ public final class ArtworkSettingsStore: ArtworkSettingsStoring, @unchecked Send
                 }
                 return settings
             }
-            guard !defaults.bool(forKey: key + ".migrated") else { return .default }
-            let legacy = defaults.data(forKey: "com.plozz.metadataProviderSettings")
-            let preference = try legacy.map {
-                try JSONDecoder().decode(MetadataProviderSettings.self, from: $0)
-            }
-            let settings = ArtworkSettings(
-                preference: preference?.preferOnlineArtwork == false ? .library : .recommended
-            )
-            save(settings)
-            return settings
+            return .default
         } catch {
             Self.logger.error("Unable to read artwork preferences: \(String(describing: error))")
             return .default

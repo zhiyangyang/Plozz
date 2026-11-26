@@ -48,7 +48,6 @@ final class HomeRailPrefetchPerformanceTests: XCTestCase {
             { fixture.state.items[0].fallbackArtworkURL = fixture.alternateArtwork },
             { fixture.state.items[0].sourceAccountID = "replacement-account" },
             { fixture.app.settings.cardStyle.artwork = ArtworkSettings(preference: .online) },
-            { fixture.app.metadataProviderSettingsModel.settings.preferOnlineArtwork.toggle() }
         ]
         for change in changes {
             let beforeChange = PlozziOSHomeMediaRail.artworkPrefetchSourceBuildCount
@@ -107,7 +106,6 @@ final class HomeRailPrefetchPerformanceTests: XCTestCase {
         private let suite = "HomeRailPrefetch.\(UUID())"
         private let defaults: UserDefaults
         private let profileID: String
-        private let originalProviders: MetadataProviderSettings
 
         init(prefetchesArtwork: Bool) async throws {
             defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -118,11 +116,6 @@ final class HomeRailPrefetchPerformanceTests: XCTestCase {
             profileID = app.profiles.add(name: "Fixture", avatarSymbol: "person.fill", colorIndex: 0).id
             app.selectProfile(profileID)
             app.settings.cardStyle.artwork = ArtworkSettings(preference: .library)
-            originalProviders = app.metadataProviderSettingsModel.settings
-            app.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-                orderMode: .custom, preferOnlineArtwork: false,
-                disabledOrder: MetadataSourceAttribution.all.map(\.id)
-            )
             let artwork = try await Self.artwork()
             alternateArtwork = try await Self.artwork()
             state.items = (0..<180).map { index in
@@ -177,7 +170,6 @@ final class HomeRailPrefetchPerformanceTests: XCTestCase {
             window.isHidden = true
             window.rootViewController = nil
             previous?.makeKeyAndVisible()
-            app.metadataProviderSettingsModel.settings = originalProviders
             defaults.removePersistentDomain(forName: suite)
             for key in UserDefaults.standard.dictionaryRepresentation().keys
             where key.components(separatedBy: ".").contains(profileID) {

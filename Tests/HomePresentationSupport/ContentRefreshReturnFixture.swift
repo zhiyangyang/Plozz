@@ -47,10 +47,6 @@ struct ContentRefreshReturnFixture: View {
         model.accountsProviders.tokenResolver = { _ in "fixture" }
         model.accountsProviders.reloadAccounts()
         model.settings.heroBackground.settings.detailMode = .off
-        model.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false,
-            disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
         _app = State(initialValue: model)
     }
 

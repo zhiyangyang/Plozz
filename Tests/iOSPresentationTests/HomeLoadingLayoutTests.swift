@@ -116,11 +116,6 @@ func testLiveJellyfinCompletedEpisodeRemainsOnHome() async throws {
         }
         let fixture = try Fixture()
         defer { fixture.close() }
-        let metadata = fixture.app.metadataProviderSettingsModel.settings
-        fixture.app.metadataProviderSettingsModel.settings = MetadataProviderSettings(
-            orderMode: .custom, preferOnlineArtwork: false, disabledOrder: MetadataSourceAttribution.all.map(\.id)
-        )
-        defer { fixture.app.metadataProviderSettingsModel.settings = metadata }
         let visibility = fixture.app.settings.homeVisibility
         await visibility.prepareServerDefaults(accounts: accounts)
         XCTAssertTrue(visibility.serverMatchFailures.isEmpty, "Live server layout discovery must succeed.")

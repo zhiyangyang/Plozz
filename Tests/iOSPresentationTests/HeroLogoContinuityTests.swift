@@ -676,7 +676,6 @@ final class HeroLogoContinuityTests: XCTestCase {
                     artworkSettings: app.settings.cardStyle.artwork
                 )
                 .environment(\.plozzArtworkArea, .details)
-                .environment(\.plozzArtworkProviders, app.metadataProviderSettingsModel.settings)
                 .environment(\.plozzArtworkSourceReady, verified)
                 .detailHeroLogoVisit(scope: scope, subject: item.stablePresentationID))
             }
