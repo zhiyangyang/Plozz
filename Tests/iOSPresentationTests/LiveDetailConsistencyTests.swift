@@ -430,7 +430,7 @@ final class LiveDetailConsistencyTests: XCTestCase {
                 }) ? sources : []
             },
             crossServerSourceResolver: nil, continueWatchingSnapshot: { feed },
-            metadataLanguage: "fr", onlineTrailerResolver: { _ in [] }
+            metadataLanguage: "fr"
         )
     }
 

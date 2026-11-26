@@ -174,15 +174,6 @@ struct PlozziOSItemDetailView: View {
                 await DetailMetadataResolver.household.resolve(item, language: language)
             }
         }
-        let onlineTrailers: OnlineTrailerResolving
-        if PlozzCustomization.isCustomBuild {
-            onlineTrailers = { _ in [] }
-        } else {
-            onlineTrailers = { item in
-                guard !OfflineMode.shared.isEnabled else { return [] }
-                return await DetailMetadataResolver.household.trailers(for: item)
-            }
-        }
         return DetailOpenEnvironment(
             resolveProvider: { accountID in
                 guard let accountID else { return provider }
@@ -197,7 +188,6 @@ struct PlozziOSItemDetailView: View {
             continueWatchingSnapshot: { homeViewModel?.continueWatchingForDetail ?? [] },
             metadataLanguage: language,
             localizedDetailMetadataResolver: localizedResolver,
-            onlineTrailerResolver: onlineTrailers,
             trailerSettings: appModel.settings.heroBackground,
             makeRelatedTitlesLoader: { mode in
                 // The personal build replaces this metadata-driven row with the

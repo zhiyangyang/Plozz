@@ -48,7 +48,6 @@ public struct DetailOpenEnvironment {
     public let detailMetadataResolver: @Sendable (MediaItem) async -> MetadataEnrichment
     public let metadataLanguage: String
     public let localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)?
-    public let onlineTrailerResolver: OnlineTrailerResolving
     public let trailerSettings: HeroBackgroundSettingsModel?
     /// Refreshes a discovery (Seerr) title's request/availability. `nil` when Seerr
     /// isn't wired.
@@ -74,7 +73,6 @@ public struct DetailOpenEnvironment {
         detailMetadataResolver: @escaping @Sendable (MediaItem) async -> MetadataEnrichment = { _ in MetadataEnrichment() },
         metadataLanguage: String = "en",
         localizedDetailMetadataResolver: (@Sendable (MediaItem, String) async -> MetadataEnrichment)? = nil,
-        onlineTrailerResolver: @escaping OnlineTrailerResolving = ItemDetailViewModel.defaultOnlineTrailerResolver,
         trailerSettings: HeroBackgroundSettingsModel? = nil,
         discoveryStatusRefresh: (@Sendable (MediaItem) async -> MediaRequestAvailability?)? = nil,
         loadSeasonEpisodeRoster:
@@ -91,7 +89,6 @@ public struct DetailOpenEnvironment {
         self.detailMetadataResolver = detailMetadataResolver
         self.metadataLanguage = metadataLanguage
         self.localizedDetailMetadataResolver = localizedDetailMetadataResolver
-        self.onlineTrailerResolver = onlineTrailerResolver
         self.trailerSettings = trailerSettings
         self.discoveryStatusRefresh = discoveryStatusRefresh
         self.loadSeasonEpisodeRoster = loadSeasonEpisodeRoster
@@ -331,7 +328,6 @@ public struct DetailOpenEnvironment {
             metadataLanguage: metadataLanguage,
             sourceAccountID: isDiscovery ? nil : selectedSource?.accountID ?? item.sourceAccountID ?? libraryOrigin,
             originSourceAccountID: Self.contextSource(for: selectedItem)?.accountID,
-            onlineTrailerResolver: onlineTrailerResolver,
             trailerSettings: trailerSettings,
             initialSources: sources,
             alternateProviderResolver: resolveOptionalProvider,

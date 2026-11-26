@@ -119,7 +119,7 @@ public final class ItemDetailViewModel {
               preparedTrailerPolicy != trailerPolicy || trailerLoadNeedsRetry,
               let item = state.value?.item else { return }
         if isDiscoveryItem {
-            await loadDiscoveryTrailer(for: item, sourceGeneration: sourceGeneration)
+            trailers = []
         } else if let activeProvider {
             await loadTrailers(for: item, provider: activeProvider, sourceGeneration: sourceGeneration)
         }
@@ -376,12 +376,6 @@ public final class ItemDetailViewModel {
     /// the initial load and its snapshot restore.
     private var sourceGeneration: UInt64 = 0
     @ObservationIgnored private var returnRefreshGeneration: UInt64 = 0
-    /// Resolves a metadata-supplied YouTube link, used only
-    /// when the provider surfaces no local or server trailer. Injectable so tests
-    /// can avoid the network.
-    private let onlineTrailerResolver: OnlineTrailerResolving
-    /// Selects a valid external video id without probing YouTube playback.
-    private let playableVideoIDResolver: PlayableTrailerResolving
     /// Memo of trailer-resolution outcomes so a revisited detail page surfaces its
     /// Trailer button instantly instead of repeating metadata requests. Injected
     /// so tests can supply an isolated cache.
@@ -651,8 +645,6 @@ public final class ItemDetailViewModel {
         metadataLanguage: String = "en",
         sourceAccountID: String? = nil,
         originSourceAccountID: String? = nil,
-        onlineTrailerResolver: @escaping OnlineTrailerResolving = ItemDetailViewModel.defaultOnlineTrailerResolver,
-        playableVideoIDResolver: @escaping PlayableTrailerResolving = ItemDetailViewModel.defaultPlayableVideoIDResolver,
         trailerCache: TrailerResolutionCache = .shared,
         trailerSettings: HeroBackgroundSettingsModel? = nil,
         initialSources: [MediaSourceRef] = [],
@@ -697,8 +689,6 @@ public final class ItemDetailViewModel {
         self.metadataLanguage = Locale.canonicalLanguageIdentifier(from: metadataLanguage)
         self.sourceAccountID = sourceAccountID
         self.originSourceAccountID = originSourceAccountID
-        self.onlineTrailerResolver = onlineTrailerResolver
-        self.playableVideoIDResolver = playableVideoIDResolver
         self.trailerCache = trailerCache
         self.trailerSettings = trailerSettings
         self.initialSources = initialSources
@@ -744,16 +734,6 @@ public final class ItemDetailViewModel {
         }
     }
 
-    /// Metadata-only trailer links. No scraping, extraction, or YouTube probes.
-    public static let defaultOnlineTrailerResolver: OnlineTrailerResolving = { item in
-        await OnlineTrailerSource.trailers(for: item)
-    }
-
-    /// Playback availability belongs to YouTube after the external handoff.
-    public static let defaultPlayableVideoIDResolver: PlayableTrailerResolving = { candidates in
-        candidates.first { MediaItem.youTubeVideoID(fromURL: $0) == $0 }
-    }
-
     /// Env-gated (`SCRUB_DIAG=1`) stdout tracer for trailer-source resolution,
     /// mirroring the `PLZSEEK` capture pattern so a network-paired Apple TV can be
     /// watched via `devicectl --console`. Zero-cost when unset.
@@ -764,6 +744,10 @@ public final class ItemDetailViewModel {
     private static func trailerDiag(_ message: String) {   // l10n:content — diagnostic log text
         guard trailerDiagEnabled else { return }
         FileHandle.standardOutput.write(Data(("PLZTRAIL " + message + "\n").utf8))
+    }
+
+    private static func playableVideoID(_ ids: [String]) -> String? {
+        ids.first { MediaItem.youTubeVideoID(fromURL: $0) == $0 }
     }
 
     /// Cancels every piece of owned background work so no detached/async task can
@@ -1329,53 +1313,6 @@ public final class ItemDetailViewModel {
         return copy
     }
 
-    private func loadDiscoveryTrailer(
-        for item: MediaItem,
-        sourceGeneration: UInt64
-    ) async {
-        guard !Task.isCancelled, isStillLoaded(item, sourceGeneration: sourceGeneration) else { return }
-        let policy = trailerPolicy
-        let generation = beginTrailerLoad()
-        defer { finishTrailerLoad(generation) }
-        func isCurrent() -> Bool {
-            isCurrentTrailerLoad(generation, policy: policy, item: item, sourceGeneration: sourceGeneration)
-        }
-        guard policy.allowsYouTube, isCurrent() else { return }
-        if let cached = trailerCache.outcome(for: item.id) {
-            switch cached {
-            case .working(let id): surfaceTrailer(videoID: id, for: item)
-            case .none: trailers = []
-            }
-            return
-        }
-        if Self.trailerMetadataDwellNanos > 0 {
-            try? await Task.sleep(
-                nanoseconds: Self.trailerMetadataDwellNanos
-            )
-        }
-        guard isCurrent() else { return }
-        let candidates = orderedUnique(
-            await onlineTrailerResolver(item)
-                .compactMap(\.youTubeTrailerVideoID)
-        )
-        guard isCurrent() else { return }
-        let workingID = await playableVideoIDResolver(candidates)
-        guard isCurrent() else { return }
-        if let workingID {
-            surfaceTrailer(videoID: workingID, for: item)
-            trailerCache.record(.working(workingID), for: item.id)
-        } else {
-            trailers = []
-            trailerCache.record(.none, for: item.id)
-        }
-    }
-
-    /// Refreshes a discovery (Seerr) title's request/availability + download
-    /// progress from Seerr on (re)open, so a title requested in an earlier visit
-    /// shows "Requested"/"Downloading" rather than a stale "Request" seeded from
-    /// the search result. The seeded item is kept untouched on any failure, and the
-    /// state is only republished when something actually changed (no needless
-    /// re-render / focus churn).
     private func refreshDiscoveryStatus() async {
         guard let requestedItem = state.value?.item else {
             if state.value == nil { state = .empty }
@@ -1880,17 +1817,8 @@ public final class ItemDetailViewModel {
             guard isCurrent() else { return }
         }
 
-        // Validate link syntax only. Do not scrape, probe, or extract YouTube media.
-        var workingID = await playableVideoIDResolver(serverIDs)
+        let workingID = Self.playableVideoID(serverIDs)
         guard isCurrent() else { return }
-        if workingID == nil {
-            let searchIDs = orderedUnique(await onlineTrailerResolver(item).compactMap(\.youTubeTrailerVideoID))
-            guard isCurrent() else { return }
-            let fresh = searchIDs.filter { !serverIDs.contains($0) }
-            if !fresh.isEmpty {
-                workingID = await playableVideoIDResolver(fresh)
-            }
-        }
 
         guard isCurrent() else { return }
         if let workingID {

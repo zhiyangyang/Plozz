@@ -205,7 +205,7 @@ final class RelatedTitlesPerformanceTests: XCTestCase {
             )
             let detail = detailOpening ? ItemDetailViewModel(
                 provider: providers[0], itemID: seed.id, initialItem: seed,
-                sourceAccountID: accountKinds[0].0, onlineTrailerResolver: { _ in [] },
+                sourceAccountID: accountKinds[0].0,
                 relatedTitlesLoader: loader
             ) : nil
             defer { detail?.suspendEnrichment() }
