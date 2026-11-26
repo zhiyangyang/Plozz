@@ -52,7 +52,6 @@ final class ShareCatalogRuntime {
     var scanner: ShareScanner?
     var scannerID: UUID?
     var scannerRevision: CredentialRevision?
-    var enricher: ShareEnricher?
     var localEnricher: ShareLocalMetadataEnricher?
     var artworkProbeWorker: ShareLocalArtworkProbeWorker?
     /// Credential rotation may arrive while the catalog is suspended. The reset is

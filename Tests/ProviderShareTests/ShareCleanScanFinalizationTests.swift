@@ -129,7 +129,7 @@ final class ShareCleanScanFinalizationTests: XCTestCase {
             itemID: itemID,
             .init(providerIDs: providerIDs, overview: overview,
                   posterURL: URL(string: "https://example.com/p.jpg")),
-            version: ShareEnricher.version
+            version: 1
         )
     }
 

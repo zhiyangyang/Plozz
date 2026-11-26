@@ -551,7 +551,7 @@ final class ShareLocalArtworkTests: XCTestCase {
         let saved = await store.saveEnrichment(
             itemID: itemID,
             .init(posterURL: URL(string: "https://example.invalid/online.jpg")),
-            version: ShareEnricher.version
+            version: 1
         )
         XCTAssertTrue(saved)
         await store.upsertArtwork([candidate("Movies/Film/poster.jpg")], scanID: 1)
@@ -586,7 +586,7 @@ final class ShareLocalArtworkTests: XCTestCase {
         let saved = await store.saveEnrichment(
             itemID: itemID,
             .init(posterURL: URL(string: "https://example.invalid/external.jpg")),
-            version: ShareEnricher.version
+            version: 1
         )
         XCTAssertTrue(saved)
         await store.upsertArtwork([candidate("Movies/Film/poster.jpg")], scanID: 1)
@@ -623,7 +623,7 @@ final class ShareLocalArtworkTests: XCTestCase {
         let refreshed = await store.saveEnrichment(
             itemID: itemID,
             .init(posterURL: URL(string: "https://example.invalid/refreshed.jpg")),
-            version: ShareEnricher.version
+            version: 1
         )
         XCTAssertTrue(refreshed)
         XCTAssertEqual(
@@ -1042,12 +1042,12 @@ final class ShareLocalArtworkTests: XCTestCase {
         let loserSaved = await store.saveEnrichment(
             itemID: ShareCatalogID.series(loserKey),
             .init(providerIDs: ["Tvdb": "270261"], title: "Peaky Blinders"),
-            version: ShareEnricher.version
+            version: 1
         )
         let canonicalSaved = await store.saveEnrichment(
             itemID: ShareCatalogID.series(canonicalKey),
             .init(providerIDs: ["Tvdb": "270261"], title: "Peaky Blinders"),
-            version: ShareEnricher.version
+            version: 1
         )
         XCTAssertTrue(loserSaved)
         XCTAssertTrue(canonicalSaved)
@@ -1168,7 +1168,7 @@ final class ShareLocalArtworkTests: XCTestCase {
         let saved = await store.saveEnrichment(
             itemID: itemID,
             .sourced(posterURL: .init(value: external, source: .tmdb)),
-            version: ShareEnricher.version
+            version: 1
         )
         XCTAssertTrue(saved)
         await store.upsertArtwork([candidate("Movies/Film/poster.jpg")], scanID: 1)

@@ -106,7 +106,7 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.metadataScheduler = ShareMetadataWorkScheduler(automaticAccountKeys: initialWorkScope?.accountKeys)
         self.arbiterFactory = arbiterFactory
         self.diagnostics = DefaultShareScanDiagnostics()
-        self.pipelineFactory = DefaultShareMetadataPipelineFactory(clients: .production)
+        self.pipelineFactory = DefaultShareMetadataPipelineFactory()
         self.artworkCacheLifecycle = NoopShareLocalArtworkCacheLifecycle()
         self.metadataConfig = { MetadataEnrichmentConfig() }
     }
@@ -120,34 +120,9 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.metadataScheduler = ShareMetadataWorkScheduler(automaticAccountKeys: initialWorkScope?.accountKeys)
         self.arbiterFactory = arbiterFactory
         self.diagnostics = DefaultShareScanDiagnostics()
-        self.pipelineFactory = DefaultShareMetadataPipelineFactory(clients: .production)
+        self.pipelineFactory = DefaultShareMetadataPipelineFactory()
         self.artworkCacheLifecycle = artworkCacheLifecycle
         self.metadataConfig = { MetadataEnrichmentConfig() }
-    }
-
-    /// Step 6 composition: like the artwork-lifecycle init above, but the enrichment
-    /// pipeline is built with a user-override config and (optionally) a shared
-    /// provider runtime so Settings can read/adjust the running system. Passing
-    /// `.init()` for `metadataComposition` is byte-identical to the init above.
-    public init(
-        arbiterFactory: @escaping ArbiterFactory = { MediaIOArbiter(accountID: $0) },
-        artworkCacheLifecycle: any ShareLocalArtworkCacheLifecycle,
-        metadataComposition: ShareMetadataComposition,
-        initialWorkScope: MediaShareWorkScope? = nil
-    ) {
-        self.automaticWorkScope = initialWorkScope
-        self.metadataScheduler = ShareMetadataWorkScheduler(automaticAccountKeys: initialWorkScope?.accountKeys)
-        self.arbiterFactory = arbiterFactory
-        self.diagnostics = DefaultShareScanDiagnostics()
-        self.pipelineFactory = DefaultShareMetadataPipelineFactory(
-            clients: .production(
-                enrichmentConfig: metadataComposition.enrichmentConfig,
-                providerConfig: metadataComposition.providerConfig,
-                providerRuntime: metadataComposition.providerRuntime
-            )
-        )
-        self.artworkCacheLifecycle = artworkCacheLifecycle
-        self.metadataConfig = metadataComposition.enrichmentConfig
     }
 
     init(
@@ -176,7 +151,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         self.reporter = reporter
         for runtime in runtimes.values {
             if let scanner = runtime.scanner { await scanner.setReporter(reporter) }
-            if let enricher = runtime.enricher { await enricher.setReporter(reporter) }
         }
     }
 
@@ -761,7 +735,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                     let staleArtworkProbeWorker = runtime.artworkProbeWorker
                     runtime.localEnricher = nil
                     runtime.artworkProbeWorker = nil
-                    runtime.enricher = nil
                     await metadataScheduler.remove(accountKey: accountKey)
                     await staleLocalEnricher?.close()
                     await staleArtworkProbeWorker?.close()
@@ -780,7 +753,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                 let staleArtworkProbeWorker = runtime.artworkProbeWorker
                 runtime.localEnricher = nil
                 runtime.artworkProbeWorker = nil
-                runtime.enricher = nil
                 await metadataScheduler.remove(accountKey: accountKey)
                 await staleLocalEnricher?.close()
                 await staleArtworkProbeWorker?.close()
@@ -834,11 +806,9 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                     revision: backgroundWorkRevision
                 )
             }
-            if runtime.enricher == nil,
+            if runtime.localEnricher == nil,
                libraryConfiguration?.contentType != .personalVideos {
                 // Pipeline construction is injected for deterministic lifecycle tests.
-                // The production factory preserves the existing TVDB-when-configured,
-                // keyless-otherwise selection and builds both workers.
                 let pipeline = pipelineFactory.makePipeline(
                     store: store,
                     accountKey: accountKey,
@@ -846,12 +816,10 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                     reporter: reporter,
                     sessionFactory: sessionFactory
                 )
-                let enricher = pipeline.external
-                runtime.enricher = enricher
                 // A dedicated `.metadata` transport session — separate from the
                 // scanner's own pooled connections and from live browsing — reads
-                // NFO sidecars. Owned alongside `enricher`; never touched from a
-                // Home/grid/detail read (only scheduler slices + the urgent path).
+                // NFO sidecars. Owned alongside the artwork probe worker; never
+                // touched from a Home/grid/detail read.
                 let localEnricher = pipeline.local
                 runtime.localEnricher = localEnricher
                 let artworkProbeWorker = pipeline.artwork
@@ -861,13 +829,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                 let arbiter = runtime.arbiter
                 await metadataScheduler.register(
                     accountKey: accountKey,
-                    // Deliberately NOT `arbiter.permitsBackgroundWork()`. That gate
-                    // asks whether the SHARE is idle, which is the right question
-                    // for an NFO read or an artwork probe and the wrong one for an
-                    // external metadata lookup — that is an internet HTTP call and
-                    // cannot contend with a share scan. Using it here blocked all
-                    // metadata for the whole of every scan. Share admission is now
-                    // checked per step inside `runSlice`, at the point of use.
                     mayRun: { true },
                     runSlice: { budget in
                         await ShareMetadataWorkComposition.runSlice(
@@ -875,7 +836,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                             budget: budget,
                             local: localEnricher,
                             artwork: artworkProbeWorker,
-                            external: enricher,
                             sharePermits: { await arbiter.permitsBackgroundWork() }
                         )
                     },
@@ -883,18 +843,8 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
                         await ShareMetadataWorkComposition.runItem(
                             accountKey: accountKey,
                             itemID: itemID,
-                            local: localEnricher,
-                            external: enricher
+                            local: localEnricher
                         )
-                    },
-                    pausePass: {
-                        await enricher.pauseScheduledPass()
-                    },
-                    pauseForScope: {
-                        await enricher.pauseForProfileScope()
-                    },
-                    finishPass: {
-                        await enricher.finishLogicalPass()
                     }
                 )
             }
@@ -1119,12 +1069,12 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
     /// requests are rate-limited per item (``EnrichmentRepository/fastTrackRetryCooldown``);
     /// the Refresh control is unambiguous intent and bypasses the cooldown.
     private func enrichItem(accountKey: String, itemID: String, userRequested: Bool) async {
-        guard let runtime = runtimes[accountKey], runtime.enricher != nil else { return }
+        guard let runtime = runtimes[accountKey], runtime.localEnricher != nil else { return }
         if !userRequested {
             let store = runtime.store
             let cooling = await store.fastTrackEnrichmentIsCoolingDown(
                 itemID: itemID,
-                version: ShareEnricher.version
+                version: ShareLocalMetadataEnricher.version
             )
             if cooling { return }
         }
@@ -1251,7 +1201,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
             Task { await admission.open() }
         }
         let store = runtime.store
-        let shouldEnrich = runtime.enricher != nil
         // Capture the scanner/credential generation this walk is bound to, so
         // completion is only stamped if the SAME generation is still current when the
         // walk returns (a superseded scanner/credential must not stamp its replacement).
@@ -1259,7 +1208,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         let credentialRevision = runtime.scannerRevision
         let lifecycleRevision = backgroundWorkRevision
         let scanGeneration = UUID()
-        if shouldEnrich { await metadataScheduler.suspend(accountKey: accountKey) }
         guard backgroundWorkAllowed,
               force || permitsAutomaticWork(accountKey),
               lifecycleRevision == backgroundWorkRevision,
@@ -1267,7 +1215,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
               runtime.scanner === scanner,
               runtime.scannerID == scannerID,
               runtime.scannerRevision == credentialRevision else {
-            if shouldEnrich { await metadataScheduler.resume(accountKey: accountKey) }
             if !backgroundWorkAllowed || lifecycleRevision != backgroundWorkRevision {
                 markScanPendingForeground(accountKey, force: force)
             }
@@ -1283,11 +1230,9 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
         do {
             scannerLease = try await runtime.arbiter.acquireScanner(resource: resource)
         } catch {
-            if shouldEnrich { await metadataScheduler.resume(accountKey: accountKey) }
             if force { markScanPendingForeground(accountKey, force: true) }
             return
         }
-        if shouldEnrich { await metadataScheduler.resume(accountKey: accountKey) }
         guard backgroundWorkAllowed,
               force || permitsAutomaticWork(accountKey),
               lifecycleRevision == backgroundWorkRevision,
@@ -1349,7 +1294,7 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
             }
             resource.markDrained()
             await scannerLease.finishAndWait()
-            if shouldEnrich, !Task.isCancelled {
+            if !Task.isCancelled {
                 await self?.metadataScheduler.enqueueBacklog(accountKey: accountKey, userRequested: force)
             }
             let completedAt: Date?
@@ -1544,7 +1489,6 @@ public actor ShareCatalogCoordinator: ShareCatalogCoordinating {
             for task in lateTasks {
                 await task.value
             }
-            runtime.enricher = nil
             let removedLocalEnricher = runtime.localEnricher
             let removedArtworkProbeWorker = runtime.artworkProbeWorker
             runtime.localEnricher = nil

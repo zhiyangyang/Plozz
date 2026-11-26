@@ -354,7 +354,7 @@ final class ShareScanLifecycleTests: XCTestCase {
         ShareCatalogCoordinator(
             arbiterFactory: { MediaIOArbiter(accountID: $0) },
             diagnostics: diagnostics,
-            pipelineFactory: TestPipelineFactory { MetadataResolverSpy() },
+            pipelineFactory: DefaultShareMetadataPipelineFactory(),
             initialWorkScope: initialWorkScope
         )
     }
@@ -660,7 +660,7 @@ final class ShareScanLifecycleTests: XCTestCase {
         let revision = CredentialRevision()
         let diagnostics = ScanDiagnosticsSpy()
         let controller = LifecycleListController(blocksRoot: false)
-        let pipeline = PipelineFactorySpy(resolver: MetadataResolverSpy())
+        let pipeline = PipelineFactorySpy()
         let coordinator = ShareCatalogCoordinator(diagnostics: diagnostics, pipelineFactory: pipeline)
         let store = await coordinator.store(
             accountKey: accountID, displayName: "Videos",

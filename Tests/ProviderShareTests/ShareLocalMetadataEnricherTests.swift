@@ -236,23 +236,19 @@ final class ShareLocalMetadataEnricherTests: XCTestCase {
     /// state is no longer observable (`Task.isCancelled == false`) must still classify
     /// as cancellation: exactly one read (no reconnect), zero burned attempts, and no
     /// fall-through to external work through the real composition seam (finding A4).
-    func testMappedCancelledTransportErrorBurnsNoAttemptAndSkipsExternal() async throws {
+    func testMappedCancelledTransportErrorBurnsNoAttempt() async throws {
         let (store, itemID) = await seedPendingMovieSidecar(accountKey: "a4-mapped-cancel")
         let fileSystem = LocalMetaFakeFileSystem(files: [:], readError: MediaTransportError.cancelled)
         let localEnricher = makeLocalEnricher(store: store, fileSystem: fileSystem)
-        let external = SpyExternalRunning()
 
         await ShareMetadataWorkComposition.runItem(
             accountKey: "a4-mapped-cancel",
             itemID: itemID,
             local: localEnricher,
-            external: external,
             isCancelled: { false }
         )
 
         XCTAssertEqual(fileSystem.readCount, 1, "a mapped cancelled error must not reconnect/retry")
-        let itemCalls = await external.itemCalls
-        XCTAssertEqual(itemCalls, 0, "a cancelled local outcome must not fall through to external")
         let sidecars = await store.candidateSidecars(forItemID: itemID)
         let sidecar = try XCTUnwrap(sidecars.first)
         XCTAssertEqual(sidecar.attempts, 0, "a mapped cancellation must not burn a local attempt")
@@ -356,38 +352,6 @@ final class ShareLocalMetadataEnricherTests: XCTestCase {
         XCTAssertEqual(item.overview, "Local plot wins.", "external save must never clobber a local winner")
         XCTAssertEqual(item.posterURL, URL(string: "https://example.com/poster.jpg"), "external artwork still fills in")
     }
-
-    func testLocalProviderIDReplacesCaseEquivalentExternalID() async throws {
-        let store = ShareCatalogStore(accountKey: "id-priority", directory: tempDir())
-        let tree: [String: [RemoteFileEntry]] = [
-            "": [dir("Movies")],
-            "Movies": [dir("Arrival (2016)")],
-            "Movies/Arrival (2016)": [file("Arrival (2016).mkv"), file("Arrival (2016).nfo")],
-        ]
-        await makeScanner(store: store, tree: tree).scan()
-        _ = await makeLocalEnricher(store: store, files: [
-            "Movies/Arrival (2016)/Arrival (2016).nfo":
-                Self.nfo("<movie><uniqueid type=\"tmdb\">100</uniqueid></movie>"),
-        ]).resolvePendingSlice(maxItems: 10, maxDuration: .seconds(5))
-        await store.saveEnrichment(
-            itemID: "f:Movies/Arrival (2016)/Arrival (2016).mkv",
-            .init(providerIDs: ["Tmdb": "200"]),
-            version: ShareEnricher.version
-        )
-
-        let movies = await store.movies(offset: 0, limit: 1)
-        let item = try XCTUnwrap(movies.first)
-        XCTAssertEqual(item.providerIDs["Tmdb"], "100")
-        XCTAssertNil(item.providerIDs["tmdb"])
-        XCTAssertEqual(
-            item.providerIDs.keys.filter {
-                ShareMediaParser.canonicalProviderNamespace($0) == "tmdb"
-            }.count,
-            1
-        )
-    }
-
-    // MARK: - Zero external resolver calls when local fully satisfies + external disabled/no-op
 
     func testProviderDisabledFixtureProjectsLocalFieldsWithZeroResolverCalls() async throws {
         let store = ShareCatalogStore(accountKey: "offline", directory: tempDir())
@@ -682,36 +646,7 @@ final class ShareLocalMetadataEnricherTests: XCTestCase {
         XCTAssertEqual(fileSystem.readCount, 0)
     }
 
-    func testOpenedItemSeedsExternalRequestOnlyAfterLocalIDPersists() async throws {
-        let store = ShareCatalogStore(accountKey: "urgent-order", directory: tempDir())
-        let tree: [String: [RemoteFileEntry]] = [
-            "": [dir("Movies")],
-            "Movies": [dir("Dune (2021)")],
-            "Movies/Dune (2021)": [file("Dune (2021).mkv"), file("Dune (2021).nfo")],
-        ]
-        await makeScanner(store: store, tree: tree).scan()
-        let itemID = "f:Movies/Dune (2021)/Dune (2021).mkv"
-        let local = makeLocalEnricher(store: store, files: [
-            "Movies/Dune (2021)/Dune (2021).nfo":
-                Self.nfo("<movie><uniqueid type=\"tvdb\">348031</uniqueid></movie>"),
-        ])
-        let recorder = LocalMetaResolverRecorder(record: .init(
-            posterURL: URL(string: "https://example.com/dune.jpg")
-        ))
-
-        let localOutcome = await local.resolveOne(itemID: itemID)
-        XCTAssertEqual(localOutcome, .resolved)
-        await ShareEnricher(store: store, resolver: recorder).enrichOne(itemID: itemID)
-
-        let requests = await recorder.requests
-        let request = try XCTUnwrap(requests.first)
-        XCTAssertEqual(request.knownProviderIDs["tvdb"], "348031")
-        let storedItem = await store.item(id: itemID)
-        let item = try XCTUnwrap(storedItem)
-        XCTAssertEqual(item.posterURL, URL(string: "https://example.com/dune.jpg"))
-    }
-
-    func testEncodedMediaItemDoesNotExposeLocalPathOrTransportIdentity() async throws {
+func testEncodedMediaItemDoesNotExposeLocalPathOrTransportIdentity() async throws {
         let store = ShareCatalogStore(accountKey: "privacy", directory: tempDir())
         let tree: [String: [RemoteFileEntry]] = [
             "": [dir("Movies")],
@@ -732,25 +667,6 @@ final class ShareLocalMetadataEnricherTests: XCTestCase {
         XCTAssertFalse(encoded.contains("/Media"))
         XCTAssertNil(item.metadataProvenance[.overview]?.sourceURL)
     }
-}
-
-/// Records external fill-missing calls so a test can prove the local→external
-/// composition seam fences a cancelled local outcome before external work starts.
-private actor SpyExternalRunning: ShareExternalMetadataRunning {
-    private(set) var sliceCalls = 0
-    private(set) var itemCalls = 0
-
-    func enrichPendingSlice(
-        maxItems: Int,
-        maxDuration: Duration,
-        concurrency: Int,
-        beforeResolve: (@Sendable (String) async -> Bool)?
-    ) async -> ShareEnrichmentSliceResult {
-        sliceCalls += 1
-        return .init(attempted: 0, hasMore: false)
-    }
-
-    func enrichOne(itemID: String) async { itemCalls += 1 }
 }
 
 private final class LocalMetaFakeSession: MediaTransportSession, @unchecked Sendable {
@@ -823,19 +739,5 @@ private final class LocalMetaFakeFileSystem: MediaTransportFileSystem, @unchecke
 
     func openSource(for locator: NetworkFileLocator) async throws -> MediaTransportSourceLease {
         throw MediaTransportError.unsupportedCapability("not used in local metadata tests")
-    }
-}
-
-private actor LocalMetaResolverRecorder: ShareMetadataResolving {
-    private(set) var requests: [ShareEnrichRequest] = []
-    private let record: EnrichmentRecord
-
-    init(record: EnrichmentRecord) {
-        self.record = record
-    }
-
-    func resolve(_ request: ShareEnrichRequest) async -> EnrichmentRecord {
-        requests.append(request)
-        return record
     }
 }

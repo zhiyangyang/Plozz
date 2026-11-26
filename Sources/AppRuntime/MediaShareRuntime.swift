@@ -147,28 +147,16 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
     private let artworkCacheLifecycle: any ShareLocalArtworkCacheLifecycle
     public let networkFileResolver: any MediaTransportNetworkFileResolving
     private let streamProber: (any NetworkFileStreamProbing)?
-    /// The shared provider runtime (result cache + per-source breakers) the pipeline
-    /// runs on, retained so diagnostics can sample it (Step 6).
-    private let providerRuntime: MetadataProviderRuntime
-    /// The same per-build TMDb access resolver the pipeline uses (Step 9), so diagnostics
-    /// can report the breaker for the *active* credential (a user's BYOK key) rather than
-    /// the unused built-in one.
-    private let providerConfig: @Sendable () -> MetadataProviderConfig
-
     private init(
         coordinator: ShareCatalogCoordinator,
         composition: MediaShareTransportComposition,
         artworkCacheLifecycle: any ShareLocalArtworkCacheLifecycle,
         networkFileResolver: any MediaTransportNetworkFileResolving,
-        streamProber: (any NetworkFileStreamProbing)?,
-        providerRuntime: MetadataProviderRuntime,
-        providerConfig: @escaping @Sendable () -> MetadataProviderConfig
+        streamProber: (any NetworkFileStreamProbing)?
     ) {
         self.coordinator = coordinator
         self.composition = composition
         self.artworkCacheLifecycle = artworkCacheLifecycle
-        self.providerRuntime = providerRuntime
-        self.providerConfig = providerConfig
         self.networkFileResolver = networkFileResolver
         self.streamProber = streamProber
     }
@@ -188,32 +176,8 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
             any MediaTransportNetworkFileResolving
         ) -> (any NetworkFileStreamProbing)? = { _ in nil }
     ) -> DefaultMediaShareRuntime {
-        // Step 6: build the pipeline with a user-override enrichment config (layered
-        // on the Info.plist baseline) and a shared provider runtime so Settings can
-        // read diagnostics + apply cache budgets. Empty overrides => Step 5 config.
-        let providerRuntime = MetadataProviderRuntime.makeDefault()
-        let providerSettingsStore = MetadataProviderSettingsStore()
-        let enrichmentConfigCache = MetadataEnrichmentConfigCache(
-            baseline: MetadataEnrichmentConfig.resolved(),
-            settingsStore: providerSettingsStore
-        )
-        let enrichmentConfig: @Sendable () -> MetadataEnrichmentConfig = {
-            enrichmentConfigCache.value()
-        }
-        // Step 9: the household-global TMDB BYOK key. Read per pipeline build (like the
-        // enrichment override) so entering/removing a key applies on the next share
-        // refresh. Absent key => `.withUserToken(nil)` is a no-op, so the built-in
-        // (proxy/maintainer-token/disabled) TMDb path is byte-identical to pre-Step-9.
-        let providerConfig: @Sendable () -> MetadataProviderConfig = {
-            MetadataProviderConfig.resolved()
-        }
         let coordinator = ShareCatalogCoordinator(
             artworkCacheLifecycle: artworkCacheLifecycle,
-            metadataComposition: ShareMetadataComposition(
-                enrichmentConfig: enrichmentConfig,
-                providerConfig: providerConfig,
-                providerRuntime: providerRuntime
-            ),
             initialWorkScope: .paused
         )
         // Apply persisted cache budgets to the live caches at startup (eviction runs
@@ -250,9 +214,7 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
             composition: composition,
             artworkCacheLifecycle: artworkCacheLifecycle,
             networkFileResolver: resolver,
-            streamProber: streamProberFactory(resolver),
-            providerRuntime: providerRuntime,
-            providerConfig: providerConfig
+            streamProber: streamProberFactory(resolver)
         )
     }
 
@@ -343,17 +305,11 @@ public final class DefaultMediaShareRuntime: MediaShareRuntime {
         let work = await coordinator.metadataWorkStatus()
         let artworkBytes = await ArtworkImageCache.shared.derivedArtworkCacheByteSize()
         let metadataBytes = await MetadataDiskCache.shared.currentByteSize()
-        let breakers = await providerRuntime.breakerStates(
-            tmdbCredentialID: providerConfig().tmdb.credentialID
-        )
-        let resultCount = await providerRuntime.resultCacheEntryCount()
         return MetadataEnrichmentDiagnosticsSnapshot(
             capturedAt: capturedAt,
             metadataCountPerSource: counts,
             artworkCacheBytes: artworkBytes,
             metadataCacheBytes: metadataBytes,
-            resultCacheEntryCount: resultCount,
-            providerBreakers: breakers,
             work: work
         )
     }
