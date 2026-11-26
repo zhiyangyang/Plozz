@@ -635,13 +635,7 @@ struct PlozziOSPlayerView: View {
         // no known-for row, because the loader lived in the tvOS-only shell.
         viewModel.controls.infoCard.castDetailLoader = makeCastDetailLoader(
             for: item,
-            accounts: appModel.accountsProviders.resolvedActiveAccounts,
-            metadataLanguage: { (appModel.appLanguage.language.locale ?? .current).identifier },
-            // See the tvOS shell: without this an owned show reached the row
-            // stamped "not in your library" by whichever provider supplied it.
-            librarySources: { [identityIndex = appModel.identityIndex] item in
-                identityIndex.identitySnapshot.sourceRefs(for: item)
-            }
+            accounts: appModel.accountsProviders.resolvedActiveAccounts
         )
         // Leaving the film is a NAVIGATION concern, so it is wired by the view
         // that presented the player rather than by the factory that builds one —

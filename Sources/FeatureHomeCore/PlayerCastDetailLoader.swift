@@ -1,7 +1,6 @@
 #if canImport(SwiftUI)
 import Foundation
 import CoreModels
-import MetadataKit
 
 /// Builds the in-player Cast card's detail loader — the "L2" page behind a face.
 ///
@@ -14,13 +13,7 @@ import MetadataKit
 @MainActor
 public func makeCastDetailLoader(
     for item: MediaItem,
-    accounts: [ResolvedAccount],
-    metadataLanguage: @escaping @MainActor @Sendable () -> String = { "en" },
-    /// The viewer's own copies of a credit, from the eager identity index. See
-    /// `PersonDetailViewModel.librarySources` for why a credits row cannot answer
-    /// "do I own this?" from a server's person query alone. Defaults to "cannot
-    /// tell", which only costs an owned title a mark it shouldn't have.
-    librarySources: @escaping @Sendable (MediaItem) -> [MediaSourceRef] = { _ in [] }
+    accounts: [ResolvedAccount]
 ) -> PlayerCastDetailLoading {
     // Captured once, outside the returned closure: these are the same for every
     // person in this item's cast.
@@ -45,8 +38,7 @@ public func makeCastDetailLoader(
     let cache = PlayerCastDetailCache()
 
     return { person in
-        let language = metadataLanguage()
-        let cacheKey = "\(language)|\(person.id)"
+        let cacheKey = person.id
         // What is playing, alongside who was opened. Without it a trace can say
         // a person had no credits but not what they had no credits IN, which
         // makes a report impossible to reconstruct afterwards.
@@ -55,38 +47,18 @@ public func makeCastDetailLoader(
             person: person,
             provider: ownProvider,
             otherProviders: otherProviders,
-            biographyProviders: PlozzCustomization.isCustomBuild
-                ? [] : [WikipediaPersonBiographyProvider()],
-            // Shared with the person page — see `PlayerCastCredits`.
-            creditsProviders: PlozzCustomization.isCustomBuild
-                ? [] : PlayerCastCredits.providers,
-            artworkResolver: PlayerCastCredits.artworkResolver,
             // Strike what is playing. By id AND by normalized title, since a
             // second server holding the same film answers with its own id.
-            //
-            // Given to the view model rather than applied to its output: it
-            // branches on whether the servers found anything, and everyone in
-            // this cast is in the film on screen — so filtering afterwards left
-            // that branch permanently unreachable.
             includeCredit: { item in
                 item.id != playingID
                     && MediaItemIdentity.normalizedTitle(item.title) != playingTitle
             },
-            librarySources: librarySources,
             // Enough to fill the rail several times over. The person page is
             // where the complete list lives.
             limit: 24
         )
         return AsyncStream { continuation in
-            // Served only when it is COMPLETE — every credit carrying artwork.
-            //
-            // Artwork is resolved by a network pass that can fail transiently, and
-            // caching its result unconditionally made a single failure permanent:
-            // the artless answer was stored, every later open replayed it, and
-            // only relaunching the app cleared it. A cached miss is exactly the
-            // thing worth NOT remembering, so an incomplete entry falls through
-            // and asks again.
-            if let cached = cache.value(for: cacheKey), cached.artworkIsComplete {
+            if let cached = cache.value(for: cacheKey) {
                 PersonDiagnostics.emit("cast.cache-hit person=\(person.name)")
                 continuation.yield(cached)
                 continuation.finish()
@@ -97,16 +69,11 @@ public func makeCastDetailLoader(
             // biography lookup that may take a second or never answer at all.
             model.onProgress = { continuation.yield(snapshot(model)) }
             let task = Task { @MainActor in
-                await model.updateMetadataLanguage(language)
                 await model.load()
                 let final = snapshot(model, isComplete: true)
                 // Only the finished answer is kept. Caching a partial one would
-                // pin whatever a slow rung had not yet returned, and a person
-                // whose row was still loading would be permanently short.
-                //
-                // Stored even when artwork is incomplete, so a second open still
-                // gets the row instantly — but `artworkIsComplete` means it is
-                // re-resolved rather than replayed.
+                // pin whatever a slower server had not yet returned, and a
+                // person whose row was still loading would be permanently short.
                 cache.store(final, for: cacheKey)
                 continuation.yield(final)
                 continuation.finish()
@@ -121,17 +88,11 @@ public func makeCastDetailLoader(
         isComplete: Bool = false
     ) -> PlayerCastDetail {
         PlayerCastDetail(
-            // Strike what is playing. By id AND by normalized title, since a
-            // second server holding the same film answers with its own id.
             // Withheld until the ORDER is settled, not merely until credits
-            // exist. They arrive within ~30ms from the viewer's own server and
-            // are then re-sorted by role prominence once the outside rungs land,
-            // so publishing them early meant the row appeared in library order
-            // and visibly reshuffled itself under the viewer a second later.
-            //
-            // The row simply arrives a beat later instead, in one piece. The
-            // biography and headshot are unaffected and still stream, so the
-            // pane is never empty while this waits.
+            // exist: the row arrives in one piece rather than visibly
+            // reshuffling under the viewer. The biography and headshot are
+            // unaffected and still stream, so the pane is never empty while
+            // this waits.
             credits: model.creditsAreFinal ? foldDuplicateCredits(model.libraryCredits) : [],
             biography: model.biography,
             lifeSummary: model.lifeSummary,
@@ -187,26 +148,4 @@ public final class PlayerCastDetailCache {
     public func store(_ detail: PlayerCastDetail, for id: String) { entries[id] = detail }
 }
 
-/// The credit sources shared by the in-player Cast card and the person page.
-///
-/// One definition, because the two surfaces answer the same question and had
-/// already drifted: the player was given the full ladder while the person page
-/// was left with servers alone, so its "Known for" row could only ever show
-/// titles the viewer already owned — which is the one thing "known for" does not
-/// mean.
-public enum PlayerCastCredits {
-    /// Order is load-bearing. The merge inherits the ranking of whichever rung
-    /// names a title first, so the fame-ranked source has to lead.
-    public static var providers: [any PersonCreditsProviding] {
-        [
-            TMDbPersonCreditsProvider(access: MetadataProviderConfig.resolved().tmdb),
-            WikidataPersonCreditsProvider(),
-            TVmazePersonCreditsProvider(),
-        ]
-    }
-
-    public static var artworkResolver: any PersonCreditArtworkResolving {
-        TMDbPersonCreditArtworkResolver(access: MetadataProviderConfig.resolved().tmdb)
-    }
-}
 #endif

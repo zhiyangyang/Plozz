@@ -81,29 +81,6 @@ final class LocalizedDetailMetadataTests: XCTestCase {
         XCTAssertNil(text)
     }
 
-    func testBiographyLocalizesOnlyTheValidatedPersonAndFallsBackWhenAbsent() async {
-        let fixture = TMDbTVDBDiscoveryFixture { request, _ in
-            if request.url?.host == "fr.wikipedia.org" {
-                XCTAssertEqual(TMDbTVDBDiscoveryFixture.query(request)["titles"], "Tom Hanks FR")
-                return .init(json: #"{"query":{"pages":{"2":{"extract":"Biographie FR"}}}}"#)
-            }
-            return .init(json: """
-            {"query":{"pages":[
-                {"title":"Tom Hanks (historian)","description":"Historian","extract":"Wrong person","index":1},
-                {"title":"Tom Hanks","description":"American actor","extract":"English biography","index":2,
-                 "langlinks":[{"lang":"fr","title":"Tom Hanks FR"}]}
-            ]}}
-            """)
-        }
-        let provider = WikipediaPersonBiographyProvider(http: fixture.http)
-        let french = await provider.biography(for: "Tom Hanks", role: "Actor", language: "fr")
-        let german = await provider.biography(for: "Tom Hanks", role: "Actor", language: "de")
-        XCTAssertEqual(french, "Biographie FR")
-        XCTAssertEqual(german, "English biography")
-        let requests = await fixture.recorded()
-        XCTAssertEqual(requests.count, 3)
-    }
-
     func testReleaseAliasLookupKeepsFrenchDetailAndRejectsWrongYear() async throws {
         for year in [2001, 2002] {
             let fixture = TMDbTVDBDiscoveryFixture { request, _ in

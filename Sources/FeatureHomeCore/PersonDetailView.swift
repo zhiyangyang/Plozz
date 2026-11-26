@@ -155,7 +155,6 @@ public struct PersonDetailView: View {
             }
         }
         .task { await viewModel.load() }
-        .task(id: locale.identifier) { await viewModel.updateMetadataLanguage(locale.identifier) }
         .detailOpenFeedback()
         .environment(\.plozzCardCaptionView, .filmography)
     }

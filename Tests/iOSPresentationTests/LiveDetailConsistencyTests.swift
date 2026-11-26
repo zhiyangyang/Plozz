@@ -31,13 +31,11 @@ final class LiveDetailConsistencyTests: XCTestCase {
         print("LIVE_METADATA source=tvdb languages=en,fr,de identityPreserved=true")
     }
 
-    func testLiveWikipediaOverviewAndBiographyLanguages() async throws {
+    func testLiveWikipediaOverviewLanguages() async throws {
         _ = try LiveHomeReadOnlyAccount.broker()
         let movie = MediaItem(id: "public-movie", title: "Spirited Away", kind: .movie, productionYear: 2001)
         let overview = WikipediaEnrichmentProvider()
-        let biography = WikipediaPersonBiographyProvider()
         var overviews: [String: String] = [:]
-        var biographies: [String: String] = [:]
         for language in ["en", "fr", "de"] {
             let result = await overview.enrich(
                 MetadataQuery(movie).forMetadataLanguage(language), missing: [.overview]
@@ -46,13 +44,9 @@ final class LiveDetailConsistencyTests: XCTestCase {
             XCTAssertFalse(text.value.isEmpty)
             XCTAssertEqual(text.sourceURL?.host, "\(language).wikipedia.org")
             overviews[language] = text.value
-            let personText = await biography.biography(for: "Tom Hanks", role: "Actor", language: language)
-            XCTAssertFalse(personText?.isEmpty ?? true)
-            biographies[language] = personText
         }
         XCTAssertEqual(Set(overviews.values).count, 3)
-        XCTAssertEqual(Set(biographies.values).count, 3)
-        print("LIVE_METADATA source=wikipedia languages=en,fr,de overviewAndBiography=true")
+        print("LIVE_METADATA source=wikipedia languages=en,fr,de overview=true")
     }
 
     func testLiveJellyfinDetailRoutes() async throws { try await exercise(.jellyfin) }

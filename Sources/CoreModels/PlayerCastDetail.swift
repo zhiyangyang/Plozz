@@ -48,16 +48,6 @@ public struct PlayerCastDetail: Sendable, Equatable {
         self.isComplete = isComplete
     }
 
-    /// Whether every credit here carries artwork.
-    ///
-    /// Read by the caller's cache to decide whether an answer is worth replaying.
-    /// Artwork arrives from a network pass that can fail transiently, and a
-    /// failure that gets remembered is indistinguishable from a title that
-    /// genuinely has no poster — except that it never recovers.
-    public var artworkIsComplete: Bool {
-        credits.allSatisfy { !$0.artworkReferences(for: .poster).isEmpty }
-    }
-
     /// Nothing found. Distinct from "not asked yet", which is `nil` at the call
     /// site — the pane must not show an empty state while a request is in flight.
     public var isEmpty: Bool {
@@ -68,11 +58,9 @@ public struct PlayerCastDetail: Sendable, Equatable {
 /// Supplied by the app when it builds a player. `nil` simply means the pane
 /// shows a name and a face, which is what it did before any of this existed.
 ///
-/// A STREAM, not a single value. The answer is assembled from several sources
-/// in sequence — the person's own server, then any other signed-in servers,
-/// then a keyless biography lookup — and awaiting one final result made the
-/// pane wait for the slowest of them before showing anything at all. The
-/// viewer's own server usually answers in milliseconds; a Wikipedia round trip
-/// does not, and it was holding the credits hostage.
+/// A STREAM, not a single value. The answer is assembled from several servers
+/// in sequence and awaiting one final result made the pane wait for the slowest
+/// of them before showing anything at all. The person's own server usually
+/// answers in milliseconds; another signed-in server may not.
 public typealias PlayerCastDetailLoading =
     @MainActor @Sendable (MediaPerson) -> AsyncStream<PlayerCastDetail>
