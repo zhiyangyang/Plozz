@@ -49,9 +49,13 @@ public enum SeasonEpisodeAvailability: Equatable, Sendable {
             localDate = airDate
         }
         if now < localDate { return .unaired }
-        let threshold = EpisodeGraceConfig(calendar: localCalendar).missingThreshold(
-            airDate: localDate, datePrecision: hasTime ? .dateAndTime : .dateOnly
-        )
+        let threshold: Date
+        if hasTime {
+            threshold = localDate.addingTimeInterval(6 * 60 * 60)
+        } else {
+            let startOfAirDay = localCalendar.startOfDay(for: localDate)
+            threshold = localCalendar.date(byAdding: .day, value: 1, to: startOfAirDay) ?? startOfAirDay
+        }
         return now < threshold ? (hasTime ? .recentlyReleased : .airingToday) : .missing
     }
 }
@@ -91,7 +95,6 @@ public struct SeasonEpisodeList: Equatable, Sendable {
         var seen = Set<String>()
         return EpisodeSequence.sorted(episodes.filter {
             $0.kind == .episode
-                && $0.scheduledAirDate == nil
                 && $0.locallyValidatedPlayableSource
                 && (series.sourceAccountID == nil || $0.sourceAccountID == series.sourceAccountID)
                 && ($0.seriesID == nil || $0.seriesID == series.id)

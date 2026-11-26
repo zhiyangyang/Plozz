@@ -46,13 +46,6 @@ public final class ItemDetailViewModel {
         public var childrenLoaded: Bool = false
         /// Collection membership failures are not authoritative empty results.
         public var collectionMembersState: LoadState<Int>?
-        /// The series' cached upcoming-episode schedule, when one is known.
-        ///
-        /// Carried here rather than as its own observable property so it costs
-        /// nothing against this type's tracked-property budget: `state` already
-        /// invalidates readers, and the schedule only ever changes alongside a
-        /// re-publish of it.
-        public var upcomingSchedule: SeriesScheduleRecord?
         /// Regional release/watch facts for a synthetic external title. `nil` on
         /// ordinary library details and when no provider could answer.
         public var externalAvailability: ExternalTitleAvailability?
@@ -973,7 +966,6 @@ public final class ItemDetailViewModel {
                     item: taggedItem,
                     children: seededChildren,
                     childrenLoaded: state.value?.childrenLoaded ?? false,
-                    upcomingSchedule: state.value?.upcomingSchedule,
                     serverResumeEpisode: serverResumeEpisode
                 ))
                 hasPaintedFreshDetail = true
@@ -1001,7 +993,6 @@ public final class ItemDetailViewModel {
                     item: tagged(state.value?.item ?? taggedItem),
                     children: fetchedChildren.map(tagged),
                     childrenLoaded: true,
-                    upcomingSchedule: state.value?.upcomingSchedule,
                     serverResumeEpisode: serverResumeEpisode
                 ))
                 // Opening a series is three serial server round-trips: the item, its
@@ -1023,10 +1014,6 @@ public final class ItemDetailViewModel {
                         await self?.loadEpisodes(for: openingSeasonID)
                     }
                 }
-                // Deliberately after the state publish: the schedule is decoration,
-                // and must never hold up the page. Cache read first (instant), then
-                // a background refresh that repaints only if it finds something new.
-                loadUpcomingSchedule(for: taggedItem)
                 persistSnapshot()
                 await resumeTask
                 guard !Task.isCancelled, isCurrent() else { return }
@@ -1045,8 +1032,7 @@ public final class ItemDetailViewModel {
                 publish(Detail(
                     item: taggedItem,
                     children: [],
-                    childrenLoaded: true,
-                    upcomingSchedule: state.value?.upcomingSchedule
+                    childrenLoaded: true
                 ))
                 hasPaintedFreshDetail = true
                 seedSources(from: taggedItem)
@@ -1228,9 +1214,6 @@ public final class ItemDetailViewModel {
         // Request status cannot establish artwork ownership or hold its first paint.
         async let status: Void = refreshDiscoveryStatus()
         let enriched = detail.item
-        if enriched.kind == .series {
-            loadUpcomingSchedule(for: enriched)
-        }
         await status
         persistSnapshot()
         return false
@@ -2031,17 +2014,14 @@ public final class ItemDetailViewModel {
             children = []
         }
         guard !Task.isCancelled, isCurrent() else { return }
-        let upcomingSchedule = state.value?.upcomingSchedule
         publish(Detail(
             item: tagged(item),
             children: children.map(tagged),
             childrenLoaded: true,
-            upcomingSchedule: upcomingSchedule,
             serverResumeEpisode: serverResumeEpisode
         ))
         sources = sources.map { stampedPrimarySource($0, from: tagged(item)) }
         applyUnifiedWatchState()
-        loadUpcomingSchedule(for: item)
         startStreamProbeEnrichment(
             for: item,
             provider: provider,
@@ -2365,38 +2345,6 @@ public final class ItemDetailViewModel {
     /// Best-effort: a failure leaves ``serverResumeEpisode`` nil and the page
     /// falls back to inferring from the loaded season, which is what it did
     /// before. Never blocks first paint — it runs after children are published.
-    /// Fills ``upcomingSchedule`` from cache, then refreshes it in the background.
-    ///
-    /// Series only — a movie has no schedule — and never awaited by the caller, so
-    /// neither the cache read nor the network refresh can delay the detail page.
-    private func loadUpcomingSchedule(for item: MediaItem) {
-        guard item.kind == .series else { return }
-        // Series-scoped so a share copy and a server copy of the same show resolve
-        // to one cache entry once ids land, instead of each holding its own.
-        let query = MetadataQuery(item).seriesScoped
-        Task { [weak self] in
-            guard let self else { return }
-            if let cached = await SeriesScheduleResolver.shared.cachedRecord(for: query) {
-                await MainActor.run { self.applyUpcomingSchedule(cached) }
-            }
-            // Refresh regardless: a fresh record short-circuits inside the resolver
-            // with no network, and a stale one advances to the next episode once the
-            // current one airs.
-            // `foregroundFill`: the user is looking at this series right now, so it
-            // goes ahead of the passive backlog.
-            let refreshed = await SeriesScheduleResolver.shared.refresh(query, tier: .foregroundFill)
-            await MainActor.run { self.applyUpcomingSchedule(refreshed) }
-        }
-    }
-
-    /// Republishes `state` with the schedule attached, leaving everything else as-is.
-    private func applyUpcomingSchedule(_ record: SeriesScheduleRecord) {
-        guard var detail = state.value, detail.upcomingSchedule != record else { return }
-        detail.upcomingSchedule = record
-        publish(detail)
-        persistSnapshot()
-    }
-
     private func publishServerResumeEpisode(
         for item: MediaItem,
         provider: any MediaProvider,
@@ -2789,7 +2737,6 @@ public final class ItemDetailViewModel {
             item: item,
             children: snapshot.children.map(tagged),
             childrenLoaded: true,
-            upcomingSchedule: snapshot.upcomingSchedule,
             serverResumeEpisode: serverResumeEpisode
         ))
         // Restore the episodes for the season this page will actually open on — the
@@ -2890,14 +2837,8 @@ public final class ItemDetailViewModel {
                 item: detail.item,
                 children: snapshot.children.map(tagged),
                 childrenLoaded: true,
-                upcomingSchedule: detail.upcomingSchedule ?? snapshot.upcomingSchedule,
                 serverResumeEpisode: detail.serverResumeEpisode
             ))
-        } else if var detail = state.value,
-                  detail.upcomingSchedule == nil,
-                  let upcomingSchedule = snapshot.upcomingSchedule {
-            detail.upcomingSchedule = upcomingSchedule
-            publish(detail)
         }
         // The live item can beat the disk read, in which case the restore takes the
         // "adopt enrichments" path above and the rail stayed empty until the live
@@ -2958,7 +2899,6 @@ public final class ItemDetailViewModel {
         let item = detail.item
         let children = detail.children
         let sourcesSnapshot = sources
-        let schedule = detail.upcomingSchedule
         let key = snapshotKey
         let cache = snapshotCache
         pendingSnapshotWrite?.cancel()
@@ -2969,8 +2909,7 @@ public final class ItemDetailViewModel {
                 item: item,
                 children: children,
                 seasonEpisodes: persistedEpisodes,
-                sources: sourcesSnapshot,
-                upcomingSchedule: schedule
+                sources: sourcesSnapshot
             )
             await cache.store(snapshot, for: key)
         }

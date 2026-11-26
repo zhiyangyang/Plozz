@@ -58,18 +58,11 @@ final class DetailSnapshotCacheTests: XCTestCase {
             MediaSourceRef(accountID: "a", itemID: "series-1"),
             MediaSourceRef(accountID: "b", itemID: "x99")
         ]
-        let schedule = SeriesScheduleRecord(
-            seriesKey: "series-1",
-            upcomingEpisode: nil,
-            refreshedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            refreshDueAt: Date(timeIntervalSince1970: 1_700_003_600)
-        )
         let snapshot = DetailSnapshotCache.Snapshot(
             item: series,
             children: [season],
             seasonEpisodes: ["season-4": [episode]],
-            sources: sources,
-            upcomingSchedule: schedule
+            sources: sources
         )
 
         let writer = DetailSnapshotCache(directory: dir)
@@ -82,7 +75,6 @@ final class DetailSnapshotCacheTests: XCTestCase {
         XCTAssertEqual(restored?.children.map(\.id), ["season-4"])
         XCTAssertEqual(restored?.seasonEpisodes["season-4"]?.map(\.id), ["ep-1"])
         XCTAssertEqual(restored?.sources.count, 2)
-        XCTAssertEqual(restored?.upcomingSchedule, schedule)
     }
 
     func testMissReturnsNil() async {

@@ -20,16 +20,6 @@ public enum ArtworkKind: String, Sendable, Hashable, CaseIterable {
 /// Built once from a ``MediaItem`` so providers never re-derive the same fields
 /// (series-vs-episode title, season/episode numbers, the relevant external ids).
 public struct MetadataQuery: Sendable, Hashable {
-    /// Calendar reads have their own cache identity; they must never replace a
-    /// detail page's next-episode answer with an already-aired episode.
-    public private(set) var scheduleStartDate: Date?
-
-    public func forScheduleStarting(at date: Date) -> Self {
-        var copy = self
-        copy.scheduleStartDate = date
-        return copy
-    }
-
     public private(set) var artworkLanguage: String
     /// External text only; native server/NFO metadata is never translated.
     public private(set) var metadataLanguage: String
@@ -84,12 +74,10 @@ public struct MetadataQuery: Sendable, Hashable {
         episodeHints: [SeriesEpisodeHint] = [],
         titleAlternates: [String] = [],
         artworkLanguage: String = Locale.current.identifier,
-        metadataLanguage: String = "en",
-        scheduleStartDate: Date? = nil
+        metadataLanguage: String = "en"
     ) {
         self.artworkLanguage = Self.normalizedArtworkLanguage(artworkLanguage)
         self.metadataLanguage = Locale.canonicalLanguageIdentifier(from: metadataLanguage)
-        self.scheduleStartDate = scheduleStartDate
         self.contentType = contentType
         self.kind = kind
         self.title = title
@@ -109,7 +97,6 @@ public struct MetadataQuery: Sendable, Hashable {
     /// gathering more hints must never split a cache entry or a dedupe key.
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.artworkLanguage == rhs.artworkLanguage
-            && lhs.scheduleStartDate == rhs.scheduleStartDate
             && lhs.metadataLanguage == rhs.metadataLanguage
             && lhs.contentType == rhs.contentType && lhs.kind == rhs.kind && lhs.title == rhs.title
             && lhs.alternateTitle == rhs.alternateTitle && lhs.year == rhs.year
@@ -119,7 +106,6 @@ public struct MetadataQuery: Sendable, Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(artworkLanguage)
-        hasher.combine(scheduleStartDate)
         hasher.combine(metadataLanguage)
         hasher.combine(contentType)
         hasher.combine(kind)
@@ -164,8 +150,7 @@ public struct MetadataQuery: Sendable, Hashable {
             episodeHints: episodeHints,
             titleAlternates: titleAlternates,
             artworkLanguage: artworkLanguage,
-            metadataLanguage: metadataLanguage,
-            scheduleStartDate: scheduleStartDate
+            metadataLanguage: metadataLanguage
         )
     }
 
@@ -216,8 +201,7 @@ public struct MetadataQuery: Sendable, Hashable {
             episodeHints: episodeHints,
             titleAlternates: titleAlternates,
             artworkLanguage: artworkLanguage,
-            metadataLanguage: metadataLanguage,
-            scheduleStartDate: scheduleStartDate
+            metadataLanguage: metadataLanguage
         )
     }
 

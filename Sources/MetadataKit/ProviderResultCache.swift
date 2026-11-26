@@ -178,13 +178,8 @@ public struct CachedEnrichmentProvider: MetadataEnrichmentProvider {
             version: base.policy.version,
             requestKey: requestKey,
             credential: credentialID,
-            maximumAge: Self.maximumAge(for: query)
         )
         return result
-    }
-
-    static func maximumAge(for query: MetadataQuery) -> TimeInterval? {
-        query.scheduleStartDate == nil ? nil : 6 * 60 * 60
     }
 
     static func requestKey(query: MetadataQuery, missing: Set<MetadataField>) -> String {

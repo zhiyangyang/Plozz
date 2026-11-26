@@ -245,12 +245,9 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// The day the title was first released — a movie's premiere or an episode's
     /// original air date (Jellyfin `PremiereDate`, Plex `originallyAvailableAt`).
     ///
-    /// Distinct from ``scheduledAirDate``, which exists only on placeholder rows
-    /// for episodes that have *not* aired and are in nobody's library: this is a
-    /// fact about a real item, and is set on anything the server dates. Distinct
-    /// too from ``productionYear``, which is the coarser year the same servers
-    /// report and is what most rows show; keep both, since a server routinely
-    /// knows one and not the other.
+    /// Distinct from ``productionYear``, which is the coarser year the same
+    /// servers report and is what most rows show; keep both, since a server
+    /// routinely knows one and not the other.
     ///
     /// Providers report a bare calendar day, so it is stored as the date at UTC
     /// midnight and must be **formatted in UTC** — rendering it in the device's
@@ -373,21 +370,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// records and synced/unvalidated binding hints set it false; account metadata
     /// alone never upgrades it.
     public var locallyValidatedPlayableSource: Bool
-
-    /// When this episode is expected to air, for an episode that has **not aired
-    /// yet** and therefore exists nowhere in the user's library.
-    ///
-    /// Set only on schedule-derived placeholder entries (see
-    /// ``isUpcomingUnaired``). `nil` on every real library item — including an
-    /// owned episode that happens to have aired recently.
-    public var scheduledAirDate: Date?
-    /// Whether ``scheduledAirDate`` carries a meaningful time of day. Providers
-    /// differ: TheTVDB reports a bare calendar day, AniList an exact instant.
-    public var scheduledAirDateHasTime: Bool
-    /// Whether the rail should include that exact time in this placeholder's
-    /// release caption. Only the nearest upcoming episode gets the extra detail;
-    /// repeating times across every future card is noise.
-    public var showsScheduledReleaseTime: Bool
 
     /// Aggregate download progress (`0..<1`) for a not-yet-available **featured**
     /// title currently being fetched by the discovery backend's downloaders
@@ -620,14 +602,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         lastPlayedAt: Date? = nil,
         selectedSourceAccountID: String? = nil,
         explicitSourceSelection: Bool = false,
-        scheduledAirDate: Date? = nil,
-        scheduledAirDateHasTime: Bool = false,
-        showsScheduledReleaseTime: Bool = false,
         librarySortValues: LibrarySortValues? = nil
     ) {
-        self.scheduledAirDate = scheduledAirDate
-        self.scheduledAirDateHasTime = scheduledAirDateHasTime
-        self.showsScheduledReleaseTime = showsScheduledReleaseTime
         self.id = id
         self.watchlistAliasID = watchlistAliasID
         self.watchlistAddedAt = watchlistAddedAt
@@ -740,7 +716,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         case sourceAccountID, artworkSourceAccountIDsByURL, artworkMetadataSourcesByURL
         case additionalSourceAccountIDs, versions, edition, isMergedTitle, isFavorite
         case sources, rejectedSourceIDs, lastPlayedAt, libraryID
-        case scheduledAirDate, scheduledAirDateHasTime, showsScheduledReleaseTime
     }
 
     /// Custom decoding so `additionalSourceAccountIDs` (added after items were
@@ -872,10 +847,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
             forKey: .artworkMetadataSourcesByURL
         ) ?? [:]
         additionalSourceAccountIDs = try container.decodeIfPresent([String].self, forKey: .additionalSourceAccountIDs) ?? []
-        scheduledAirDate = try container.decodeIfPresent(Date.self, forKey: .scheduledAirDate)
-        scheduledAirDateHasTime = try container.decodeIfPresent(Bool.self, forKey: .scheduledAirDateHasTime) ?? false
-        showsScheduledReleaseTime =
-            try container.decodeIfPresent(Bool.self, forKey: .showsScheduledReleaseTime) ?? false
         libraryID = try container.decodeIfPresent(String.self, forKey: .libraryID)
         versions = try container.decodeIfPresent([MediaVersion].self, forKey: .versions) ?? []
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false

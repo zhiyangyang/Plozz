@@ -41,11 +41,6 @@ final class MetadataDefaultOrderIdentityTests: XCTestCase {
         case (.overview, .tvShow): return [.tvmaze]
         case (.overview, .unknown): return [.wikipedia]
         case (.overview, .music): return []
-        // nextAiringEpisode
-        case (.nextAiringEpisode, .anime): return [.anilist, .tvdb, .tvmaze]
-        case (.nextAiringEpisode, .tvShow): return [.tvdb, .tvmaze]
-        case (.nextAiringEpisode, .unknown): return [.tvdb, .tvmaze]
-        case (.nextAiringEpisode, .movie): return []
         default: return []
         }
     }
@@ -80,7 +75,7 @@ final class MetadataDefaultOrderIdentityTests: XCTestCase {
         let fields: [MetadataField] = [
             .backdropURL, .homeHero, .detailBackdrop, .banner,
             .posterURL, .seasonPoster, .episodeThumbnail, .logoURL,
-            .overview, .nextAiringEpisode,
+            .overview,
             .title, .genres, .taglines, .ratings, .providerID("Imdb"),
         ]
         let types: [ContentType] = [.movie, .tvShow, .anime, .unknown, .music]

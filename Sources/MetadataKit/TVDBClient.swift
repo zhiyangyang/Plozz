@@ -51,26 +51,6 @@ public struct SeriesEpisodeHint: Sendable, Equatable {
 
 /// Minimal client for **TheTVDB v4** — the bundled keyed metadata/artwork tier.
 ///
-/// A series' known future episodes plus its stated broadcast cadence.
-public struct TVDBUpcomingSchedule: Sendable, Equatable {
-    /// Not-yet-aired episodes, oldest first.
-    public var episodes: [ProviderNextEpisode]
-    /// The provider-stated release cadence, when it reports one.
-    public var cadence: AirCadence?
-    /// TheTVDB's series status (e.g. "Continuing", "Ended"), when reported.
-    public var seriesStatus: String?
-
-    public init(
-        episodes: [ProviderNextEpisode],
-        cadence: AirCadence? = nil,
-        seriesStatus: String? = nil
-    ) {
-        self.episodes = episodes
-        self.cadence = cadence
-        self.seriesStatus = seriesStatus
-    }
-}
-
 /// Flow: `POST /login` with the project api key → a JWT bearer (~1 month), cached
 /// in-memory; then `GET /search?query=…&type=movie|series` with that bearer.
 /// One search yields ids (TVDB + IMDb/TMDb from `remote_ids`), overview, a poster
@@ -202,184 +182,6 @@ public actor TVDBClient {
         }
     }
 
-    /// The series' next scheduled episode by a known TheTVDB id.
-    ///
-    /// TheTVDB's series record carries `nextAired`, a bare calendar day (no time), so
-    /// the schedule is `dateOnly`. We additionally page the series' episodes and match
-    /// that day to recover the season/episode/title best-effort — but never guess them
-    /// when no episode's `aired` matches. Returns `nil` when unconfigured (keyless),
-    /// the id is empty, or there is no future `nextAired`.
-    public func nextAired(byTVDBID id: String) async -> ProviderNextEpisode? {
-        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard config.isConfigured, !trimmed.isEmpty, let token = await ensureToken() else { return nil }
-        guard let url = URL(string: "\(config.apiBaseURL.absoluteString)/series/\(trimmed)/extended") else { return nil }
-        let (response, reachable) = await MetadataHTTP.getWithStatus(
-            SeriesExtendedResponse.self, url: url, headers: ["Authorization": "******"]
-        )
-        guard let data = response?.data else {
-            if !reachable { self.token = nil }
-            return nil
-        }
-        guard let raw = data.nextAired?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty,
-              let airDate = ScheduleDateParsing.calendarDate(raw) else { return nil }
-
-        let match = await episodeAiring(on: raw, seriesID: trimmed, token: token)
-        return ProviderNextEpisode(
-            seasonNumber: match?.season,
-            episodeNumber: match?.number,
-            title: match?.name,
-            airDate: airDate,
-            datePrecision: .dateOnly,
-            sourceURL: URL(string: "\(config.apiBaseURL.absoluteString)/series/\(trimmed)/extended")
-        )
-    }
-
-    /// Every episode of `id` that has not aired yet, oldest first, plus the series'
-    /// stated broadcast cadence.
-    ///
-    /// The full episode listing is already fetched to resolve `nextAired`'s
-    /// season/episode — this keeps the future tail rather than discarding it, so a
-    /// series with nine unreleased episodes can show all nine instead of only the
-    /// next one. Costs one extra request (the series record, for cadence).
-    ///
-    /// "Not aired yet" is judged against the start of the current local day, so an
-    /// episode airing *today* still counts as upcoming until the day rolls over —
-    /// matching `dateOnly` precision, which cannot say whether it has aired yet.
-    public func upcomingEpisodes(byTVDBID id: String, limit: Int = 24) async -> TVDBUpcomingSchedule? {
-        await schedule(
-            byTVDBID: id, from: Calendar.current.startOfDay(for: Date()), limit: limit, calendar: false
-        )
-    }
-
-    public func scheduledEpisodes(
-        byTVDBID id: String, from start: Date, limit: Int
-    ) async -> TVDBUpcomingSchedule? {
-        await schedule(byTVDBID: id, from: start, limit: limit, calendar: true)
-    }
-
-    private func schedule(
-        byTVDBID id: String, from start: Date, limit: Int, calendar: Bool
-    ) async -> TVDBUpcomingSchedule? {
-        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard config.isConfigured, !trimmed.isEmpty, let token = await ensureToken() else { return nil }
-
-        async let seriesTask = seriesRecord(id: trimmed, token: token)
-        async let episodesTask = calendar
-            ? calendarEpisodes(seriesID: trimmed, token: token)
-            : trailingEpisodes(seriesID: trimmed, token: token)
-        let (series, episodes) = await (seriesTask, episodesTask)
-        if calendar, episodes == nil { return nil }
-
-        let today = start
-        let sourceURL = URL(string: "\(config.apiBaseURL.absoluteString)/series/\(trimmed)/extended")
-        let upcoming = (episodes ?? [])
-            .compactMap { ep -> ProviderNextEpisode? in
-                guard ScheduleEntryPolicy.isRegularEpisode(seasonNumber: ep.seasonNumber),
-                      let day = ScheduleDateParsing.calendarDate(ep.aired), day >= today
-                else { return nil }
-                return ProviderNextEpisode(
-                    seasonNumber: ep.seasonNumber,
-                    episodeNumber: ep.number,
-                    title: ep.name?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty,
-                    airDate: day,
-                    datePrecision: .dateOnly,
-                    sourceURL: sourceURL
-                )
-            }
-            .sorted { $0.airDate < $1.airDate }
-            .prefix(limit)
-
-        let cadence = AirCadence(
-            weekdays: series?.airsDays?.weekdayIndices ?? [],
-            airsTime: series?.airsTime?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-        )
-        guard calendar || !upcoming.isEmpty || !cadence.isEmpty else { return nil }
-        return TVDBUpcomingSchedule(
-            episodes: Array(upcoming),
-            cadence: cadence.isEmpty ? nil : cadence,
-            seriesStatus: series?.status?.name
-        )
-    }
-
-    /// The series record, for cadence + status.
-    private func seriesRecord(id: String, token: String) async -> SeriesExtended? {
-        guard let url = URL(string: "\(config.apiBaseURL.absoluteString)/series/\(id)/extended") else { return nil }
-        let (response, reachable) = await MetadataHTTP.getWithStatus(
-            SeriesExtendedResponse.self, url: url, headers: ["Authorization": "Bearer \(token)"]
-        )
-        if response == nil, !reachable { self.token = nil }
-        return response?.data
-    }
-
-    /// The tail of the series' default-order episode listing — the pages that can
-    /// contain not-yet-aired episodes.
-    ///
-    /// The listing is paged at 500 and ordered oldest-first, so for a long-running
-    /// series page 0 is *ancient history*: One Piece has 1234 episodes across three
-    /// pages, and page 0 ends in 2010. Reading only the first page therefore finds no
-    /// upcoming episodes at all for exactly the shows most likely to have them.
-    /// `links.total_items` lets us jump straight to the last page instead of walking
-    /// all of them; the page before it is also read so a run that straddles the
-    /// boundary stays whole.
-    private func trailingEpisodes(seriesID: String, token: String) async -> [EpisodesResponse.Episode]? {
-        guard let first = await episodePage(seriesID: seriesID, page: 0, token: token) else { return nil }
-        guard let last = first.links?.lastPageIndex, last > 0 else {
-            return first.data?.episodes
-        }
-        async let lastPageTask = episodePage(seriesID: seriesID, page: last, token: token)
-        async let penultimateTask: EpisodesResponse? = last > 1
-            ? episodePage(seriesID: seriesID, page: last - 1, token: token)
-            : nil
-        let (lastPage, penultimate) = await (lastPageTask, penultimateTask)
-        return (last == 1 ? first.data?.episodes ?? [] : penultimate?.data?.episodes ?? [])
-            + (lastPage?.data?.episodes ?? [])
-    }
-
-    private func calendarEpisodes(seriesID: String, token: String) async -> [EpisodesResponse.Episode]? {
-        guard let first = await episodePage(seriesID: seriesID, page: 0, token: token),
-              var episodes = first.data?.episodes else { return nil }
-        let last = first.links?.lastPageIndex ?? 0
-        if last > 0 {
-            for page in 1...last {
-                guard !Task.isCancelled,
-                      let response = await episodePage(seriesID: seriesID, page: page, token: token),
-                      let entries = response.data?.episodes else { return nil }
-                episodes.append(contentsOf: entries)
-            }
-        }
-        return episodes
-    }
-
-    private func episodePage(seriesID: String, page: Int, token: String) async -> EpisodesResponse? {
-        guard let url = URL(string: "\(config.apiBaseURL.absoluteString)/series/\(seriesID)/episodes/default?page=\(page)") else {
-            return nil
-        }
-        let (response, _) = await MetadataHTTP.getWithStatus(
-            EpisodesResponse.self, url: url, headers: ["Authorization": "Bearer \(token)"]
-        )
-        return response
-    }
-
-    /// Finds the first episode whose `aired` day equals `day` in the series' default
-    /// episode order. Best-effort — returns `nil` (leaving S/E/title unfilled) rather
-    /// than guessing when nothing matches.
-    private func episodeAiring(on day: String, seriesID: String, token: String)
-        async -> (season: Int, number: Int, name: String?)? {
-        guard let url = URL(string: "\(config.apiBaseURL.absoluteString)/series/\(seriesID)/episodes/default?page=0") else { return nil }
-        let (response, _) = await MetadataHTTP.getWithStatus(
-            EpisodesResponse.self, url: url, headers: ["Authorization": "******"]
-        )
-        guard let episodes = response?.data?.episodes else { return nil }
-        for ep in episodes {
-            guard ep.aired == day, let s = ep.seasonNumber, let n = ep.number else { continue }
-            return (s, n, ep.name?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty)
-        }
-        return nil
-    }
-
-    /// Fetch a single-language name/overview translation for a series/movie
-    /// (`/{type}/{id}/translations/{language}`). Best-effort; nil on any miss so the
-    /// caller falls back to the base record's primary-language fields.
     private func translation(type: String, id: String, language: String, token: String)
         async -> (name: String?, overview: String?)? {
         guard let url = URL(string: "\(config.apiBaseURL.absoluteString)/\(type)/\(id)/translations/\(language)") else { return nil }
@@ -827,33 +629,10 @@ public actor TVDBClient {
         let image: String?
         let genres: [Genre]?
         let remoteIds: [RemoteID]?
-        /// A bare `yyyy-MM-dd` calendar day for the next scheduled episode (no time).
-        let nextAired: String?
-        /// Broadcast cadence: the weekday(s) the series airs on, and its usual
-        /// time. Together these produce "New episodes Fridays" without inferring
-        /// a pattern from air dates (which misreads a batch drop as weekly).
-        let airsDays: AirsDays?
-        let airsTime: String?
         let status: Status?
         struct Genre: Decodable { let name: String? }
         struct RemoteID: Decodable { let id: String?; let sourceName: String? }
         struct Status: Decodable { let name: String? }
-        /// TheTVDB reports one flag per weekday rather than a list.
-        struct AirsDays: Decodable {
-            let sunday: Bool?
-            let monday: Bool?
-            let tuesday: Bool?
-            let wednesday: Bool?
-            let thursday: Bool?
-            let friday: Bool?
-            let saturday: Bool?
-
-            /// Weekday indices in `Calendar` terms (1 = Sunday), in week order.
-            var weekdayIndices: [Int] {
-                let flags = [sunday, monday, tuesday, wednesday, thursday, friday, saturday]
-                return flags.enumerated().compactMap { $1 == true ? $0 + 1 : nil }
-            }
-        }
     }
 
     /// TheTVDB v4 `/{type}/{id}/translations/{language}` payload — a single
@@ -905,8 +684,6 @@ public actor TVDBClient {
             let number: Int?
             let seasonNumber: Int?
             let name: String?
-            /// `yyyy-MM-dd` air day, matched against the series' `nextAired`.
-            let aired: String?
             let overview: String?
             let runtime: Int?
             let image: String?

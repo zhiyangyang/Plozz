@@ -207,17 +207,7 @@ final class PosterCardPresentationTests: XCTestCase {
         }
     }
 
-    func testSchedulePlaceholdersNeverSuggestPlaybackEvenAfterTheirAirDate() {
-        for date in [Date(timeIntervalSince1970: 0), Date.distantFuture] {
-            let item = MediaItem(
-                id: "scheduled", title: "Scheduled Episode", kind: .episode,
-                scheduledAirDate: date
-            )
-            XCTAssertEqual(MediaArtworkPlaceholder.Symbol(for: item), .media)
-        }
-    }
-
-    func testFolderUsesDedicatedArtworkWithoutPlaybackChrome() {
+func testFolderUsesDedicatedArtworkWithoutPlaybackChrome() {
         XCTAssertTrue(PosterCardPresentation.usesFolderArtwork(for: .folder))
         XCTAssertFalse(PosterCardPresentation.showsWatchStatus(for: .folder))
         XCTAssertFalse(PosterCardPresentation.showsPlaybackIndicators(for: .folder))

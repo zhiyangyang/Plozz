@@ -19,9 +19,6 @@ public extension MetadataQuery {
             ids.append("\(namespace.rawValue):\(value.utf8.count):\(value)")
         }
         var parts = [contentType.rawValue, kind.rawValue, "text-language-v2:\(metadataLanguage)"]
-        if let scheduleStartDate {
-            parts.append("schedule-from:\(scheduleStartDate.timeIntervalSince1970)")
-        }
         if ids.isEmpty {
             parts.append("t:\(title.lowercased())|y:\(year.map(String.init) ?? "")")
         } else {
@@ -66,8 +63,7 @@ public extension MetadataQuery {
             episodeHints: episodeHints,
             titleAlternates: titleAlternates,
             artworkLanguage: artworkLanguage,
-            metadataLanguage: metadataLanguage,
-            scheduleStartDate: scheduleStartDate
+            metadataLanguage: metadataLanguage
         )
     }
 
@@ -179,13 +175,7 @@ public actor MetadataEnrichmentPipeline {
             // fuzzy title search (no duplicate work).
             let threaded = query.mergingProviderIDs(result.externalIDs.mapValues(\.value))
             var enrichment: MetadataEnrichment
-            if query.scheduleStartDate != nil, round.fields.contains(.nextAiringEpisode) {
-                let response = await provider.enrichReporting(threaded, missing: round.fields)
-                enrichment = response.enrichment
-                if case .failure = response.health { enrichment.calendarScheduleAvailable = false }
-            } else {
-                enrichment = await provider.enrich(threaded, missing: round.fields)
-            }
+            enrichment = await provider.enrich(threaded, missing: round.fields)
             if !Self.supportsTextLanguage(query, source: round.source) {
                 enrichment.title = nil
                 enrichment.overview = nil

@@ -209,12 +209,10 @@ final class SeasonEpisodeListTests: XCTestCase {
         XCTAssertEqual(result.rows.count, 1)
     }
 
-    func testUnprovenOrSyntheticEpisodesCannotBecomeDownloads() {
+    func testUnprovenEpisodesCannotBecomeDownloads() {
         var unproven = owned(1)
         unproven.locallyValidatedPlayableSource = false
-        var upcoming = owned(2)
-        upcoming.scheduledAirDate = now.addingTimeInterval(86400)
-        let result = list([unproven, upcoming], [metadata(1), metadata(2)])
+        let result = list([unproven], [metadata(1)])
         XCTAssertEqual(result.coverage?.inLibrary, 0)
         XCTAssertTrue(result.rows.allSatisfy { $0.libraryEpisodes.isEmpty })
     }

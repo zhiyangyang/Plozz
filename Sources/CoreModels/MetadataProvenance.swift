@@ -82,10 +82,6 @@ public struct MetadataField: RawRepresentable, Codable, Hashable, Sendable {
     public static let seasonNumber = Self(rawValue: "seasonNumber")
     public static let episodeNumber = Self(rawValue: "episodeNumber")
     public static let ratings = Self(rawValue: "ratings")
-    /// A series-level upcoming-episode schedule (Step 8). Requested only by the
-    /// schedule resolver — never on the ordinary MediaItem field-fill path — so it
-    /// adds no work to normal enrichment.
-    public static let nextAiringEpisode = Self(rawValue: "nextAiringEpisode")
     /// Billed cast, filled externally only when absent from the hydrated item.
     public static let cast = Self(rawValue: "cast")
     public static let directors = Self(rawValue: "directors")

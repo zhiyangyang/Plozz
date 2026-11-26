@@ -57,7 +57,6 @@ public extension MediaItem {
             && (seasonNumber ?? 0) > 0
             && episodeNumber == 1
             && locallyValidatedPlayableSource
-            && !isUpcomingUnaired
             && !isPlayed
             && !hasBeenPlayed
             && (resumePosition ?? 0) == 0
@@ -106,15 +105,6 @@ public extension MediaItem {
         case .unknown, .pending, .processing, .deleted: return true
         }
     }
-
-    /// Whether this is a schedule-derived placeholder for an episode that has not
-    /// aired yet, and so exists in no library on any server.
-    ///
-    /// Like ``isNotInLibraryDiscovery`` it stays focusable and navigable — you can
-    /// browse the rest of a season's run and read what's coming — but every action
-    /// that needs a real file (Play, Watched, Download) is suppressed, because
-    /// there is nothing to act on yet.
-    var isUpcomingUnaired: Bool { scheduledAirDate != nil }
 
     /// Whether this item resolves to a real playable library record. Only explicit
     /// local validation or a source supplied by the active identity index counts.

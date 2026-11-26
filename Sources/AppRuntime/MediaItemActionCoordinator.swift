@@ -264,9 +264,6 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
             item,
             identitySources: additionalSources(item)
         )
-        // An unaired episode exists on no server, so every action here — watch
-        // state, watchlist, refresh, download — would silently fail.
-        guard !item.isUpcomingUnaired else { return [] }
         let capabilities = isExternalDiscovery
             ? ProviderCapabilities(
                 supportsWatchState: false,
@@ -295,7 +292,6 @@ public final class MediaItemActionCoordinator: MediaItemActionHandling {
             return actions(for: item, context: context)
                 .first { $0 == .addToWatchlist || $0 == .removeFromWatchlist }
         }
-        guard !item.isUpcomingUnaired else { return nil }
         // Plozz-owned membership is independent of provider ownership, watch-state,
         // refresh and download capabilities. Those require identity graph lookups.
         return MediaItemActionCatalog.watchlistAction(

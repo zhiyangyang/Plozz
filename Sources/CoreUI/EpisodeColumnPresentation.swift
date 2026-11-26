@@ -41,10 +41,8 @@ public struct EpisodeColumnPresentation: Equatable, Sendable, CustomDebugStringC
     public let accessibilityLabel: String
     /// Whether this entry is a not-yet-aired episode, which the card renders dimmed
     /// so it reads as unavailable rather than merely unwatched.
-    public let isUpcoming: Bool
 
     public init(item: MediaItem, spoilerSettings: SpoilerSettings) {
-        isUpcoming = item.isUpcomingUnaired
         let hidesText = spoilerSettings.shouldHideText(for: item)
         let hidesArtwork = spoilerSettings.shouldHideThumbnail(for: item)
         let trimmedOverview = Self.compactOverview(item.overview)

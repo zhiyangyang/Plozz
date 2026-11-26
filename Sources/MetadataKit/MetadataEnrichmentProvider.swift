@@ -157,9 +157,6 @@ public extension MetadataEnrichmentProvider {
     /// override this to report `failure` so their breaker trips on true outages.
     func enrichReporting(_ query: MetadataQuery, missing: Set<MetadataField>) async -> ProviderResponse {
         let enrichment = await enrich(query, missing: missing)
-        if enrichment.calendarScheduleAvailable == false {
-            return ProviderResponse(enrichment: enrichment, health: .failure(.transient))
-        }
         return ProviderResponse(enrichment: enrichment, health: enrichment.isEmpty ? .empty : .ok)
     }
 }

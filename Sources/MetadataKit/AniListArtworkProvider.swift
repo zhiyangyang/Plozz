@@ -57,7 +57,6 @@ public struct AniListArtworkProvider: ArtworkProvider {
             coverImage { extraLarge large }
             title { romaji english native }
             synonyms
-            nextAiringEpisode { airingAt episode }
           }
         }
         """
@@ -102,9 +101,6 @@ public struct AniListArtworkProvider: ArtworkProvider {
         /// Alternate names AniList lists, which is often where a library's
         /// English spelling of a romaji-canonical show is found.
         public let synonyms: [String]?
-        /// The next unaired episode (AniList numbers episodes absolutely within the
-        /// media entry). Present only for currently-airing shows.
-        public let nextAiringEpisode: AiringSchedule?
 
         public init(
             id: Int?,
@@ -112,7 +108,6 @@ public struct AniListArtworkProvider: ArtworkProvider {
             averageScore: Int?,
             bannerImage: String?,
             coverImage: CoverImage?,
-            nextAiringEpisode: AiringSchedule? = nil,
             title: Title? = nil,
             synonyms: [String]? = nil
         ) {
@@ -121,7 +116,6 @@ public struct AniListArtworkProvider: ArtworkProvider {
             self.averageScore = averageScore
             self.bannerImage = bannerImage
             self.coverImage = coverImage
-            self.nextAiringEpisode = nextAiringEpisode
             self.title = title
             self.synonyms = synonyms
         }
@@ -154,16 +148,5 @@ public struct AniListArtworkProvider: ArtworkProvider {
             }
         }
 
-        /// AniList `AiringSchedule`: `airingAt` is a Unix timestamp (an exact
-        /// instant), `episode` is the absolute episode number about to air.
-        public struct AiringSchedule: Decodable, Sendable {
-            public let airingAt: Int?
-            public let episode: Int?
-
-            public init(airingAt: Int?, episode: Int?) {
-                self.airingAt = airingAt
-                self.episode = episode
-            }
-        }
     }
 }

@@ -26,19 +26,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
     /// Ordered wide-backdrop candidates, best first. Retained as a set (not one URL)
     /// so both ``homeHero`` and ``detailBackdrop`` can be served from one response.
     public var backdropCandidates: [SourcedValue<URL>]
-    /// A series-level upcoming-episode schedule (Step 8). Self-sourced (it carries
-    /// its own ``UpcomingEpisode/source``), so it is stored directly rather than as a
-    /// ``SourcedValue``. Filled only when a caller requests ``MetadataField/nextAiringEpisode``.
-    public var upcomingEpisode: UpcomingEpisode?
-    /// Every known future episode, oldest first, when the provider lists more than
-    /// the next one (TheTVDB). Empty for single-next providers (AniList, TVmaze).
-    public var upcomingEpisodes: [UpcomingEpisode]
-    /// Calendar-only completeness: true includes successful empty listings;
-    /// false means the attempted listing was unavailable and must remain retryable.
-    public var calendarScheduleAvailable: Bool?
-    /// A full calendar listing, unlike AniList's single next-episode answer.
-    public var calendarScheduleComplete: Bool?
-    public var calendarScheduleNotFound: Bool?
     /// Billed cast, best-first, independent of the crew groups.
     public var cast: SourcedValue<[MediaPerson]>?
     public var directors: SourcedValue<[MediaPerson]>?
@@ -53,9 +40,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
     public var seriesStatus: SourcedValue<MediaSeriesStatus>?
     public var catalogSeasonCount: SourcedValue<Int>?
     public var catalogEpisodeCount: SourcedValue<Int>?
-    /// The provider-stated release cadence, when reported. Never inferred.
-    public var cadence: AirCadence?
-
     public init(
         externalIDs: [String: SourcedValue<String>] = [:],
         title: SourcedValue<String>? = nil,
@@ -68,9 +52,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
         bannerURL: SourcedValue<URL>? = nil,
         score: SourcedValue<Double>? = nil,
         backdropCandidates: [SourcedValue<URL>] = [],
-        upcomingEpisode: UpcomingEpisode? = nil,
-        upcomingEpisodes: [UpcomingEpisode] = [],
-        cadence: AirCadence? = nil,
         cast: SourcedValue<[MediaPerson]>? = nil,
         directors: SourcedValue<[MediaPerson]>? = nil,
         writers: SourcedValue<[MediaPerson]>? = nil,
@@ -94,9 +75,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
         self.bannerURL = bannerURL
         self.score = score
         self.backdropCandidates = backdropCandidates
-        self.upcomingEpisode = upcomingEpisode
-        self.upcomingEpisodes = upcomingEpisodes
-        self.cadence = cadence
         self.cast = cast
         self.directors = directors
         self.writers = writers
@@ -114,9 +92,7 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
         externalIDs.isEmpty && title == nil && overview == nil && genres == nil
             && tagline == nil && posterURL == nil && logoURL == nil
             && episodeStillURL == nil && bannerURL == nil && score == nil
-            && backdropCandidates.isEmpty && upcomingEpisode == nil
-            && upcomingEpisodes.isEmpty && calendarScheduleAvailable != true
-            && calendarScheduleNotFound != true && cast == nil && cadence == nil
+            && backdropCandidates.isEmpty && cast == nil
             && directors == nil && writers == nil && producers == nil && composers == nil && studios == nil
             && creditReferences == nil
             && originalLanguage == nil && seriesStatus == nil
@@ -148,14 +124,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
         if !backdropCandidates.isEmpty {
             fields.formUnion([.backdropURL, .homeHero, .detailBackdrop])
         }
-        // A schedule request wants the whole upcoming run, so the single next
-        // episode is only a partial answer and the field stays open for a provider
-        // that can list. This matters most for anime: AniList leads that chain and
-        // reports an absolute episode number with no season, which can't be placed
-        // in a season's rail — leaving the field open lets TVmaze, which numbers
-        // per season, still be asked. When no provider can list, every one is tried
-        // once (`triedForField` prevents repeats) and the singular survives.
-        if !upcomingEpisodes.isEmpty || calendarScheduleComplete == true { fields.insert(.nextAiringEpisode) }
         if cast != nil { fields.insert(.cast) }
         if directors != nil { fields.insert(.directors) }
         if writers != nil { fields.insert(.writers) }
@@ -206,36 +174,6 @@ public struct MetadataEnrichment: Sendable, Equatable, Codable {
         // still first-writer-wins, and never blocked by `present`.
         if bannerURL == nil { bannerURL = other.bannerURL }
         if score == nil { score = other.score }
-        // Schedule: first provider (in configured order) to report a next episode
-        // wins, mirroring the priority-respecting merge used for fields above.
-        if !present.contains(.nextAiringEpisode) {
-            // Only a complete listing can supersede another provider's failed calendar request.
-            if other.calendarScheduleAvailable == true,
-               calendarScheduleAvailable != false || other.calendarScheduleComplete == true {
-                calendarScheduleAvailable = true
-            }
-            if other.calendarScheduleAvailable == false, calendarScheduleComplete != true {
-                calendarScheduleAvailable = false
-            }
-            if other.calendarScheduleNotFound == true { calendarScheduleNotFound = true }
-            if other.calendarScheduleComplete == true, calendarScheduleComplete != true {
-                calendarScheduleComplete = true
-                upcomingEpisodes = other.upcomingEpisodes
-                upcomingEpisode = other.upcomingEpisode
-                cadence = other.cadence
-            } else if !other.upcomingEpisodes.isEmpty, upcomingEpisodes.isEmpty {
-                // A provider that lists the whole run supersedes one that reported
-                // only the next episode. Its singular is taken too: the list and the
-                // next episode must describe the same source, or a per-season run
-                // would be paired with an absolute-numbered next episode.
-                upcomingEpisodes = other.upcomingEpisodes
-                upcomingEpisode = other.upcomingEpisode ?? upcomingEpisode
-                cadence = other.cadence ?? cadence
-            } else if upcomingEpisode == nil {
-                upcomingEpisode = other.upcomingEpisode
-                cadence = other.cadence
-            }
-        }
         // Keep the first non-empty candidate set (one response serves both screens),
         // unless the caller already has a backdrop from a higher-priority source.
         if backdropCandidates.isEmpty,

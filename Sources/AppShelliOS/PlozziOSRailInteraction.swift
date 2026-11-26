@@ -46,7 +46,7 @@ extension MediaItem {
         // never contradict what the poster is showing. Was a fifth hand-rolled copy of
         // this classification.
         guard !TitleClassifier.isNotOwnedForBadge(self),
-              !isUpcomingUnaired else { return false }
+              true else { return false }
         switch kind {
         case .movie, .episode, .video, .series: return true
         default: return false

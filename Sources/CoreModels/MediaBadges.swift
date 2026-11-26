@@ -393,47 +393,7 @@ public extension MediaItem {
     /// When an unaired episode is expected, for the card slot that would otherwise
     /// show a runtime. `nil` for every ordinary item.
     ///
-    /// The card's release label, e.g. "Releases Friday" — spelled out so it can't
-    /// read as an air date that has already passed.
-    var upcomingReleaseText: LocalizedStringResource? {
-        guard let date = scheduledAirDate else { return nil }
-        let calendar = Calendar.current
-        let days = calendar.dateComponents(
-            [.day],
-            from: calendar.startOfDay(for: Date()),
-            to: calendar.startOfDay(for: date)
-        ).day ?? 0
-        switch days {
-        case ..<0: return nil
-        case 0:
-            if scheduledAirDateHasTime, showsScheduledReleaseTime {
-                return "Releases today at \(date, format: .dateTime.hour().minute())"
-            }
-            return "Releases today"
-        case 1:
-            if scheduledAirDateHasTime, showsScheduledReleaseTime {
-                return "Releases tomorrow at \(date, format: .dateTime.hour().minute())"
-            }
-            return "Releases tomorrow"
-        case 2...6:
-            if scheduledAirDateHasTime, showsScheduledReleaseTime {
-                return "Releases \(date, format: .dateTime.weekday(.wide)) at \(date, format: .dateTime.hour().minute())"
-            }
-            return "Releases \(date, format: .dateTime.weekday(.wide))"
-        default:
-            let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: Date())
-            if scheduledAirDateHasTime, showsScheduledReleaseTime {
-                if sameYear {
-                    return "Releases \(date, format: .dateTime.month(.abbreviated).day().hour().minute())"
-                }
-                return "Releases \(date, format: .dateTime.month(.abbreviated).day().year().hour().minute())"
-            }
-            if sameYear {
-                return "Releases \(date, format: .dateTime.month(.abbreviated).day())"
-            }
-            return "Releases \(date, format: .dateTime.month(.abbreviated).day().year())"
-        }
-    }
+
 
     var cardRuntimeText: String? {  // l10n:content — formatted duration, not copy
         guard cardRuntimeEligible, let runtime = resolvedRuntime, runtime > 0 else { return nil }

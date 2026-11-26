@@ -565,8 +565,6 @@ struct PlozziOSDetailHeroSection: View {
     var onRetryPlaybackInventory: (() -> Void)?
     var isRetryingPlaybackInventory = false
     let sources: [MediaSourceRef]
-    /// The air-schedule badge for a series, resolved by the detail page.
-    var scheduleLine: LocalizedStringResource? = nil
     let selectedSourceAccountID: String?
     let versions: [MediaVersion]
     let selectedVersionID: String?
@@ -608,7 +606,6 @@ struct PlozziOSDetailHeroSection: View {
             // Episode pages retain their own still instead of a show backdrop.
             showsBackdrop: !presentsEpisodeStill,
             textSize: appModel.settings.detailPage.settings.textSize,
-            scheduleLine: scheduleLine,
             pullDistance: pullDistance,
             trailerController: trailerController,
             backgroundSettings: appModel.settings.heroBackground,
@@ -622,8 +619,7 @@ struct PlozziOSDetailHeroSection: View {
                 onRetryPlaybackInventory: onRetryPlaybackInventory,
                 isRetryingPlaybackInventory: isRetryingPlaybackInventory,
                 sources: sources,
-                scheduleLine: scheduleLine,
-                selectedSourceAccountID: selectedSourceAccountID,
+                    selectedSourceAccountID: selectedSourceAccountID,
                 versions: versions,
                 selectedVersionID: selectedVersionID,
                 onSelectSource: onSelectSource,
@@ -720,8 +716,6 @@ struct PlozziOSHeroStage<Foreground: View>: View {
     var showsBackdrop = true
     var showsScrim = true
     var textSize: HeroTextSize = .default
-    /// Compact detail renders the availability badge with its separate title/logo.
-    var scheduleLine: LocalizedStringResource? = nil
     /// Overscroll pull (points) from the enclosing scroll view. Stretches the
     /// backdrop just like the Home hero; 0 leaves the hero at rest.
     var pullDistance: CGFloat = 0
@@ -815,8 +809,7 @@ struct PlozziOSHeroStage<Foreground: View>: View {
                             presentation: presentation,
                             style: style,
                             mode: .detail,
-                            scheduleLine: scheduleLine,
-                            logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: item),
+                                            logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: item),
                             content: .identity
                         )
                         .environment(\.metadataTextScale, textSize.scale)
@@ -2096,7 +2089,6 @@ private struct PlozziOSStableHomeHeroMetadata: View {
     let style: HeroArtworkStyle
     let hidesRatings: Bool
     let ratingPreferences: DetailPageSettings
-    let scheduleLine: LocalizedStringResource?
     let logoFallback: HeroLogoFallback?
     /// The logo choice locked when the foreground was prepared. A late
     /// enrichment pass must not replace a visible title with a wordmark (or a
@@ -2112,7 +2104,6 @@ private struct PlozziOSStableHomeHeroMetadata: View {
         style: HeroArtworkStyle,
         hidesRatings: Bool,
         ratingPreferences: DetailPageSettings,
-        scheduleLine: LocalizedStringResource?,
         logoFallback: HeroLogoFallback?,
         logoReferencesOverride: [ArtworkReference]? = nil,
         logoFallbackOverride: HeroLogoFallback?? = nil,
@@ -2123,7 +2114,6 @@ private struct PlozziOSStableHomeHeroMetadata: View {
         self.style = style
         self.hidesRatings = hidesRatings
         self.ratingPreferences = ratingPreferences
-        self.scheduleLine = scheduleLine
         self.logoFallback = logoFallback
         self.logoReferencesOverride = logoReferencesOverride
         self.logoFallbackOverride = logoFallbackOverride
@@ -2140,7 +2130,6 @@ private struct PlozziOSStableHomeHeroMetadata: View {
             mode: .home,
             displayedArtworkID: displayedArtworkID,
             hidesRatings: hidesRatings,
-            scheduleLine: scheduleLine,
             logoFallback: logoFallbackOverride ?? logoFallback,
             logoReferencesOverride: logoReferencesOverride,
             descriptionOverride: .init(text: descriptionText),
@@ -2229,14 +2218,6 @@ struct PlozziOSHomeHeroForeground: View {
     let style: HeroArtworkStyle
     let onPlay: (MediaItem) -> Void
     var heroRequest: PlozziOSHeroRequest?
-    /// "New episode every Friday" for a returning series, from the shared
-    /// `HeroScheduleLines` the tvOS hero already uses.
-    var scheduleLine: LocalizedStringResource?
-    /// The carousel's schedule store. Passing it (rather than only the resolved
-    /// line) lets the reveal gate wait for the *cached* badge, so a returning
-    /// series fades in as one piece instead of popping the badge in a second later.
-    /// Optional so previews and fixtures can keep constructing the foreground.
-    var scheduleLines: HeroScheduleLines? = nil
     /// Test/preview seam for a logo lookup that must stay unresolved. Production
     /// uses the shared TMDb fallback.
     var logoFallbackOverride: HeroLogoFallback? = nil
@@ -2244,9 +2225,6 @@ struct PlozziOSHomeHeroForeground: View {
     var body: some View {
         // Reading the store in the body is what makes a late cache hit re-render
         // this column; the passed line is the fallback for snapshot/fixture input.
-        let resolvedScheduleLine = scheduleLines?.line(for: detailItem)
-            ?? scheduleLines?.line(for: item)
-            ?? scheduleLine
         VStack(
             alignment: style == .compactPortrait ? .center : .leading,
             spacing: 12
@@ -2260,8 +2238,7 @@ struct PlozziOSHomeHeroForeground: View {
                     spoilerSettings: appModel.settings.spoilers.settings
                 ),
                 ratingPreferences: appModel.settings.hero.settings.ratingPreferences,
-                scheduleLine: resolvedScheduleLine,
-                logoFallback: frozenLogoChoice
+                    logoFallback: frozenLogoChoice
                     ? frozenLogoFallback
                     : (logoFallbackOverride ?? PlozziOSHeroMetadata.tmdbLogoFallback(for: item)),
                 logoReferencesOverride: frozenLogoChoice ? frozenLogoReferences : nil,
@@ -2311,7 +2288,6 @@ struct PlozziOSHomeHeroForeground: View {
             }
             // Zero-network: publishes any schedule already on disk for this slide.
             // A genuinely unknown schedule still resolves later on its own.
-            await scheduleLines?.loadCached([detailItem, item])
             guard !sources.references.isEmpty || sources.fallback != nil else { return }
             // Warm the memo `HeroLogoArtwork` reads synchronously so a returned-to
             // hero can draw its wordmark on the first frame.
@@ -2450,8 +2426,6 @@ struct PlozziOSDetailHeroForeground: View {
     var onRetryPlaybackInventory: (() -> Void)?
     var isRetryingPlaybackInventory = false
     let sources: [MediaSourceRef]
-    /// The air-schedule badge for a series, resolved by the detail page.
-    var scheduleLine: LocalizedStringResource? = nil
     let selectedSourceAccountID: String?
     let versions: [MediaVersion]
     let selectedVersionID: String?
@@ -2627,8 +2601,7 @@ struct PlozziOSDetailHeroForeground: View {
                     { perform(entry) }
                 },
                 subjectTitle: presentsEpisodeStill ? item.title : nil,
-                scheduleLine: scheduleLine,
-                logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: rootItem),
+                    logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: rootItem),
                 usesCompactDetailLayout: style == .compactPortrait,
                 content: style == .compactPortrait && !presentsEpisodeStill ? .information : .all,
                 detailPageSettings: appModel.settings.detailPage.settings,
@@ -3200,9 +3173,6 @@ struct PlozziOSHeroMetadata: View {
     var onTapBreadcrumb: (() -> Void)? = nil
     /// The subject's own title, when it differs from `presentation.title`.
     var subjectTitle: String? = nil
-    /// The air-schedule badge above the title ("New episode every Wednesday"), or
-    /// `nil` when there is nothing truthful to say. Matches tvOS.
-    var scheduleLine: LocalizedStringResource? = nil
     /// Looks the title up for a logo when the provider has none of its own.
     ///
     /// tvOS has always had this on both its heroes; iOS never did, so a title
@@ -3254,14 +3224,6 @@ struct PlozziOSHeroMetadata: View {
             spacing: 9 * textScale
         ) {
             if content != .information {
-                if let scheduleLine {
-                    let visible = mode != .detail || seriesBreadcrumb != nil
-                        || settledTitleID == (displayedArtworkID ?? presentation.itemID)
-                    scheduleBadge(scheduleLine)
-                        .opacity(visible ? 1 : 0)
-                        .accessibilityHidden(!visible)
-                        .transition(.opacity)
-                }
                 if let seriesBreadcrumb {
                     // The episode is this page's subject, so the show is context
                     // rather than identity — and naming it says both where you are
@@ -3468,19 +3430,7 @@ struct PlozziOSHeroMetadata: View {
     /// The air-schedule badge. Same shape and copy as the tvOS hero so a series
     /// reads identically on both platforms, sized down for a phone.
     @ViewBuilder
-    private func scheduleBadge(_ text: LocalizedStringResource) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 10 * textScale, style: .continuous)
-        Text(text)
-            .font(metadataFont.weight(.semibold))
-            .foregroundStyle(palette.primaryText)
-            .padding(.horizontal, 12 * textScale)
-            .padding(.vertical, 6 * textScale)
-            .background { shape.fill(.regularMaterial) }
-            .overlay { shape.stroke(palette.primaryText.opacity(0.16), lineWidth: textScale) }
-            .accessibilityLabel(text)
-    }
-
-    private var effectiveRatingBadge: MediaBadge? {
+private var effectiveRatingBadge: MediaBadge? {
         guard showsContentRatings else { return nil }
         return switch mode {
         case .home:

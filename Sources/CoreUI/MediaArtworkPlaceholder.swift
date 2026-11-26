@@ -21,7 +21,7 @@ public struct MediaArtworkPlaceholder: View {
         case media = "rectangle.dashed"
 
         public init(for item: MediaItem) {
-            self = item.scheduledAirDate != nil || TitleClassifier.isNotOwnedForBadge(item)
+            self = TitleClassifier.isNotOwnedForBadge(item)
                 ? .media : .playback
         }
     }

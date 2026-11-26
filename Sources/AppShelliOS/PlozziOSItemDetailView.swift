@@ -196,40 +196,6 @@ struct PlozziOSItemDetailView: View {
 }
 
 
-/// First-paint schedule text only; the resolver still owns freshness and corrections.
-@MainActor
-final class PlozziOSDetailScheduleReplay {
-    private struct Entry {
-        let subject: String
-        let scope: String
-        let account: String?
-        let title: String // l10n:content — provider-supplied series title
-        let ids: [String: String]
-        let record: SeriesScheduleRecord
-    }
-    private var entries: [Entry] = []
-
-    func remember(_ record: SeriesScheduleRecord?, for item: MediaItem, scope: String) {
-        guard let record, item.kind == .series else { return }
-        let subject = item.stablePresentationID
-        entries.removeAll { $0.subject == subject && $0.scope == scope && $0.account == item.sourceAccountID }
-        guard record.upcomingEpisode != nil, !record.isRefreshDue() else { return }
-        if entries.count >= 32 { entries.removeFirst() }
-        entries.append(Entry(subject: subject, scope: scope, account: item.sourceAccountID, title: item.title,
-                             ids: MetadataQuery(item).logoSubjectIDs, record: record))
-    }
-
-    func record(for item: MediaItem, scope: String, now: Date = .now) -> SeriesScheduleRecord? {
-        guard item.kind == .series, let entry = entries.last(where: {
-            $0.subject == item.stablePresentationID && $0.scope == scope && $0.account == item.sourceAccountID
-        }) else { return nil }
-        let ids = MetadataQuery(item).logoSubjectIDs
-        guard !entry.record.isRefreshDue(now: now), entry.title == item.title,
-              ids.allSatisfy({ entry.ids[$0.key] == nil || entry.ids[$0.key] == $0.value }) else { return nil }
-        return entry.record
-    }
-}
-
 private struct PlozziOSCatalogPresentation: Identifiable, Hashable {
     let term: MovieCatalogTerm
     let libraryID: String?
@@ -548,13 +514,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                     } : nil,
                     isRetryingPlaybackInventory: viewModel.isRetryingPlaybackInventory(for: versionTarget),
                     sources: options.sources,
-                    scheduleLine: isDiscoveryItem
-                        ? (
-                            detail.item.kind == .series
-                                ? upcomingHeroLine(for: detail)
-                                : detail.externalAvailability?.primaryLine()
-                        )
-                        : upcomingHeroLine(for: detail),
                     selectedSourceAccountID: options.selectedSourceAccountID,
                     versions: options.versions,
                     selectedVersionID: options.selectedVersionID,
@@ -595,9 +554,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
                 )
                 .environment(\.plozzArtworkSourceReady, viewModel.artworkSourceIsReady)
                 .detailHeroLogoVisit(scope: appModel.detailArtworkScopeID, subject: detail.item.stablePresentationID)
-                .onChange(of: detail.upcomingSchedule, initial: true) { _, record in
-                    appModel.detailSchedules.remember(record, for: detail.item, scope: detailScheduleScope)
-                }
                 .environment(\.openingHeroLogo, openingArtwork?.logo(
                     for: detail.item, profileID: appModel.profiles.activeProfileID
                 )))
@@ -747,16 +703,6 @@ private struct PlozziOSCanonicalItemDetailView: View {
             guard let mutation = MediaItemMutation.from(note) else { return }
             viewModel.applyWatchedState(mutation)
         }
-    }
-
-    /// The hero's air-schedule line ("New episode every Wednesday"), or `nil`.
-    private func upcomingHeroLine(for detail: ItemDetailViewModel.Detail) -> LocalizedStringResource? {
-        guard let schedule = detail.upcomingSchedule ?? appModel.detailSchedules.record(for: detail.item, scope: detailScheduleScope) else { return nil }
-        return SeriesUpcoming.heroLine(nextEpisode: schedule.upcomingEpisode, cadence: schedule.cadence, schedule: schedule.upcomingEpisodes)
-    }
-
-    private var detailScheduleScope: String {
-        "\(appModel.detailArtworkScopeID)|\(locale.identifier)"
     }
 
     private var pageInset: CGFloat {
@@ -1151,7 +1097,7 @@ private struct PlozziOSCanonicalItemDetailView: View {
     private var preparationItem: MediaItem? {
         guard !isDiscoveryItem, let detail = viewModel.state.value,
               let target = detail.item.kind == .series ? seriesPlayTarget : detail.item,
-              !target.isUpcomingUnaired, !viewModel.hasNoPlaybackStreams(for: target),
+              !viewModel.hasNoPlaybackStreams(for: target),
               target.sourceAccountID == viewModel.currentSourceForDisplay?.accountID,
               detail.item.kind != .series || target.seriesID == detail.item.id else { return nil }
         return playbackItem(for: target)
@@ -1613,10 +1559,7 @@ struct PlozziOSInlineSeriesBrowser: View {
         return "\(seasons.map(\.id).joined(separator: ","))#\(resume?.id ?? "")#\(resume?.resumePosition ?? 0)"
     }
 
-    private var displayedEpisodes: [MediaItem]? {
-        guard let owned = ownedEpisodes else { return nil }
-        return owned + upcomingPlaceholders(after: owned)
-    }
+    private var displayedEpisodes: [MediaItem]? { ownedEpisodes }
 
     private var ownedEpisodes: [MediaItem]? {
         if seasons.isEmpty {
@@ -1629,23 +1572,6 @@ struct PlozziOSInlineSeriesBrowser: View {
     /// The selected season's unreleased episodes, appended after the owned ones as
     /// non-playable entries — the same treatment tvOS gives them, so a show mid-run
     /// shows what is still to come rather than ending at the last file on disk.
-    private func upcomingPlaceholders(after owned: [MediaItem]) -> [MediaItem] {
-        guard let schedule = viewModel.state.value?.upcomingSchedule,
-              !schedule.upcomingEpisodes.isEmpty else { return [] }
-        let seasonNumber = selectedSeasonID
-            .flatMap { id in seasons.first { $0.id == id } }?
-            .seasonNumber
-        guard let series = viewModel.state.value?.item else { return [] }
-        return SeriesUpcoming.placeholders(
-            for: seasonNumber,
-            seriesID: series.id,
-            seriesTitle: series.title,
-            ownedEpisodes: owned,
-            schedule: schedule.upcomingEpisodes,
-            seriesArtwork: series
-        )
-    }
-
     private var pageInset: CGFloat {
         PlozziOSPageLayout.horizontalInset(for: horizontalSizeClass)
     }
@@ -2460,13 +2386,8 @@ private struct PlozziOSSeasonDownloadPicker: View {
         let unavailable = libraryEpisodes.filter {
             $0.kind == .episode && !$0.locallyValidatedPlayableSource
         }
-        let scheduled = SeriesUpcoming.placeholders(
-            for: season.number, seriesID: series.id, seriesTitle: series.title,
-            ownedEpisodes: libraryEpisodes,
-            schedule: viewModel.state.value?.upcomingSchedule?.upcomingEpisodes ?? [], seriesArtwork: series
-        )
         var seen = Set<String>()
-        return (unavailable + scheduled).filter { seen.insert($0.stablePresentationID).inserted }
+        return unavailable.filter { seen.insert($0.stablePresentationID).inserted }
     }
 
     private func loadLibrary(forceRefresh: Bool) async {
@@ -2738,12 +2659,11 @@ private struct PlozziOSUnavailableEpisodeRow: View {
         } status: {
             SeasonEpisodeAvailabilityLabel(
                 availability: .scheduled(
-                    airDate: episode.scheduledAirDate ?? episode.releaseDate,
-                    hasTime: episode.scheduledAirDateHasTime,
-                    calendarDayStoredInUTC: episode.scheduledAirDate == nil
+                    airDate: episode.releaseDate,
+                    calendarDayStoredInUTC: true
                 ),
-                airDate: episode.scheduledAirDate ?? episode.releaseDate,
-                calendarDayStoredInUTC: episode.scheduledAirDate == nil
+                airDate: episode.releaseDate,
+                calendarDayStoredInUTC: true
             )
         } accessory: {}
     }
@@ -3467,10 +3387,6 @@ struct PlozziOSInlineEpisodeEntry: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(verbatim: episode.title))
-            // An unreleased episode has no file behind it, so tapping it can only
-            // fail. It stays visible and legible — that IS the information — but
-            // is inert, and its actions menu is withdrawn since none apply.
-            .disabled(episode.isUpcomingUnaired)
             .overlay(alignment: .topLeading) {
                 Menu {
                     episodeMenuActions
@@ -3485,8 +3401,6 @@ struct PlozziOSInlineEpisodeEntry: View {
                         .contentShape(Circle())
                 }
                 .accessibilityLabel("More actions for \(episode.title)")
-                .opacity(episode.isUpcomingUnaired ? 0 : 1)
-                .disabled(episode.isUpcomingUnaired)
             }
             .overlay(alignment: .topTrailing) {
                 MediaCardPlaybackIndicators(

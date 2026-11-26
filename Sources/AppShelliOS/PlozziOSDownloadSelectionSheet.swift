@@ -136,7 +136,7 @@ struct PlozziOSDownloadSelectionSheet: View {
         let children = try await provider.children(of: seasonID)
         try Task.checkCancellation()
         let candidates = children.filter {
-            $0.kind == .episode && $0.locallyValidatedPlayableSource && $0.scheduledAirDate == nil
+            $0.kind == .episode && $0.locallyValidatedPlayableSource
                 && ($0.sourceAccountID == nil || $0.sourceAccountID == seed.sourceAccountID)
         }.map { child in
             var copy = child

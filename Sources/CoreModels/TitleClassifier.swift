@@ -34,8 +34,6 @@ public struct TitleClassification: Hashable, Sendable {
     public let isDiscoveryRouting: Bool
     /// Index-free badge decision — see the type doc.
     public let isNotOwnedForBadge: Bool
-    /// A schedule placeholder for an episode that has not aired, so exists nowhere.
-    public let isUpcomingUnaired: Bool
     /// `nil` for an ordinary library item — absence is *not* `.unknown`, and must
     /// never be mapped to it or every library title becomes a request candidate.
     public let availability: MediaAvailabilityStatus?
@@ -45,14 +43,12 @@ public struct TitleClassification: Hashable, Sendable {
         hasPlayableLibraryTarget: Bool,
         isDiscoveryRouting: Bool,
         isNotOwnedForBadge: Bool,
-        isUpcomingUnaired: Bool,
         availability: MediaAvailabilityStatus?
     ) {
         self.identity = identity
         self.hasPlayableLibraryTarget = hasPlayableLibraryTarget
         self.isDiscoveryRouting = isDiscoveryRouting
         self.isNotOwnedForBadge = isNotOwnedForBadge
-        self.isUpcomingUnaired = isUpcomingUnaired
         self.availability = availability
     }
 
@@ -93,7 +89,6 @@ public enum TitleClassifier {
             ),
             isDiscoveryRouting: isDiscoveryRouting(item, identitySources: identitySources),
             isNotOwnedForBadge: isNotOwnedForBadge(item),
-            isUpcomingUnaired: item.isUpcomingUnaired,
             availability: item.availability
         )
     }

@@ -65,16 +65,6 @@ public protocol TVDBEnriching: Sendable {
     func resolve(byTVDBID id: String, isMovie: Bool, language: String) async -> TVDBMetadata?
     func resolve(titles: [String], year: Int?, isMovie: Bool, episodeHints: [SeriesEpisodeHint], language: String) async -> TVDBMetadata?
     func backdropURL(title: String, year: Int?, isMovie: Bool, tvdbID: String?) async -> URL?  // l10n:content — media title used as a TheTVDB lookup key
-    /// The series' next scheduled episode by a known TheTVDB id. TheTVDB's `nextAired`
-    /// is a bare calendar day (`dateOnly`); the season/episode/title are filled
-    /// best-effort by matching that day against the series' episode list. Returns
-    /// `nil` when unconfigured (keyless) or the series has no scheduled next episode.
-    func nextAired(byTVDBID id: String) async -> ProviderNextEpisode?
-    /// Every not-yet-aired episode plus the series' stated cadence. Preferred over
-    /// ``nextAired(byTVDBID:)`` because it fills the whole upcoming run in one pass;
-    /// falls back to the single-next path when it yields nothing.
-    func upcomingEpisodes(byTVDBID id: String, limit: Int) async -> TVDBUpcomingSchedule?
-    func scheduledEpisodes(byTVDBID id: String, from start: Date, limit: Int) async -> TVDBUpcomingSchedule?
 }
 
 public extension TVDBEnriching {
@@ -86,10 +76,6 @@ public extension TVDBEnriching {
     func resolve(titles: [String], year: Int?, isMovie: Bool, episodeHints: [SeriesEpisodeHint], language: String) async -> TVDBMetadata? {
         guard LanguageMatch.matches(language, "en") else { return nil }
         return await resolve(titles: titles, year: year, isMovie: isMovie, episodeHints: episodeHints)
-    }
-
-    func scheduledEpisodes(byTVDBID id: String, from start: Date, limit: Int) async -> TVDBUpcomingSchedule? {
-        await upcomingEpisodes(byTVDBID: id, limit: limit)
     }
 }
 
@@ -109,24 +95,10 @@ extension TVDBClient: TVDBEnriching {
 /// a title search, so no duplicate work is done.
 public struct TVDBEnrichmentProvider: MetadataEnrichmentProvider {
     public let id: MetadataSource = .tvdb
-    public let capabilities: Set<MetadataCapability> = [.externalIDs, .canonicalText, .poster, .backdrop, .nextAiringEpisode]
+    public let capabilities: Set<MetadataCapability> = [.externalIDs, .canonicalText, .poster, .backdrop]
     public let policy: ProviderPolicy
     private let client: any TVDBEnriching
 
-    /// `version: 2` — TheTVDB now returns a series' whole upcoming run plus its
-    /// cadence, not just the next episode. Entries cached under version 1 hold only
-    /// the single next episode, and their 30-day positive TTL would otherwise serve
-    /// that for a month: the hero would name the next date while the rail stayed
-    /// empty, because the two read different fields of the same response.
-    ///
-    /// `version: 4` — season-0 specials are no longer returned as upcoming
-    /// episodes, so a cached answer containing one has to be dropped.
-    ///
-    /// `version: 3` — a title search now receives the caller's episode-title
-    /// evidence, so it can answer with a different (correct) series than before.
-    /// Disambiguation evidence is deliberately not part of the cache key — the same
-    /// show must not occupy two entries — which means a wrong match cached under
-    /// version 2 would keep being served without the provider ever running again.
     public init(
         client: any TVDBEnriching,
         policy: ProviderPolicy = ProviderPolicy(version: 5)
@@ -196,37 +168,6 @@ public struct TVDBEnrichmentProvider: MetadataEnrichmentProvider {
             }
         }
 
-        if missing.contains(.nextAiringEpisode), query.isTV,
-           let tvdbID = meta?.tvdbID ?? knownTVDB {
-            let identity = MediaIdentity.external(source: "tvdb", value: tvdbID)
-            let now = Date()
-            // The full listing first: it fills the whole upcoming run and the
-            // cadence in one pass. `nextAired` remains the fallback for a series
-            // whose listing is unavailable but whose next date is known.
-            let schedule: TVDBUpcomingSchedule?
-            if let start = query.scheduleStartDate {
-                schedule = await client.scheduledEpisodes(byTVDBID: tvdbID, from: start, limit: .max)
-                out.calendarScheduleAvailable = schedule != nil
-                out.calendarScheduleComplete = schedule != nil
-            } else {
-                schedule = await client.upcomingEpisodes(byTVDBID: tvdbID, limit: 24)
-            }
-            if let schedule,
-               query.scheduleStartDate != nil || !schedule.episodes.isEmpty {
-                let mapped = schedule.episodes.map {
-                    $0.upcomingEpisode(seriesIdentity: identity, source: .tvdb, refreshedAt: now)
-                }
-                out.upcomingEpisodes = mapped
-                out.upcomingEpisode = mapped.first
-                out.cadence = schedule.cadence
-            } else if query.scheduleStartDate == nil, let next = await client.nextAired(byTVDBID: tvdbID) {
-                out.upcomingEpisode = next.upcomingEpisode(
-                    seriesIdentity: identity,
-                    source: .tvdb,
-                    refreshedAt: now
-                )
-            }
-        }
         return out
     }
 
@@ -331,7 +272,7 @@ extension AniListArtworkProvider: AniListEnriching {}
 /// backdrop. Anime only.
 public struct AniListEnrichmentProvider: MetadataEnrichmentProvider {
     public let id: MetadataSource = .anilist
-    public let capabilities: Set<MetadataCapability> = [.externalIDs, .score, .poster, .banner, .backdrop, .nextAiringEpisode]
+    public let capabilities: Set<MetadataCapability> = [.externalIDs, .score, .poster, .banner, .backdrop]
     public let policy: ProviderPolicy
     private let client: any AniListEnriching
 
@@ -344,9 +285,6 @@ public struct AniListEnrichmentProvider: MetadataEnrichmentProvider {
         guard query.contentType == .anime else { return MetadataEnrichment() }
         var out = MetadataEnrichment()
         guard let media = await client.fetchMedia(for: query) else {
-            if missing.contains(.nextAiringEpisode), query.scheduleStartDate != nil {
-                out.calendarScheduleAvailable = false
-            }
             return out
         }
         let sourceURL = media.id.flatMap { URL(string: "https://anilist.co/anime/\($0)") }
@@ -368,26 +306,6 @@ public struct AniListEnrichmentProvider: MetadataEnrichmentProvider {
             if requestsBackdrop(missing) {
                 out.backdropCandidates = [SourcedValue(value: url, source: .anilist, sourceURL: sourceURL)]
             }
-        }
-        if missing.contains(.nextAiringEpisode), query.scheduleStartDate != nil {
-            out.calendarScheduleAvailable = true
-        }
-        if missing.contains(.nextAiringEpisode), let anilistID = media.id,
-           let schedule = media.nextAiringEpisode,
-           let airingAt = schedule.airingAt {
-            // AniList uses absolute episode numbering within the media entry, and
-            // `airingAt` is an exact Unix timestamp — never a per-season (S, E), so
-            // the season/episode fields stay nil (never guessed).
-            out.upcomingEpisode = ProviderNextEpisode(
-                absoluteEpisodeNumber: schedule.episode,
-                airDate: Date(timeIntervalSince1970: TimeInterval(airingAt)),
-                datePrecision: .dateAndTime,
-                sourceURL: sourceURL
-            ).upcomingEpisode(
-                seriesIdentity: .external(source: "anilist", value: String(anilistID)),
-                source: .anilist,
-                refreshedAt: Date()
-            )
         }
         return out
     }

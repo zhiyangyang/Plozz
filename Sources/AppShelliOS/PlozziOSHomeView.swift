@@ -1361,7 +1361,6 @@ struct PlozziOSHomeHeroCarousel: View {
 
     /// "New episode every Friday" for a returning series. The same shared store
     /// the tvOS hero uses — iPhone and iPad simply never adopted it.
-    @State private var schedules = HeroScheduleLines()
 
     var body: some View {
         let style: HeroArtworkStyle = horizontalSizeClass == .compact
@@ -1471,8 +1470,6 @@ struct PlozziOSHomeHeroCarousel: View {
                     // Keyed by the item we actually refreshed. Looking this up
                     // by the root instead missed every slide whose hero fronts
                     // an episode, because the store keys on the item's own id.
-                    let scheduleLine: LocalizedStringResource? =
-                        schedules.line(for: currentItem)
                     let watchlistItem: MediaItem = currentItem.watchlistSubject
                     PlozziOSHomeHeroForeground(
                         item: playItem,
@@ -1488,8 +1485,6 @@ struct PlozziOSHomeHeroCarousel: View {
                         style: style,
                         onPlay: onPlay,
                         heroRequest: heroRequest(for: currentItem),
-                        scheduleLine: scheduleLine,
-                        scheduleLines: schedules
                     )
                     .id(currentItem.id)
                     .transition(.identity)
@@ -1742,21 +1737,10 @@ struct PlozziOSHomeHeroCarousel: View {
                 trailerController.stopHero(ifShowing: currentItem.id)
             }
         }
-        // Everything already on disk, published before a single request, so a
-        // returning viewer's badge is there on the first frame.
-        .task(id: items.map(\.id).joined(separator: "|")) {
-            await schedules.loadCached(items)
-        }
         // Keyed on the curated set rather than the slide: this warms the whole
         // carousel once, and must not restart on every swipe.
         .task(id: items.map(\.id).joined(separator: "|")) {
             await warmHeroPreviews()
-        }
-        // Only the slide on screen is fetched; the rest fill in as they front
-        // rather than firing a burst of requests at first paint.
-        .task(id: schedules.fetchKey(for: currentItem)) {
-            guard let currentItem else { return }
-            await schedules.refreshFronted(currentItem)
         }
     }
 

@@ -111,7 +111,7 @@ public struct EpisodeColumnCard: View, Equatable {
         VStack(alignment: .leading, spacing: 0) {
             presentation.titleLine
                 .font(.system(size: PlozzTypography.episodeTitle.scaled(by: textScale).pointSize, weight: .semibold))
-                .foregroundStyle(presentation.isUpcoming ? .secondary : .primary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .padding(.top, metrics.landscapeCaptionTopSpacing + metrics.focusCaptionPush)
 
@@ -181,7 +181,6 @@ public struct EpisodeColumnCard: View, Equatable {
     private var customEpisodeArtwork: some View {
         realArtwork
             .frame(width: Self.artworkSize.width, height: Self.artworkSize.height)
-            .background { if presentation.isUpcoming { palette.cardSurface } }
             .overlay { episodeOverlays }
             .plozzCardArtworkClip(RoundedRectangle(cornerRadius: metrics.landscapeCardCornerRadius, style: .continuous))
             .plozzMediaEdge(
@@ -202,25 +201,7 @@ public struct EpisodeColumnCard: View, Equatable {
 
     private func episodeOverlayContent(scrimOutset: CGFloat = 0) -> some View {
         ZStack {
-            if presentation.isUpcoming, let air = item.upcomingReleaseText {
-                VStack(spacing: 8) {
-                    if captionsHidden {
-                        presentation.titleLine
-                            .font(.system(size: metrics.cardTitleFontSize, weight: .semibold))
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .foregroundStyle(.white)
-                    }
-                    Label(air, systemImage: "clock")
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                }
-                .padding(.horizontal, 12)
-            }
-            if presentation.artworkTreatment != .blurred {
+if presentation.artworkTreatment != .blurred {
                 ResumeChipOverlay(item: item)
                     .extendingScrim(by: scrimOutset)
                     .plozzChromeFocused(isFocused)
@@ -242,8 +223,8 @@ public struct EpisodeColumnCard: View, Equatable {
             content: { image in
                 ArtworkFillImage(image)
                     .blur(radius: presentation.artworkTreatment == .blurred ? 28 : 0)
-                    .saturation(presentation.isUpcoming ? 0 : 1)
-                    .opacity(presentation.isUpcoming ? 0.05 : 1)
+                    .saturation(1)
+                    .opacity(1)
             },
             placeholder: { neutralPlaceholder }
         )
@@ -253,10 +234,10 @@ public struct EpisodeColumnCard: View, Equatable {
     private var neutralPlaceholder: some View {
         MediaArtworkPlaceholder(
             symbol: .init(for: item), cornerRadius: metrics.landscapeCardCornerRadius,
-            title: captionsHidden && !(presentation.isUpcoming && item.upcomingReleaseText != nil)
+            title: captionsHidden
                 ? presentation.titleLine : nil
         )
-        .opacity(presentation.isUpcoming && !captionsHidden ? 0.05 : 1)
+        .opacity(1)
     }
 
     private var statusIndicator: some View {
@@ -266,7 +247,7 @@ public struct EpisodeColumnCard: View, Equatable {
     private var nativeStatusIndicator: NativePosterIndicators {
         .episode(
             isWatched: presentation.isWatched, hasProgress: presentation.progress != nil,
-            isVisible: presentation.artworkTreatment == .visible && !presentation.isUpcoming,
+            isVisible: presentation.artworkTreatment == .visible,
             style: watchStatusIndicator, badgeSize: metrics.watchedBadgeSize, flagSize: metrics.unwatchedFlagSize
         )
     }

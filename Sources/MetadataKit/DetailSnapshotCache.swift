@@ -41,7 +41,6 @@ public final class DetailSnapshotCache: Sendable {
         public var children: [MediaItem]
         public var seasonEpisodes: [String: [MediaItem]]
         public var sources: [MediaSourceRef]
-        public var upcomingSchedule: SeriesScheduleRecord?
         public var savedAt: Date
 
         public init(
@@ -49,14 +48,12 @@ public final class DetailSnapshotCache: Sendable {
             children: [MediaItem],
             seasonEpisodes: [String: [MediaItem]] = [:],
             sources: [MediaSourceRef] = [],
-            upcomingSchedule: SeriesScheduleRecord? = nil,
             savedAt: Date = Date()
         ) {
             self.item = item
             self.children = children
             self.seasonEpisodes = seasonEpisodes
             self.sources = sources
-            self.upcomingSchedule = upcomingSchedule
             self.savedAt = savedAt
         }
     }

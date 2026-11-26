@@ -8,7 +8,6 @@ private struct FakeTVDB: TVDBEnriching {
     var byID: TVDBMetadata?
     var byTitle: TVDBMetadata?
     var backdrop: URL?
-    var next: ProviderNextEpisode?
     let log = CallLog()
 
     func resolve(byTVDBID id: String, isMovie: Bool) async -> TVDBMetadata? {
@@ -22,17 +21,6 @@ private struct FakeTVDB: TVDBEnriching {
     }
     func backdropURL(title: String, year: Int?, isMovie: Bool, tvdbID: String?) async -> URL? {
         backdrop
-    }
-    func nextAired(byTVDBID id: String) async -> ProviderNextEpisode? {
-        log.record("nextAired:\(id)")
-        return next
-    }
-    /// Defaults to "no listing", so the adapter falls back to `nextAired` and the
-    /// existing expectations in this file keep describing that path.
-    var upcoming: TVDBUpcomingSchedule?
-    func upcomingEpisodes(byTVDBID id: String, limit: Int) async -> TVDBUpcomingSchedule? {
-        log.record("upcomingEpisodes:\(id)")
-        return upcoming
     }
 }
 
@@ -67,16 +55,9 @@ private struct FakeAniList: AniListEnriching {
 
 private struct FakeTVmaze: TVmazeEnriching {
     var resolved: TVmazeResolved?
-    var next: TVmazeNextEpisode?
     func resolve(_ query: MetadataQuery, wantEpisodeStill: Bool, wantOverview: Bool) async -> TVmazeResolved? {
         resolved
     }
-    func nextEpisode(_ query: MetadataQuery) async -> TVmazeNextEpisode? {
-        next
-    }
-    /// Defaults to "no listing" so these tests keep exercising the single-next path.
-    var upcomingListing: TVmazeUpcoming?
-    func upcomingEpisodes(_ query: MetadataQuery, limit: Int) async -> TVmazeUpcoming? { upcomingListing }
 }
 
 private struct FakeArtwork: ArtworkProvider {
