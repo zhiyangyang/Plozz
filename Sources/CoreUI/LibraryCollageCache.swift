@@ -2,7 +2,6 @@
 import CoreModels
 import CoreNetworking
 import CryptoKit
-import MetadataKit
 import Synchronization
 import UIKit
 
@@ -13,7 +12,6 @@ actor LibraryCollageCache {
     private let limiter = ConcurrencyLimiter(limit: 2)
     private let imageLimiter = ConcurrencyLimiter(limit: 3)
     private let imageLoader: @Sendable (ArtworkReference) async -> UIImage?
-    private let artworkRouter: ArtworkRouter
     private var pending: [String: Task<UIImage?, Never>] = [:]
     private var retryAfter: [String: Date] = [:]
     private static let renderQueue = DispatchQueue(
@@ -23,13 +21,11 @@ actor LibraryCollageCache {
     init(
         directory: URL? = nil,
         usesDiskCache: Bool = true,
-        artworkRouter: ArtworkRouter = .shared,
         imageLoader: @escaping @Sendable (ArtworkReference) async -> UIImage? = {
             await ArtworkImageCache.shared.image(for: $0, variant: .posterPreview)
         }
     ) {
         self.imageLoader = imageLoader
-        self.artworkRouter = artworkRouter
         let directory = directory ?? FileManager.default.urls(
             for: .cachesDirectory, in: .userDomainMask
         )[0].appendingPathComponent("plozz-library-collages", isDirectory: true)
@@ -67,7 +63,7 @@ actor LibraryCollageCache {
             .map { String(format: "%02x", $0) }.joined()
         if let task = pending[key] { return await task.value }
         if let retry = retryAfter[key], retry > Date() { return nil }
-        let task = Task(priority: .utility) { [disk, limiter, imageLimiter, imageLoader, artworkRouter] in
+        let task = Task(priority: .utility) { [disk, limiter, imageLimiter, imageLoader] in
             await limiter.run { () async -> UIImage? in
                 if let data = await disk?.data(
                     for: key, accountID: source.accountID,
@@ -85,11 +81,7 @@ actor LibraryCollageCache {
                                     await ArtworkFirstPaintResolver.resolve(
                                         references: candidate.references, variant: .posterPreview,
                                         maxAspectRatio: PosterCardPresentation.preservesContainerArtwork(for: candidate.item.kind) ? nil : 1,
-                                        asyncOnlineURL: {
-                                            await artworkRouter.artworkURL(
-                                                for: candidate.item, placements: [.poster]
-                                            )
-                                        },
+                                        asyncOnlineURL: nil,
                                         prefersOnlineArtwork: policy.prefersOnlineArtwork,
                                         background: true, imageLoader: imageLoader
                                     )?.image

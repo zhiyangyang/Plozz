@@ -15,38 +15,11 @@ public enum CardArtworkPolicy: Hashable, Sendable {
     }
 
     func artworkFallback(
-        for item: MediaItem, style: PosterCardView.Style, router: ArtworkRouter = .shared,
-        policy: ArtworkPresentationPolicy = .init(), prefersLandscapeKeyArt: Bool = true
+        for item: MediaItem, style: PosterCardView.Style
     ) -> (@Sendable () async -> URL?)? {
-        guard allowsOnlineFallback, item.supportsExternalArtworkLookup else { return nil }
-        if prefersLandscapeKeyArt, usesLandscapeKeyArt(for: item, style: style) {
-            let allowsGenericFallback = policy.settings.preference(in: policy.area) != .recommended
-                || references(for: item, style: style).isEmpty
-            return {
-                if let url = await router.landscapeCardArtworkURL(for: item, language: policy.logoLanguage) {
-                    return url
-                }
-                guard !Task.isCancelled, allowsGenericFallback else { return nil }
-                return await router.artworkURL(for: item, placements: [.detailBackdrop, .poster])
-            }
-        }
-        let placements: [ArtworkPlacement]
-        switch style {
-        case .poster:
-            placements = [item.kind == .episode ? .seriesPoster : .poster]
-        case .landscape:
-            if item.kind == .episode {
-                placements = item.seasonNumber != nil && item.episodeNumber != nil
-                    ? [.episodeThumbnail, .detailBackdrop, .seriesPoster] : [.detailBackdrop, .seriesPoster]
-            } else {
-                placements = [.detailBackdrop, .poster]
-            }
-        }
-        let nativeFallback = style == .landscape && item.kind == .episode
-            ? item.libraryArtworkURL(item.fallbackArtworkURL) : nil
-        return {
-            await router.artworkURL(for: item, placements: placements) ?? nativeFallback
-        }
+        guard allowsOnlineFallback, style == .landscape, item.kind == .episode,
+              let native = item.libraryArtworkURL(item.fallbackArtworkURL) else { return nil }
+        return { native }
     }
 
     func pinIdentity(for item: MediaItem) -> String {

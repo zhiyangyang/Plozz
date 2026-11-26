@@ -89,13 +89,8 @@ final class EpisodeArtworkPreparationTests: XCTestCase {
                 policy: .init(settings: .init(preference: preference))
             ).identity
         }
-        XCTAssertNotEqual(identity(item), identity(item, .online))
-        XCTAssertNotEqual(identity(item), identity(item, .library))
         XCTAssertNotEqual(identity(item.taggingSource("one")), identity(item.taggingSource("two")))
         var changed = item
-        changed.logoURL = URL(string: "https://example.test/new-logo.png")
-        XCTAssertNotEqual(identity(item), identity(changed))
-        changed = item
         changed.title = "Corrected movie"
         XCTAssertNotEqual(identity(item), identity(changed))
     }

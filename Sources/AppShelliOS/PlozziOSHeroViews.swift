@@ -24,12 +24,11 @@ enum PlozziOSHeroArtworkFallback {
     static func resolve(
         for item: MediaItem,
         style: HeroArtworkStyle,
-        surfaceRole: HeroTrailerSurfaceRole,
-        router: ArtworkRouter = .shared
+        surfaceRole: HeroTrailerSurfaceRole
     ) async -> URL? {
         await MediaArtworkSource.heroFallback(
             for: item, placement: surfaceRole == .home ? .homeHero : .detailBackdrop,
-            prefersPortrait: style == .compactPortrait, router: router
+            prefersPortrait: style == .compactPortrait
         )?()
     }
 
@@ -77,7 +76,7 @@ struct PlozziOSDetailArtworkRevisit: Equatable {
                 }
             )
             await HeroLogoPreloader.prepare(
-                references: presentation.logoReferences, fallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: item),
+                references: presentation.logoReferences, fallback: nil,
                 policy: policy, scope: scope, subject: item.stablePresentationID
             )
             await backdrop
@@ -809,7 +808,7 @@ struct PlozziOSHeroStage<Foreground: View>: View {
                             presentation: presentation,
                             style: style,
                             mode: .detail,
-                                            logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: item),
+                                            logoFallback: nil,
                             content: .identity
                         )
                         .environment(\.metadataTextScale, textSize.scale)
@@ -2240,7 +2239,7 @@ struct PlozziOSHomeHeroForeground: View {
                 ratingPreferences: appModel.settings.hero.settings.ratingPreferences,
                     logoFallback: frozenLogoChoice
                     ? frozenLogoFallback
-                    : (logoFallbackOverride ?? PlozziOSHeroMetadata.tmdbLogoFallback(for: item)),
+                    : (logoFallbackOverride ?? nil),
                 logoReferencesOverride: frozenLogoChoice ? frozenLogoReferences : nil,
                 logoFallbackOverride: frozenLogoChoice ? .some(frozenLogoFallback) : nil,
                 textSize: appModel.settings.hero.settings.textSize
@@ -2309,7 +2308,7 @@ struct PlozziOSHomeHeroForeground: View {
     }
 
     private var logoSources: (references: [ArtworkReference], fallback: HeroLogoFallback?) {
-        (presentation.logoReferences, logoFallbackOverride ?? PlozziOSHeroMetadata.tmdbLogoFallback(for: item))
+        (presentation.logoReferences, logoFallbackOverride ?? nil)
     }
 
     @ViewBuilder
@@ -2601,7 +2600,7 @@ struct PlozziOSDetailHeroForeground: View {
                     { perform(entry) }
                 },
                 subjectTitle: presentsEpisodeStill ? item.title : nil,
-                    logoFallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: rootItem),
+                    logoFallback: nil,
                 usesCompactDetailLayout: style == .compactPortrait,
                 content: style == .compactPortrait && !presentsEpisodeStill ? .information : .all,
                 detailPageSettings: appModel.settings.detailPage.settings,
@@ -3196,19 +3195,6 @@ struct PlozziOSHeroMetadata: View {
 
     struct DescriptionOverride {
         let text: String?
-    }
-
-    /// The same lookup tvOS's heroes use. Kinds that have no title art of their
-    /// own are excluded rather than searched for one that cannot exist.
-    static func tmdbLogoFallback(for item: MediaItem) -> HeroLogoFallback? {
-        switch item.kind {
-        case .folder, .collection, .playlist, .unknown:
-            return nil
-        default:
-            return HeroLogoFallback(for: item, localizedResolve: { language in
-                await ArtworkRouter.shared.artworkURL(.logo, for: item, language: language)
-            })
-        }
     }
 
     var body: some View {

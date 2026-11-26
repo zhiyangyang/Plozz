@@ -1,6 +1,5 @@
 import CoreModels
 import Foundation
-import MetadataKit
 
 public struct MediaArtworkSource: Sendable {
     public let references: [ArtworkReference]
@@ -9,19 +8,10 @@ public struct MediaArtworkSource: Sendable {
     public let itemIdentity: String
 
     public static func heroFallback(
-        for item: MediaItem, placement: ArtworkPlacement, prefersPortrait: Bool = false,
-        router: ArtworkRouter = .shared
+        for item: MediaItem, placement: ArtworkPlacement, prefersPortrait: Bool = false
     ) -> (@Sendable () async -> URL?)? {
         guard ![.folder, .collection, .unknown].contains(item.kind) else { return nil }
         return {
-            if item.supportsExternalArtworkLookup {
-                let online = if prefersPortrait {
-                    await router.portraitHeroArtworkURL(for: item, placement: placement)
-                } else {
-                    await router.heroArtworkURL(for: item, placement: placement)
-                }
-                if let online { return online }
-            }
             guard !Task.isCancelled else { return nil }
             return item.libraryArtworkURL(item.posterURL)
         }
@@ -32,24 +22,14 @@ public struct MediaArtworkSource: Sendable {
     }
 
     public init(
-        item: MediaItem, placements: [ArtworkPlacement], policy: ArtworkPresentationPolicy,
-        router: ArtworkRouter = .shared
+        item: MediaItem, placements: [ArtworkPlacement], policy: ArtworkPresentationPolicy
     ) {
         self.policy = policy.forPlacement(placements.first)
         itemIdentity = CardArtworkPolicy.standard.pinIdentity(for: item)
         var seen = Set<ArtworkReference>()
         references = placements.flatMap { policy.references(for: item, placement: $0) }
             .filter { seen.insert($0).inserted }
-        guard item.supportsExternalArtworkLookup else {
-            fallbackURL = nil
-            return
-        }
-        fallbackURL = {
-            await ArtworkSession.artworkResolveLimiter.run {
-                guard !Task.isCancelled else { return nil }
-                return await router.artworkURL(for: item, placements: placements)
-            }
-        }
+        fallbackURL = nil
     }
 
     #if canImport(UIKit)

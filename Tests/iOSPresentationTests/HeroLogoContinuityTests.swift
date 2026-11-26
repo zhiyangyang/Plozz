@@ -236,7 +236,7 @@ final class HeroLogoContinuityTests: XCTestCase {
 
         fixture.host.rootView = AnyView(DetailMetadataFixture(
             state: SubjectState(item: state.item), root: state.item, style: .compactPortrait,
-            fallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: state.item)
+            fallback: nil
         ).environment(\.plozzArtworkSourceReady, false).environment(\.plozzArtworkArea, .details)
             .detailHeroLogoVisit(scope: revisit.scope, subject: state.item.stablePresentationID))
         XCTAssertGreaterThan(try fixture.titleSample(afterScreenUpdates: true).red, 245)
@@ -673,7 +673,7 @@ final class HeroLogoContinuityTests: XCTestCase {
             func mount(_ item: MediaItem, scope: String, verified: Bool = false) {
                 fixture.host.rootView = AnyView(DetailMetadataFixture(
                     state: SubjectState(item: item), root: item, style: .compactPortrait,
-                    fallback: PlozziOSHeroMetadata.tmdbLogoFallback(for: item),
+                    fallback: nil,
                     artworkSettings: app.settings.cardStyle.artwork
                 )
                 .environment(\.plozzArtworkArea, .details)

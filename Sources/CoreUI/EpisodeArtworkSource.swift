@@ -1,6 +1,5 @@
 import CoreModels
 import Foundation
-import MetadataKit
 
 /// Shared by the episode card and its warmer so source preference, explicit
 /// artwork references, and spoiler protection select the same image.
@@ -16,8 +15,7 @@ public struct EpisodeArtworkSource: Sendable {
 
     public init(
         item: MediaItem, spoilerSettings: SpoilerSettings,
-        policy: ArtworkPresentationPolicy = .init(area: .episodes),
-        router: ArtworkRouter = .shared
+        policy: ArtworkPresentationPolicy = .init(area: .episodes)
     ) {
         self.policy = policy
         let hidesStill = spoilerSettings.mode == .placeholder
@@ -29,11 +27,8 @@ public struct EpisodeArtworkSource: Sendable {
         // Posterless episode and spoiler-safe show art otherwise have the same
         // empty reference list. Their prepared images must never share a key.
         pinIdentity = "\(item.stablePresentationID)|\(hidesStill ? "series-artwork" : "episode-artwork")"
-        let placements: [ArtworkPlacement] = hidesStill
-            ? [.detailBackdrop, .seriesPoster] : [.episodeThumbnail, .detailBackdrop, .seriesPoster]
         fallbackURL = {
-            await router.artworkURL(for: item, placements: placements)
-                ?? item.libraryArtworkURL(item.fallbackArtworkURL)
+            item.libraryArtworkURL(item.fallbackArtworkURL)
         }
         #if canImport(UIKit)
         prefersOnlineArtwork = policy.prefersOnlineArtwork

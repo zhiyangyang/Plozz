@@ -937,19 +937,7 @@ public struct PosterCardView: View {
     /// Shoko/AniDB usually ship no per-episode image, so TMDb supplies it.
     var asyncArtworkFallback: (@Sendable () async -> URL?)? {
         guard enablesAsyncArtworkFallback else { return nil }
-        guard let inner = artworkPolicy.artworkFallback(
-            for: item, style: style, policy: presentationArtworkPolicy
-        ) else { return nil }
-        // Bound concurrent grid-card resolutions so a large un-enriched library
-        // (SMB) can't flood the metadata network + ArtworkRouter actor while
-        // scrolling. Skip the network call entirely if this card scrolled away
-        // (its .task was cancelled) before a permit freed up.
-        return {
-            await ArtworkSession.artworkResolveLimiter.run {
-                if Task.isCancelled { return nil }
-                return await inner()
-            }
-        }
+        return artworkPolicy.artworkFallback(for: item, style: style)
     }
 
     /// A lightweight *series-level* item synthesized from an episode, used only to
@@ -961,7 +949,7 @@ public struct PosterCardView: View {
     /// Internal rather than private so `EpisodeColumnCard` can resolve spoiler-safe
     /// series art through the same synthesized item.
     static func seriesArtworkItem(for episode: MediaItem) -> MediaItem {
-        ArtworkRouter.seriesArtworkItem(for: episode)
+        ArtworkSubject.seriesArtworkItem(for: episode)
     }
 
     /// Media posters reject landscape stills, but a container's curated cover
@@ -1010,15 +998,11 @@ public struct PosterCardView: View {
     /// `.thumbnail`, which resolves the episode's own still.
     private var placeholderArtworkFallback: (@Sendable () async -> URL?)? {
         guard enablesAsyncArtworkFallback else { return nil }
-        let snapshot = item
-        let placements: [ArtworkPlacement] = style == .poster
-            ? [.seriesPoster] : [.detailBackdrop, .seriesPoster]
-        return {
-            await ArtworkSession.artworkResolveLimiter.run {
-                if Task.isCancelled { return nil }
-                return await ArtworkRouter.shared.artworkURL(for: snapshot, placements: placements)
-            }
+        let subject = Self.seriesArtworkItem(for: item)
+        guard let url = subject.libraryArtworkURL(subject.fallbackArtworkURL ?? subject.posterURL) else {
+            return nil
         }
+        return { url }
     }
 
     /// Neutral stand-in when a card has no artwork. Uses the shared

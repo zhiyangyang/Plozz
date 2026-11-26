@@ -4,7 +4,6 @@ import CoreNetworking
 import CoreUI
 import Foundation
 import MediaDownloads
-import MetadataKit
 import UIKit
 
 enum PlozziOSDownloadArtwork {
@@ -18,7 +17,7 @@ enum PlozziOSDownloadArtwork {
         role: PinnedMediaSnapshot.ArtworkRole = .landscape
     ) -> [ArtworkReference] {
         let policy = policy.forArea(.downloads)
-        let subject = role == .poster ? ArtworkRouter.seriesArtworkItem(for: item) : item
+        let subject = role == .poster ? ArtworkSubject.seriesArtworkItem(for: item) : item
         var seen = Set<ArtworkReference>()
         return placements(for: subject, role: role).flatMap { policy.references(for: subject, placement: $0) }
             .filter { seen.insert($0).inserted }
@@ -36,18 +35,19 @@ enum PlozziOSDownloadArtwork {
     }
 
     static func lookup(
-        for item: MediaItem, router: ArtworkRouter = .shared,
+        for item: MediaItem,
         role: PinnedMediaSnapshot.ArtworkRole = .landscape
     ) async -> URL? {
-        await ArtworkSession.artworkResolveLimiter.run {
-            guard !Task.isCancelled else { return nil }
-            return await router.artworkURL(for: item, placements: placements(for: item, role: role))
-        }
+        let subject = role == .poster ? ArtworkSubject.seriesArtworkItem(for: item) : item
+        return subject.libraryArtworkURL(
+            role == .poster
+                ? (subject.seriesPosterURL ?? subject.posterURL)
+                : (subject.backdropURL ?? subject.seriesPosterURL ?? subject.posterURL)
+        )
     }
 
     static func load(
         for item: MediaItem, policy: ArtworkPresentationPolicy = .init(area: .downloads),
-        router: ArtworkRouter = .shared,
         role: PinnedMediaSnapshot.ArtworkRole = .landscape
     ) async throws -> Data {
         let policy = policy.forArea(.downloads).forPlacement(role == .poster ? .poster : policy.placement)
@@ -56,7 +56,7 @@ enum PlozziOSDownloadArtwork {
             references: references(for: item, policy: policy, role: role),
             variant: role == .poster ? .posterCard : .landscapeCard,
             maxAspectRatio: role == .poster ? 1 : nil,
-            asyncOnlineURL: { await lookup(for: item, router: router, role: role) },
+            asyncOnlineURL: { await lookup(for: item, role: role) },
             prefersOnlineArtwork: policy.prefersOnlineArtwork,
             background: true
         ) else { throw Failure.unavailable }

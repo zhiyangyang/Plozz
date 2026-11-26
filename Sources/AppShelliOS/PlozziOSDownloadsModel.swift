@@ -1126,8 +1126,8 @@ final class PlozziOSDownloadsModel {
         PlozziOSDownloadArtwork.placements(for: item)
     }
 
-    static func artworkLookup(for item: MediaItem, router: ArtworkRouter = .shared) async -> URL? {
-        await PlozziOSDownloadArtwork.lookup(for: item, router: router)
+    static func artworkLookup(for item: MediaItem) async -> URL? {
+        await PlozziOSDownloadArtwork.lookup(for: item)
     }
 
     private func pinArtworkIfAvailable(

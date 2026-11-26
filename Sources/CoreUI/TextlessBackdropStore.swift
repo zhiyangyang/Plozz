@@ -215,8 +215,8 @@ public final class TextlessBackdropStore {
         let resolveArtwork = resolveArtwork
         let url = await ArtworkSession.resolveArtwork(background: background) { () -> URL? in
             if Task.isCancelled { return nil }
-            if let resolveArtwork { return await resolveArtwork(seriesItem) }
-            return await ArtworkRouter.shared.artworkURL(.hero, for: seriesItem)
+            guard let resolveArtwork else { return nil }
+            return await resolveArtwork(seriesItem)
         }
         // Cancellation is not evidence of missing artwork.
         guard !Task.isCancelled, key == Self.key(for: item) else { return }

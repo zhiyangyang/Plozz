@@ -4,19 +4,12 @@ import CoreNetworking
 
 public struct WikipediaEnrichmentProvider: MetadataEnrichmentProvider {
     public let id: MetadataSource = .wikipedia
-    public let capabilities: Set<MetadataCapability> = [.canonicalText, .poster, .backdrop, .logo]
+    public let capabilities: Set<MetadataCapability> = [.canonicalText]
     public let policy = ProviderPolicy(requestsPerSecond: 1, burst: 2, version: 3)
     private let http: MetadataDiscoveryHTTPClient
-    private let artwork: ArtworkEnrichmentAdapter
 
-    public init(
-        http: MetadataDiscoveryHTTPClient = .init(),
-        artworkProvider: any ArtworkProvider = WikipediaArtworkProvider()
-    ) {
+    public init(http: MetadataDiscoveryHTTPClient = .init()) {
         self.http = http
-        self.artwork = ArtworkEnrichmentAdapter(
-            id: .wikipedia, capabilities: [.poster, .backdrop, .logo], provider: artworkProvider
-        )
     }
 
     public func supports(_ field: MetadataField, at tier: MetadataWorkTier) -> Bool {
@@ -28,10 +21,10 @@ public struct WikipediaEnrichmentProvider: MetadataEnrichmentProvider {
     }
 
     public func enrichReporting(_ query: MetadataQuery, missing: Set<MetadataField>) async -> ProviderResponse {
-        var result = await artwork.enrich(query, missing: missing.subtracting([.overview]))
+        var result = MetadataEnrichment()
         guard missing.contains(.overview),
               query.kind == .movie || query.kind == .series,
-              let search = WikipediaArtworkProvider.searchTerm(
+              let search = Self.searchTerm(
                 title: query.title, year: query.year, isTV: query.isTV
               ),
               let escaped = metadataEscaped(search),
@@ -70,6 +63,20 @@ public struct WikipediaEnrichmentProvider: MetadataEnrichmentProvider {
             }
             return ProviderResponse(enrichment: result, health: .failure(failure))
         }
+    }
+
+    static func searchTerm(title: String, year: Int?, isTV: Bool) -> String? {  // l10n:content — media title used as a Wikipedia search query, not user-facing prose
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        var search = trimmed
+        if isTV {
+            search += " television series"
+        } else if let year {
+            search += " \(year) film"
+        } else {
+            search += " film"
+        }
+        return search
     }
 
     private struct Response: Decodable, Sendable {

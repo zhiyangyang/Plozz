@@ -14,11 +14,11 @@ public enum ProductionMetadataProviders {
     /// The sources in the default provider set, in construction order. Used to build
     /// the default ``MetadataProviderRuntime`` breaker map and to order diagnostics.
     public static let defaultSources: [MetadataSource] = [
-        .tvdb, .tmdb, .anilist, .tvmaze, .kitsu, .wikidata, .wikipedia,
+        .tvdb, .tmdb, .anilist, .tvmaze, .wikipedia,
     ]
 
-    /// The default provider set. Wikidata and Wikipedia artwork are idle-only;
-    /// Wikipedia's English overview can fill foreground text gaps. When `cache` is
+    /// The default provider set. Wikipedia's English overview can fill
+    /// foreground text gaps. When `cache` is
     /// supplied, every provider is wrapped in a ``ResilientEnrichmentProvider`` — its
     /// own circuit breaker plus the shared, provider+version-namespaced result cache —
     /// so an outage in one source degrades gracefully to its cached/last-known data
@@ -40,17 +40,6 @@ public enum ProductionMetadataProviders {
             TMDbEnrichmentProvider(provider: TMDbMetadataProvider(access: providerConfig.tmdb)),
             AniListEnrichmentProvider(client: AniListArtworkProvider()),
             TVmazeEnrichmentProvider(client: TVmazeClient()),
-            ArtworkEnrichmentAdapter(
-                id: .kitsu,
-                capabilities: [.poster, .backdrop],
-                provider: KitsuArtworkProvider()
-            ),
-            ArtworkEnrichmentAdapter(
-                id: .wikidata,
-                capabilities: [.poster, .backdrop, .logo],
-                policy: .idleBacklogFallback,
-                provider: WikidataArtworkProvider()
-            ),
             WikipediaEnrichmentProvider(),
         ]
         guard let cache else { return providers }

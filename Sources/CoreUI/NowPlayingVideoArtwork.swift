@@ -2,16 +2,13 @@
 import AVFoundation
 import CoreModels
 import MediaPlayer
-import MetadataKit
 import UIKit
 
 /// A backdrop and title logo, without the Continue Watching card's playback
 /// chrome. Posters and sources already known to carry a title stay untouched.
 public enum NowPlayingVideoArtwork {
-    static func artworkLookup(for item: MediaItem, router: ArtworkRouter = .shared) async -> URL? {
-        await router.artworkURL(
-            for: item, placements: [.detailBackdrop, item.kind == .episode ? .seriesPoster : .poster]
-        )
+    static func artworkLookup(for item: MediaItem) async -> URL? {
+        item.libraryArtworkURL(item.backdropURL ?? item.seriesPosterURL)
     }
 
     public static func references(
@@ -48,17 +45,9 @@ public enum NowPlayingVideoArtwork {
             selectedReferences: [selected.reference],
             imageLoader: { _ in selected.image },
             logoLoader: { item in
-                let target = item.kind == .episode ? PosterCardView.seriesArtworkItem(for: item) : item
                 return await HeroUIKitLogoRenderer.render(
                     references: item.artworkReferences(for: .logo),
-                    asyncFallbackURL: {
-                        await ArtworkSession.artworkResolveLimiter.run {
-                            guard !Task.isCancelled else { return nil }
-                            return await ArtworkRouter.shared.artworkURL(
-                                .logo, for: target, language: policy.logoLanguage
-                            )
-                        }
-                    },
+                    asyncFallbackURL: nil,
                     prefersOnlineArtwork: policy.prefersOnlineArtwork
                 )
             },

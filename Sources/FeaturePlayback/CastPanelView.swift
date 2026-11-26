@@ -2,7 +2,6 @@
 import SwiftUI
 import CoreUI
 import CoreModels
-import MetadataKit
 
 /// The Cast tab's card: a row of the people on screen.
 ///
@@ -22,13 +21,8 @@ struct CastPanelView: View {
         )
     }
 
-    static func creditArtworkLookup(for item: MediaItem, router: ArtworkRouter = .shared) async -> URL? {
-        await ArtworkSession.artworkResolveLimiter.run {
-            guard !Task.isCancelled else { return nil }
-            return await router.artworkURL(
-                for: item, placements: [item.kind == .episode ? .seriesPoster : .poster]
-            )
-        }
+    static func creditArtworkLookup(for item: MediaItem) async -> URL? {
+        item.libraryArtworkURL(item.kind == .episode ? item.seriesPosterURL : item.posterURL)
     }
 
     @Environment(\.playerCardMetrics) private var metrics

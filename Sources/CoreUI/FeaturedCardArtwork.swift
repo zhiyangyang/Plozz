@@ -91,12 +91,7 @@ public struct FeaturedCardArtwork<Video: View>: View {
             variant: .posterCard,
             previewVariant: .posterPreview,
             artworkPolicy: artworkPolicy.forPlacement(.homeHero),
-            asyncFallbackURL: { [item, spoilerSettings] in
-                guard !spoilerSettings.shouldHideThumbnail(for: item) else { return nil }
-                return await ArtworkSession.resolveArtwork(background: false) {
-                    await ArtworkRouter.shared.portraitHeroArtworkURL(for: item)
-                }
-            },
+            asyncFallbackURL: nil,
             onResolveReference: { resolvedArtwork = $0 },
             pinIdentity: "\(item.stablePresentationID)|featured",
             content: ArtworkFillImage.init
@@ -173,11 +168,7 @@ private struct FeaturedCardLogo: View {
     var body: some View {
         HeroLogoArtwork(
             references: item.artworkReferences(for: .logo),
-            asyncFallbackURL: HeroLogoFallback(for: item, localizedResolve: { [item] language in
-                await ArtworkSession.resolveArtwork(background: false) {
-                    await ArtworkRouter.shared.artworkURL(.logo, for: item, language: language)
-                }
-            }),
+            asyncFallbackURL: nil,
             maxWidth: size.width * 0.72, maxHeight: size.height * 0.19,
             constrainsToBounds: true, haloStyle: .gentle, logoNeedsHelp: needsHelp,
             onResolve: { logoTone = $0 }

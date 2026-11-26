@@ -1942,7 +1942,7 @@ public final class PlayerViewModel {
         guard effectiveAudioPreference(for: item) == .original else {
             return nil
         }
-        return await ArtworkRouter.shared.originalAudioLanguage(for: item)
+        return ContentClassifier.originalAudioLanguage(for: item)
     }
 
     /// TEMPORARY playback-language trace. One line per resolved load, never per

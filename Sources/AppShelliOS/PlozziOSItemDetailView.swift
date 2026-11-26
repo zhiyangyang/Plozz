@@ -2868,9 +2868,7 @@ struct PlozziOSDownloadThumbnail: View {
                 FallbackAsyncImage(
                     references: item.artworkReferences(for: .poster),
                     variant: .posterCard,
-                    asyncFallbackURL: {
-                        await ArtworkRouter.shared.artworkURL(.poster, for: item)
-                    },
+                    asyncFallbackURL: nil,
                     pinIdentity: item.stablePresentationID
                 ) {
                     MediaArtworkPlaceholder(glyphSize: 16, symbol: .init(for: item))
@@ -2886,9 +2884,7 @@ struct PlozziOSDownloadThumbnail: View {
                     FallbackAsyncImage(
                         references: item.artworkReferences(for: .episodeThumbnail),
                         variant: .landscapeCard,
-                        asyncFallbackURL: {
-                            await ArtworkRouter.shared.artworkURL(.thumbnail, for: item)
-                        },
+                        asyncFallbackURL: nil,
                         pinIdentity: item.stablePresentationID
                     ) {
                         MediaArtworkPlaceholder(glyphSize: 16, symbol: .init(for: item))
@@ -3497,7 +3493,7 @@ struct PlozziOSInlineEpisodeEntry: View {
         FallbackAsyncImage(
             references: episode.artworkReferences(for: .episodeThumbnail),
             variant: .landscapeCard,
-            asyncFallbackURL: { await ArtworkRouter.shared.artworkURL(.thumbnail, for: episode) },
+            asyncFallbackURL: nil,
             pinIdentity: episode.stablePresentationID
         ) {
             // Shared with the tvOS cards so a missing episode still looks the same

@@ -1,7 +1,6 @@
 #if canImport(UIKit)
 import CoreModels
 import Foundation
-import MetadataKit
 import SwiftUI
 import UIKit
 
@@ -15,14 +14,13 @@ public struct ContinueWatchingArtworkSource: Sendable {
     let style: PosterCardView.Style
     let cardPolicy: CardArtworkPolicy
     let allowsFallback: Bool
-    let router: ArtworkRouter
     let policy: ArtworkPresentationPolicy
     let titleLogo: LandscapeTitleLogo?
 
     public init(
         item: MediaItem, style: PosterCardView.Style,
         policy: ArtworkPresentationPolicy, cardPolicy: CardArtworkPolicy = .standard,
-        enablesAsyncArtworkFallback: Bool = true, router: ArtworkRouter = .shared,
+        enablesAsyncArtworkFallback: Bool = true,
         titleLogo: LandscapeTitleLogo? = nil
     ) {
         self.item = item
@@ -31,7 +29,6 @@ public struct ContinueWatchingArtworkSource: Sendable {
         self.titleLogo = titleLogo
         self.cardPolicy = cardPolicy
         self.allowsFallback = enablesAsyncArtworkFallback && cardPolicy.allowsOnlineFallback
-        self.router = router
     }
 
     var pinIdentity: String {
@@ -58,10 +55,9 @@ public struct ContinueWatchingArtworkSource: Sendable {
 
     public var identity: String {
         [
-            pinIdentity, style == .poster ? "poster" : "landscape",
+            pinIdentity, item.title, style == .poster ? "poster" : "landscape",
             policy.forPlacement(.logo).identity, policy.settings.preference(in: policy.area).rawValue,
             allowsFallback ? "fallback" : "local-only",
-            MetadataQuery(item.kind == .episode ? ArtworkRouter.seriesArtworkItem(for: item) : item).cacheKey(for: .hero),
             references(textlessBackdrop: nil).map(\.privacySafeIdentity).joined(separator: "\n"),
             logoReferences.map(\.privacySafeIdentity).joined(separator: "\n"),
         ].joined(separator: "|")
@@ -96,36 +92,16 @@ public struct ContinueWatchingArtworkSource: Sendable {
 
     func fallback(background: Bool = false) -> (@Sendable () async -> URL?)? {
         guard allowsFallback else { return nil }
-        let lookup: (@Sendable () async -> URL?)?
-        if titleLogo != nil {
-            lookup = { await router.artworkURL(.hero, for: item) }
-        } else if item.kind == .episode {
-            let placements: [ArtworkPlacement] = style == .poster
-                ? [.seriesPoster] : [.detailBackdrop, .seriesPoster]
-            lookup = { await router.artworkURL(for: item, placements: placements) }
-        } else {
-            lookup = cardPolicy.artworkFallback(
-                for: item, style: style, router: router, prefersLandscapeKeyArt: false
-            )
-        }
-        guard let lookup else { return nil }
+        guard let lookup = cardPolicy.artworkFallback(for: item, style: style) else { return nil }
         return { await ArtworkSession.resolveArtwork(background: background, lookup) }
     }
 
-    func logoFallback(background: Bool = false) -> HeroLogoFallback? {
-        guard allowsFallback else { return nil }
-        let target = item.kind == .episode ? ArtworkRouter.seriesArtworkItem(for: item) : item
-        return HeroLogoFallback(for: target, localizedResolve: { language in
-            await ArtworkSession.resolveArtwork(background: background) {
-                await router.artworkURL(.logo, for: target, language: language)
-            }
-        })
-    }
+    func logoFallback(background: Bool = false) -> HeroLogoFallback? { nil }
 
     func logoVisit(in scope: String?) -> DetailLogoVisit? {
         guard let scope, item.kind == .movie || item.kind == .series
                 || (item.kind == .episode && item.seriesID != nil) else { return nil }
-        let subject = item.kind == .episode ? ArtworkRouter.seriesArtworkItem(for: item) : item
+        let subject = item.kind == .episode ? ArtworkSubject.seriesArtworkItem(for: item) : item
         return DetailLogoVisit(scope: scope, subject: subject.stablePresentationID)
     }
 

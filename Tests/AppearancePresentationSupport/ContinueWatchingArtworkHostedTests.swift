@@ -517,7 +517,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
         kind: MediaItemKind = .episode, hasProviderBackdrop: Bool = true
     ) async throws -> (item: MediaItem, clean: URL) {
         let library = try await cacheImage(.red)
-        let generic = try await cacheImage(.green)
         let clean = try await cacheImage(.blue)
         let id = UUID().uuidString
         let item = MediaItem(
@@ -526,13 +525,6 @@ final class ContinueWatchingArtworkHostedTests: XCTestCase {
             seriesID: "series-\(id)", isPlayed: true,
             backdropURL: library, fallbackArtworkURL: library
         )
-        let query = MetadataQuery(ArtworkRouter.seriesArtworkItem(for: item))
-        for artworkKind in [ArtworkKind.hero, .poster, .thumbnail, .logo] {
-            await MetadataDiskCache.shared.store(
-                artworkKind == .logo || (artworkKind == .hero && !hasProviderBackdrop) ? nil : generic,
-                for: ArtworkRouter.providerCacheKey(query: query, kind: artworkKind, source: .tmdb)
-            )
-        }
         return (item, clean)
     }
 

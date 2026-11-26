@@ -2,7 +2,6 @@
 import SwiftUI
 import CoreUI
 import CoreModels
-import MetadataKit
 
 /// The Info panel's now-playing card: a 16:9 thumbnail, the episode headline +
 /// overview, a metadata/badge row, and the right-hand action column (Restart ·
@@ -45,12 +44,8 @@ struct InfoPanelView: View {
             : [.detailBackdrop, .poster]
     }
 
-    static func artworkLookup(for item: MediaItem, router: ArtworkRouter = .shared) async -> URL? {
-        let placements = artworkPlacements(for: item)
-        return await ArtworkSession.artworkResolveLimiter.run {
-            guard !Task.isCancelled else { return nil }
-            return await router.artworkURL(for: item, placements: placements)
-        }
+    static func artworkLookup(for item: MediaItem) async -> URL? {
+        item.libraryArtworkURL(item.backdropURL ?? item.seriesPosterURL ?? item.posterURL)
     }
 
     @Environment(\.playerCardMetrics) private var metrics

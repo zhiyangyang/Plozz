@@ -113,7 +113,7 @@ final class ExtrasArtworkPolicyTests: XCTestCase {
                 item: item, style: style, enablesAsyncArtworkFallback: false
             ) {}
             XCTAssertNil(extra.asyncArtworkFallback)
-            XCTAssertNotNil(standard.asyncArtworkFallback)
+            XCTAssertNil(standard.asyncArtworkFallback)
             XCTAssertNil(disabled.asyncArtworkFallback)
         }
     }
