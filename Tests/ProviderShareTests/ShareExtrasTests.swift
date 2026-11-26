@@ -506,9 +506,7 @@ final class ShareExtrasTests: XCTestCase {
             60
         )
         let continueWatching = try await provider.continueWatching(limit: 10)
-        let trailers = try await provider.trailers(for: movieID)
         XCTAssertTrue(continueWatching.isEmpty)
-        XCTAssertNil(trailers.first?.resumePosition)
         XCTAssertTrue(
             ShareProvider.sidecarMatchesVideo(
                 sidecarStem: "Official Trailer",

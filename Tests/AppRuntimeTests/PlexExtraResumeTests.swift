@@ -156,14 +156,11 @@ final class PlexExtraResumeTests: XCTestCase {
         try await provider.setResumePosition(15, itemID: "extra")
         let item = try await provider.item(id: "extra")
         let extras = try await provider.extras(for: "parent")
-        let trailers = try await provider.trailers(for: "parent")
         let playback = try await provider.playbackInfo(for: "extra")
         XCTAssertEqual(item.resumePosition, 15)
         XCTAssertEqual(extras.first?.playbackItem.resumePosition, 15)
-        XCTAssertEqual(trailers.first?.resumePosition, 15)
         XCTAssertEqual(playback.startPosition, 15)
         XCTAssertTrue(playback.item.isExtra)
-        XCTAssertTrue(playback.item.isTrailer)
     }
 
     func testUnknownPlaybackReportsNeverRequireExtraMetadata() async throws {

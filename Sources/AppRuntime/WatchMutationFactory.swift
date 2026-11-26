@@ -60,7 +60,7 @@ public enum WatchMutationFactory {
         // still resolved the origin's providerKind above (that's origin metadata,
         // not a fan-out target), but we skip unioning the item's own peer sources
         // and the identity-index union so no other server is touched.
-        guard crossServerSync, !item.isExtra, !item.isTrailer, !item.isYouTubeTrailer else { return result }
+        guard crossServerSync, !item.isExtra else { return result }
         // Episodes deliberately ignore pre-merged peers here. Some providers expose
         // show-level IDs on episodes, so a stale identity snapshot can contain a
         // different episode from the same series. The episode expansion resolver
@@ -75,7 +75,7 @@ public enum WatchMutationFactory {
     }
 
     private static func canonicalID(for item: MediaItem, primaryAccountID: String?) -> String {
-        if item.isTrailer || item.isYouTubeTrailer {
+        if item.isExtra {
             return "trailer:\(item.sourceAccountID ?? primaryAccountID ?? ""):\(item.id)"
         }
         if item.isExtra {
@@ -110,7 +110,7 @@ public enum WatchMutationFactory {
         for item: MediaItem,
         primaryAccountID: String?
     ) -> (origin: EpisodeOrigin?, pending: Bool) {
-        guard !item.isExtra, !item.isTrailer, !item.isYouTubeTrailer,
+        guard !item.isExtra,
               item.kind == .episode, item.seasonNumber != nil, item.episodeNumber != nil,
               let accountID = item.sourceAccountID ?? primaryAccountID
         else { return (nil, false) }
@@ -130,7 +130,7 @@ public enum WatchMutationFactory {
     private static func identityExpansion(
         for item: MediaItem
     ) -> (identities: [MediaIdentity], pending: Bool, anchorTitle: String?, anchorYear: Int?) {
-        guard item.kind != .episode, !item.isExtra, !item.isTrailer, !item.isYouTubeTrailer else { return ([], false, nil, nil) }
+        guard item.kind != .episode, !item.isExtra else { return ([], false, nil, nil) }
         let identities = MediaItemIdentity.identities(for: item)
         let normalized = MediaItemIdentity.normalizedTitle(item.title)
         return (identities, !identities.isEmpty, normalized.isEmpty ? nil : normalized, item.productionYear)

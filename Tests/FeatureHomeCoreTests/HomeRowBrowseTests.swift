@@ -10,7 +10,6 @@ final class HomeRowBrowseTests: XCTestCase {
         }
         all[60].resumePosition = 30
         all[61].resumePosition = 120
-        all[61].isTrailer = true
         all[124].resumePosition = 45
         let provider = BrowseFactoryProvider(all)
         let account = ResolvedAccount(account: Account(id: "account", from: provider.session), provider: provider)

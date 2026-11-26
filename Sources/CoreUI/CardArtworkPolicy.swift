@@ -42,7 +42,7 @@ public enum CardArtworkPolicy: Hashable, Sendable {
     }
 
     func usesLandscapeKeyArt(for item: MediaItem, style: PosterCardView.Style) -> Bool {
-        self == .standard && style == .landscape && !item.isTrailer
+        self == .standard && style == .landscape
             && (item.kind == .movie || item.kind == .series)
     }
 

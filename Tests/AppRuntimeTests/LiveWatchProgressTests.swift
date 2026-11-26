@@ -108,7 +108,7 @@ final class LiveWatchProgressTests: XCTestCase {
         let library = try XCTUnwrap(libraries.first { $0.kind == .movie && !$0.isMusic })
         let candidates = try await provider.items(in: library.id, kind: .movie, page: .init(limit: 20)).items
         let movie = try XCTUnwrap(candidates.first {
-            $0.kind == .movie && !$0.isTrailer && ($0.runtime ?? 0) >= 1_200
+            $0.kind == .movie && ($0.runtime ?? 0) >= 1_200
         }, "The approved test library must expose a long movie in the bounded sample.")
         let baseline = try await provider.item(id: movie.id)
         do {
@@ -139,10 +139,6 @@ final class LiveWatchProgressTests: XCTestCase {
                                   "Eligible saved progress must reach the actual provider Home feed.")
                 }
             }
-            try await verifyTrailer(
-                candidates: [movie] + candidates.filter { $0.id != movie.id },
-                fixture: fixture, writer: writer, watched: watched
-            )
             try await restore(baseline, writer: writer, watched: watched)
         } catch {
             try await restore(baseline, writer: writer, watched: watched)
@@ -325,68 +321,7 @@ final class LiveWatchProgressTests: XCTestCase {
         )
     }
 
-    private func verifyTrailer(
-        candidates: [MediaItem], fixture: Fixture,
-        writer: any ResumeStateWriting, watched: any WatchStateProviding
-    ) async throws {
-        let provider = fixture.provider
-        var selected: (parent: MediaItem, trailer: MediaItem)?
-        for parent in candidates.prefix(5) {
-            let trailers = try await provider.trailers(for: parent.id)
-            if let trailer = trailers.filter({ !$0.isYouTubeTrailer && ($0.runtime ?? 0) > 20 })
-                .min(by: { ($0.runtime ?? 0) < ($1.runtime ?? 0) }) {
-                selected = (parent, trailer)
-                break
-            }
-        }
-        guard let (parent, trailer) = selected else {
-            print("Live \(provider.kind.rawValue): no provider trailer over 20 seconds in five sampled titles; trailer server writes not exercised.")
-            return
-        }
-        XCTAssertTrue(trailer.isTrailer)
-        XCTAssertNotEqual(trailer.id, parent.id)
-        let baseline = try await fixture.raw.item(id: trailer.id)
-        let rawWriter = try XCTUnwrap(fixture.raw as? any ResumeStateWriting)
-        let rawWatched = try XCTUnwrap(fixture.raw as? any WatchStateProviding)
-        let parentBefore = try await provider.item(id: parent.id)
-        do {
-            let position = 15.0
-            let mutation = try XCTUnwrap(WatchMutationFactory.playbackStop(
-                item: trailer, position: position, watchedPercent: position / (trailer.runtime ?? 1) * 100,
-                primaryAccountID: "test-origin"
-            ))
-            XCTAssertEqual(mutation.targets.map(\.itemID), [trailer.id])
-            XCTAssertFalse(mutation.expansionPending)
-            try await writer.setResumePosition(
-                try XCTUnwrap(mutation.resumePosition), itemID: trailer.id, capturedAt: mutation.capturedAt
-            )
-            let persisted = try await readPosition(position, itemID: trailer.id, provider: provider)
-            XCTAssertEqual(persisted.resumePosition ?? 0, position, accuracy: 0.1)
-            XCTAssertTrue(persisted.isTrailer, "A fresh provider lookup must retain trailer classification.")
-            XCTAssertFalse(ContinueWatchingPolicy.admits(persisted))
-            if let rebuild = fixture.rebuild {
-                let raw = try await fixture.raw.item(id: trailer.id)
-                XCTAssertNotEqual(raw.resumePosition, position, "This fixture must exercise the actual Plex omission.")
-                let restored = try await rebuild().item(id: trailer.id)
-                XCTAssertEqual(restored.resumePosition, position)
-                let listed = try await rebuild().trailers(for: parent.id)
-                XCTAssertEqual(listed.first { $0.id == trailer.id }?.resumePosition, position)
-                print("Live plex: short trailer offset survived provider/store reconstruction despite missing native offset.")
-            }
-            let parentAfter = try await provider.item(id: parent.id)
-            XCTAssertEqual(parentAfter.resumePosition, parentBefore.resumePosition)
-            XCTAssertEqual(parentAfter.isPlayed, parentBefore.isPlayed)
-            let feed = try await provider.continueWatching(limit: 100)
-            XCTAssertFalse(ContinueWatchingPolicy.default.curated(feed).contains { $0.id == trailer.id })
-            try await restore(baseline, writer: rawWriter, watched: rawWatched)
-        } catch {
-            try await restore(baseline, writer: rawWriter, watched: rawWatched)
-            throw error
-        }
-        print("Live \(provider.kind.rawValue): checked trailer-only progress, parent isolation and Home exclusion.")
-    }
-
-    private func restore(
+private func restore(
         _ item: MediaItem, writer: any ResumeStateWriting, watched: any WatchStateProviding
     ) async throws {
         try await watched.setPlayed(item.isPlayed, itemID: item.id)

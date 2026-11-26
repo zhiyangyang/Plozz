@@ -433,14 +433,7 @@ public struct ShareProvider: MediaLibraryQueryProviding, MediaFileBrowsing, Exte
         return try await readExternalLink(path)
     }
 
-    public func trailers(for itemID: String) async throws -> [MediaItem] {
-        guard libraryConfiguration?.contentType != .personalVideos else { return [] }
-        return try await extras(for: itemID)
-            .filter { $0.kind == .trailer }
-            .map(\.playbackItem)
-    }
-
-    public func extras(for itemID: String) async throws -> [MediaExtra] {
+public func extras(for itemID: String) async throws -> [MediaExtra] {
         guard libraryConfiguration?.contentType != .personalVideos else { return [] }
         let catalog = await self.catalog
         let ownerID = await catalog.canonicalItemID(itemID)

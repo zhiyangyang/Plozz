@@ -226,8 +226,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     public var catalogSeasonCount: Int?
     public var catalogEpisodeCount: Int?
     public var kind: MediaItemKind
-    /// Explicit provider/presentation classification, never inferred from a title.
-    public var isTrailer: Bool = false
     public var isExtra: Bool = false
     public var overview: String?
     /// Authenticated parent-series text for Home heroes, never an episode synopsis.
@@ -539,7 +537,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         catalogSeasonCount: Int? = nil,
         catalogEpisodeCount: Int? = nil,
         kind: MediaItemKind,
-        isTrailer: Bool = false,
         isExtra: Bool = false,
         watchlistAliasID: MediaAliasID? = nil,
         watchlistAddedAt: Date? = nil,
@@ -615,8 +612,7 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         self.catalogSeasonCount = catalogSeasonCount
         self.catalogEpisodeCount = catalogEpisodeCount
         self.kind = kind
-        self.isTrailer = isTrailer
-        self.isExtra = isExtra || isTrailer
+        self.isExtra = isExtra
         self.overview = overview
         self.parentTitle = parentTitle
         self.seasonNumber = seasonNumber
@@ -699,7 +695,6 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         case fileBrowserContainerID, artworkLookupSubject
         case originalTitle, seriesSynopsis
         case originalLanguage, seriesStatus, catalogSeasonCount, catalogEpisodeCount
-        case isTrailer
         case isExtra
         case productionYear, releaseDate, officialRating, genres, people, studios, tags
         case studioIDs, tagIDs, taglines
@@ -741,8 +736,7 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
         catalogSeasonCount = try container.decodeIfPresent(Int.self, forKey: .catalogSeasonCount)
         catalogEpisodeCount = try container.decodeIfPresent(Int.self, forKey: .catalogEpisodeCount)
         kind = try container.decode(MediaItemKind.self, forKey: .kind)
-        isTrailer = try container.decodeIfPresent(Bool.self, forKey: .isTrailer) ?? false
-        isExtra = (try container.decodeIfPresent(Bool.self, forKey: .isExtra) ?? false) || isTrailer
+        isExtra = try container.decodeIfPresent(Bool.self, forKey: .isExtra) ?? false
         overview = try container.decodeIfPresent(String.self, forKey: .overview)
         seriesSynopsis = try container.decodeIfPresent(MediaSeriesSynopsis.self, forKey: .seriesSynopsis)
         parentTitle = try container.decodeIfPresent(String.self, forKey: .parentTitle)

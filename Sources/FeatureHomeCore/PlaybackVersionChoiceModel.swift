@@ -76,7 +76,7 @@ public final class PlaybackVersionChoiceModel {
             PlozzLog.playback.error("A version choice is already pending.")
             throw AppError.invalidResponse
         }
-        guard [.movie, .episode].contains(opened.kind), opened.youTubeTrailerVideoID == nil else {
+        guard [.movie, .episode].contains(opened.kind) else {
             return opened
         }
         let id = UUID()

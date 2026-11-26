@@ -807,58 +807,8 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
         return item
     }
 
-    public func trailers(for itemID: String) async throws -> [MediaItem] {
-        async let localTask = client.localTrailers(userID: session.userID, id: itemID)
-        async let remoteTask = client.remoteTrailers(userID: session.userID, id: itemID)
-
-        // Local trailer files play through the normal provider path; server
-        // remote trailers are links that open in YouTube. Both are best-effort
-        // so one failing doesn't hide the
-        // other.
-        let local = ((try? await localTask) ?? []).map { map(item: $0).markingAsTrailer() }
-        let remote = ((try? await remoteTask) ?? []).compactMap { link -> MediaItem? in
-            guard let url = link.Url else { return nil }
-            return MediaItem.youTubeTrailer(fromURL: url, title: link.Name ?? "Trailer")
-        }
-        return local + remote
-    }
-
-    public func extras(for itemID: String) async throws -> [MediaExtra] {
-        @Sendable func capture(
-            _ operation: @escaping @Sendable () async throws -> [BaseItemDto]
-        ) async -> Result<[BaseItemDto], AppError> {
-            do {
-                return .success(try await operation())
-            } catch let error as AppError {
-                return .failure(error)
-            } catch is CancellationError {
-                return .failure(.cancelled)
-            } catch {
-                return .failure(.unknown(String(describing: error)))
-            }
-        }
-
-        async let trailersResult = capture {
-            try await client.localTrailers(userID: session.userID, id: itemID)
-        }
-        async let featuresResult = capture {
-            try await client.specialFeatures(userID: session.userID, id: itemID)
-        }
-        let (resolvedTrailers, resolvedFeatures) = await (trailersResult, featuresResult)
-        if case let .failure(trailersError) = resolvedTrailers,
-           case .failure = resolvedFeatures {
-            throw trailersError
-        }
-        let trailers = (try? resolvedTrailers.get()) ?? []
-        let features = (try? resolvedFeatures.get()) ?? []
-        let localTrailers = trailers.map { dto in
-            MediaExtra(
-                item: map(item: dto),
-                kind: .trailer,
-                rawProviderType: dto.ExtraType ?? "Trailer",
-                supportsResume: dto.SupportsResume ?? true
-            )
-        }
+public func extras(for itemID: String) async throws -> [MediaExtra] {
+        let features = try await client.specialFeatures(userID: session.userID, id: itemID)
         let specialFeatures = features
             .filter { dto in
                 dto.`Type`?.caseInsensitiveCompare("Audio") != .orderedSame
@@ -874,7 +824,7 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
                 supportsResume: dto.SupportsResume ?? true
             )
         }
-        return MediaExtra.ordered(localTrailers + specialFeatures)
+        return MediaExtra.ordered(specialFeatures)
     }
 
     public func children(of itemID: String) async throws -> [MediaItem] {
@@ -2463,7 +2413,6 @@ public struct JellyfinProvider: LibraryItemBatchProviding, ServerRatingsProvidin
             originalTitle: dto.OriginalTitle,
             seriesStatus: kind == .series ? dto.Status.flatMap(MediaSeriesStatus.init(providerValue:)) : nil,
             kind: kind,
-            isTrailer: dto.Type == "Trailer" || MediaExtraKind(rawProviderValue: dto.ExtraType) == .trailer,
             overview: dto.Overview,
             parentTitle: dto.SeriesName ?? dto.SeasonName,
             // A season's own ordinal is its `IndexNumber`; for an episode that field

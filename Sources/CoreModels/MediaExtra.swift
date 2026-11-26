@@ -140,7 +140,7 @@ public struct MediaExtra: Codable, Hashable, Identifiable, Sendable {
         supportsResume: Bool = true,
         isPrimary: Bool = false
     ) {
-        self.item = kind == .trailer ? item.markingAsTrailer() : item
+        self.item = item
         self.item.isExtra = true
         self.kind = kind
         self.rawProviderType = rawProviderType
@@ -167,7 +167,7 @@ public struct MediaExtra: Codable, Hashable, Identifiable, Sendable {
     }
 
     public var playbackItem: MediaItem {
-        var copy = kind == .trailer ? item.markingAsTrailer() : item
+        var copy = item
         copy.isExtra = true
         guard !supportsResume else { return copy }
         copy.resumePosition = nil
@@ -178,6 +178,7 @@ public struct MediaExtra: Codable, Hashable, Identifiable, Sendable {
     public static func ordered(_ extras: [MediaExtra]) -> [MediaExtra] {
         var seen = Set<String>()
         return extras.enumerated()
+            .filter { $0.element.kind != .trailer }
             .filter { seen.insert($0.element.id).inserted }
             .sorted {
                 let left = $0.element.kind.sortOrder

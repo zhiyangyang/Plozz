@@ -18,7 +18,6 @@ public struct DetailPlaybackPreparationCandidate: Hashable, Sendable {
     ) {
         guard [.movie, .episode].contains(item.kind),
               item.locallyValidatedPlayableSource,
-              !item.isYouTubeTrailer,
               !item.opensExternalSource,
               let accountID = item.sourceAccountID else { return nil }
         let startPosition = item.resumePosition ?? 0

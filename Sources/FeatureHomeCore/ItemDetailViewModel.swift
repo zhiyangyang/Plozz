@@ -91,8 +91,7 @@ public final class ItemDetailViewModel {
     public private(set) var extrasState: LoadState<[MediaExtra]> {
         get {
             guard case .loaded(let extras) = resolvedExtrasState else { return resolvedExtrasState }
-            let allowed = extras.filter { !$0.item.isTrailer }
-            return allowed.isEmpty ? .empty : .loaded(allowed)
+            return extras.isEmpty ? .empty : .loaded(extras)
         }
         set { resolvedExtrasState = newValue }
     }

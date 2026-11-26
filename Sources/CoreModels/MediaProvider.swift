@@ -106,7 +106,6 @@ public protocol MediaProvider: Sendable {
     /// stream through this same provider's `playbackInfo(for:)`, so callers can
     /// hand a trailer straight to the player like any other leaf. Empty when the
     /// backend has no (playable) trailer for the item.
-    func trailers(for itemID: String) async throws -> [MediaItem]
 
     /// Local, playable bonus videos attached to an item.
     ///
@@ -750,10 +749,6 @@ public extension MediaProvider {
         items
     }
 
-    /// Default: no trailers. Providers that can surface them (Jellyfin local
-    /// trailers, Plex extras) override this; test doubles and other conformers
-    /// inherit the safe empty result, so adding the capability stays additive.
-    func trailers(for itemID: String) async throws -> [MediaItem] { [] }
 
     /// Default: no attached local extras.
     func extras(for itemID: String) async throws -> [MediaExtra] { [] }

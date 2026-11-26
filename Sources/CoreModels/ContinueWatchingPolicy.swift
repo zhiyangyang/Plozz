@@ -57,7 +57,6 @@ public struct ContinueWatchingPolicy: Sendable, Equatable, Codable {
     /// Resume storage is independent of row eligibility. Zero-position episodes
     /// can be Next Up suggestions and must not be discarded as brief plays.
     public static func admits(_ item: MediaItem) -> Bool {
-        guard !item.isTrailer, !item.isYouTubeTrailer else { return false }
         guard let position = item.resumePosition else { return true }
         guard position.isFinite, position >= 0 else { return false }
         if position == 0 { return item.kind == .episode }

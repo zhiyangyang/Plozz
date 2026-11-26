@@ -87,7 +87,6 @@ public final class ExternalPlaybackRuntime {
         let mediaURLDigest: String
         let duration: TimeInterval?
         let createdAt: Date
-        var isTrailer: Bool?
         var isExtra: Bool?
         var streamingSessionID: String?
         var stripsURLPassword: Bool?
@@ -404,7 +403,7 @@ public final class ExternalPlaybackRuntime {
                     itemID: item.id, player: selection.player,
                     mediaURLDigest: Self.digest(mediaURL, strippingPassword: stripsPassword),
                     duration: request.item.runtime.flatMap { $0.isFinite && $0 > 0 ? $0 : nil },
-                    createdAt: Date(), isTrailer: item.isTrailer, isExtra: item.isExtra,
+                    createdAt: Date(), isExtra: item.isExtra,
                     streamingSessionID: request.streamingSessionID,
                     stripsURLPassword: stripsPassword ? true : nil
                 ))
@@ -575,8 +574,7 @@ public final class ExternalPlaybackRuntime {
                 throw ExternalPlayerError.invalidCallback
             }
             item = item.taggingSource(account.account.id)
-            item.isTrailer = item.isTrailer || pending.isTrailer == true
-            item.isExtra = item.isExtra || item.isTrailer || pending.isExtra == true
+            item.isExtra = item.isExtra || pending.isExtra == true
             let duration = pending.duration ?? item.runtime.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
             if pending.progress == nil, let duration, position > duration + 5 {
                 throw ExternalPlayerError.invalidCallback

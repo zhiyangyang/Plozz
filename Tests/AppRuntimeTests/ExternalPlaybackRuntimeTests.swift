@@ -201,12 +201,10 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
             defer { fixture.cleanup() }
             fixture.kind = kind
             fixture.item.kind = .video
-            fixture.item.isTrailer = true
             fixture.item.isExtra = true
             let opened = try await fixture.launch()
             XCTAssertTrue(opened)
             // Some item endpoints omit classification supplied by the extras list.
-            fixture.item.isTrailer = false
             fixture.item.isExtra = false
             let restored = ExternalPlaybackRuntime(defaults: fixture.defaults, callbackScheme: fixture.callbackScheme)
             restored.receive(try fixture.callback(position: "140"))
@@ -214,7 +212,6 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
             await restored.processReturn(context: { fixture.context }) { completed = $0.item }
             XCTAssertEqual(completed?.id, fixture.item.id)
             XCTAssertEqual(completed?.sourceAccountID, "account")
-            XCTAssertEqual(completed?.isTrailer, true)
             XCTAssertEqual(completed?.isExtra, true)
             XCTAssertEqual(fixture.itemReads, [fixture.item.id])
         }

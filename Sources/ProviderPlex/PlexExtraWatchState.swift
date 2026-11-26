@@ -20,7 +20,7 @@ actor PlexExtraWatchState {
 
     private func remember(_ item: MediaItem) -> Bool {
         if classifications.count >= 256 { classifications.removeAll(keepingCapacity: true) }
-        let isExtra = item.isExtra || item.isTrailer
+        let isExtra = item.isExtra
         classifications[item.id] = isExtra
         return isExtra
     }

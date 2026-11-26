@@ -20,23 +20,7 @@ final class ContinueWatchingPolicyTests: XCTestCase {
         }
     }
 
-    func testTrailersStayOutRegardlessOfPositionAndNextUpRemains() {
-        for position in [0.0, 30, 120] {
-            let trailer = MediaItem(
-                id: "trailer", title: "Trailer", kind: .video, isTrailer: true,
-                runtime: 120, resumePosition: position
-            )
-            XCTAssertFalse(ContinueWatchingPolicy.default.keeps(trailer))
-        }
-        XCTAssertFalse(ContinueWatchingPolicy.default.keeps(
-            .youTubeTrailer(videoID: "abcdefghijk", title: "Trailer")
-        ))
-        XCTAssertTrue(ContinueWatchingPolicy.default.keeps(
-            MediaItem(id: "next", title: "Next episode", kind: .episode, resumePosition: 0)
-        ))
-    }
-
-    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func item(
         id: String,

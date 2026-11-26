@@ -708,28 +708,7 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
         }
     }
 
-    public func trailers(for itemID: String) async throws -> [MediaItem] {
-        let trailers = try await client.extras(ratingKey: itemID)
-            .filter { Self.extraKind(for: $0) == .trailer }
-            .enumerated()
-            .sorted { left, right in
-                let leftLocal = Self.isLocalExtra(left.element)
-                let rightLocal = Self.isLocalExtra(right.element)
-                return leftLocal == rightLocal ? left.offset < right.offset : leftLocal
-            }
-        guard trailers.count > 1,
-              let parent = try? await client.metadata(ratingKey: itemID)
-        else { return await stampExtras(trailers.map { map(metadata: $0.element) }) }
-        guard let primary = Self.ratingKey(fromPrimaryExtraKey: parent.primaryExtraKey),
-              let preferred = trailers.first(where: { $0.element.ratingKey == primary })
-        else { return await stampExtras(trailers.map { map(metadata: $0.element) }) }
-        return await stampExtras([map(metadata: preferred.element)]
-            + trailers
-                .filter { $0.element.ratingKey != primary }
-                .map { map(metadata: $0.element) })
-    }
-
-    public func extras(for itemID: String) async throws -> [MediaExtra] {
+public func extras(for itemID: String) async throws -> [MediaExtra] {
         var extras = try await client.extras(ratingKey: itemID, includeExternalMedia: false)
             .filter(Self.isLocalExtra)
             .map { dto in
@@ -2064,7 +2043,6 @@ public struct PlexProvider: LibraryItemBatchProviding, AuthenticatedHTTPOriginPr
             title: dto.title ?? "Untitled",
             originalTitle: dto.originalTitle,
             kind: kind,
-            isTrailer: Self.extraKind(for: dto) == .trailer,
             isExtra: dto.type == "clip" && (dto.extraType != nil || dto.subtype != nil),
             overview: dto.summary,
             parentTitle: parentTitle,

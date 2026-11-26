@@ -72,26 +72,7 @@ public final class SiloProvider: MediaProvider, CapabilityReporting, MediaSortFi
         return map(dto)
     }
 
-    public func trailers(for itemID: String) async throws -> [MediaItem] {
-        guard Self.collectionIdentity(itemID) == nil else { return [] }
-        let detail: SiloTrailerDetail = try await client.request("/catalog/items/\(try SiloAPI.pathComponent(itemID))")
-        func isTrailer(_ kind: String?) -> Bool { kind == "trailer" || kind == "teaser" }
-        let local = (detail.extras ?? []).compactMap { extra -> MediaItem? in
-            guard isTrailer(extra.kind), let id = extra.content_id, id != itemID,
-                  (try? SiloAPI.pathComponent(id)) != nil else { return nil }
-            return MediaItem(id: id, title: extra.title ?? detail.title, kind: .video,
-                             isTrailer: true, isExtra: true, parentTitle: detail.title,
-                             runtime: extra.duration_seconds, sourceAccountID: accountID)
-        }
-        let remote = (detail.videos ?? []).compactMap { video -> MediaItem? in
-            guard isTrailer(video.kind), video.site?.lowercased() == "youtube",
-                  let key = video.site_key, MediaItem.youTubeVideoID(fromURL: key) == key else { return nil }
-            return .youTubeTrailer(videoID: key, title: video.name ?? detail.title, parentTitle: detail.title)
-        }
-        return local + remote
-    }
-
-    public func children(of itemID: String) async throws -> [MediaItem] {
+public func children(of itemID: String) async throws -> [MediaItem] {
         if Self.collectionIdentity(itemID) != nil {
             var items: [MediaItem] = []
             while true {

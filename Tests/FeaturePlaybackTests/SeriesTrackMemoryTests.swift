@@ -104,21 +104,7 @@ final class SeriesTrackMemoryTests: XCTestCase {
         XCTAssertEqual(store.storage["show:tvdb:123"]?.videoZoom?.mode, .fit)
     }
 
-    func testExtrasAndTrailersDoNotRememberTitleChoices() {
-        let store = FakeStore()
-        let m = memory(store)
-        for trailer in [true, false] {
-            var item = MediaItem(id: "film", title: "Bonus", kind: .movie)
-            item.isTrailer = trailer
-            item.isExtra = !trailer
-            m.recordAudioSelection(language: "fr", for: item)
-            m.recordVideoZoom(.init(mode: .custom, customPercent: 150), for: item)
-            XCTAssertFalse(m.supportsTitlePreferences(for: item))
-        }
-        XCTAssertTrue(store.storage.isEmpty)
-    }
-
-    func testEpisodeLocalKeyUsesAccountFallback() {
+func testEpisodeLocalKeyUsesAccountFallback() {
         let m = memory(FakeStore(), accountFallbackID: "acct-a")
         let ep = episode(seriesID: "s9", sourceAccountID: nil)
         XCTAssertEqual(m.localKey(for: ep), "acct-a:s9")

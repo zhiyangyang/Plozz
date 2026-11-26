@@ -42,7 +42,7 @@ struct SeriesTrackMemory {
     // MARK: Key derivation
 
     func supportsTitlePreferences(for item: MediaItem) -> Bool {
-        !item.isExtra && !item.isTrailer && (item.kind == .movie || item.kind == .episode)
+        !item.isExtra && (item.kind == .movie || item.kind == .episode)
     }
 
     /// Movie keys are kind-qualified; series keys preserve existing stored choices.

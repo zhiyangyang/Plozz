@@ -327,7 +327,7 @@ private final class HeroInteractionLookupGate {
 
 private struct HeroInteractionProvider: MediaProvider {
     static var hasDetailTrailer: Bool { ProcessInfo.processInfo.arguments.contains("--hero-detail-trailer") }
-    static let clip = MediaItem(id: "local-trailer", title: "Trailer", kind: .video, isTrailer: true)
+    static let clip = MediaItem(id: "local-trailer", title: "Trailer", kind: .video, isExtra: true)
     let kind: ProviderKind
     var seriesLookup: HeroInteractionLookupGate?
     static let logoURL = URL(string: "https://hero.invalid/logo.png")!
