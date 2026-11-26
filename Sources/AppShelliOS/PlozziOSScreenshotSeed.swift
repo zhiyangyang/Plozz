@@ -349,8 +349,8 @@ enum PlozziOSScreenshotSeed {
     /// fast.
     ///
     /// Adding the first share starts the one-time first-run chain. Unlike tvOS's
-    /// two steps, iOS runs four: a library-selection sheet, then profile → seerr →
-    /// theme. All are completed here through the same calls their buttons make, so
+    /// two steps, iOS runs three: a library-selection sheet, then theme. All are
+    /// completed here through the same calls their buttons make, so
     /// a capture run lands on Home rather than onboarding, and they never reappear
     /// next launch. The library step is presented after a `Task.yield`, so the
     /// completion is driven from a short polling task rather than inline.

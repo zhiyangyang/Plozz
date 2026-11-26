@@ -645,8 +645,7 @@ public enum MediaItemMerger {
         // dead Discover ref win best-source selection over the real library copy,
         // surfacing as "Can't play this right now" for a title the user owns. The
         // concrete, playable library copies are folded in via the identity index
-        // instead (the same way Seerr items — which carry no `sourceAccountID` —
-        // already rely on the index). Real library items are unaffected: their
+        // instead. Real library items are unaffected: their
         // integer ratingKey never equals the 24-hex global guid tail.
         if let plexGuid = item.providerIDs["PlexGuid"],
            let guidTail = plexGuid.split(separator: "/").last.map(String.init),

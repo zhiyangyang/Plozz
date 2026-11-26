@@ -380,8 +380,8 @@ public final class ItemDetailViewModel {
     }
 
     /// Numbered seasons owned across every currently-known server copy of this
-    /// series. Seerr may be connected to only one library server; reconciling all
-    /// Plozz sources prevents offering a season that is already playable elsewhere.
+    /// series. Reconciling every known Plozz source prevents offering a season
+    /// that is already playable on another server.
     public func ownedSeasonNumbersAcrossSources() async -> Set<Int> {
         var numbers = Set(state.value?.children.compactMap { child in
             (child.kind == .season || child.kind == .episode) && child.locallyValidatedPlayableSource

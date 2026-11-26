@@ -541,7 +541,7 @@ private func settingsRow(
         settingsRow(destination, label: Text(title), systemImage: systemImage)
     }
 
-    /// A row labelled with a BRAND name (e.g. "Seerr"). Brands are never
+    /// A row labelled with a BRAND name (e.g. "Plex"). Brands are never
     /// translated, so this spelling keeps them out of the String Catalog.
     private func settingsRow(
         _ destination: PlozziOSSettingsDestination,

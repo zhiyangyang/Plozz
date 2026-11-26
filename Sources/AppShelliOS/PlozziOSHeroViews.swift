@@ -2580,8 +2580,8 @@ struct PlozziOSHeroMetadata: View {
     ///
     /// tvOS has always had this on both its heroes; iOS never did, so a title
     /// whose server carries no logo fell straight to the styled text — most
-    /// visibly on a discovery item, which comes from Seerr/TMDb and so has no
-    /// provider logo at all, while TMDb itself usually has one.
+    /// visibly on a metadata-only item with no provider logo, while TMDb itself
+    /// usually has one.
     var logoFallback: HeroLogoFallback? = nil
     /// A selected Home slide freezes the logo choice it revealed with. Later
     /// enrichment can add a clearer wordmark, but swapping the visible title for

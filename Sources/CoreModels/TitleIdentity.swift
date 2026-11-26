@@ -75,12 +75,12 @@ public extension MediaIdentity {
 
 public extension MediaItemIdentity {
     /// Kind-scoped identity tokens for asking "do these two *lists* contain the same
-    /// title?" — the question search asks when it decides whether a Seerr result is
-    /// already in the viewer's library.
+    /// title?" — the question search asks when it decides whether a metadata
+    /// result is already in the viewer's library.
     ///
     /// Deliberately a **set of all** identities rather than one canonical key. The two
     /// lists come from different providers and rarely carry the same id: a Jellyfin
-    /// row may expose IMDb + TVDB while the Seerr row exposes only TMDb, so any
+    /// row may expose IMDb + TVDB while a metadata row exposes only TMDb, so any
     /// "pick one key and compare" scheme misses. Overlap is non-empty intersection.
     ///
     /// The kind prefix matters: a movie and a series routinely share a TMDb integer,

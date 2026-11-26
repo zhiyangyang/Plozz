@@ -469,7 +469,7 @@ public struct SettingsRowGreenIndicatorStyle: ViewModifier {
 /// Standard trailing mark for a selected settings choice.
 ///
 /// The shape, size and focus-adaptive green belong together; exposing one view
-/// prevents Plex, Jellyfin, Emby, Seerr and future pickers from drifting into
+/// prevents Plex, Jellyfin, Emby and future pickers from drifting into
 /// bare checks versus filled circles.
 public struct SettingsSelectionIndicator: View {
     public init() {}

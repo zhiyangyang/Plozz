@@ -5,7 +5,7 @@ import Foundation
 /// Plozz ships **two** first-class conformers — `ProviderJellyfin.JellyfinProvider`
 /// and `ProviderPlex.PlexProvider` — and treats them as co-equal: features above
 /// this protocol are written once and work against either. Adding another backend
-/// (e.g. Overseerr) means writing one new conformer plus a `ProviderKind` case.
+/// means writing one new conformer plus a `ProviderKind` case.
 ///
 /// All methods are `async` and throw `AppError`. Implementations must:
 ///  * never log secrets/tokens;

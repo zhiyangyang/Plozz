@@ -75,7 +75,7 @@ public final class SearchViewModel {
         state = .loading
 
         // The library search may throw only when EVERY account fails; capture that
-        // rather than throwing, so a library outage still lets Seerr hits show.
+        // rather than throwing so the view can distinguish failure from no results.
         var libraryItems: [MediaItem] = []
         var libraryError: AppError?
         do {
@@ -101,8 +101,8 @@ public final class SearchViewModel {
         if !sections.isEmpty {
             state = .loaded(sections)
         } else if let libraryError {
-            // Nothing to show and the library search failed outright — surface the
-            // error (matches prior behaviour). A Seerr-only failure just reads empty.
+            // Nothing to show and the library search failed outright — surface
+            // the error instead of presenting the failure as an empty library.
             state = .failed(libraryError)
         } else {
             state = .empty

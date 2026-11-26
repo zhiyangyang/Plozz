@@ -1397,8 +1397,8 @@ public struct MediaItem: Codable, Hashable, Identifiable, Sendable {
     /// on that day, the storage contract for ``releaseDate``.
     ///
     /// Shared because more than one backend dates a title this way — Plex's
-    /// `originallyAvailableAt` and TMDb's `release_date`/`first_air_date` through
-    /// Seerr — and a per-caller parser is how the two would drift a day apart.
+    /// `originallyAvailableAt` and other catalogue date fields — and a per-caller
+    /// parser is how the two would drift a day apart.
     /// Anchored to UTC: parsed in the device's zone the day would land on local
     /// midnight, and anyone east of Greenwich would read it back a date later. A
     /// format *style* rather than a `DateFormatter` so there is no mutable
