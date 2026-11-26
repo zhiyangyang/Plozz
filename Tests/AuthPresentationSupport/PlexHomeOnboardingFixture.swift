@@ -24,12 +24,8 @@ struct PlexHomeOnboardingFixture: View {
                 Text(verbatim: result)
                     .accessibilityIdentifier("plex-home-result")
             } else {
-                PlexHomeOnboardingContent(users: users,
-                    reduceMotion: ProcessInfo.processInfo.arguments.contains("--plex-home-reduce-motion"), onImportAll: {
-                    imported = true
-                    return .added
-                }) { user, addAll in
-                    result = addAll && !imported ? "incorrect-order" : "\(user.id):\(addAll ? "all" : "one")"
+                PlexHomeOnboardingContent(users: users) { user in
+                    result = "\(user.id):one"
                 }
             }
         }

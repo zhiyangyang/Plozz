@@ -520,13 +520,12 @@ final class ProfilesModelTests: XCTestCase {
         XCTAssertEqual(relaunched.activeProfile.id, kid.id)
     }
 
-    func testDefaultedSelectionIsNotRemembered() {
+    func testLaunchRestoresOnePersistedProfile() {
         let defaults = makeDefaults()
-        // Building a model without ever calling `select` must not persist a pick,
-        // so a fresh Apple TV system user still gets the launch picker.
-        _ = ProfilesModel(store: ProfileStore(defaults: defaults))
+        let first = ProfilesModel(store: ProfileStore(defaults: defaults))
         let relaunched = ProfilesModel(store: ProfileStore(defaults: defaults))
-        XCTAssertFalse(relaunched.hasRememberedSelection)
+        XCTAssertEqual(relaunched.profiles.count, 1)
+        XCTAssertEqual(relaunched.activeProfileID, first.activeProfileID)
     }
 
     func testDebugResetRemovesRetiredStartupPickerPreference() {
@@ -540,26 +539,20 @@ final class ProfilesModelTests: XCTestCase {
 
     // MARK: Plex Home user mapping
 
-    func testAddPersistsPlexHomeUserFields() {
+    func testUpdatePersistsPlexHomeUserFields() {
         let defaults = makeDefaults()
         let model = ProfilesModel(store: ProfileStore(defaults: defaults))
-        let kid = model.add(
-            name: "Kiddo",
-            linkedAccountID: "acct-1",
-            plexHomeUserID: "kid-uuid",
-            plexHomeUserName: "Kiddo",
-            plexHomeUserAccountID: "acct-1",
-            plexHomeUserRequiresPIN: true
-        )
-        XCTAssertEqual(kid.plexHomeUserID, "kid-uuid")
-        XCTAssertEqual(kid.plexHomeUserAccountID, "acct-1")
-        XCTAssertEqual(kid.plexHomeUserRequiresPIN, true)
-        // Survives a relaunch (re-decoded from the same store).
+        var profile = model.activeProfile
+        profile.linkedAccountID = "acct-1"
+        profile.plexHomeUserID = "kid-uuid"
+        profile.plexHomeUserName = "Kiddo"
+        profile.plexHomeUserAccountID = "acct-1"
+        profile.plexHomeUserRequiresPIN = true
+        model.update(profile)
         let relaunched = ProfilesModel(store: ProfileStore(defaults: defaults))
-        let stored = relaunched.profiles.first { $0.id == kid.id }
-        XCTAssertEqual(stored?.plexHomeUserID, "kid-uuid")
-        XCTAssertEqual(stored?.plexHomeUserName, "Kiddo")
-        XCTAssertEqual(stored?.plexHomeUserRequiresPIN, true)
+        XCTAssertEqual(relaunched.activeProfile.plexHomeUserID, "kid-uuid")
+        XCTAssertEqual(relaunched.activeProfile.plexHomeUserAccountID, "acct-1")
+        XCTAssertEqual(relaunched.activeProfile.plexHomeUserRequiresPIN, true)
     }
 
     func testLegacyProfileJSONDecodesWithNilPlexFields() throws {

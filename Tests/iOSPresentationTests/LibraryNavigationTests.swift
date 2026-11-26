@@ -64,7 +64,7 @@ final class LibraryNavigationTests: XCTestCase {
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
         window.overrideUserInterfaceStyle = .dark
         let host = UIHostingController(rootView:
-            PlozziOSProfileSetupView(appModel: app, onDone: {})
+            PlozziOSMyLibrariesSettingsView(appModel: app, onAddServer: {}, onAddUser: { _ in })
                 .environment(\.themePalette, .dark)
                 .environment(\.colorScheme, .dark)
                 .environment(\.locale, Locale(identifier: "en"))
@@ -738,7 +738,7 @@ final class LibraryNavigationTests: XCTestCase {
     private func makeShell(app: PlozziOSAppModel) -> PlozziOSTabShell {
         PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
-            showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
+            showingSettings: .constant(false),
             systemColorScheme: .dark
         )
     }

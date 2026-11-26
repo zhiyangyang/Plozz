@@ -3,18 +3,15 @@ import AppRuntime
 import CoreModels
 import CoreUI
 import FeatureAuth
-import FeatureProfiles
 import SwiftUI
 
 struct PlozziOSPlexPINView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var model: PlexHomeUsersModel
     let request: PlexHomeUsersModel.PlexPINRequest
-    var profile: Profile?
     var sequenceStep: PINSequenceStep? = nil
     var dismissOnSuccess = true
     var onCancel: () -> Void = {}
-    @Environment(\.pinProfileTransition) private var profileTransition
     @State private var lastAvailability: PINEntryAvailability = .checking
 
     var body: some View {
@@ -22,7 +19,7 @@ struct PlozziOSPlexPINView: View {
         ZStack {
             if pendingRequest == request, model.plexPINEntryAvailability == .unavailable {
                 PlexAccountRecoveryView(
-                    name: profile?.name ?? request.homeUserName,
+                    name: request.homeUserName,
                     message: model.plexPINError ?? PlexPINCopy.switchFailed,
                     signIn: model.plexReauthentication,
                     onSignIn: { model.beginPlexReauthentication() },
@@ -35,8 +32,8 @@ struct PlozziOSPlexPINView: View {
                 )
             } else {
                 PINEntryScaffold(
-                    title: profile == nil ? "Enter your Plex PIN" : "Plex PIN",
-                    name: Text(verbatim: profile?.name ?? request.homeUserName),
+                    title: "Enter your Plex PIN",
+                    name: Text(verbatim: request.homeUserName),
                     errorMessage: model.plexPINError,
                     isSubmitting: model.isSubmittingPlexPIN || pendingRequest != request,
                     availability: pendingRequest == request ? model.plexPINEntryAvailability : lastAvailability,
@@ -58,27 +55,22 @@ struct PlozziOSPlexPINView: View {
                         if dismissOnSuccess, model.pendingPlexPINRequest == nil { dismiss() }
                     }
                 ) {
-                    if let profile {
-                        ProfileAvatarView(
-                            profile: profile, size: profileTransition?.avatarSize ?? PINLayout.badgeSize)
-                    } else {
-                        PINBadge {
-                            if let url = request.homeUserAvatarURL.flatMap(URL.init(string:)) {
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case let .success(image):
-                                        image.resizable().scaledToFill()
-                                    default:
-                                        Image(systemName: "person.fill")
-                                            .font(.title)
-                                            .foregroundStyle(.secondary)
-                                    }
+                    PINBadge {
+                        if let url = request.homeUserAvatarURL.flatMap(URL.init(string:)) {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case let .success(image):
+                                    image.resizable().scaledToFill()
+                                default:
+                                    Image(systemName: "person.fill")
+                                        .font(.title)
+                                        .foregroundStyle(.secondary)
                                 }
-                            } else {
-                                Image(systemName: "person.fill")
-                                    .font(.title)
-                                    .foregroundStyle(.secondary)
                             }
+                        } else {
+                            Image(systemName: "person.fill")
+                                .font(.title)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

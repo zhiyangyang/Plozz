@@ -57,7 +57,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
     case externalPlayer, skipMarkers, topShelf
     case downloads, profiles, diagnostics
     case playbackAdvanced, streamingAdvanced
-    case profileAppearance, profileSettings, accountLibraries
+    case accountLibraries
     case releaseNotes
 
     public var path: [SettingsSearchLabel] {
@@ -92,12 +92,10 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
         case .skipMarkers: ["Playback", "Intros, credits & more"]
         case .topShelf: ["Top Shelf"]
         case .downloads: ["Downloads"]
-        case .profiles: ["Profiles"]
+        case .profiles: ["Automatic Sign-In"]
         case .diagnostics: ["Help & Diagnostics"]
         case .playbackAdvanced: ["Playback", "Advanced"]
         case .streamingAdvanced: ["Playback", "Streaming quality", "Advanced"]
-        case .profileAppearance: ["Profiles", "Appearance"]
-        case .profileSettings: ["Profiles", "Manage profile"]
         case .accountLibraries: ["Libraries"]
         case .detail: ["Screens & Navigation", "Movie & show details"]
         case .language: ["Language"]
@@ -117,7 +115,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
             "rectangle.3.group"
         case .language: "globe"
         case .downloads: "arrow.down.circle"
-        case .profiles, .profileAppearance, .profileSettings: "person.2"
+        case .profiles: "person.crop.circle.badge.checkmark"
         case .diagnostics: "ladybug"
         case .releaseNotes: "doc.text"
         }
@@ -125,7 +123,7 @@ public enum SettingsSearchPage: String, CaseIterable, Sendable {
 
     public var requiresAdultProfile: Bool {
         switch self {
-        case .downloads, .profiles, .topShelf: true
+        case .downloads, .topShelf: true
         default: false
         }
     }

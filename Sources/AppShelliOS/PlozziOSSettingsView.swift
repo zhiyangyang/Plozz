@@ -5,7 +5,6 @@ import CoreNetworking
 import CoreUI
 import FeaturePlayback
 import FeatureAuth
-import FeatureProfiles
 import FeatureSettings
 import SwiftUI
 import UIKit
@@ -19,17 +18,6 @@ struct PlozziOSSettingsView: View {
     @State private var addUserServer: MediaServer?
     let appModel: PlozziOSAppModel
     let onClose: () -> Void
-    /// Opens the profile picker. Owned by the root, because the picker can raise
-    /// PIN gates that must not be asked for from under the Settings sheet.
-    var onSwitchProfile: () -> Void = {}
-    /// Requests a profile switch once Settings is actually gone.
-    ///
-    /// The gates a switch can raise are covers on the ROOT; asking for one from
-    /// under this sheet is the arrangement SwiftUI drops, and because the gate's
-    /// binding stays true it is never re-requested — switching would wedge until
-    /// relaunch. So the row hands the id up and the shell applies it in the
-    /// sheet's `onDismiss`.
-    var onSwitchTo: (String) -> Void = { _ in }
     let systemColorScheme: ColorScheme
 
     var body: some View {
@@ -39,18 +27,14 @@ struct PlozziOSSettingsView: View {
                     appModel: appModel,
                     onAddServer: showAddServer,
                     onAddUser: showAddUser(on:),
-                    onClose: onClose,
-                    onSwitchProfile: onSwitchProfile,
-                    onSwitchTo: onSwitchTo
+                    onClose: onClose
                 )
             } else {
                 NavigationStack {
                     PlozziOSSettingsCompactMenu(
                         appModel: appModel,
                         onAddServer: showAddServer,
-                        onAddUser: showAddUser(on:),
-                        onSwitchProfile: onSwitchProfile,
-                        onSwitchTo: onSwitchTo
+                        onAddUser: showAddUser(on:)
                     )
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -62,7 +46,6 @@ struct PlozziOSSettingsView: View {
                 .toolbarBackground(.hidden, for: .navigationBar)
             }
         }
-        .environment(appModel.profiles)
         .environment(\.managedProviderSetupRouter, providerSetupRouter)
         .plozzSheet(item: $providerSetupRouter.addressAccount) { account in
             let profileID = appModel.profiles.activeProfileID
@@ -111,7 +94,6 @@ struct PlozziOSSettingsView: View {
             PlozziOSPlexUserSelectionView(
                 appModel: appModel,
                 selection: selection,
-                onImportAll: appModel.importPlexHomeProfilesDuringOnboarding,
                 onSelect: appModel.selectPlexUserDuringOnboarding
             )
         }
@@ -197,8 +179,6 @@ private enum PlozziOSSettingsDestination: Hashable {
     case profiles
     case servers
     case myLibraries
-    /// The profile's own name, avatar and colour.
-    case profileAppearance
     case profile(ProfileSettingsCategory)
     case diagnostics
     case attributions
@@ -210,16 +190,13 @@ private enum PlozziOSSettingsDestination: Hashable {
     }
 }
 
-struct PlozziOSProfileSettingsSection<Header: View, Row: View>: View {
+struct PlozziOSProfileSettingsSection<Row: View>: View {
     let appLanguage: AppLanguageSettingsModel
     var isSelected: (ProfileSettingsCategory) -> Bool = { _ in false }
-    @ViewBuilder let header: () -> Header
     @ViewBuilder let row: (ProfileSettingsCategory) -> Row
 
     var body: some View {
         SettingsSectionGroup {
-            header()
-                .settingsActionRow()
             ForEach(ProfileSettingsCategory.allCases) { category in
                 if category == .language {
                     PlozziOSSettingsLanguagePicker(appLanguage: appLanguage)
@@ -410,7 +387,6 @@ private struct PlozziOSSettingsSplitView: View {
     let onAddServer: () -> Void
     var onAddUser: (MediaServer) -> Void = { _ in }
     let onClose: () -> Void
-    var onSwitchProfile: () -> Void = {}
     /// Requests a profile switch once Settings is actually gone.
     ///
     /// The gates a switch can raise are covers on the ROOT; asking for one from
@@ -418,7 +394,6 @@ private struct PlozziOSSettingsSplitView: View {
     /// binding stays true it is never re-requested — switching would wedge until
     /// relaunch. So the row hands the id up and the shell applies it in the
     /// sheet's `onDismiss`.
-    var onSwitchTo: (String) -> Void = { _ in }
     @State private var selection: PlozziOSSettingsDestination? = .profile(.playback)
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -439,13 +414,7 @@ private struct PlozziOSSettingsSplitView: View {
                     PlozziOSProfileSettingsSection(
                         appLanguage: appModel.appLanguage,
                         isSelected: { selection == .profile($0) }
-                    ) {
-                        PlozziOSProfileIdentityHeader(
-                            profile: appModel.profiles.activeProfile,
-                            profileCount: appModel.profiles.profiles.count,
-                            onSwitchProfile: onSwitchProfile
-                        )
-                    } row: { category in
+                    ) { category in
                         Button {
                             selection = .profile(category)
                         } label: {
@@ -469,7 +438,7 @@ private struct PlozziOSSettingsSplitView: View {
                         Button {
                             selection = .profiles
                         } label: {
-                            Label("Profiles", systemImage: "person.2")
+                            Label("Automatic Sign-In", systemImage: "person.crop.circle.badge.checkmark")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
@@ -619,18 +588,11 @@ private func settingsRow(
                 )
             }
         case .profiles:
-            PlozziOSProfilesView(appModel: appModel, onClose: onClose, onSwitchTo: onSwitchTo)
+            PlozziOSAutomaticSignInSettingsView(appModel: appModel)
         case .servers:
             PlozziOSServersSettingsView(
                 appModel: appModel,
                 onAddServer: onAddServer
-            )
-        case .profileAppearance:
-            PlozziOSProfileEditorHost(
-                appModel: appModel,
-                editingProfile: appModel.profiles.activeProfile,
-                canDelete: false,
-                onFinished: { selection = .profile(.playback) }
             )
         case .myLibraries:
             PlozziOSMyLibrariesSettingsView(
@@ -777,7 +739,6 @@ private struct PlozziOSSettingsCompactMenu: View {
     let appModel: PlozziOSAppModel
     let onAddServer: () -> Void
     var onAddUser: (MediaServer) -> Void = { _ in }
-    var onSwitchProfile: () -> Void = {}
     /// Requests a profile switch once Settings is actually gone.
     ///
     /// The gates a switch can raise are covers on the ROOT; asking for one from
@@ -785,7 +746,6 @@ private struct PlozziOSSettingsCompactMenu: View {
     /// binding stays true it is never re-requested — switching would wedge until
     /// relaunch. So the row hands the id up and the shell applies it in the
     /// sheet's `onDismiss`.
-    var onSwitchTo: (String) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     @State private var confirmSignOutAll = false
     @State private var searchSelection: SettingsSearchEntry?
@@ -818,13 +778,7 @@ private struct PlozziOSSettingsCompactMenu: View {
 
                 PlozziOSProfileSettingsSection(
                     appLanguage: appModel.appLanguage
-                ) {
-                    PlozziOSProfileIdentityHeader(
-                        profile: appModel.profiles.activeProfile,
-                        profileCount: appModel.profiles.profiles.count,
-                        onSwitchProfile: onSwitchProfile
-                    )
-                } row: { category in
+                ) { category in
                     SettingsPageLink {
                         PlozziOSProfileSettingsPage(
                             category: category, appModel: appModel, onAddServer: onAddServer,
@@ -857,13 +811,9 @@ private struct PlozziOSSettingsCompactMenu: View {
                     }
                     .settingsActionRow()
                     SettingsPageLink {
-                        PlozziOSProfilesView(
-                            appModel: appModel,
-                            onClose: { dismiss() },
-                            onSwitchTo: onSwitchTo
-                        )
+                        PlozziOSAutomaticSignInSettingsView(appModel: appModel)
                     } label: {
-                        Label("Profiles", systemImage: "person.2")
+                        Label("Automatic Sign-In", systemImage: "person.crop.circle.badge.checkmark")
                     }
                     .settingsActionRow()
                 }
@@ -1189,13 +1139,7 @@ private struct PlozziOSSettingsSearchDestination: View {
                 }
             }
             .settingsPageSurface()
-            .navigationTitle("Profiles")
-        case .profileAppearance:
-            PlozziOSProfileAppearancePage(appModel: appModel, profileID: appModel.profiles.activeProfileID)
-        case .profileSettings:
-            PlozziOSProfileSettingsView(
-                appModel: appModel, profileID: appModel.profiles.activeProfileID
-            )
+            .navigationTitle("Automatic Sign-In")
         case .accountLibraries: profilePage(.libraries)
         case .diagnostics:
             PlozziOSDiagnosticsSettingsView(
@@ -1227,171 +1171,6 @@ private extension PlozziOSAppModel {
             error: plexHomeUsers.automaticSignInError
         )
     }
-}
-
-private struct PlozziOSProfilesView: View {
-    @Environment(\.themePalette) private var palette
-    let appModel: PlozziOSAppModel
-    @State private var showingAddProfile = false
-    @State private var editingProfile: Profile?
-    @State private var selectedProfileRoute: PlozziOSProfileSettingsRoute?
-    /// Closes Settings, so a switch can raise its gates from the root.
-    var onClose: () -> Void = {}
-    /// Hands a requested switch to the shell, applied once Settings is gone.
-    var onSwitchTo: (String) -> Void = { _ in }
-    /// Whether this list is editing profiles rather than switching between them.
-    ///
-    /// One screen for both, like the tvOS picker: the rows are the same rows, so
-    /// sending editing to its own page duplicated the list and cost a tap. The
-    /// toggle is a full-size ROW at the bottom rather than a control in the
-    /// section header — that header is footnote-sized uppercase, so anything in
-    /// it is tiny by construction.
-    @State private var isEditingProfiles = false
-
-    private var orderedProfiles: [Profile] { appModel.profiles.profilesByRecency }
-
-    private var automaticSignIn: AutomaticSignInSettings {
-        appModel.automaticSignInSettings
-    }
-
-    /// One optional route owned by this page. A row cannot activate another
-    /// row's destination, and there is no per-row NavigationLink state for
-    /// SwiftUI's split-view reconciliation to accidentally stack.
-    private func openSettings(for profile: Profile) {
-        selectedProfileRoute = PlozziOSProfileSettingsRoute(profileID: profile.id)
-    }
-
-    var body: some View {
-        List {
-            SettingsSectionGroup {
-                AutomaticSignInToggle(settings: automaticSignIn)
-            } footer: {
-                AutomaticSignInErrorMessage(settings: automaticSignIn)
-            }
-            SettingsSectionGroup(isEditingProfiles ? "Edit Profiles" : "Who’s watching?") {
-                // Tapping a row switches; in editing mode it opens that
-                // profile's settings instead. Long-press does the same without
-                // leaving switching mode — the iOS Home screen pairing, and the
-                // touch answer to tvOS's "you can't put a button on a focused
-                // tile".
-                ForEach(orderedProfiles) { profile in
-                    Button {
-                        if isEditingProfiles {
-                            openSettings(for: profile)
-                        } else {
-                            guard profile.id != appModel.profiles.activeProfileID else { return }
-                            // Requested, not performed here: the ROOT presents
-                            // profile switches outside the Settings sheet so the
-                            // presentation cannot be dropped. The shell applies
-                            // this in the sheet's `onDismiss`.
-                            onSwitchTo(profile.id)
-                            onClose()
-                        }
-                    } label: {
-                        HStack {
-                            PlozziOSProfileAvatar(
-                                profile: profile,
-                                size: 34
-                            )
-                            Text(profile.name)
-                            Spacer()
-                            if isEditingProfiles {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .plozzForeground(.tertiary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .settingsActionRow()
-                    // Deliberately no swipe-to-delete or context-menu delete.
-                    // Both called `removeProfile` directly, which skipped the
-                    // target profile's own PIN and its confirmation — so a locked
-                    // profile could be deleted from the outside without ever
-                    // opening it. Deletion lives on the profile's own page, where
-                    // `ProfileActionsList` seals it behind that lock, exactly as
-                    // tvOS does.
-                    .contextMenu {
-                        Button("Edit Profile", systemImage: "pencil") {
-                            openSettings(for: profile)
-                        }
-                    }
-                }
-                Button("Add Profile", systemImage: "person.badge.plus") {
-                    showingAddProfile = true
-                }
-                .settingsActionRow()
-                // Full-size row, so the control is as prominent as what it acts
-                // on. Long-press already reaches editing; this is the version
-                // someone can find without knowing to try.
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { isEditingProfiles.toggle() }
-                } label: {
-                    Label(
-                        isEditingProfiles ? "Done Editing" : "Edit Profiles",
-                        systemImage: isEditingProfiles ? "checkmark.circle" : "pencil"
-                    )
-                }
-                .settingsActionRow()
-            }
-        }
-        .settingsPageSurface()
-        .navigationTitle("Profiles")
-        // One typed value, one push. Closure-based destinations inside this
-        // ForEach were all being activated by the containing split/stack,
-        // producing a back-stack containing every profile in list order.
-        .navigationDestination(item: $selectedProfileRoute) { route in
-            PlozziOSProfileSettingsView(
-                appModel: appModel,
-                profileID: route.profileID
-            )
-        }
-        .plozzSheet(isPresented: $showingAddProfile) {
-            NavigationStack {
-                PlozziOSProfileEditorHost(
-                    appModel: appModel,
-                    onFinished: { showingAddProfile = false }
-                )
-            }
-        }
-        .plozzSheet(item: $editingProfile) { profile in
-            NavigationStack {
-                PlozziOSProfileEditorHost(
-                    appModel: appModel,
-                    editingProfile: profile,
-                    canDelete: appModel.profiles.profiles.count > 1,
-                    onFinished: { editingProfile = nil }
-                )
-            }
-        }
-        // New-profile setup. A profile is created holding EVERY server, so this
-        // runs before its first watchlist import and asks which servers it
-        // actually uses and who it watches as on each — otherwise the household's
-        // aggregate watchlist lands in a brand new (often child) profile. See
-        // `PlozziOSAppModel.ProfileOnboardingStep`.
-        //
-        // Presented from this page, which is the one that presents Add Profile:
-        // a cover asked for from the root would be blocked by the Settings sheet
-        // this page lives inside and silently never appear.
-        //
-        // ONE cover for the whole sequence, switching its content, rather than a
-        // cover per step: presenting on `item` would tear the cover down and put
-        // a new one up on every step, and SwiftUI drops a presentation requested
-        // while another is still dismissing — which is exactly how the theme step
-        // went missing before.
-        .plozzFullScreenCover(isPresented: Binding(
-            get: { appModel.isPresentingProfileOnboarding(from: .settings) },
-            set: { if !$0 { appModel.cancelProfileOnboarding() } }
-        )) {
-            PlozziOSProfileOnboardingCover(appModel: appModel)
-        }
-    }
-}
-
-/// Identifies which profile a management page should open.
-struct PlozziOSProfileSettingsRoute: Hashable {
-    let profileID: String
 }
 
 struct PlozziOSAccountDetailView: View {
@@ -2582,36 +2361,20 @@ private struct PlozziOSLicenseBadges: View {
     }
 }
 
-/// The active profile's avatar and name, as a button that opens the picker.
-///
-/// Tapping who you are to become someone else is the convention every streaming
-/// app shares, and it puts switching at the top of Settings instead of several
-/// rows down inside a household section.
-struct PlozziOSProfileIdentityHeader: View {
-    let profile: Profile
-    let profileCount: Int
-    let onSwitchProfile: () -> Void
+
+private struct PlozziOSAutomaticSignInSettingsView: View {
+    let appModel: PlozziOSAppModel
 
     var body: some View {
-        Button(action: onSwitchProfile) {
-            HStack(spacing: 14) {
-                PlozziOSProfileAvatar(profile: profile, size: 52)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: profile.name)
-                        .font(.headline)
-                    Text(profileCount > 1 ? "Switch profile" : "Profile settings")
-                    .font(.subheadline)
-                    .foregroundStyle(.tint)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .plozzForeground(.tertiary)
+        List {
+            SettingsSectionGroup {
+                AutomaticSignInToggle(settings: appModel.automaticSignInSettings)
+            } footer: {
+                AutomaticSignInErrorMessage(settings: appModel.automaticSignInSettings)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
         }
+        .settingsPageSurface()
+        .navigationTitle("Automatic Sign-In")
     }
 }
-
 #endif

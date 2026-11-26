@@ -2,7 +2,6 @@
 import AppRuntime
 import CoreModels
 import CoreUI
-import FeatureProfiles
 import FeatureSettings
 import Foundation
 import SwiftUI
@@ -31,7 +30,7 @@ struct PlozziOSFirstRunView: View {
         self.step = step
         self.appModel = appModel
         self.systemColorScheme = systemColorScheme
-        _displayedStep = State(initialValue: step ?? .confirmProfile)
+        _displayedStep = State(initialValue: step ?? .theme)
     }
 
     var body: some View {
@@ -82,7 +81,6 @@ struct PlozziOSFirstRunView: View {
                 PlozziOSPlexUserSelectionView(
                     appModel: appModel,
                     selection: selection,
-                    onImportAll: appModel.importPlexHomeProfilesDuringOnboarding,
                     onSelect: appModel.selectPlexUserDuringOnboarding
                 )
             }
@@ -92,8 +90,6 @@ struct PlozziOSFirstRunView: View {
                     appModel: appModel, accountIDs: selection.accountIDs
                 )
             }
-        case .confirmProfile:
-            PlozziOSFirstProfileView(appModel: appModel)
         case .theme:
             NavigationStack {
                 PlozziOSThemeWelcomeView(
@@ -110,72 +106,6 @@ struct PlozziOSFirstRunView: View {
             systemColorScheme: systemColorScheme
         )
     }
-}
-
-private struct PlozziOSFirstProfileView: View {
-    let appModel: PlozziOSAppModel
-    @State private var editing = false
-
-    private var profile: Profile { appModel.profiles.activeProfile }
-
-    var body: some View {
-        // Centre the column when the screen is taller than the content (every
-        // iPad, and iPhone portrait) instead of stranding it at the top with a
-        // screenful of dead space below. `minHeight` keeps it scrollable when
-        // the content IS taller, e.g. iPhone landscape or large Dynamic Type.
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(spacing: 32) {
-                    VStack(spacing: 16) {
-                        PlozziOSProfileAvatar(profile: profile, size: 128)
-
-                        Button("Edit") { editing = true }
-                            .plozzActionButton(role: .secondary)
-                            .controlSize(.large)
-                            .accessibilityHint("Rename this profile or change its picture")
-                    }
-
-                    VStack(spacing: 12) {
-                        Text(profile.name)
-                            .font(.largeTitle.bold())
-
-                        // Two discrete statements rather than one run-on: what a
-                        // profile does, then what you can do about it.
-                        VStack(spacing: 4) {
-                            Text("Almost all settings are saved per profile.")
-                            Text("You can add more profiles in Settings.")
-                        }
-                        .plozzForeground(.secondary)
-                        .multilineTextAlignment(.center)
-                    }
-
-                    // "Continue" to match the library and theme steps either side
-                    // of this one; inline rather than pinned, as they all are.
-                    Button {
-                        appModel.confirmFirstRunProfile()
-                    } label: {
-                        Text("Continue").plozzPageActionLabel()
-                    }
-                    .plozzPageActionButton()
-                }
-                .frame(maxWidth: 520)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 40)
-                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
-            }
-        }
-        .plozzSheet(isPresented: $editing) {
-            NavigationStack {
-                PlozziOSProfileEditorHost(
-                    appModel: appModel,
-                    editingProfile: profile,
-                    canDelete: false,
-                    onFinished: { editing = false }
-                )
-            }
-        }
-    }
-
 }
 
 /// The per-profile theme picker.
@@ -245,18 +175,6 @@ struct PlozziOSThemeWelcomeView: View {
             .navigationTitle("Appearance")
             .navigationBarTitleDisplayMode(.inline)
         }
-    }
-}
-
-struct PlozziOSProfileAvatar: View {
-    let profile: Profile
-    let size: CGFloat
-
-    var body: some View {
-        // Delegate to the shared renderer so the first-run / settings avatars
-        // match every other avatar surface (photo, emoji, or symbol on the
-        // chosen colour) exactly.
-        ProfileAvatarView(profile: profile, size: size)
     }
 }
 

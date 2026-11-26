@@ -39,9 +39,6 @@
     "HomeRowPresetPicker",
     "HomeSectionSettingsView",
     "HomeSectionsSettingsView",
-    "IOSProfileAvatarModePicker",
-    "IOSProfileAvatarPicker",
-    "IOSProfileColorSection",
     "LibraryDisplaySettingsView",
     "LibraryNavigationSettingsView",
     "LibraryPresentationSettingsView",
@@ -66,15 +63,11 @@
     "PlozziOSNightShiftSettingsView",
     "PlozziOSPlaybackSettingsView",
     "PlozziOSPlexHomeUserSettingsView",
-    "PlozziOSProfilesView",
     "PlozziOSSettingsLanguagePicker",
     "PlozziOSSpoilerSettingsControls",
     "PlozziOSStreamingSettings",
     "PlozziOSSubtitleSettingsView",
     "PlozziOSAppearanceSettingsView",
-    "ProfileActionsList",
-    "ProfileEditorView",
-    "ProfileNameField",
     "ServerUserDetailView",
     "SkipMarkerContentControls",
     "SkipMarkerEnableControl",
@@ -90,16 +83,13 @@
     "Sources/FeatureSettings/"
   ],
   "traversable_directories": [
-    "Sources/FeatureSettings/",
-    "Sources/FeatureProfiles/"
+    "Sources/FeatureSettings/"
   ],
   "files": [
     "Sources/AppShelliOS/AddServerView.swift",
     "Sources/AppShelliOS/PlozziOSDiagnosticsSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSDownloadsView.swift",
-    "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSPlexHomeUserSettingsView.swift",
-    "Sources/AppShelliOS/PlozziOSProfileSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSServerSettingsViews.swift",
     "Sources/AppShelliOS/PlozziOSSettingsView.swift",
     "Sources/AppShelliOS/PlozziOSStreamingQuality.swift",
@@ -121,9 +111,6 @@
     "Sources/FeaturePlayback/SubtitleStylePanel.swift",
     "Sources/FeaturePlayback/SubtitleStylePreview.swift",
     "Sources/FeaturePlayback/SubtitleStyleSettingsView.swift",
-    "Sources/FeatureProfiles/AutomaticSignInSettings.swift",
-    "Sources/FeatureProfiles/ProfileActionsList.swift",
-    "Sources/FeatureProfiles/ProfileEditorView.swift",
     "Sources/FeatureSettings/AppLanguagePicker.swift",
     "Sources/FeatureSettings/ArtworkSettingsControls.swift",
     "Sources/FeatureSettings/CardAppearanceControls.swift",
@@ -143,11 +130,9 @@
     "Sources/FeatureSettings/MyLibrariesDetailView.swift",
     "Sources/FeatureSettings/NavigationLibrariesDetailView.swift",
     "Sources/FeatureSettings/NightShiftDetailView.swift",
-    "Sources/FeatureSettings/ParentalPINDetailView.swift",
     "Sources/FeatureSettings/PlaybackReadAheadControl.swift",
     "Sources/FeatureSettings/PlexLinkedUserDetailView.swift",
     "Sources/FeatureSettings/PreferenceDetailViews.swift",
-    "Sources/FeatureSettings/ProfileLockSetupPage.swift",
     "Sources/FeatureSettings/ServerUserDetailView.swift",
     "Sources/FeatureSettings/SettingsContext.swift",
     "Sources/FeatureSettings/SettingsSplitLayout.swift",
@@ -367,13 +352,6 @@
         "Sources/FeatureSettings/SettingsSplitLayout.swift|SettingsRevealSection|masterToggle.toggle|Toggle|<dynamic>": 1
       }
     },
-    "PlozziOSProfileIdentityHeader": {
-      "kind": "presentation",
-      "reason": "Profile-switch navigation, not a preference editor.",
-      "controls": {
-        "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSProfileIdentityHeader|body|Button|<dynamic>": 1
-      }
-    },
     "ReleaseNotesStartupView": {
       "kind": "presentation",
       "reason": "Contextual release-note reading and acknowledgment; not a root Settings editor.",
@@ -401,16 +379,6 @@
       "reason": "Loading, errors and retry actions; no preference values.",
       "controls": {
         "Sources/FeatureSettings/HomeSectionSettingsViews.swift|HomeCatalogStatus|body|Button|\"Retry\"": 1
-      }
-    },
-    "ParentalPINDetailView": {
-      "kind": "presentation",
-      "reason": "Credential setup/change flow; search uses the existing protected profile-management entry.",
-      "controls": {
-        "Sources/FeatureSettings/ParentalPINDetailView.swift|ParentalPINDetailView|body|Button|\"Cancel\"": 1,
-        "Sources/FeatureSettings/ParentalPINDetailView.swift|ParentalPINDetailView|body|Button|Label { Text(KidsProfileCopy.parentalPINRemove) } icon: { Image(systemName: \"lock.slash\") } .frame(maxWidth: .infinity, alignment: .leading)": 1,
-        "Sources/FeatureSettings/ParentalPINDetailView.swift|ParentalPINDetailView|body|Button|SettingsRowLabel( icon: hasPIN ? \"lock.fill\" : \"lock.open\", title: hasPIN ? KidsProfileCopy.parentalPINChange : KidsProfileCopy.parentalPINCreate ) { Text(hasPIN ? ProfileLockCopy.on : ProfileLockCopy.off) .settingsRowSecondary() }": 1,
-        "Sources/FeatureSettings/ParentalPINDetailView.swift|ParentalPINDetailView|body|Button|Text(KidsProfileCopy.parentalPINRemove)": 1
       }
     },
     "SettingsStepper": {
@@ -514,27 +482,6 @@
       "controls": {
         "Sources/FeatureAuth/ServerAddressesView.swift|ServerAddAddressForm|body|Button|\"Verify and add address\"": 1,
         "Sources/FeatureAuth/ServerAddressesView.swift|ServerAddAddressForm|body|TextField|\"Server address\"": 1
-      }
-    },
-    "ProfileLockSetupView": {
-      "kind": "presentation",
-      "reason": "Credential setup/confirmation; the existing protected Profile Lock entry owns access.",
-      "controls": {
-        "Sources/FeatureProfiles/ProfileLockSetupView.swift|ProfileLockSetupView|body|Button|\"Keep Separate\"": 1,
-        "Sources/FeatureProfiles/ProfileLockSetupView.swift|ProfileLockSetupView|body|Button|\"Start Over\"": 2,
-        "Sources/FeatureProfiles/ProfileLockSetupView.swift|ProfileLockSetupView|body|Button|\"Try Again\"": 1,
-        "Sources/FeatureProfiles/ProfileLockSetupView.swift|ProfileLockSetupView|body|Button|Text(ProfileLockCopy.usePlexPINNo)": 1,
-        "Sources/FeatureProfiles/ProfileLockSetupView.swift|ProfileLockSetupView|body|Button|Text(ProfileLockCopy.usePlexPINYes)": 1
-      }
-    },
-    "PlozziOSParentalPINSettingsView": {
-      "kind": "presentation",
-      "reason": "Household credential creation/change/removal with existing authorization; no direct search shortcut into PIN operations.",
-      "controls": {
-        "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift|PlozziOSParentalPINSettingsView|body|Button|\"Cancel\"": 1,
-        "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift|PlozziOSParentalPINSettingsView|body|Button|HStack { Label { Text(hasPIN ? KidsProfileCopy.parentalPINChange : KidsProfileCopy.parentalPINCreate) } icon: { Image(systemName: hasPIN ? \"lock.fill\" : \"lock.open\") } Spacer() Text(hasPIN ? ProfileLockCopy.on : ProfileLockCopy.off) .foregroundStyle(.secondary) } .contentShape(Rectangle())": 1,
-        "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift|PlozziOSParentalPINSettingsView|body|Button|Label { Text(KidsProfileCopy.parentalPINRemove) } icon: { Image(systemName: \"lock.slash\") }": 1,
-        "Sources/AppShelliOS/PlozziOSParentalPINSettingsView.swift|PlozziOSParentalPINSettingsView|body|Button|Text(KidsProfileCopy.parentalPINRemove)": 1
       }
     }
   },
@@ -822,26 +769,6 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSProfilesView|body|Button|\"Add Profile\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSProfilesView|body|Button|\"Edit Profile\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSProfilesView|body|Button|HStack { PlozziOSProfileAvatar( profile: profile, size: 34 ) Text(profile.name) Spacer() // Glance the access state so the list answers // \"who's locked?\" without opening each one. if profile.isKids { Image(systemName: \"figure.and.child.holdinghands\") .plozzForeground(.secondary) } if profile.isLocked { Image(systemName: \"lock.fill\") .plozzForeground(.secondary) } if isEditingProfiles { Image(systemName: \"chevron.right\") .font(.caption.weight(.semibold)) .plozzForeground(.tertiary) } } .frame(maxWidth: .infinity, alignment: .leading) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSProfilesView|body|Button|Label( isEditingProfiles ? \"Done Editing\" : \"Edit Profiles\", systemImage: isEditingProfiles ? \"checkmark.circle\" : \"pencil\" )": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSScreensNavigationSettingsView|body|Button|SettingsDisclosureLabel { Text(Page.allScreens.title) }": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -882,22 +809,7 @@
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label( KidsProfileCopy.manageProfile, systemImage: isParentalSealed ? \"lock.fill\" : \"person.crop.circle\" )": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label( KidsProfileCopy.parentalPIN, systemImage: \"figure.and.child.holdinghands\" )": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(\"Help & Diagnostics\", systemImage: \"ladybug\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(\"Profiles\", systemImage: \"person.2\")": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
@@ -907,22 +819,7 @@
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(KidsProfileCopy.manageProfile, systemImage: \"person.crop.circle\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(KidsProfileCopy.nameAndAvatar, systemImage: \"person.crop.circle\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(SettingsCopy.attributions, systemImage: \"doc.text.magnifyingglass\")": {
-      "count": 1,
-      "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|PlozziOSSettingsCategoryLabel( category: .libraries, accounts: appModel.accounts, isAccountIncluded: { appModel.activeAccountIDs( for: appModel.profiles.activeProfileID ).contains($0) }, isSealed: isParentalSealed )": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
       "covered_by": []
@@ -930,11 +827,6 @@
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|PlozziOSSettingsCategoryLabel( category: category, accounts: appModel.accounts, isAccountIncluded: { appModel.activeAccountIDs( for: appModel.profiles.activeProfileID ).contains($0) } )": {
       "count": 1,
       "reason": "Navigation to an existing editor; its controls are independently discovered.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSearchDestination|authorizationPrompt|Button|Text(KidsProfileCopy.parentalPIN)": {
-      "count": 1,
-      "reason": "Reopens the normal parental-PIN authorization sheet after cancellation; not a preference input.",
       "covered_by": []
     },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSplitView|body|Button|\"Cancel\"": {
@@ -962,17 +854,7 @@
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSplitView|body|Button|Label(\"Profiles\", systemImage: \"person.2\") .frame( maxWidth: .infinity, alignment: .leading ) .contentShape(Rectangle())": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSplitView|body|Button|PlozziOSSettingsCategoryLabel( category: category, accounts: appModel.accounts, isAccountIncluded: { appModel.activeAccountIDs( for: appModel.profiles.activeProfileID ).contains($0) } )": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSplitView|sealableRow|Button|if destination == .myLibraries { PlozziOSSettingsCategoryLabel( category: .libraries, accounts: appModel.accounts, isAccountIncluded: { appModel.activeAccountIDs( for: appModel.profiles.activeProfileID ).contains($0) }, isSealed: isParentalSealed ) } else { Label { Text(title) } icon: { Image(systemName: isParentalSealed ? \"lock.fill\" : systemImage) } .frame(maxWidth: .infinity, alignment: .leading) .contentShape(Rectangle()) }": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
@@ -1240,148 +1122,6 @@
     "Sources/FeaturePlayback/SubtitleStylePreview.swift|SubtitleStylePreview|body|Toggle|\"Preview file formatting\"": {
       "count": 1,
       "reason": "Preview-only sample animation, file formatting and HDR simulation; does not change subtitle preferences.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/AutomaticSignInSettings.swift|AutomaticSignInToggle|toggle|Toggle|\"Automatically Sign In\"": {
-      "count": 1,
-      "reason": "Reviewed setting; behavior is covered by its owning component tests.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actionRow|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|\"Cancel\"": {
-      "count": 3,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|\"Delete Profile\"": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|Text(KidsProfileCopy.parentalPINCreate)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|Text(KidsProfileCopy.turnOff)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|Text(KidsProfileCopy.turnOn)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|Text(ProfileLockCopy.delete)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|actions|Button|Text(ProfileLockCopy.editPIN)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|focusedActionRow|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-kids",
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileActionsList.swift|ProfileActionsList|nativeDeleteButton|Button|if groupsActions { LabeledContent { EmptyView() } label: { deleteLabel } } else { deleteLabel }": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-lock-entry"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileDeleteSection|body|Button|Label(\"Delete Profile\", systemImage: \"trash\") .frame(maxWidth: .infinity, minHeight: 44)": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileEmojiTile|body|Button|ZStack { Circle().fill(palette.cardSurface) Text(emoji).font(.system(size: 30)) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-emoji"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileMoreCell|body|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-symbol",
-        "profile-emoji",
-        "profile-photo"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfilePickerSheet|body|Button|\"Done\"": {
-      "count": 1,
-      "reason": "Explicit navigation, confirmation, reset, connection or diagnostic action; not a preference input.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileSymbolTile|body|Button|ZStack { Circle().fill(isSelected ? AnyShapeStyle(ProfileTileColor.color(forIndex: colorIndex)) : AnyShapeStyle(palette.cardSurface)) Image(systemName: symbol) .font(.system(size: 27, weight: .semibold)) .foregroundStyle(isSelected ? ProfileTileColor.legibleForeground(forIndex: colorIndex) : palette.primaryText) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
-      "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-symbol"
-      ]
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|ProfileEditorView|iOSBody|Button|\"Cancel\"": {
-      "count": 2,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|ProfileEditorView|iOSBody|Button|\"Delete Profile\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|ProfileEditorView|iOSBody|Button|\"Discard\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|ProfileEditorView|iOSBody|Button|\"Keep Editing\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|ProfileEditorView|iOSBody|Button|isEditing ? \"Save\" : \"Create\"": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
       "covered_by": []
     },
     "Sources/FeatureSettings/AppLanguagePicker.swift|AppLanguagePicker|languageOptions|Picker|\"Language\"": {
@@ -1898,11 +1638,6 @@
         "version-selection"
       ]
     },
-    "Sources/FeatureSettings/ProfileSetupLibrariesView.swift|ProfileSetupLibrariesView|doneBar|Button|<dynamic>": {
-      "count": 1,
-      "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
-      "covered_by": []
-    },
     "Sources/FeatureSettings/ServerDetailView.swift|ServerDetailView|accountRow|Button|\"Sign In Again\"": {
       "count": 1,
       "reason": "Reviewed navigation, connection, credential, confirmation, recovery or content-management action; not a preference value.",
@@ -1982,19 +1717,27 @@
       "reason": "Reviewed setting; behavior is covered by its owning component tests.",
       "covered_by": []
     },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfileCompactPhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 24)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected)) .frame(maxWidth: .infinity, minHeight: 44)": {
+    "Sources/AppShelliOS/PlozziOSSettingsToolbarItem.swift|PlozziOSSettingsAvatarButton|body|Button|<dynamic>": {
       "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
+      "reason": "Settings entry point; not a preference editor.",
+      "covered_by": []
+    },
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsCompactMenu|body|SettingsPageLink|Label(\"Automatic Sign-In\", systemImage: \"person.crop.circle.badge.checkmark\")": {
+      "count": 1,
+      "reason": "Compact Settings navigation row; the destination is covered by its own page.",
+      "covered_by": []
+    },
+    "Sources/FeatureSettings/AutomaticSignInSettings.swift|AutomaticSignInToggle|toggle|Toggle|\"Automatically Sign In\"": {
+      "count": 1,
+      "reason": "Reviewed startup preference; search anchor opens the Automatic Sign-In page.",
       "covered_by": [
-        "profile-photo"
+        "automatic-sign-in"
       ]
     },
-    "Sources/FeatureProfiles/ProfileEditorView.swift|IOSProfilePhotoTile|body|Button|ZStack { Circle().fill(palette.cardSurface) FallbackAsyncImage(urls: [candidate.imageURL], variant: .profileThumbnail) { Image(systemName: \"person.fill\") .font(.system(size: 30)) .foregroundStyle(palette.secondaryText) } .frame(width: diameter, height: diameter) .clipShape(Circle()) } .frame(width: diameter, height: diameter) .overlay(IOSProfileSelectionRing(isSelected: isSelected))": {
+    "Sources/AppShelliOS/PlozziOSSettingsView.swift|PlozziOSSettingsSplitView|body|Button|Label(\"Automatic Sign-In\", systemImage: \"person.crop.circle.badge.checkmark\") .frame(maxWidth: .infinity, alignment: .leading) .contentShape(Rectangle())": {
       "count": 1,
-      "reason": "Existing choice/confirmation within an indexed editor. Search reaches the editor without selecting a runtime value or bypassing confirmation.",
-      "covered_by": [
-        "profile-photo"
-      ]
+      "reason": "Split-view Settings navigation row; the destination is covered by its own page.",
+      "covered_by": []
     }
   }
 }

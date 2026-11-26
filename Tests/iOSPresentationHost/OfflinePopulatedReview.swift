@@ -289,7 +289,7 @@ enum OfflinePopulatedReview {
         } catch { check("absent version rejected", error as? AppError == .notFound, String(describing: error)) }
         let shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
-            onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
+            onAddServer: {}, showingSettings: .constant(false),
             systemColorScheme: .dark
         )
         let home = shell.sharedHomeViewModel
@@ -390,7 +390,7 @@ enum OfflinePopulatedReview {
         configure(app)
         let reentryHome = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
-            onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
+            onAddServer: {}, showingSettings: .constant(false),
             systemColorScheme: .dark
         ).sharedHomeViewModel
         await reentryHome.load()

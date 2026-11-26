@@ -78,7 +78,6 @@ private struct MyLibrariesContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     SettingsPageHeader(SettingsCopy.libraries)
-                    ProfileLibrariesSummary(profile: scope.activeProfile)
                     if searchRequest?.targetID == "watcher-plex-user",
                        searchGroup(for: "watcher-plex-user") == nil {
                         Text("Add a Plex server to choose a Plex user.")

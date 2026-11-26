@@ -1,5 +1,4 @@
 import CoreModels
-import FeatureProfiles
 import Observation
 import SwiftUI
 import UIKit
@@ -52,31 +51,6 @@ final class DialogPresentationHostedTests: XCTestCase {
         }
     }
     #endif
-
-    func testProfileActionsSheetOwnsItsWholeBackgroundAcrossThemes() async throws {
-        for palette in [ThemePalette.pureBlack, .dark, .light] {
-            for gradient in [false, true] {
-                for reduced in [false, true] {
-                    try await withFixture(palette: palette, gradient: gradient, reduced: reduced) { window, host, probe in
-                        probe.profile = DialogProfile(id: "profile")
-                        try await waitUntil { host.presentedViewController != nil && probe.sheetOwnsBackground == true }
-                        let controller = try XCTUnwrap(host.presentedViewController)
-                        try await waitForPresentation(controller)
-                        let frame = panelFrame(controller, in: window, probe: probe)
-                        let theme = palette.isLight ? "light" : (palette == .pureBlack ? "black" : "dark")
-                        let image = snapshot(window, name: "profile-dialog-\(theme)-gradient-\(gradient)-reduced-\(reduced)")
-                        let geometry = XCTAttachment(string: "panel=\(frame) content=\(probe.contentFrame) window=\(window.bounds)")
-                        geometry.lifetime = .keepAlways
-                        add(geometry)
-                        try assertSurface(image, frame: frame, palette: palette, gradient: gradient)
-                        probe.profile = nil
-                        try await waitUntil { host.presentedViewController == nil && probe.dismissals == 1 }
-                    }
-                }
-            }
-        }
-    }
-
 
     func testBooleanSheetAndNestedCoverKeepTheirOwnBackgroundScope() async throws {
         try await withFixture(palette: .pureBlack, gradient: true) { window, host, probe in
@@ -223,13 +197,8 @@ final class DialogPresentationHostedTests: XCTestCase {
     }
 }
 
-private struct DialogProfile: Identifiable {
-    let id: String
-}
-
 @MainActor @Observable
 private final class DialogPresentationProbe {
-    var profile: DialogProfile?
     var showPlain = false
     var showCover = false
     var showFloating = false
@@ -249,19 +218,6 @@ private struct DialogPresentationFixture: View {
     var body: some View {
         Color.purple.ignoresSafeArea()
             .background(DialogOwnershipProbe { probe.presenterOwnsBackground = $0 })
-            .plozzSheet(item: $probe.profile, onDismiss: { probe.dismissals += 1 }) { _ in
-                ProfileActionsSheet(
-                    profile: .init(id: "dialog-fixture", name: "Sample profile", avatarSymbol: "person.fill"),
-                    hasParentalPIN: false, restrictedActionsSealed: false,
-                    onEditAppearance: {}, onSetLock: { _ in }, onSetKids: { _ in },
-                    onDelete: {}, onClose: { probe.profile = nil }
-                )
-                .background(DialogOwnershipProbe { probe.sheetOwnsBackground = $0 })
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { probe.contentFrame = $0 }
-                #if os(iOS)
-                .presentationDragIndicator(.hidden)
-                #endif
-            }
             .plozzSheet(isPresented: $probe.showPlain, onDismiss: { probe.dismissals += 1 }) {
                 VStack(spacing: 20) {
                     Text("Shared dialog")

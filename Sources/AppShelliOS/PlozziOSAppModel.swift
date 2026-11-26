@@ -7,7 +7,6 @@ import CoreUI
 import EnginePlozzigen
 import FeatureAuthCore
 import FeatureHomeCore
-import FeatureProfiles
 import FeatureSettings
 import FeatureWatchlistCore
 import Foundation
@@ -79,10 +78,9 @@ final class PlozziOSAppModel {
     var isProfilePlaybackAuthorized: Bool { isActiveProfileAuthorized && !isOfflineMode }
 
     var isActiveProfileAuthorized: Bool {
-        return canEnterApp && !mustChooseProfile
-            && (!requiresLaunchProfileSelection || didCompleteLaunchProfileSelection)
+        return canEnterApp
             && pendingIdentityAccount == nil && pendingLibrarySelection == nil
-            && pendingFirstRunStep == nil && profileOnboardingStep == nil
+            && pendingFirstRunStep == nil
             && plexHomeUsers.pendingPlexPINRequest == nil
             && !accountsProviders.activeProfileAwaitsIdentity
     }
@@ -108,7 +106,6 @@ final class PlozziOSAppModel {
     enum FirstRunStep: String, Identifiable, CaseIterable {
         case plexUser
         case libraries
-        case confirmProfile
         case theme
 
         var id: Self { self }
@@ -211,7 +208,6 @@ final class PlozziOSAppModel {
     /// across platforms.
     let shareScanStatus: ShareScanStatusModel
     let appLanguage: AppLanguageSettingsModel
-    private(set) var requiresLaunchProfileSelection: Bool
     private(set) var settings: PlozziOSSettingsModel
     @ObservationIgnored
     private(set) var applicationIsActive = true
@@ -486,10 +482,6 @@ final class PlozziOSAppModel {
             defaultActiveAccountIDs: accountStore.activeAccountIDs()
         )
         boot("profiles")
-        // Forced when the profile we'd restore is locked, so its content never
-        // renders behind the PIN prompt — the unlock then runs through the
-        // ordinary `selectProfile(_:)` gate with the picker behind it.
-        let requiresLaunchProfileSelection = profiles.profiles.count > 1
         let accountsProviders = AccountsProvidersModel(
             accountStore: accountStore,
             registry: registry,
@@ -518,7 +510,6 @@ final class PlozziOSAppModel {
                 ? nil
                 : Self.universalWatchlistStorageDirectory()
         )
-        self.requiresLaunchProfileSelection = requiresLaunchProfileSelection
         let initialSettings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
         self.settings = initialSettings
         boot("settings")
@@ -545,7 +536,7 @@ final class PlozziOSAppModel {
                 standalonePlaybackAvailable: Self.isStandalonePlaybackAvailable
             ).canEnterApp
                 && !profiles.firstRunProfileSetupComplete
-            ? .confirmProfile
+            ? .theme
             : nil
         self.mediaShareAccountService = MediaShareAccountService(runtime: mediaShareRuntime)
         self.mediaShareConfigurationService = MediaShareAccountConfigurationService(
@@ -646,21 +637,17 @@ final class PlozziOSAppModel {
         accountsProviders.reloadAccounts()
         refreshOfflineProviders()
         boot("accountsLoaded")
-        if plexHomeUsers.restoreAutomaticSignInAtLaunch() {
-            self.requiresLaunchProfileSelection = false
-        }
+        _ = plexHomeUsers.restoreAutomaticSignInAtLaunch()
         // Self-heal any stale server names (shared path with tvOS).
         accountsProviders.refreshServerNames()
         if canEnterApp,
            !profiles.firstRunProfileSetupComplete {
-            pendingFirstRunStep = .confirmProfile
+            pendingFirstRunStep = .theme
         }
         if !isOfflineMode { identityIndex.warmIdentityIndex() }
         let scanReporter = shareScanStatus.reporter()
         Task { await mediaShareRuntime.configure(reporter: scanReporter) }
-        if !self.requiresLaunchProfileSelection {
-            plexHomeUsers.ensurePlexIdentityForActiveProfile()
-        }
+        plexHomeUsers.ensurePlexIdentityForActiveProfile()
         drainWatchOutbox()
         Task { @MainActor in
             await prepareUniversalWatchlist()
@@ -912,49 +899,14 @@ final class PlozziOSAppModel {
 
     /// The state guarding entry to a profile. See `gate`.
     struct ProfileGate {
-        /// Whether the launch picker has been satisfied by a switch that actually
-        /// completed. See `performSelectProfile`.
-        var didCompleteLaunchSelection = false
         var inlinePlexPINRequest: PlexHomeUsersModel.PlexPINRequest?
     }
 
-    var didCompleteLaunchProfileSelection: Bool { gate.didCompleteLaunchSelection }
-    /// Where a newly created profile is in its setup sequence.
-    ///
-    /// An explicit sequence rather than a handful of overlapping optionals: the
-    /// steps are ordered, only one is ever on screen, and "which comes next" is a
-    /// single `switch` instead of an invariant spread across five booleans.
-    enum ProfileOnboardingStep: String, Identifiable, CaseIterable {
-        /// Which servers this profile uses, and who it watches as on each.
-        case libraries
-        /// Its colour scheme, which is per-profile.
-        case theme
-        var id: Self { self }
-
-        var next: ProfileOnboardingStep? {
-            switch self {
-            case .libraries: .theme
-            case .theme: nil
-            }
-        }
-    }
-
-    /// Which screen puts the setup sequence on screen.
-    ///
-    /// A cover can only be presented by a view that isn't itself covered, and the
-    /// sequence starts from two very different places: creating (or resuming) a
-    /// profile from Settings, which is a sheet — so a cover asked for from the
-    /// root would be silently dropped — and resuming an abandoned setup at
-    /// launch, when Settings isn't open and the Profiles page isn't on screen to
-    /// ask from. Both sites are wired up, and this says which one owns it, so
-    /// they can never both try.
-    enum ProfileOnboardingOrigin {
-        case settings
-        case launch
-    }
-
-    /// Whether the Settings sheet is on screen. Set by the sheet itself.
     private(set) var isSettingsPresented = false
+
+    func noteSettingsPresented(_ presented: Bool) {
+        isSettingsPresented = presented
+    }
 
     /// The exact request owned by an on-screen Plex user chooser, not another modal.
     var inlinePlexPINRequest: PlexHomeUsersModel.PlexPINRequest? {
@@ -967,102 +919,6 @@ final class PlozziOSAppModel {
         let request = plexHomeUsers.pendingPlexPINRequest
         return request == inlinePlexPINRequest ? nil : request
     }
-
-    func noteSettingsPresented(_ presented: Bool) {
-        isSettingsPresented = presented
-    }
-
-    /// DERIVED from what's actually on screen rather than recorded when the flow
-    /// starts. A stored origin has to be written by whoever begins the sequence,
-    /// and the resume path — which can begin it too, from either place — had no
-    /// way to know which it was; it guessed `.launch`, so resuming an unfinished
-    /// profile from Settings asked the covered root to present and the cover
-    /// silently never appeared, with the step left set so nothing retried.
-    var profileOnboardingOrigin: ProfileOnboardingOrigin {
-        isSettingsPresented ? .settings : .launch
-    }
-
-    /// Whether `origin` should present the sequence right now.
-    func isPresentingProfileOnboarding(from origin: ProfileOnboardingOrigin) -> Bool {
-        profileOnboardingStep != nil && profileOnboardingOrigin == origin
-    }
-
-    /// The setup step currently being presented, if any.
-    private(set) var profileOnboardingStep: ProfileOnboardingStep?
-    /// The profile being set up. Held by ID, not by value: the record changes
-    /// underneath us as each step writes to it.
-    private(set) var profileOnboardingID: String?
-    /// Additional identity being added from this profile's "Watching as" page.
-    private var pendingAdditionalUser: (serverKey: String, profileID: String)?
-
-    /// The profile the sequence is currently about, read live.
-    var profileBeingOnboarded: Profile? {
-        guard let profileOnboardingID else { return nil }
-        return profiles.profiles.first { $0.id == profileOnboardingID }
-    }
-
-    /// Re-presents setup for a profile that never finished it.
-    ///
-    /// The gate is PERSISTED, so quitting mid-setup leaves it set — and a profile
-    /// stuck behind it never imports a watchlist at all, silently and forever.
-    /// Resuming asks the question that was never answered: importing anyway is
-    /// the leak the gate exists to prevent, and clearing it without asking is the
-    /// same thing by another route.
-    func resumeProfileOnboardingIfNeeded() {
-        // `profileOnboardingID` — not just the step — because creation claims the
-        // id and origin synchronously and only raises the step a runloop turn
-        // later (so the editor sheet can close first). Switching into the new
-        // profile schedules a resume in that same window; guarding on the step
-        // alone let the resume win the race and relabel a `.settings` flow as
-        // `.launch`, so the cover was asked for from the root while Settings was
-        // still up — and silently never appeared. Exactly what the origin split
-        // exists to prevent.
-        guard profileOnboardingStep == nil, profileOnboardingID == nil,
-              pendingFirstRunStep == nil, plexHomeUsers.pendingPlexUserSelection == nil,
-              pendingLibrarySelection == nil else { return }
-        guard profiles.activeProfile.needsSetup else { return }
-        profileOnboardingID = profiles.activeProfileID
-        profileOnboardingStep = .libraries
-    }
-
-    /// Advances to the next setup step, releasing the watchlist import when the
-    /// server/identity step is finished.
-    func advanceProfileOnboarding() {
-        guard let step = profileOnboardingStep, let id = profileOnboardingID else { return }
-        if step == .libraries {
-            // Only NOW — with this profile's servers and identity settled — is an
-            // import meaningful. Until `finishSetup` clears the gate the profile
-            // holds every server it inherited, and importing against that pulls
-            // the household's aggregate watchlist into it.
-            if profiles.finishSetup(for: id) {
-                identityIndex.warmIdentityIndex()
-                Task { @MainActor in
-                            await prepareUniversalWatchlist()
-                }
-            }
-        }
-        if let next = step.next {
-            profileOnboardingStep = next
-        } else {
-            profileOnboardingStep = nil
-            profileOnboardingID = nil
-        }
-    }
-
-    /// Ends setup early (the cover was swiped away). The gate still has to be
-    /// released, or the profile would never import a watchlist at all.
-    func cancelProfileOnboarding() {
-        guard let id = profileOnboardingID else { return }
-        if profiles.finishSetup(for: id) {
-            identityIndex.warmIdentityIndex()
-            Task { @MainActor in
-                    await prepareUniversalWatchlist()
-            }
-        }
-        profileOnboardingStep = nil
-        profileOnboardingID = nil
-    }
-
     /// The Plex account this profile has just enabled and not yet picked a user
     /// on. The Libraries screen presents the picker from this.
     ///
@@ -1107,9 +963,8 @@ final class PlozziOSAppModel {
     /// The import stays gated by the persisted question even when a profile
     /// picker or unlock screen must come first.
     var presentableIdentityQuestion: ServerIdentityQuestion? {
-        guard canEnterApp, !mustChooseProfile,
-              !requiresLaunchProfileSelection || didCompleteLaunchProfileSelection,
-              !profiles.activeProfile.needsSetup, pendingFirstRunStep == nil, profileOnboardingStep == nil,
+        guard canEnterApp,
+              !profiles.activeProfile.needsSetup, pendingFirstRunStep == nil,
               pendingLibrarySelection == nil, plexHomeUsers.pendingPlexUserSelection == nil,
               !isManagedServerPresentationActive, plexPINRequestForAppPresentation == nil,
               let account = pendingIdentityAccount else { return nil }
@@ -1183,77 +1038,25 @@ final class PlozziOSAppModel {
         }
     }
 
-    var activeProfileNeedsUnlock: Bool { false }
-
     func setAutomaticallySignIn(_ enabled: Bool) {
-        plexHomeUsers.setAutomaticallySignIn(
-            enabled,
-            profileIsUnlocked: !activeProfileNeedsUnlock && !mustChooseProfile
-        )
+        plexHomeUsers.setAutomaticallySignIn(enabled, profileIsUnlocked: canEnterApp)
     }
 
     /// Switches to `id` and re-scopes the app to that profile.
-    @ObservationIgnored
-    private var plexOnboardingSelection: (id: String, onActivated: @MainActor () -> Void)?
-
-    func selectProfileForPlexOnboarding(_ id: String, onActivated: @escaping @MainActor () -> Void) {
-        plexOnboardingSelection = (id, onActivated)
-        selectProfile(id)
-    }
+    /// Additional identity being added from a server's "Watching as" page.
+    private var pendingAdditionalUser: (serverKey: String, profileID: String)?
 
     func selectProfile(_ id: String) {
-        plexOnboardingSelection = nil
         performSelectProfile(id)
     }
 
-    /// Forces the profile picker with no way past it.
-    ///
-    /// The iOS counterpart of tvOS's non-cancelable `isChoosingProfile`. The PIN
-    /// cover alone isn't a gate: it has a Cancel button, and cancelling it while
-    /// a locked profile is already active simply reveals that profile. The picker
-    /// behind it is what makes cancelling harmless — there's nothing to cancel
-    /// *into*.
-    private(set) var mustChooseProfile = false
-
     func performSelectProfile(_ id: String) {
-        let onboarding = plexOnboardingSelection?.id == id ? plexOnboardingSelection : nil
-        plexOnboardingSelection = nil
         universalWatchlistRetryScheduler = nil
         profiles.select(id)
-        // `select` NO-OPS for an id this device doesn't have — a peer can delete
-        // a profile between the picker rendering and the tap, which is exactly
-        // the fall-through case. Releasing the hold and lifting the forced picker
-        // on a switch that never happened would leave the child in the grown-up
-        // profile the gate exists to withhold, so everything below is conditional
-        // on the switch having actually landed.
         guard profiles.activeProfileID == id else { return }
-        if onboarding != nil, profileOnboardingID != nil {
-            profileOnboardingID = profiles.activeProfile.needsSetup ? id : nil
-            profileOnboardingStep = profiles.activeProfile.needsSetup ? .libraries : nil
-        }
         TouchFeedback.shared.invalidatePendingConfirmations()
         plexHomeUsers.beginExplicitProfileActivation()
-        // The launch picker is satisfied by an ACTUAL switch, never by the tap
-        // that merely asked for one: tapping a locked profile only raises its
-        // PIN, so marking completion at the tap let a cancel fall straight
-        // through into the profile the lock was protecting.
-        gate.didCompleteLaunchSelection = true
-        // Reached only past the lock gate, so this is where the forced picker
-        // lifts: a profile has been chosen and proved.
-        mustChooseProfile = false
-        // Switching INTO a profile that never finished setup — abandoned here, or
-        // created on another device and synced across — asks the question again
-        // rather than leaving it permanently unable to import. Deferred by a
-        // runloop turn for the same reason creation is: this can run from inside
-        // a sheet that has to close first.
-        if onboarding == nil {
-            Task { @MainActor in
-                await Task.yield()
-                resumeProfileOnboardingIfNeeded()
-            }
-        }
-        refreshActiveProfileConfiguration(deferPlexIdentity: onboarding != nil)
-        onboarding?.onActivated()
+        refreshActiveProfileConfiguration(deferPlexIdentity: false)
     }
 
     func refreshActiveProfileSettings() {
@@ -1990,89 +1793,7 @@ final class PlozziOSAppModel {
     /// active-account subset) is preserved. A new profile is seeded with the
     /// current household accounts, selected, and handed to the first-run theme
     /// step — mirroring the previous `addProfile` behaviour.
-    func saveProfile(_ draft: ProfileDraft) {
-        let trimmed = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        if let id = draft.id {
-            guard var profile = profiles.profiles.first(where: { $0.id == id }) else {
-                return
-            }
-            // Cosmetics from the editor…
-            profile.name = trimmed
-            profile.avatarSymbol = draft.avatarSymbol
-            profile.colorIndex = draft.colorIndex
-            profile.avatarImageURL = draft.avatarImageURL
-            profile.avatarEmoji = draft.avatarEmoji
-            profile.avatarEmojiColorIndex = draft.avatarEmojiColorIndex
-            // …plus the preserved non-cosmetic fields the draft carried through
-            // unchanged, so an edit never wipes Plex Home bindings / linked
-            // accounts. Membership (`activeAccountIDs`) is intentionally NOT
-            // touched here — the editor sends it empty to mean "leave alone."
-            profile.linkedAccountID = draft.linkedAccountID
-            profile.plexHomeUserID = draft.plexHomeUserID
-            profile.plexHomeUserName = draft.plexHomeUserName
-            profile.plexHomeUserAccountID = draft.plexHomeUserAccountID
-            profile.plexHomeUserRequiresPIN = draft.plexHomeUserRequiresPIN
-            profile.plexHomeUserAvatarURL = draft.plexHomeUserAvatarURL
-            profile.plexHomeUserBindings = draft.plexHomeUserBindings
-            profiles.update(profile)
-        } else {
-            // Created AWAITING SETUP, exactly as on tvOS. A new profile inherits
-            // every server, so importing a watchlist before the user has said
-            // which servers it uses — and who it watches as on them — drops the
-            // household's aggregate watchlist into it. `addAwaitingSetup` gates
-            // the import until `advanceProfileOnboarding` releases it.
-            let created = profiles.addAwaitingSetup(
-                draft,
-                activeAccountIDs: accounts.map(\.id)
-            )
-            // Claimed BEFORE the switch: `performSelectProfile` schedules a
-            // deferred resume, and this new profile does need setup, so without
-            // the claim already in place that resume would take the flow over and
-            // present it from the wrong place. See `resumeProfileOnboardingIfNeeded`.
-            profileOnboardingID = created.id
-            performSelectProfile(created.id)
-            // Yielded, not set inline: this runs from inside the Add Profile
-            // sheet, and SwiftUI drops a presentation requested while another is
-            // still dismissing. One runloop turn lets the editor close first —
-            // the same reason `scheduleFirstRunStep` yields.
-            Task { @MainActor in
-                await Task.yield()
-                profileOnboardingStep = .libraries
-            }
-        }
-    }
-
-    func removeProfile(_ id: String) {
-        universalWatchlistRetryScheduler = nil
-        let previousActiveProfileID = profiles.activeProfileID
-        removeMediaAliases(forProfileID: id)
-        profiles.remove(id)
-        watchReconcilers[id] = nil
-        if profiles.activeProfileID != previousActiveProfileID {
-            settings = PlozziOSSettingsModel(namespace: profiles.activeNamespace)
-            seriesTrackStore = SeriesTrackPreferenceStore(
-                namespace: profiles.activeNamespace
-            )
-            versionPreferences = VersionPreferenceStore(
-                namespace: profiles.activeNamespace
-            )
-            transitionDownloads(to: profiles.activeProfileID)
-        }
-        reloadAccountsAndHeroCache()
-        if profiles.activeProfileID != previousActiveProfileID {
-            plexHomeUsers.ensurePlexIdentityForActiveProfile()
-        }
-        identityIndex.reset()
-        identityIndex.warmIdentityIndex()
-        drainWatchOutbox()
-        Task { @MainActor in
-            await prepareUniversalWatchlist()
-        }
-    }
-
-    func activeAccountIDs(for profileID: String) -> Set<String> {
+func activeAccountIDs(for profileID: String) -> Set<String> {
         if profiles.activeProfileID == profileID {
             return accountsProviders.activeAccountIDs
         }
@@ -2200,26 +1921,16 @@ final class PlozziOSAppModel {
         self.pendingAdditionalUser = nil
     }
 
-    func selectPlexUserDuringOnboarding(_ user: PlexHomeUser, addAllProfiles: Bool) {
+    func selectPlexUserDuringOnboarding(_ user: PlexHomeUser) {
         guard let pending = plexHomeUsers.pendingPlexUserSelection else { return }
-        guard plexHomeUsers.selectOnboardingUser(user, addAllProfiles: addAllProfiles) else { return }
-        if addAllProfiles, let profileID = plexHomeUsers.importedOnboardingProfileID(for: user) {
-            selectProfileForPlexOnboarding(profileID) { [weak self] in
-                self?.finishPlexUserOnboarding(user, pending: pending, imported: true)
-            }
-            return
-        }
-        finishPlexUserOnboarding(user, pending: pending, imported: false)
-    }
-
-    func importPlexHomeProfilesDuringOnboarding() -> PlexHomeProfileImportResult {
-        plexHomeUsers.importOnboardingProfiles()
+        guard plexHomeUsers.selectOnboardingUser(user) else { return }
+        finishPlexUserOnboarding(user, pending: pending)
     }
 
     private func finishPlexUserOnboarding(
-        _ user: PlexHomeUser, pending: PlexHomeUsersModel.PendingPlexUserSelection, imported: Bool
+        _ user: PlexHomeUser, pending: PlexHomeUsersModel.PendingPlexUserSelection
     ) {
-        if pending.isFirstRun && !imported {
+        if pending.isFirstRun {
             profiles.seedDefaultProfileIdentity(
                 name: user.name,
                 avatarImageURL: user.avatarURL?.absoluteString
@@ -2227,12 +1938,6 @@ final class PlozziOSAppModel {
         }
         appliesPlexIdentityAfterLibrarySelection = true
         plexHomeUsers.clearUserSelection()
-        if imported, !pending.isFirstRun, profiles.activeProfile.needsSetup {
-            appliesPlexIdentityAfterLibrarySelection = false
-            resumeProfileOnboardingIfNeeded()
-            plexHomeUsers.ensurePlexIdentityForActiveProfile()
-            return
-        }
         scheduleLibrarySelection(
             accountIDs: pending.applyToAccountIDs,
             beginsFirstRun: pending.isFirstRun
@@ -2288,15 +1993,11 @@ final class PlozziOSAppModel {
             // Already inside the flow cover, so advance in place. Going through
             // scheduleFirstRunStep would yield a runloop turn to let a sheet
             // dismiss first — which is exactly the gap that flashed Home.
-            advanceFirstRunStep(to: .confirmProfile)
+            advanceFirstRunStep(to: .theme)
         } else if appliesPlexIdentityAfterLibrarySelection {
             appliesPlexIdentityAfterLibrarySelection = false
             plexHomeUsers.ensurePlexIdentityForActiveProfile()
         }
-    }
-
-    func confirmFirstRunProfile() {
-        advanceFirstRunStep(to: .theme)
     }
 
     func finishFirstRunThemeSelection() {
@@ -2543,7 +2244,7 @@ final class PlozziOSAppModel {
             // Nothing to choose from. Previously this just meant no sheet
             // appeared; now the flow is already on screen, so it has to be moved
             // on or it would sit on a step that can never complete.
-            if wasFirstRun { advanceFirstRunStep(to: .confirmProfile) }
+            if wasFirstRun { advanceFirstRunStep(to: .theme) }
             return
         }
         pendingLibrarySelection = PendingLibrarySelection(accountIDs: available)
@@ -2618,7 +2319,7 @@ final class PlozziOSAppModel {
         guard !accountIDs.isEmpty else {
             // Same dead-end guard as presentLibrarySelection: don't strand a
             // presented flow on a step with nothing in it.
-            if beginsFirstRun { advanceFirstRunStep(to: .confirmProfile) }
+            if beginsFirstRun { advanceFirstRunStep(to: .theme) }
             return
         }
         beginsFirstRunAfterLibrarySelection = beginsFirstRun

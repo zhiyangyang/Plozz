@@ -101,7 +101,6 @@ struct ContinueWatchingDetailsFixture: View {
                 PlozziOSTabShell(
                     appModel: appModel, homeViewModelBox: homeViewModelBox,
                     onAddServer: {}, showingSettings: .constant(false),
-                    showingProfileSwitcher: .constant(false),
                     systemColorScheme: .dark
                 )
             } else {

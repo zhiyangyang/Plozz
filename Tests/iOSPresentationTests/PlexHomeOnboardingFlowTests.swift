@@ -8,56 +8,12 @@ import XCTest
 
 @MainActor
 final class PlexHomeOnboardingFlowTests: XCTestCase {
-    func testManualICloudSetupReviewsCompletedProfileWithoutResettingIt() throws {
-        let suite = "ManualICloudProfileSetup.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let store = ProfileStore(defaults: defaults)
-        store.setFirstRunProfileSetupComplete(true)
-        let app = PlozziOSAppModel(
-            accountStore: AccountStore(secureStore: InMemorySecureStore()), profileStore: store
-        )
-        let original = app.profiles.activeProfile
-        XCTAssertFalse(original.needsSetup)
-        app.resumeProfileOnboardingIfNeeded()
-        XCTAssertEqual(app.profileOnboardingID, original.id)
-        XCTAssertEqual(app.profileOnboardingStep, .libraries)
-        XCTAssertEqual(app.profiles.activeProfile, original)
-        app.cancelProfileOnboarding()
-        XCTAssertNil(app.profileOnboardingStep)
-        XCTAssertEqual(app.profiles.activeProfile, original)
+    func testPlexUserSelectionContinuesThroughLibrariesAndAppearance() async throws {
+        try await verifyOnboardingSelection(selectedIndex: 0)
+        try await verifyOnboardingSelection(selectedIndex: 1)
     }
 
-    func testImportedSelectionRetargetsTheExistingSetupOwner() throws {
-        let suite = "PlexHomeOnboardingOwnership.\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let store = ProfileStore(defaults: defaults)
-        store.setFirstRunProfileSetupComplete(true)
-        let app = PlozziOSAppModel(
-            accountStore: AccountStore(secureStore: InMemorySecureStore()), profileStore: store
-        )
-        let previous = app.profiles.add(name: "Previous", isAwaitingSetup: true)
-        app.selectProfile(previous.id)
-        app.resumeProfileOnboardingIfNeeded()
-        XCTAssertEqual(app.profileOnboardingID, previous.id)
-        let selected = app.profiles.add(name: "Imported", isAwaitingSetup: true)
-        app.selectProfileForPlexOnboarding(selected.id) {}
-        XCTAssertEqual(app.profileOnboardingID, selected.id)
-        XCTAssertEqual(app.profileOnboardingStep, .libraries)
-        app.advanceProfileOnboarding()
-        XCTAssertEqual(app.profileBeingOnboarded?.id, selected.id)
-        XCTAssertEqual(app.profileOnboardingStep, .theme)
-        XCTAssertTrue(app.profiles.profiles.first { $0.id == previous.id }?.needsSetup == true)
-        XCTAssertFalse(app.profiles.activeProfile.needsSetup)
-    }
-
-    func testImportAllContinuesThroughLibrariesProfileAndAppearance() async throws {
-        try await verifyImportAll(selectedIndex: 0)
-        try await verifyImportAll(selectedIndex: 1)
-    }
-
-    private func verifyImportAll(selectedIndex: Int) async throws {
+    private func verifyOnboardingSelection(selectedIndex: Int) async throws {
         let suite = "PlexHomeOnboardingFlow.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -90,14 +46,10 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
             await Task.yield()
         }
         XCTAssertNotNil(app.plexHomeUsers.pendingPlexUserSelection)
-        XCTAssertEqual(app.importPlexHomeProfilesDuringOnboarding(), .added)
-        XCTAssertEqual(authentication.calls, 0, "Import must not authenticate other Home users.")
-        XCTAssertEqual(app.profiles.profiles.count, 2, "Import precedes the viewer's choice.")
-        let selectedID = try XCTUnwrap(app.plexHomeUsers.importedOnboardingProfileID(for: users[selectedIndex]))
+        XCTAssertEqual(app.profiles.profiles.count, 1)
         authentication.permits = true
-        app.selectPlexUserDuringOnboarding(users[selectedIndex], addAllProfiles: true)
-        XCTAssertEqual(app.profiles.activeProfileID, selectedID)
-        XCTAssertEqual(app.profiles.profiles.first?.name, "Parent")
+        app.selectPlexUserDuringOnboarding(users[selectedIndex])
+        XCTAssertEqual(app.profiles.activeProfile.name, "Parent")
         for _ in 0..<200 {
             if app.pendingLibrarySelection != nil { break }
             await Task.yield()
@@ -119,22 +71,14 @@ final class PlexHomeOnboardingFlowTests: XCTestCase {
         XCTAssertEqual(app.accountsProviders.resolvedAccounts(withIDs: sessions.map(Account.stableID(for:))).count, 2)
         XCTAssertGreaterThan(authentication.calls, 0, "Authenticate the selected viewer before choosing libraries.")
         let callsBeforeAppearance = authentication.calls
-        XCTAssertEqual(app.profiles.profiles.count, 2)
+        XCTAssertEqual(app.profiles.profiles.count, 1)
         XCTAssertFalse(app.profiles.firstRunProfileSetupComplete)
         app.completeLibrarySelection()
-        XCTAssertEqual(app.pendingFirstRunStep, .confirmProfile)
-        app.confirmFirstRunProfile()
         XCTAssertEqual(app.pendingFirstRunStep, .theme)
         app.finishFirstRunThemeSelection()
         XCTAssertNil(app.pendingFirstRunStep)
         XCTAssertTrue(app.profiles.firstRunProfileSetupComplete)
         XCTAssertFalse(app.profiles.activeProfile.needsSetup)
-        if selectedIndex == 1 {
-            XCTAssertEqual(app.profiles.activeNamespace, selectedID)
-            XCTAssertTrue(try XCTUnwrap(app.profiles.profiles.first).needsSetup)
-            XCTAssertEqual(app.settings.hero.settings.sources,
-                           [.continueWatching, .recentlyAdded, .randomFromLibrary, .watchlist])
-        }
         await app.plexHomeUsers.waitForPlexPINRequirementCheck()
         await app.plexHomeUsers.waitForPlexPINRequirementCheck()
         XCTAssertNil(app.plexHomeUsers.pendingPlexPINRequest)

@@ -26,67 +26,6 @@ private struct SettingsLanguageScopeProbe: View {
 final class SettingsCommunityPresentationTests: XCTestCase {
     private var capturedImages: [CGImage] = []
 
-    func testSeerrBelongsToTheActiveProfileButRemainsHiddenForKids() async throws {
-        let suite = "SeerrProfileCategory-\(UUID())"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let language = AppLanguageSettingsModel(store: AppLanguageSettingsStore(defaults: defaults))
-        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
-        let previous = scene.windows.first(where: \.isKeyWindow)
-        let window = UIWindow(windowScene: scene)
-        window.frame = CGRect(x: 0, y: 0, width: 390, height: 1300)
-        defer {
-            window.isHidden = true
-            window.rootViewController = nil
-            previous?.makeKeyAndVisible()
-        }
-        for isKids in [false, true] {
-            var headerFrame = CGRect.zero
-            var sectionFrame = CGRect.zero
-            var firstRowFrame = CGRect.zero
-            window.rootViewController = UIHostingController(rootView:
-                PlozziOSProfileSettingsSection(
-                    showsParentalControls: isKids,
-                    isKidsProfile: isKids,
-                    appLanguage: language
-                ) {
-                    PlozziOSProfileIdentityHeader(
-                        profile: Profile(id: "profile-header", name: "Current profile"),
-                        profileCount: 2, onSwitchProfile: {}
-                    )
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { headerFrame = $0 }
-                } row: { category in
-                    PlozziOSSettingsCategoryLabel(category: category, accounts: [], isAccountIncluded: { _ in true })
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-                            if category == .playback { firstRowFrame = $0 }
-                        }
-                } management: {
-                    EmptyView()
-                }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { sectionFrame = $0 }
-                .frame(width: 390)
-                .environment(\.locale, Locale(identifier: "en_US"))
-                .environment(\.themePalette, .dark)
-                .environment(\.colorScheme, .dark)
-                .environment(\.gradientBackgroundsEnabled, false)
-                .background(Color.black)
-            )
-            window.makeKeyAndVisible()
-            try await waitForHostedLayout(window)
-            let text = try recognizedText(in: window, name: "Profile settings Seerr kids-\(isKids)")
-            XCTAssertEqual(text.components(separatedBy: "Seerr").count - 1, isKids ? 0 : 1, text)
-            XCTAssertEqual(text.components(separatedBy: "Downloads").count - 1, isKids ? 0 : 1, text)
-            XCTAssertEqual(text.components(separatedBy: "Current profile").count - 1, 1, text)
-            XCTAssertFalse(text.contains("Saved to your profile"), text)
-            XCTAssertGreaterThan(headerFrame.height, 0)
-            XCTAssertEqual(headerFrame.minY, sectionFrame.minY, accuracy: 1,
-                           "The identity belongs inside the top of the settings card, not a separate section.")
-            XCTAssertGreaterThanOrEqual(firstRowFrame.minY, headerFrame.maxY)
-            XCTAssertLessThan(firstRowFrame.minY - headerFrame.maxY, MobileSettingsMetrics.sectionSpacing,
-                              "There must not be a section gap between the profile header and its settings.")
-        }
-    }
-
     func testLanguagePickerUsesAppOwnedModelWithoutAnInheritedEnvironment() async throws {
         let suite = "SettingsLanguage-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

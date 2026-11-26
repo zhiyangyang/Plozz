@@ -3,7 +3,6 @@ import CoreModels
 import CoreUI
 import FeatureAuth
 import FeatureHomeCore
-import FeatureProfiles
 import MediaDownloads
 import SwiftUI
 import UIKit
@@ -87,7 +86,7 @@ final class OfflineModePresentationTests: XCTestCase {
         let app = try makeApp()
         let shell = PlozziOSTabShell(
             appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(),
-            onAddServer: {}, showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
+            onAddServer: {}, showingSettings: .constant(false),
             systemColorScheme: .dark
         )
         let online = shell.sharedHomeViewModel
@@ -400,9 +399,6 @@ final class OfflineModePresentationTests: XCTestCase {
             )
             try await revealOfflineToggle(in: window)
             capture(window, name: "offline-context-download-settings-\(name)")
-            await show(PlozziOSProfileSelectionView(appModel: app, onComplete: {})
-                .environment(\.horizontalSizeClass, sizeClass), in: window)
-            capture(window, name: "offline-context-profiles-\(name)")
         }
         window.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
         await show(PlozziOSRootView(appModel: app).environment(\.horizontalSizeClass, .compact), in: window)
@@ -440,7 +436,7 @@ final class OfflineModePresentationTests: XCTestCase {
         app.plexHomeUsers.ensurePlexIdentityForActiveProfile()
         await app.plexHomeUsers.waitForPlexPINRequirementCheck()
         XCTAssertNotNil(app.plexHomeUsers.plexPINError)
-        await show(PlozziOSProfileAccessGateView(appModel: app, profile: app.profiles.activeProfile, onCancel: {}), in: window)
+        await show(PlozziOSProfileAccessGateView(appModel: app, onCancel: {}), in: window)
         capture(window, name: "offline-context-sign-in-required")
     }
 

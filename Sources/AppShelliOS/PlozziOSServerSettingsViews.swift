@@ -257,10 +257,6 @@ private struct PlozziOSMyLibrariesContent: View {
 
     var body: some View {
         SettingsPageList {
-            ProfileLibrariesSummary(profile: appModel.profiles.activeProfile)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 16, trailing: 0))
             if searchRequest?.targetID == "watcher-plex-user",
                searchGroup(for: "watcher-plex-user") == nil {
                 Text("Add a Plex server to choose a Plex user.")

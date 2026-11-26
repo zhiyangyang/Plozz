@@ -278,10 +278,6 @@ struct PresentationHostApp: App {
                 PlayerRotationFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--plex-user-chooser-fixture") {
                 PlexUserChooserInteractionFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--profile-selection-fixture") {
-                ProfileSelectionInteractionFixture()
-            } else if ProcessInfo.processInfo.arguments.contains("--profile-picker-fixture") {
-                ProfilePickerInteractionFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--download-selection-fixture") {
                 DownloadSelectionFixture()
             } else if ProcessInfo.processInfo.arguments.contains("--downloads-interaction-fixture") {
@@ -409,7 +405,6 @@ private struct SettingsInteractionFixture: View {
     let appModel: PlozziOSAppModel
     @State private var language = AppLanguageSettingsModel()
     @State private var showingSettings = false
-    @State private var showingProfiles = false
     @State private var capturedSettingsURL: String?
     @State private var sidebarGeometry = PlozziOSSidebarGeometryModel()
     @State private var homeViewModelBox = LazyViewState<HomeViewModel>()
@@ -423,7 +418,6 @@ private struct SettingsInteractionFixture: View {
                     homeViewModelBox: homeViewModelBox,
                     onAddServer: {},
                     showingSettings: $showingSettings,
-                    showingProfileSwitcher: $showingProfiles,
                     systemColorScheme: .dark
                 )
                 .environment(sidebarGeometry)

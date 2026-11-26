@@ -7,14 +7,13 @@ import SwiftUI
 struct PlozziOSPlexUserSelectionView: View {
     let appModel: PlozziOSAppModel
     let selection: PlexHomeUsersModel.PendingPlexUserSelection
-    let onImportAll: () -> PlexHomeProfileImportResult
-    let onSelect: (PlexHomeUser, Bool) -> Void
+    let onSelect: (PlexHomeUser) -> Void
     @State private var hasPresentedAuthorization = false
 
     var body: some View {
         ZStack {
             NavigationStack {
-                PlexHomeOnboardingView(users: selection.users, onImportAll: onImportAll, onSelect: onSelect)
+                PlexHomeOnboardingView(users: selection.users, onSelect: onSelect)
                     .id(selection.id)
                     .settingsPageSurface()
             }

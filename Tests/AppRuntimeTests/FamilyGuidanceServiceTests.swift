@@ -214,20 +214,7 @@ final class FamilyGuidanceServiceTests: XCTestCase {
         XCTAssertEqual(hosts, ["metadata.provider.plex.tv", "metadata.provider.plex.tv"])
     }
 
-    func testProfileSwitchDiscardsAnInFlightResponse() async throws {
-        let fixture = try Fixture(suspended: true)
-        defer { fixture.close() }
-        let operation = Task { try await fixture.service.loadFamilyGuidance(for: fixture.item) }
-        await fixture.http.waitForRequest()
-        fixture.profiles.select("child")
-        await fixture.http.resume()
-        do {
-            _ = try await operation.value
-            XCTFail("A previous profile's guidance must not be published")
-        } catch is CancellationError {}
-    }
-
-    func testRevokedHomeCredentialDiscardsAnInFlightResponse() async throws {
+func testRevokedHomeCredentialDiscardsAnInFlightResponse() async throws {
         let fixture = try Fixture(homeUser: true, suspended: true)
         defer { fixture.close() }
         await fixture.prepareHomeIdentity()

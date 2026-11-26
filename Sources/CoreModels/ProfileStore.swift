@@ -540,34 +540,34 @@ public final class ProfilesModel {
             defaultName: defaultName,
             defaultActiveAccountIDs: defaultActiveAccountIDs
         )
-        self.profiles = migrated
         let remembered = store.activeProfileID()
+        let selected = migrated.first(where: { $0.id == remembered })
+            ?? migrated.first(where: { $0.id == ProfileStore.defaultProfileID })
+            ?? migrated.first
+            ?? Profile(id: ProfileStore.defaultProfileID, name: defaultName)
+        // This fork uses one implicit profile as the settings/account namespace.
+        // An install upgrading from multi-profile keeps only the profile that was
+        // active; the stored roster is rewritten to match.
+        self.profiles = [selected]
+        if migrated.count != 1 || migrated.first?.id != selected.id {
+            store.saveProfiles([selected])
+        }
         self.hasRememberedSelection = remembered != nil
-        self.activeProfileID = remembered ?? migrated.first?.id ?? ProfileStore.defaultProfileID
+        self.activeProfileID = selected.id
+        if remembered != selected.id { store.setActiveProfileID(selected.id) }
         // Capture who owns the un-namespaced keys, ONCE, and keep it.
-        //
-        // Seeded with the answer the old derived rule would have given — the
-        // sentinel default if the household has it, else whichever profile sorts
-        // first — so every existing profile keeps reading exactly the settings it
-        // was already reading. No keys move; only the question "who owns them"
-        // stops being recomputed from list position.
         if let stored = store.rootNamespaceOwnerID(),
-           migrated.contains(where: { $0.id == stored }) {
+           stored == selected.id {
             self.rootNamespaceOwnerID = stored
         } else if store.rootNamespaceOwnerID() == nil {
-            let inherited = migrated.first(where: { $0.id == ProfileStore.defaultProfileID })
-                ?? migrated.first
-            self.rootNamespaceOwnerID = inherited?.id
-            if let id = inherited?.id { store.setRootNamespaceOwnerID(id) }
+            self.rootNamespaceOwnerID = selected.id
+            store.setRootNamespaceOwnerID(selected.id)
         } else {
-            // A stored owner that is no longer in the household: it was deleted.
-            // Nobody inherits it — the bare keys stay abandoned rather than
-            // becoming some other profile's settings.
+            // The owner is a profile this fork no longer exposes. The bare keys
+            // stay abandoned rather than becoming another profile's settings.
             self.rootNamespaceOwnerID = nil
         }
         refreshAccountSelections()
-        // Intentionally does *not* persist a defaulted selection: leaving it
-        // unstored is what lets a fresh Apple TV system user get the picker.
     }
 
     /// The currently-selected profile (falls back to the first profile).
@@ -600,27 +600,6 @@ public final class ProfilesModel {
         hasRememberedSelection = true
         store.setActiveProfileID(id)
         store.markProfileUsed(id, at: Date())
-    }
-
-    /// Profiles ordered for pickers/settings: the restored active profile is
-    /// always first, then everyone else by most-recent use, then never-used
-    /// profiles in creation order.
-    ///
-    /// Recency beats creation order because the picker's job is to make the
-    /// likely choice the nearest one — on a shared Apple TV that's whoever used
-    /// it last, and tvOS opens focus on the leading tile.
-    public var profilesByRecency: [Profile] {
-        let used = store.lastUsedDates()
-        return profiles.enumerated().sorted { lhs, rhs in
-            if lhs.element.id == activeProfileID { return true }
-            if rhs.element.id == activeProfileID { return false }
-            switch (used[lhs.element.id], used[rhs.element.id]) {
-            case let (l?, r?): return l > r
-            case (_?, nil): return true
-            case (nil, _?): return false
-            case (nil, nil): return lhs.offset < rhs.offset
-            }
-        }.map(\.element)
     }
 
     /// Adds a profile and returns it. New profiles are *not* auto-selected.
@@ -714,12 +693,6 @@ public final class ProfilesModel {
         refreshAccountSelections()
     }
 
-    /// V3 exact apply: merge incoming cosmetic profile DTOs (upserts) and apply
-    /// deletions, in one pass. Merging preserves every DEVICE-LOCAL field (Plex Home /
-    /// Seerr / bindings) — only name/avatar/color/createdAt travel — so a re-capture
-    /// reproduces the exact same canonical bytes (the round-trip invariant). The
-    /// original/default profile follows the same deletion rules as every other
-    /// profile. A last-known deletion waits for the rest of a split cloud roster.
     /// Updates an existing profile's editable fields in place.
     public func update(_ profile: Profile) {
         guard let idx = profiles.firstIndex(where: { $0.id == profile.id }) else { return }

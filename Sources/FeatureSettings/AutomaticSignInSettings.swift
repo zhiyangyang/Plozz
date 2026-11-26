@@ -29,7 +29,7 @@ public struct AutomaticSignInToggle: View {
                 SettingsDescribedControl {
                     toggle
                 } description: {
-                    Text("Sign in to the last-used profile automatically on this device.")
+                    Text("Sign in automatically on this device.")
                 }
             } else {
                 toggle
@@ -40,7 +40,7 @@ public struct AutomaticSignInToggle: View {
 
     private var toggle: some View {
         Toggle("Automatically Sign In", isOn: settings.isEnabled)
-            .accessibilityIdentifier("profiles.automaticallySignIn")
+            .accessibilityIdentifier("automatic-sign-in")
     }
 }
 

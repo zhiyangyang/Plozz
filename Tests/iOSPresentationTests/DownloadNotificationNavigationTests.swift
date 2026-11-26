@@ -426,7 +426,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
         window.rootViewController = UIHostingController(rootView:
             PlozziOSTabShell(
                 appModel: app, homeViewModelBox: LazyViewState<HomeViewModel>(), onAddServer: {},
-                showingSettings: .constant(false), showingProfileSwitcher: .constant(false),
+                showingSettings: .constant(false),
                 systemColorScheme: .dark
             )
             .environment(app)

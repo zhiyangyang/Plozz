@@ -99,9 +99,7 @@ struct OfflineModeReviewFixture: View {
 
     var body: some View {
         Group {
-            if page == "profiles" {
-                PlozziOSProfileSelectionView(appModel: app, onComplete: {}, onCancel: {})
-            } else if page == "source" {
+            if page == "source" {
                 NavigationStack {
                     PlozziOSServersSettingsView(appModel: app, onAddServer: {
                         status.present(icon: "wifi.slash", text: "Unavailable in Offline Mode.")

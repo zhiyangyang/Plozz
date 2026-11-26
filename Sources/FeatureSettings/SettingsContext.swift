@@ -2,7 +2,6 @@
 import SwiftUI
 import CoreModels
 import CoreUI
-import FeatureProfiles
 
 /// Shared providers for Settings sub-views.
 ///
@@ -23,19 +22,10 @@ struct SettingsContext {
     let reloadLibraries: () async -> Void
     let accounts: [Account]
     let activeAccountID: String?
-    let profiles: [Profile]
     let activeProfile: Profile
     let automaticSignIn: AutomaticSignInSettings
     let isAccountIncludedInActiveProfile: (String) -> Bool
     let onSetAccountIncluded: (String, Bool) -> Void
-    let onSwitchProfile: () -> Void
-    let onSaveProfile: (ProfileDraft) -> Void
-    /// Creates a NEW profile and hands it to the app-level setup step. Distinct
-    /// from `onSaveProfile`, which also edits existing ones.
-    let onCreateProfile: (ProfileDraft) -> Void
-    /// Live cosmetics-only persistence for editing an existing profile.
-    let onUpdateProfileCosmetics: (ProfileDraft) -> Void
-    let onDeleteProfile: (String) -> Void
     /// Pushes a route onto the Settings NavigationStack that owns this page.
     ///
     /// A pushed page must NOT declare its own `navigationDestination` for the
@@ -70,10 +60,6 @@ public enum SettingsRoute: Hashable {
     case artwork
     case navigationLayout
     case profile
-    /// Per-profile settings page (Everyone › Profiles › <name>).
-    case profileSettings(profileID: String)
-    /// The profile's own name, avatar and colour.
-    case profileAppearance(profileID: String)
     case topShelf
     case servers
     case myLibraries

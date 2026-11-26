@@ -55,7 +55,6 @@ let package = Package(
         .library(name: "FeaturePlayback", targets: ["FeaturePlayback"]),
         .library(name: "EnginePlozzigen", targets: ["EnginePlozzigen"]),
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
-        .library(name: "FeatureProfiles", targets: ["FeatureProfiles"]),
         .library(name: "FeatureWatchlistCore", targets: ["FeatureWatchlistCore"]),
         .library(name: "MediaDownloads", targets: ["MediaDownloads"]),
         .library(name: "MediaTransportCore", targets: ["MediaTransportCore"]),
@@ -388,11 +387,7 @@ let package = Package(
         ),
         .target(
             name: "FeatureSettings",
-            dependencies: ["CoreModels", "CoreUI", "CoreNetworking", "FeatureProfiles"]
-        ),
-        .target(
-            name: "FeatureProfiles",
-            dependencies: ["CoreModels", "CoreUI"]
+            dependencies: ["CoreModels", "CoreUI", "CoreNetworking"]
         ),
         .target(
             name: "FeatureWatchlistCore",
@@ -717,7 +712,6 @@ let package = Package(
                 "FeatureHomeCore",
                 "HeroUI",
                 "FeaturePlayback",
-                "FeatureProfiles",
                 "FeatureSearchCore",
                 "FeatureSettings",
                 "FeatureWatchlistCore",
@@ -817,10 +811,6 @@ let package = Package(
         .testTarget(
             name: "FeatureSearchCoreTests",
             dependencies: ["FeatureSearchCore", "CoreModels"]
-        ),
-        .testTarget(
-            name: "FeatureProfilesTests",
-            dependencies: ["FeatureProfiles", "CoreModels"]
         ),
         .testTarget(
             name: "FeaturePlaybackTests",

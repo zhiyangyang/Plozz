@@ -4,7 +4,6 @@ import CoreModels
 import CoreNetworking
 import CoreUI
 import FeatureHomeCore
-import FeatureProfiles
 import FeatureSettings
 import Foundation
 import SwiftUI
@@ -30,8 +29,6 @@ public struct PlozziOSRootView: View {
     @State private var showingAddServer = false
     @State private var providerSetupRouter = ManagedProviderSetupRouter()
     @State private var showingSettings = false
-    @State private var showingProfileSwitcher = false
-    @State private var isSelectingLaunchProfile = false
     @State private var downloadNotifications = PlozziOSDownloadNotificationNavigation.shared
     @State private var notificationDismissals: Set<NotificationPresentation> = []
     @State private var settingsShellIdentity: (profileID: String, value: String)?
@@ -88,12 +85,6 @@ public struct PlozziOSRootView: View {
         Group {
             if !appModel.canEnterApp {
                 PlozziOSOnboardingView(appModel: appModel)
-            } else if showsLaunchProfilePicker {
-                PlozziOSProfileSelectionView(
-                    appModel: appModel,
-                    onSelectionStarted: { isSelectingLaunchProfile = true },
-                    onComplete: { isSelectingLaunchProfile = false }
-                )
             } else if usesInlineStandaloneFirstRun, appModel.pendingFirstRunStep != nil {
                 PlozziOSFirstRunView(
                     step: appModel.pendingFirstRunStep,
@@ -106,7 +97,6 @@ public struct PlozziOSRootView: View {
                     homeViewModelBox: homeViewModelBox,
                     onAddServer: showAddServer,
                     showingSettings: $showingSettings,
-                    showingProfileSwitcher: $showingProfileSwitcher,
                     onNotificationPresentationDismissed: { notificationDismissals.remove($0) },
                     systemColorScheme: systemColorScheme
                 )
@@ -137,21 +127,6 @@ public struct PlozziOSRootView: View {
                 appModel: appModel, onCancel: downloadNotifications.cancelPending
             )
         }
-        // Setup that was abandoned part-way — quit mid-flow. The gate is persisted,
-        // so a profile left behind it never imports a watchlist at all; resuming
-        // asks the question that was never answered.
-        //
-        // Only the launch-origin case presents here. Creating a profile happens
-        // inside the Settings sheet and is presented from there instead — a cover
-        // asked for from this view while Settings is up would never appear. See
-        // `ProfileOnboardingOrigin`.
-        .plozzFullScreenCover(isPresented: Binding(
-            get: { appModel.isPresentingProfileOnboarding(from: .launch) },
-            set: { if !$0 { appModel.cancelProfileOnboarding() } }
-        )) {
-            PlozziOSProfileOnboardingCover(appModel: appModel)
-        }
-        .task { appModel.resumeProfileOnboardingIfNeeded() }
         .onAppear { PlozziOSScreenshotSeed.applyIfRequested(to: appModel) }
     }
 
@@ -174,19 +149,8 @@ public struct PlozziOSRootView: View {
         // Libraries owns the same question while Settings is presented.
         .modifier(PlozziOSServerIdentityPresenter(
             appModel: appModel, isEnabled: !appModel.isSettingsPresented
-                && !showingProfileSwitcher && !showsLaunchProfilePicker && !showingAddServer
+                && !showingAddServer
         ))
-        // Outside the profile-scoped identity, inside its shared environment:
-        // changing accounts must not tear down the surface collecting their PIN.
-        .plozzFullScreenCover(isPresented: $showingProfileSwitcher, onDismiss: {
-            notificationDismissals.remove(.profileSwitcher)
-        }) {
-            PlozziOSProfileSelectionView(
-                appModel: appModel,
-                onComplete: { showingProfileSwitcher = false },
-                onCancel: { showingProfileSwitcher = false }
-            )
-        }
     }
 
     private var appContent: some View {
@@ -251,7 +215,7 @@ public struct PlozziOSRootView: View {
             presenter: appModel.transientStatusPresenter,
             palette: resolvedPalette
         )
-        .offlineStatusOverlay(appModel: appModel, palette: resolvedPalette, isEnabled: !showsLaunchProfilePicker)
+        .offlineStatusOverlay(appModel: appModel, palette: resolvedPalette)
         .environment(appModel)
         .environment(appModel.settings.navigation)
         .environment(appModel.settings.homeVisibility)
@@ -287,7 +251,6 @@ public struct PlozziOSRootView: View {
             PlozziOSPlexUserSelectionView(
                 appModel: appModel,
                 selection: selection,
-                onImportAll: appModel.importPlexHomeProfilesDuringOnboarding,
                 onSelect: appModel.selectPlexUserDuringOnboarding
             )
         }
@@ -363,27 +326,12 @@ public struct PlozziOSRootView: View {
 
     private var setupPresentationReady: Bool {
         appModel.canEnterApp
-            && !appModel.mustChooseProfile
-            && (!appModel.requiresLaunchProfileSelection
-                || appModel.didCompleteLaunchProfileSelection)
             && appModel.pendingFirstRunStep == nil
             && !showingSettings
-            && !showingProfileSwitcher
             && !showingAddServer
             && appModel.plexHomeUsers.pendingPlexPINRequest == nil
             && appModel.pendingIdentityAccount == nil
             && appModel.pendingLibrarySelection == nil
-    }
-
-    private var showsLaunchProfilePicker: Bool {
-        // Settings owns a newly enabled Plex source's verification/PIN sheet.
-        // Replacing its tab shell with the launch picker tears that presenter down.
-        let needsPlexLaunchGate = appModel.plexPINRequestForAppPresentation != nil
-            && !settingsOwnsActiveProfilePresentation
-        return isSelectingLaunchProfile || appModel.mustChooseProfile
-            || (!appModel.didCompleteLaunchProfileSelection
-                && (appModel.requiresLaunchProfileSelection
-                    || needsPlexLaunchGate))
     }
 
     private var settingsOwnsActiveProfilePresentation: Bool {
@@ -392,9 +340,6 @@ public struct PlozziOSRootView: View {
     }
 
     private var shellIdentity: String {
-        if showsLaunchProfilePicker {
-            return "profile-picker"
-        }
         let profile = appModel.profiles.activeProfile
         return "\(profile.id)#\(appModel.offlineModeGeneration)#"
             + profile.plexPlaybackIdentityKey(
@@ -434,11 +379,9 @@ public struct PlozziOSRootView: View {
     private var profileAccessGateBinding: Binding<Bool> {
         Binding(
             get: {
-                guard !showsLaunchProfilePicker, !showingProfileSwitcher,
-                      appModel.plexHomeUsers.pendingPlexUserSelection == nil else { return false }
-                guard !showingSettings,
-                      appModel.profileOnboardingStep != .libraries
-                else { return false }
+                guard appModel.plexHomeUsers.pendingPlexUserSelection == nil,
+                      !showingSettings,
+                      appModel.pendingFirstRunStep == nil else { return false }
                 return appModel.plexPINRequestForAppPresentation != nil
             },
             set: { presented in
@@ -496,10 +439,6 @@ public struct PlozziOSRootView: View {
             notificationDismissals.insert(.settings)
             showingSettings = false
         }
-        if showingProfileSwitcher {
-            notificationDismissals.insert(.profileSwitcher)
-            showingProfileSwitcher = false
-        }
         if showingAddServer {
             notificationDismissals.insert(.addServer)
             showingAddServer = false
@@ -521,7 +460,7 @@ public struct PlozziOSRootView: View {
                 && (downloads.hasLoadedRecords || downloads.initializationError != nil),
             presentationIsAvailable: notificationDismissals.isEmpty
                 && !showingSettings && !appModel.isSettingsPresented
-                && !showingProfileSwitcher && !showingAddServer
+                && !showingAddServer
                 && !releaseNotes.hasPendingStartupNotes
         )
     }
@@ -708,19 +647,9 @@ struct PlozziOSTabShell: View {
             Self.makeHomeViewModel(appModel: appModel)
         }
     }
-    /// The profile picker opened deliberately (from Settings) rather than at
-    /// launch. Presented from the ROOT so a switch is never asked for from
-    /// underneath the Settings sheet, an arrangement SwiftUI can drop silently.
-    /// Set while Settings is closing, so the picker can be raised from its
-    /// `onDismiss` rather than in the same turn as the dismissal.
-    @State private var wantsProfileSwitcher = false
-    /// A direct Settings selection waits for that sheet to finish dismissing.
-    @State private var pendingSwitchProfileID: String?
-
     let appModel: PlozziOSAppModel
     let onAddServer: () -> Void
     @Binding var showingSettings: Bool
-    @Binding var showingProfileSwitcher: Bool
     let onNotificationPresentationDismissed: (PlozziOSRootView.NotificationPresentation) -> Void
     let systemColorScheme: ColorScheme
 
@@ -729,7 +658,6 @@ struct PlozziOSTabShell: View {
         homeViewModelBox: LazyViewState<HomeViewModel>,
         onAddServer: @escaping () -> Void,
         showingSettings: Binding<Bool>,
-        showingProfileSwitcher: Binding<Bool>,
         onNotificationPresentationDismissed:
             @escaping (PlozziOSRootView.NotificationPresentation) -> Void = { _ in },
         systemColorScheme: ColorScheme
@@ -738,7 +666,6 @@ struct PlozziOSTabShell: View {
         self.homeViewModelBox = homeViewModelBox
         self.onAddServer = onAddServer
         _showingSettings = showingSettings
-        _showingProfileSwitcher = showingProfileSwitcher
         self.onNotificationPresentationDismissed = onNotificationPresentationDismissed
         self.systemColorScheme = systemColorScheme
         let visible = Self.configuredDestinations(appModel: appModel)
@@ -1224,7 +1151,7 @@ struct PlozziOSTabShell: View {
                 destinationTitle(destination)
             } icon: {
                 if destination == .settings {
-                    ProfileAvatarView(profile: appModel.profiles.activeProfile, size: 28, rendersAsImage: true)
+                    Image(systemName: "gearshape")
                 } else {
                     Image(systemName: destinationSystemImage(destination))
                 }
@@ -1250,7 +1177,6 @@ struct PlozziOSTabShell: View {
         .onChange(of: appModel.profiles.activeProfile.needsSetup, initial: true) { _, needsSetup in
             if needsSetup { homeViewModelBox.discard { $0.invalidate() } }
         }
-        .environment(appModel.profiles)
         .onChange(
             of: PlozziOSDownloadNotificationNavigation.shared.presentation?.id, initial: true
         ) { _, _ in
@@ -1322,15 +1248,6 @@ struct PlozziOSTabShell: View {
         }
         .plozzSheet(isPresented: $showingSettings, onDismiss: {
             appModel.noteSettingsPresented(false)
-            if wantsProfileSwitcher {
-                wantsProfileSwitcher = false
-                showingProfileSwitcher = true
-            } else if let id = pendingSwitchProfileID {
-                // This direct Settings action uses the root's authorization
-                // cover, so it waits until Settings is actually gone.
-                pendingSwitchProfileID = nil
-                appModel.selectProfile(id)
-            }
             if selectedDestination == .settings {
                 let fallback = tabDestinations.first {
                     $0 != .settings
@@ -1345,16 +1262,6 @@ struct PlozziOSTabShell: View {
             PlozziOSSettingsView(
                 appModel: appModel,
                 onClose: { showingSettings = false },
-                onSwitchProfile: {
-                    // Requested, not presented here. Dismissing Settings and
-                    // presenting the picker in the SAME turn is the arrangement
-                    // SwiftUI drops — and this is the only way to switch profiles
-                    // on iOS, so losing it strands the user. The sheet's
-                    // `onDismiss` raises the picker once Settings is actually gone.
-                    wantsProfileSwitcher = true
-                    showingSettings = false
-                },
-                onSwitchTo: { pendingSwitchProfileID = $0 },
                 systemColorScheme: systemColorScheme
             )
             .environment(\.homeContentSnapshot, sharedHomeViewModel)
@@ -2412,7 +2319,6 @@ struct PlozziOSProfileAccessGateView: View {
                 PlozziOSPlexPINView(
                     model: appModel.plexHomeUsers,
                     request: request,
-                    profile: nil,
                     dismissOnSuccess: false,
                     onCancel: cancel
                 )
