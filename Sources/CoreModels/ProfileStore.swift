@@ -625,7 +625,6 @@ public final class ProfilesModel {
         /// every server and imports the household's watchlist on next launch —
         /// the exact leak the gate exists to stop. See `Profile.isAwaitingSetup`.
         isAwaitingSetup: Bool? = nil,
-        plexHomeImportIdentity: PlexHomeImportIdentity? = nil
     ) -> Profile {
         var profile = Profile(
             name: name,
@@ -641,7 +640,6 @@ public final class ProfilesModel {
             avatarImageURL: avatarImageURL,
             avatarEmoji: avatarEmoji,
             avatarEmojiColorIndex: avatarEmojiColorIndex,
-            plexHomeImportIdentity: plexHomeImportIdentity
         )
         profile.isAwaitingSetup = isAwaitingSetup
         profiles.append(profile)
