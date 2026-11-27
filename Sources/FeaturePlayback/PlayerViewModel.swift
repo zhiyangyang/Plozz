@@ -3049,6 +3049,11 @@ public final class PlayerViewModel {
                 }
                 streamingMediaSourceID = currentMediaSourceID
                 snapshot.primary = chosen
+                // Keep the requested subtitle across an in-flight rendition
+                // restart: a quality change may start before the first restart
+                // reaches `.ready`, and that restart passes no track snapshot.
+                subtitleController.markSelectedSubtitle(id: chosen?.id)
+                streamingTrackSnapshot = snapshot
                 if userInitiated {
                     recordSeriesSubtitleSelection(chosen?.language.map(RememberedSubtitleSelection.language) ?? .off)
                 }
@@ -3057,6 +3062,16 @@ public final class PlayerViewModel {
             }
         }
         subtitleController.selectSubtitleOption(id: id, userInitiated: userInitiated)
+        // A selection made while an audio/quality rendition is restarting must
+        // join that restart's pending snapshot; otherwise it restores the old
+        // (subtitle-less) snapshot when the replacement reaches `.ready`. Keep
+        // the pending audio pick: it may not be confirmed by the old engine yet.
+        if phase != .ready, var snapshot = streamingTrackSnapshot {
+            snapshot.primary = id == PlayerTrackOption.offID
+                ? nil
+                : subtitleController.subtitleTrack(id: id)
+            streamingTrackSnapshot = snapshot
+        }
     }
 
     // MARK: - Dual (secondary) subtitle

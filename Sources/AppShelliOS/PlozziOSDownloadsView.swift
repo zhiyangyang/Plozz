@@ -479,7 +479,7 @@ enum DownloadFormatting {
         let base = status(
             record.status, fraction: record.fractionCompleted,
             preparationFraction: record.preparationFraction,
-            summary: Text(verbatim: byteText(record.bytesDownloaded))
+            summary: Text(record.bytesDownloaded, format: .byteCount(style: .file))
         )
         // Version labels are pinned so two offline copies remain distinguishable.
         guard let version = record.versionLabel, !version.isEmpty else {

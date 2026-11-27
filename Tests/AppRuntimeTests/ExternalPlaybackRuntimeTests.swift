@@ -272,7 +272,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testNASNeverNegotiatesOrLaunchesExternalPlayback() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse, .vlc, .custom] {
+        for player in [ExternalPlayer.infuse, .vlc, .custom] {
             for mediaKind in [MediaItemKind.movie, .episode, .video] {
                 let fixture = ExternalPlaybackFixture()
                 defer { fixture.cleanup() }
@@ -292,7 +292,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testFTPDirectHandoffIsVLCOnlyAndDoesNotNeedLocalExecution() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse, .vlc, .custom] {
+        for player in [ExternalPlayer.infuse, .vlc, .custom] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
             fixture.kind = .mediaShare
@@ -320,17 +320,17 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testSiloUsesExternalNegotiationAndRetainsEvenDirectPlaySessions() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse] {
+        for player in [ExternalPlayer.infuse] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
             fixture.selection.player = player
-            let options: StreamingPlaybackOptions? = player == .nativePlayer ? nil : .init(quality: .hd720)
+            let options: StreamingPlaybackOptions? = .init(quality: .hd720)
             fixture.kind = .silo
             fixture.request.playSessionID = "silo-session"
             fixture.request.streamingSessionID = "silo-session"
             XCTAssertTrue(fixture.runtime.availablePlayers(
                 for: fixture.item, context: fixture.context, selection: fixture.selection
-            ).contains(.vlc))
+            ).contains(.builtIn))
             let opened = try await fixture.runtime.launch(
                 item: fixture.item, startPosition: 120, settings: fixture.settings,
                 selection: fixture.selection, streamingOptions: options,
@@ -354,7 +354,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testWebDAVUsesIndependentNegotiationAndCorrelatesReturnsWithoutSavingURLs() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse, .vlc] {
+        for player in [ExternalPlayer.infuse, .vlc] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
             fixture.kind = .mediaShare
@@ -399,7 +399,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     }
 
     func testWebDAVPasswordHandoffKeepsCredentialsEphemeralAndAcceptsSanitizedReturns() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse, .vlc] {
+        for player in [ExternalPlayer.infuse, .vlc] {
             for stripPassword in [false, true] {
                 let fixture = ExternalPlaybackFixture()
                 defer { fixture.cleanup() }
@@ -934,75 +934,14 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
         XCTAssertNil(fixture.runtime.receipt)
     }
 
-    func testNativeProgressRejectsMalformedOrDuplicateValues() async throws {
-        for values in [["NaN"], ["inf"], ["-0.1"], ["1.01"], [""], ["80"], ["0.5", "1"]] {
-            let fixture = ExternalPlaybackFixture()
-            defer { fixture.cleanup() }
-            fixture.selection.player = .nativePlayer
-            _ = try await fixture.launch()
-            var callback = try XCTUnwrap(URLComponents(
-                url: fixture.callback(position: "300"), resolvingAgainstBaseURL: false
-            ))
-            callback.queryItems?.append(contentsOf: values.map { .init(name: "progress", value: $0) })
-            fixture.runtime.receive(try XCTUnwrap(callback.url))
-            await fixture.runtime.processReturn(context: { fixture.context }) { _ in XCTFail("Invalid progress") }
-            XCTAssertEqual(fixture.runtime.error, .invalidCallback, "\(values)")
-            XCTAssertNil(fixture.runtime.receipt)
-        }
-    }
-
-    func testNativeFractionSurvivesRelaunchAndRetainsOwnerChecks() async throws {
-        let fixture = ExternalPlaybackFixture()
-        defer { fixture.cleanup() }
-        fixture.selection.player = .nativePlayer
-        fixture.item.runtime = nil
-        _ = try await fixture.launch()
-        fixture.runtime.receive(try fixture.callback(position: "600", progress: "1.0000"))
-        let restored = ExternalPlaybackRuntime(
-            defaults: fixture.defaults, callbackScheme: fixture.callbackScheme,
-            canOpen: { _ in false }, open: { _ in false }
-        )
-        fixture.profileID = "another-profile"
-        await restored.processReturn(context: { fixture.context }) { _ in XCTFail("Wrong profile") }
-        XCTAssertNotNil(restored.returnID)
-        fixture.profileID = "profile"
-        var result: ExternalPlaybackCompletion?
-        await restored.processReturn(context: { fixture.context }) { result = $0 }
-        XCTAssertEqual(result?.watchedPercent, 100)
-        XCTAssertEqual(result?.position, 600)
-        XCTAssertNil(restored.receipt)
-    }
-
-    func testNativeFractionDoesNotBypassPositionOrMediaValidation() async throws {
-        for position in ["NaN", "inf", "-1", "9999999999"] {
-            let fixture = ExternalPlaybackFixture()
-            defer { fixture.cleanup() }
-            fixture.selection.player = .nativePlayer
-            _ = try await fixture.launch()
-            fixture.runtime.receive(try fixture.callback(position: position, progress: "1"))
-            XCTAssertEqual(fixture.runtime.error, .invalidCallback)
-        }
-        let fixture = ExternalPlaybackFixture()
-        defer { fixture.cleanup() }
-        fixture.selection.player = .nativePlayer
-        _ = try await fixture.launch()
-        var callback = try XCTUnwrap(URLComponents(
-            url: fixture.callback(position: "600", progress: "1"), resolvingAgainstBaseURL: false
-        ))
-        callback.queryItems?.removeAll { $0.name == "lastPlayedUrl" }
-        callback.queryItems?.append(.init(name: "lastPlayedUrl", value: "https://wrong.test/video"))
-        fixture.runtime.receive(try XCTUnwrap(callback.url))
-        XCTAssertEqual(fixture.runtime.error, .invalidCallback)
-    }
-
-    func testNativeMissingFractionAndInfuseKeepRuntimeFallback() async throws {
-        for player in [ExternalPlayer.nativePlayer, .infuse] {
+    func testInfuseMissingFractionKeepsRuntimeFallback() async throws {
+        for player in [ExternalPlayer.infuse] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
             fixture.selection.player = player
             _ = try await fixture.launch()
             // Infuse's unrelated query values must not gain Native Player semantics.
-            let fraction = player == .infuse ? "1" : nil
+            let fraction = "1"
             fixture.runtime.receive(try fixture.callback(position: "300", progress: fraction))
             var result: ExternalPlaybackCompletion?
             await fixture.runtime.processReturn(context: { fixture.context }) { result = $0 }
@@ -1017,7 +956,7 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
     func testLegacyReceiptWithoutFractionStillRestores() async throws {
         let fixture = ExternalPlaybackFixture()
         defer { fixture.cleanup() }
-        fixture.selection.player = .nativePlayer
+        fixture.selection.player = .infuse
         _ = try await fixture.launch()
         fixture.runtime.receive(try fixture.callback(position: "540"))
         let data = try XCTUnwrap(fixture.defaults.data(forKey: "com.plozz.externalPlaybackReceipt"))

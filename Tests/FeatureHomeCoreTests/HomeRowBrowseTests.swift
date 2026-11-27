@@ -28,17 +28,17 @@ final class HomeRowBrowseTests: XCTestCase {
         XCTAssertTrue(browser.items.isEmpty)
         XCTAssertTrue(browser.hasMore)
         await browser.load()
-        XCTAssertEqual(browser.items.map(\.id), ["60"])
+        XCTAssertEqual(browser.items.map(\.id), ["60", "61"])
         await browser.load()
-        XCTAssertEqual(browser.items.map(\.id), ["60", "124"])
+        XCTAssertEqual(browser.items.map(\.id), ["60", "61", "124"])
         XCTAssertFalse(browser.hasMore)
         XCTAssertNil(browser.error)
         let offsets = await provider.offsets
         XCTAssertEqual(offsets, [0, 60, 120])
         await browser.applyMutation(.init(itemIDs: ["60"], resumePosition: 2))
-        XCTAssertEqual(browser.items.map(\.id), ["124"])
+        XCTAssertEqual(browser.items.map(\.id), ["61", "124"])
         await browser.applyMutation(.init(itemIDs: ["60"], resumePosition: 30))
-        XCTAssertEqual(browser.items.map(\.id), ["60", "124"])
+        XCTAssertEqual(browser.items.map(\.id), ["60", "61", "124"])
     }
 
     func testBrowserRetainsResolvedCollectionCoverShapeForBothProviders() async throws {

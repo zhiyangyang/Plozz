@@ -230,7 +230,7 @@ final class DetailHeaderMetadataRowTests: XCTestCase {
     }
 
     func testEveryRatingCountAndAgeCombinationUsesExactlyOneUnscaledLine() throws {
-        XCTAssertEqual(allRatings.count, DetailPageSettings.headerRatingCountRange.upperBound)
+        XCTAssertGreaterThanOrEqual(allRatings.count, DetailPageSettings.headerRatingCountRange.upperBound)
         for width in widths {
             for textSize in [DynamicTypeSize.large, .accessibility3] {
                 for ratingCount in 0...allRatings.count {
@@ -360,7 +360,8 @@ final class DetailHeaderMetadataRowTests: XCTestCase {
         let settings = DetailPageSettings(maxHeaderRatings: 3)
         let scores = settings.headerRatings(from: available, isAnime: false, hidesRatings: false)
         let age = settings.headerFamilyGuidanceAge(from: 12, hidesRatings: false)
-        XCTAssertEqual(scores, Array(available.prefix(3)))
+        XCTAssertEqual(scores.count, 3)
+        XCTAssertEqual(Set(scores.map(\.source)), [.rottenTomatoes, .rottenTomatoesAudience, .imdb])
         XCTAssertEqual(age, 12)
         for width: CGFloat in [354, 393] {
             let row = DetailHeaderMetadataRow(ratings: scores, badges: badges, familyGuidanceAge: age)

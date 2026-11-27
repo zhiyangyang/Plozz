@@ -220,7 +220,7 @@ public final class HomeLibraryVisibilityModel {
         }
         guard let task = scheduleServerDefaultsRefreshIfNeeded(
             accounts: sources, scope: scope, requestScope: requestScope,
-            previous: cached.defaults, now: Date()
+            previous: cached.defaults, now: Date(), ignoringRecentCheck: true
         ) else { return }
         await task.value
     }
@@ -228,13 +228,14 @@ public final class HomeLibraryVisibilityModel {
     @discardableResult
     private func scheduleServerDefaultsRefreshIfNeeded(
         accounts: [ResolvedAccount], scope: [String], requestScope: [String],
-        previous: HomeResolvedRowDefaults, now: Date
+        previous: HomeResolvedRowDefaults, now: Date, ignoringRecentCheck: Bool = false
     ) -> Task<Void, Never>? {
         guard accounts.isEmpty == false,
               serverRequest == nil,
               serverDefaultsRefreshTask == nil
         else { return serverDefaultsRefreshTask }
-        if requestScope == lastServerCheckScope,
+        if !ignoringRecentCheck,
+           requestScope == lastServerCheckScope,
            let lastServerCheck, now.timeIntervalSince(lastServerCheck) < 120 {
             return nil
         }

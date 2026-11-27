@@ -456,7 +456,8 @@ func testRecommendedDetailHeroesUseMetadataWithoutChangingRelatedCards() async t
             let scroll = try XCTUnwrap(firstView(UIScrollView.self, in: fixture.window))
             let bar = try XCTUnwrap(firstView(UINavigationBar.self, in: fixture.window))
             let barFrame = bar.convert(bar.bounds, to: fixture.window)
-            let rowInset: CGFloat = usesList ? 40 : 24
+            // List adds its own 16pt cell inset around the 16pt page inset.
+            let rowInset = MobileSettingsMetrics.pageInset + (usesList ? 16 : 0)
             XCTAssertEqual(probe.firstRow.minX, barFrame.minX + rowInset, accuracy: 1)
             XCTAssertEqual(probe.firstRow.maxX, barFrame.maxX - rowInset, accuracy: 1)
             XCTAssertGreaterThan(scroll.contentSize.height, scroll.bounds.height + 220)

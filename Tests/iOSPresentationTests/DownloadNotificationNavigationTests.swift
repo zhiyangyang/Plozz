@@ -393,8 +393,14 @@ final class DownloadNotificationNavigationTests: XCTestCase {
                 return controller.children.lazy.compactMap(findTabs).first
             }
             let tabs = try XCTUnwrap(window.rootViewController.flatMap(findTabs))
-            let identities = try XCTUnwrap(tabs.viewControllers).map(ObjectIdentifier.init)
-            XCTAssertEqual(identities.count, 6, "Overflow must not remove destination declarations.")
+            // iOS 18+ exposes SwiftUI tabs through `UITab`; `viewControllers`
+            // remains nil for a tab-based controller.
+            func tabIdentities() -> [ObjectIdentifier] {
+                tabs.tabs.compactMap(\.viewController).map(ObjectIdentifier.init)
+            }
+            let identities = tabIdentities()
+            XCTAssertEqual(identities.count, order.count,
+                           "Overflow must not remove destination declarations.")
             for (size, sizeClass) in [
                 (CGSize(width: 900, height: 1100), UIUserInterfaceSizeClass.regular),
                 (CGSize(width: 1100, height: 700), .regular),
@@ -406,7 +412,7 @@ final class DownloadNotificationNavigationTests: XCTestCase {
                 try await Task.sleep(for: .milliseconds(300))
                 XCTAssertEqual(window.bounds.size, size)
                 XCTAssertTrue(try XCTUnwrap(self.visibleNavigation(in: window)) === stack)
-                XCTAssertEqual(tabs.viewControllers?.map(ObjectIdentifier.init), identities)
+                XCTAssertEqual(tabIdentities(), identities)
                 XCTAssertEqual(stack.viewControllers.count, 2)
                 XCTAssertEqual(app.settings.navigation.libraryLayout, layout)
                 XCTAssertTrue(try self.captureText(window, name: "adaptive-navigation-\(Int(size.width))")

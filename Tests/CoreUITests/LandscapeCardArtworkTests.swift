@@ -40,15 +40,14 @@ final class LandscapeCardArtworkTests: XCTestCase {
         XCTAssertTrue(PosterCardPresentation.titleBearingArtwork(for: value).contains(.remote(native)))
     }
 
-    func testOnUsesCleanBackgroundsWithoutOverridingLibraryPreference() {
+    func testOnUsesTheLibraryBackdropWithoutAnOnlineOverride() {
         for value in [item(titled: false), item()] {
             let selected = source(value, mode: .on)
             XCTAssertEqual(selected.policy.area, .homeRows)
-            XCTAssertTrue(selected.prefersTextlessBackdrop)
-            XCTAssertEqual(selected.primaryReference(textlessBackdrop: online), .remote(online))
-            XCTAssertEqual(selected.references(textlessBackdrop: online).first, .remote(online))
+            XCTAssertFalse(selected.prefersTextlessBackdrop)
+            XCTAssertNil(selected.primaryReference(textlessBackdrop: online))
+            XCTAssertEqual(selected.references(textlessBackdrop: online).first, .remote(background))
             XCTAssertEqual(selected.references(textlessBackdrop: nil).first, .remote(background))
-            XCTAssertFalse(PosterCardPresentation.titleBearingArtwork(for: value).contains(.remote(background)))
             let library = source(value, mode: .on, preference: .library)
             XCTAssertFalse(library.prefersTextlessBackdrop)
             XCTAssertNil(library.primaryReference(textlessBackdrop: online))
@@ -56,11 +55,11 @@ final class LandscapeCardArtworkTests: XCTestCase {
         }
     }
 
-    func testOnRespectsExplicitOnlinePolicyAndRetainsNativeFallbacks() {
+    func testOnRetainsNativeFallbacks() {
         let selected = source(item(), mode: .on, preference: .online)
-        XCTAssertTrue(selected.prefersTextlessBackdrop)
-        XCTAssertEqual(selected.primaryReference(textlessBackdrop: online), .remote(online))
-        XCTAssertEqual(selected.references(textlessBackdrop: online).first, .remote(online))
+        XCTAssertFalse(selected.prefersTextlessBackdrop)
+        XCTAssertNil(selected.primaryReference(textlessBackdrop: online))
+        XCTAssertEqual(selected.references(textlessBackdrop: online).first, .remote(background))
         XCTAssertTrue(selected.references(textlessBackdrop: online).contains(.remote(native)))
     }
 
@@ -99,7 +98,7 @@ final class LandscapeCardArtworkTests: XCTestCase {
         XCTAssertTrue(continuing.suppressesLogo(
             artworkAlreadyCarriesTitle: true, hasCurrentArtwork: true, textlessBackdropSuppressesLogo: false
         ))
-        XCTAssertTrue(continuing.suppressesLogo(
+        XCTAssertFalse(continuing.suppressesLogo(
             artworkAlreadyCarriesTitle: false, hasCurrentArtwork: true, textlessBackdropSuppressesLogo: true
         ))
         XCTAssertFalse(continuing.suppressesLogo(

@@ -680,8 +680,10 @@ final class StreamingPlaybackTests: XCTestCase {
         let (model, engine, provider) = make()
         await model.load()
         engine.currentTime = 123
+        XCTAssertEqual(engine.subtitleTracks.map(\.id), [6])
         model.selectAudioOption(id: 4)
         model.selectSubtitleOption(id: 6)
+        XCTAssertEqual(engine.selectedSubtitleID, 6)
         model.setPaused(true)
         model.setPlaybackSpeed(1.5)
         model.changeStreamingOptions(.init(quality: quality))

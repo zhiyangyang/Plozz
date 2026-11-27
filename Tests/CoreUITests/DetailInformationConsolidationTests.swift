@@ -63,7 +63,7 @@ final class DetailInformationConsolidationTests: XCTestCase {
         let headerRatings = DetailPageSettings.default.headerRatings(
             from: title.ratings, isAnime: false, hidesRatings: false
         )
-        XCTAssertEqual(headerRatings, [audience, critics])
+        XCTAssertEqual(headerRatings, [critics, audience])
         let sections = DetailInformationSections(item: title, horizontalInset: 22)
         XCTAssertEqual(sections.sortedRatings, [critics, audience, imdb, tmdb])
         XCTAssertTrue(headerRatings.allSatisfy(sections.sortedRatings.contains))

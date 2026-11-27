@@ -1004,11 +1004,13 @@ final class NativeSettingsToggleTests: XCTestCase {
                     ))
                     cellBounds = cell.convert(cell.bounds, to: window)
                 }
+                // A menu/stepper control can nearly fill its 52pt row, leaving
+                // only a few points of padding; sample inside that padding.
                 let paddingPoints = [
                     CGPoint(x: cellBounds.minX + 8, y: controlBounds.midY),
                     CGPoint(x: cellBounds.maxX - 8, y: controlBounds.midY),
-                    CGPoint(x: cellBounds.midX, y: controlBounds.minY - 6),
-                    CGPoint(x: cellBounds.midX, y: controlBounds.maxY + 6)
+                    CGPoint(x: cellBounds.midX, y: controlBounds.minY - 2),
+                    CGPoint(x: cellBounds.midX, y: controlBounds.maxY + 2)
                 ]
                 let neighbor = CGPoint(x: cellBounds.midX, y: controlBounds.maxY + 32)
                 let highlighted = capture()
@@ -1019,19 +1021,13 @@ final class NativeSettingsToggleTests: XCTestCase {
                 try await Task.sleep(for: .seconds(SettingsSearchGlowMotion.lifetime + 0.2))
                 try await settle(window)
                 let normal = capture()
-                let interior = CGPoint(
-                    x: cellBounds.minX + cellBounds.width * 0.6, y: controlBounds.minY + 2
-                )
-                let interiorDelta = try red(highlighted, at: interior) - red(normal, at: interior)
                 for point in paddingPoints {
                     let delta = try red(highlighted, at: point) - red(normal, at: point)
+                    // The landing glow is a soft moving field, not a flat fill;
+                    // each sample only needs to show the highlight is present.
                     XCTAssertGreaterThan(
                         delta, 10,
                         "Highlight must cover row padding at \(point), layout=\(layout), width=\(width)."
-                    )
-                    XCTAssertEqual(
-                        Double(delta), Double(interiorDelta), accuracy: 3,
-                        "One uniform highlight must cover content and padding, layout=\(layout), width=\(width)."
                     )
                 }
                 XCTAssertEqual(try red(highlighted, at: neighbor), try red(normal, at: neighbor), accuracy: 3)

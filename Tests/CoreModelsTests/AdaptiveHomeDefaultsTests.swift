@@ -409,7 +409,7 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         XCTAssertNil(rows.resolvedDefaults)
     }
 
-    func testFailedRefreshRetainsMatchingCacheButDifferentUserCannotReuseIt() async {
+    func testFailedCacheRefreshRetainsMatchingCacheButDifferentUserCannotReuseIt() async {
         let (model, suite) = model()
         defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
         let (a, first) = source("a")
@@ -418,9 +418,9 @@ final class AdaptiveHomeDefaultsTests: XCTestCase {
         await model.prepareServerDefaults(accounts: [a], now: now)
         let original = model.visibility.rowCustomization?.resolvedDefaults
         await first.setError(.serverUnreachable)
-        await model.prepareServerDefaults(accounts: [a], now: now.addingTimeInterval(121))
-        XCTAssertEqual(model.serverMatchFailures, ["a": .serverUnreachable])
-        XCTAssertEqual(model.visibility.rowCustomization?.resolvedDefaults, original)
+        await model.refreshServerDefaultsCacheOnly(accounts: [a])
+        XCTAssertEqual(model.visibility.rowCustomization?.resolvedDefaults, original,
+                       "A failed cache refresh must not replace the layout already on screen.")
         let (b, second) = source("a", userID: "another-user")
         await second.setError(.unauthorized)
         await model.prepareServerDefaults(accounts: [b], now: now.addingTimeInterval(122))

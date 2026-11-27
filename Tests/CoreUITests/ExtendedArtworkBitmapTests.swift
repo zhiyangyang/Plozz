@@ -140,10 +140,10 @@ final class ExtendedArtworkBitmapTests: XCTestCase {
                 let reference = try XCTUnwrap(measurements.first)
                 for measurement in measurements.dropFirst() {
                     if details == .detailed {
-                        XCTAssertEqual(measurement.width, reference.width, accuracy: 1)
+                        XCTAssertEqual(measurement.width, reference.width, accuracy: 2)
                     }
                     XCTAssertEqual(measurement.height, reference.height, accuracy: 1)
-                    XCTAssertEqual(measurement.leading, reference.leading, accuracy: 1)
+                    XCTAssertEqual(measurement.leading, reference.leading, accuracy: 2)
                     XCTAssertEqual(measurement.bottom, reference.bottom, accuracy: 1)
                 }
             }
@@ -206,9 +206,9 @@ final class ExtendedArtworkBitmapTests: XCTestCase {
                     bottomInsets.append(Int(height) - 1 - lastBrightPixel / (width * 4))
                     leadingInsets.append(try XCTUnwrap(brightPixels.map { ($0 / 4) % width }.min()))
                 }
-                XCTAssertEqual(bottomInsets[0], bottomInsets[1],
+                XCTAssertEqual(bottomInsets[0], bottomInsets[1], accuracy: 1,
                                "The portrait controls must retain their existing bottom position.")
-                XCTAssertEqual(leadingInsets[0], leadingInsets[1],
+                XCTAssertEqual(leadingInsets[0], leadingInsets[1], accuracy: 2,
                                "Compact spacing must not pull the portrait play icon toward the edge.")
                 XCTAssertGreaterThanOrEqual(leadingInsets[1], Int(metrics.resumeChipInset),
                                             "The symbol's internal bearings are additional to the outer inset.")

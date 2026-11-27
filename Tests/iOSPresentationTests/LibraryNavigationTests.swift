@@ -49,13 +49,12 @@ final class LibraryNavigationTests: XCTestCase {
         XCTAssertEqual(app.settings.discoveredLibraries.state.value?.count, 120)
         app.settings.homeVisibility.setEnabled(false, for: "jellyfin:library-1")
 
-        let profile = app.profiles.add(name: "Cache viewer", isAwaitingSetup: true)
-        app.profiles.select(profile.id)
-        app.profiles.setActiveAccountIDs(app.accounts.map(\.id), for: profile.id)
+        let profileID = app.profiles.activeProfileID
+        app.profiles.setActiveAccountIDs(app.accounts.map(\.id), for: profileID)
         app.refreshActiveProfileSettings()
         app.accountsProviders.reloadAccounts()
-        XCTAssertTrue(app.settings.homeVisibility.isEnabled("jellyfin:library-1"),
-                      "The cache shares inventories, never another profile's choices.")
+        XCTAssertFalse(app.settings.homeVisibility.isEnabled("jellyfin:library-1"),
+                       "Refreshing the shared library cache must preserve this profile's choices.")
         let started = expectation(description: "Background discovery reached a server")
         await fixture.pauseAll(started: started)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -99,8 +98,8 @@ final class LibraryNavigationTests: XCTestCase {
             XCTAssertEqual(app.settings.discoveredLibraries.state.value?.count, 120)
             XCTAssertTrue(app.settings.discoveredLibraries.refreshingAccountIDs.isEmpty)
             let top = try visibleText("Twenty cached servers before any live response")
-            XCTAssertEqual(top.filter { $0.contains("Saved for") }.count, 1)
-            XCTAssertTrue(top.contains { $0.contains("Cache viewer") })
+            XCTAssertEqual(top.filter { $0.contains("Saved for") }.count, 0,
+                           "A single implicit profile does not need a profile header.")
             XCTAssertFalse(top.contains { $0.contains("Loading libraries") || $0.contains("Pick the servers") })
             XCTAssertFalse(top.contains { $0.contains("Saved for profile") })
             for enabled in [false, true, false, true] {
@@ -109,7 +108,7 @@ final class LibraryNavigationTests: XCTestCase {
                 })
                 control.setOn(enabled, animated: false)
                 control.sendActions(for: .valueChanged)
-                XCTAssertEqual(app.activeAccountIDs(for: profile.id).count, enabled ? 20 : 19)
+                XCTAssertEqual(app.activeAccountIDs(for: profileID).count, enabled ? 20 : 19)
                 try await waitUntil(window: window) {
                     app.settings.discoveredLibraries.state.value?.count == (enabled ? 120 : 114)
                 }

@@ -110,7 +110,7 @@ public struct SettingsCheckableRow: View {
                 SettingsCheckmark(isChecked: isChecked, prominence: prominence)
             }
             .frame(minHeight: ownsGroupInsets ? 44 : minRowHeight)
-            .padding(.vertical, ownsGroupInsets ? 12 : verticalPadding)
+            .padding(.vertical, ownsGroupInsets ? MobileSettingsMetrics.controlVerticalInset : verticalPadding)
             .padding(.horizontal, ownsGroupInsets ? 16 : labelInset)
             .contentShape(Rectangle())
             .opacity(isEnabled ? 1 : 0.35)

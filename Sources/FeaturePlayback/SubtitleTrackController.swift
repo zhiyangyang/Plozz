@@ -569,6 +569,12 @@ final class SubtitleTrackController {
     /// Selects a subtitle track, or turns subtitles off (`PlayerTrackOption.offID`).
     /// `userInitiated` is `true` for a real menu pick (remembered for the series)
     /// and `false` for the programmatic load-time default.
+    /// Records a subtitle that is being prepared by a server rendition restart,
+    /// before the engine exposes the replacement stream.
+    func markSelectedSubtitle(id: Int?) {
+        selectedSubtitleTrackID = id
+    }
+
     func selectSubtitleOption(id: Int, userInitiated: Bool = true) {
         guard let host else { return }
         let engine = host.trackEngine

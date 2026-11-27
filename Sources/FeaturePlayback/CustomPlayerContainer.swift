@@ -403,6 +403,7 @@ final class PlayerInputViewController: UIViewController, UIGestureRecognizerDele
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        installGestures()
     }
 
     override func viewDidLayoutSubviews() {

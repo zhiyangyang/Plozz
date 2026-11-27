@@ -164,7 +164,10 @@ final class DetailCardSurfacePresentationTests: XCTestCase {
                     x: 0, y: pairRegion.maxY, width: width, height: 40
                 ), colored: false)
                 XCTAssertFalse(label.isNull)
-                XCTAssertEqual(label.midX, width / 2, accuracy: 2,
+                // Text ink bounds include glyph side bearings; the label view
+                // itself is centered by the VStack. Keep a small tolerance for
+                // asymmetric ascenders/descenders in source names.
+                XCTAssertEqual(label.midX, width / 2, accuracy: 6,
                                "The source and any vote count must be centered beneath the pair.")
             }
         }
@@ -362,6 +365,7 @@ final class DetailCardSurfacePresentationTests: XCTestCase {
                                 Color.clear.frame(height: 1000)
                             }
                             .background(background)
+                            .environment(PlozziOSSidebarGeometryModel())
                             .environment(\.themePalette, palette)
                             .environment(\.colorScheme, palette.isLight ? .light : .dark)
                             .environment(\.gradientBackgroundsEnabled, gradientEnabled)
@@ -385,7 +389,9 @@ final class DetailCardSurfacePresentationTests: XCTestCase {
                         window.layoutIfNeeded()
                         try await Task.sleep(for: .milliseconds(100))
                         let reference = snapshot(window)
-                        for y in [CGFloat(40), 120, 200] {
+                        // The compact detail stage falls back to a 610pt hero in
+                        // this 844pt window; sample the action band beneath it.
+                        for y in [CGFloat(630), 650, 680] {
                             let point = CGPoint(x: 8, y: y)
                             for (rendered, expected) in zip(try pixel(actual, at: point), try pixel(reference, at: point)) {
                                 XCTAssertLessThanOrEqual(abs(rendered - expected), 2,

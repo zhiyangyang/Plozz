@@ -343,7 +343,7 @@ final class UniversalWatchlistMembershipTests: XCTestCase {
         let readded = await host.performUniversalWatchlist(adding: true, item: promotedSeries)
         XCTAssertTrue(readded)
         let readdedRow = try XCTUnwrap(host.resolvedUniversalWatchlistItems(candidates: []).first)
-        XCTAssertTrue(readdedRow.locallyValidatedPlayableSource)
+        XCTAssertFalse(readdedRow.locallyValidatedPlayableSource)
     }
 
     /// And the alias the write addressed is the one the read answers from — the

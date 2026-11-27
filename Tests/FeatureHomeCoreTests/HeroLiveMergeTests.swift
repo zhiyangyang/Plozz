@@ -70,20 +70,28 @@ final class HeroLiveMergeTests: XCTestCase {
         fresh.providerIDs = showing.providerIDs
         fresh.sources = [.init(accountID: "server", itemID: "physical", kind: .movie)]
         fresh.locallyValidatedPlayableSource = true
-        let upgraded = try XCTUnwrap(HeroLiveMerge.merge(
+
+        // A preserved lineup keeps the slide the viewer is looking at; its
+        // catalog identity must not be replaced by a different physical record.
+        let pinned = try XCTUnwrap(HeroLiveMerge.merge(
             showing: [showing], fresh: [fresh], limit: 20, preservesLineup: true
         ).items.first)
-        XCTAssertEqual(upgraded.stablePresentationID, showing.stablePresentationID)
+        XCTAssertEqual(pinned.stablePresentationID, showing.stablePresentationID)
+        XCTAssertTrue(pinned.sources.isEmpty)
+
+        // A normal refresh may adopt the verified physical copy.
+        let upgraded = try XCTUnwrap(HeroLiveMerge.merge(
+            showing: [showing], fresh: [fresh], limit: 20, preservesLineup: false
+        ).items.first)
         XCTAssertEqual(upgraded.sources, fresh.sources)
         XCTAssertTrue(upgraded.locallyValidatedPlayableSource)
 
-        var rejected = showing
+        var rejected = upgraded
         rejected.locallyValidatedPlayableSource = false
         rejected.sources = []
         let revoked = try XCTUnwrap(HeroLiveMerge.merge(
-            showing: [upgraded], fresh: [rejected], limit: 20, preservesLineup: true
+            showing: [upgraded], fresh: [rejected], limit: 20, preservesLineup: false
         ).items.first)
-        XCTAssertEqual(revoked.stablePresentationID, showing.stablePresentationID)
         XCTAssertFalse(revoked.locallyValidatedPlayableSource)
         XCTAssertTrue(revoked.sources.isEmpty)
     }
@@ -100,8 +108,13 @@ final class HeroLiveMergeTests: XCTestCase {
             showing: [showing], fresh: [fresh], limit: 20, preservesLineup: true
         ).items.first)
         XCTAssertEqual(retained.stablePresentationID, showing.stablePresentationID)
-        XCTAssertEqual(retained.sources, fresh.sources)
+        XCTAssertEqual(retained.sources, showing.sources)
         XCTAssertTrue(retained.locallyValidatedPlayableSource)
+
+        let refreshed = try XCTUnwrap(HeroLiveMerge.merge(
+            showing: [showing], fresh: [fresh], limit: 20, preservesLineup: false
+        ).items.first)
+        XCTAssertEqual(refreshed.sources, fresh.sources)
     }
 
     func testFirstCurationIsAdoptedWhole() {

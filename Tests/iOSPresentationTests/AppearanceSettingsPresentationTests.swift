@@ -95,12 +95,12 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
         return Array(bytes[offset..<(offset + 4)])
     }
 
-    func testThemePreviewsLeadAppearanceAndMusicPrecedesOtherPages() async throws {
+    func testThemePreviewsLeadAppearanceAndSectionsFollowInOrder() async throws {
         for width: CGFloat in [320, 390, 834] {
             for palette in [ThemePalette.dark, .light] {
                 try await mount(width: width, palette: palette) { window, _ in
                     let frames = try self.textFrames(window)
-                    for title in ["System", "Light", "Dark", "Black", "Gradient Backgrounds", "Liquid Glass", "Music player"] {
+                    for title in ["System", "Light", "Dark", "Black", "Gradient Backgrounds", "Liquid Glass"] {
                         XCTAssertNotNil(frames[title], "\(title) at width \(width)")
                     }
                     let light = try XCTUnwrap(frames["Light"])
@@ -111,8 +111,6 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
                         // OCR ink bounds differ slightly for the descender in "Light".
                         XCTAssertEqual(dark.midY, light.midY, accuracy: 4, "Wide panes use a single preview row")
                     }
-                    let music = try XCTUnwrap(frames["Music player"])
-                    XCTAssertGreaterThan(music.minY, try XCTUnwrap(frames["Liquid Glass"]).maxY)
                     let attachment = XCTAttachment(image: UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
                         window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
                     })
@@ -132,9 +130,6 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
                     let circadian = try XCTUnwrap(bottom["Circadian Mode"])
                     XCTAssertLessThan(cards.maxY, artwork.minY)
                     XCTAssertLessThan(artwork.maxY, circadian.minY)
-                    if let music = bottom["Music player"] {
-                        XCTAssertLessThan(music.maxY, cards.minY)
-                    }
                 }
             }
         }
@@ -154,18 +149,24 @@ final class AppearanceSettingsPresentationTests: XCTestCase {
                 found.formUnion(try self.textFrames(window).keys)
                 if found.contains("Artwork"), found.contains("Circadian Mode") { break }
             }
-            for title in ["System", "Light", "Dark", "Black", "Music player", "Cards", "Artwork"] {
+            for title in ["System", "Light", "Dark", "Black", "Cards", "Artwork"] {
                 XCTAssertTrue(found.contains(title), "\(title) must remain reachable at accessibility sizes")
             }
         }
     }
 
-    func testThemeChangesPersistWithoutChangingMusicAppearance() async throws {
+    func testThemeChangesPersistAcrossPickerOptions() async throws {
         try await mount(width: 390, palette: .dark) { window, theme in
             for option in AppTheme.pickerOrder {
                 theme.theme = option
                 try await Task.sleep(for: .milliseconds(100))
-                XCTAssertNotNil(try self.textFrames(window)[String(localized: option.displayName)])
+                let expectedName: String = switch option {
+                case .pureBlack: "Black"
+                case .dark: "Dark"
+                case .light: "Light"
+                case .system: "System"
+                }
+                XCTAssertNotNil(try self.textFrames(window)[expectedName])
             }
         }
     }

@@ -116,8 +116,8 @@ final class SettingsCommunityPresentationTests: XCTestCase {
                 compatibleWith: UITraitCollection(preferredContentSizeCategory:
                     textSize == .accessibility3 ? .accessibilityExtraLarge : .large)
             )
-            let titles = try ["Playback", "Subtitles", "Libraries", "Appearance",
-                              "Screens", "Language"].enumerated().map { index, title in
+            let titles = try ["Playback", "Subtitles", "Libraries", "Downloads",
+                              "Appearance", "Screens", "Language"].enumerated().map { index, title in
                 // Recognize each row at native resolution rather than downsampling the tall category list.
                 let rowTop = index * 180
                 let row = try XCTUnwrap(image.cropping(to: CGRect(x: 0, y: rowTop, width: image.width, height: 180)))
@@ -287,11 +287,34 @@ final class SettingsCommunityPresentationTests: XCTestCase {
                     request.recognitionLanguages = ["en-US"]
                     try VNImageRequestHandler(cgImage: image).perform([request])
                     func bounds(for label: String) throws -> CGRect {
-                        let candidate = try XCTUnwrap(request.results?.compactMap {
+                        let candidates = request.results?.compactMap {
                             $0.topCandidates(1).first
-                        }.first { $0.string.contains(label) })
-                        let range = try XCTUnwrap(candidate.string.range(of: label))
-                        return try XCTUnwrap(candidate.boundingBox(for: range)).boundingBox
+                        } ?? []
+                        let target = label.replacingOccurrences(of: " ", with: "")
+                        // Vision may split a wrapped label into multiple observations
+                        // ("Discor" + "d" at accessibility sizes), so match consecutive
+                        // observations and union the boxes to cover the whole label.
+                        for start in candidates.indices {
+                            var accumulated = ""
+                            var boxes: [CGRect] = []
+                            for end in start..<candidates.count {
+                                let candidate = candidates[end]
+                                accumulated += candidate.string.replacingOccurrences(
+                                    of: " ", with: ""
+                                )
+                                if let observation = try candidate.boundingBox(
+                                    for: candidate.string.startIndex..<candidate.string.endIndex
+                                ) {
+                                    boxes.append(observation.boundingBox)
+                                }
+                                if accumulated.hasPrefix(target) || accumulated.hasSuffix(target) {
+                                    return boxes.reduce(CGRect.null) { $0.union($1) }
+                                }
+                                guard target.hasPrefix(accumulated) else { break }
+                            }
+                        }
+                        XCTFail("OCR did not find \(label): \(candidates.map(\.string))")
+                        return .zero
                     }
                     let discord = try bounds(for: "Discord")
                     let github = try bounds(for: "GitHub")
@@ -478,9 +501,9 @@ final class SettingsCommunityPresentationTests: XCTestCase {
                 XCTAssertTrue(text.contains("Fam"), "Keep part of the source name, not only an ellipsis: \(text)")
                 XCTAssertTrue(text.contains("+3"), text)
             } else {
-                XCTAssertTrue(text.contains("Family Plex"), text)
+                XCTAssertTrue(text.lowercased().contains("family plex"), text)
                 let visibleCount = ["Family Plex", "Cinema Server", "Archive NAS"]
-                    .filter { text.contains($0) }.count
+                    .filter { text.lowercased().contains($0.lowercased()) }.count
                 XCTAssertTrue(text.contains("+\(4 - visibleCount) more"), text)
                 if width == 768 { XCTAssertEqual(visibleCount, 3, text) }
             }
@@ -552,8 +575,9 @@ final class SettingsCommunityPresentationTests: XCTestCase {
     }
 
     private func assertCommunity(in text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let compact = text.replacingOccurrences(of: " ", with: "")
         for label in ["Discord", "GitHub"] {
-            XCTAssertTrue(text.contains(label), "Missing \(label): \(text)", file: file, line: line)
+            XCTAssertTrue(compact.contains(label), "Missing \(label): \(text)", file: file, line: line)
         }
         for label in ["QR Codes", "Join the community", "Source code and issues"] {
             XCTAssertFalse(text.contains(label), "Remove redundant mobile community content: \(text)", file: file, line: line)

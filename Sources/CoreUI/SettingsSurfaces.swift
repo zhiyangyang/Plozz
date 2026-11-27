@@ -142,7 +142,6 @@ private struct PlozzSurfaceModifier<SurfaceShape: InsettableShape>: ViewModifier
     let level: SurfaceLevel
     let shape: SurfaceShape
     var surfaceOverride: SurfaceStyle? = nil
-    var opaqueGradient = false
 
     func body(content: Content) -> some View {
         let style = surfaceOverride ?? palette.surface(level)
@@ -152,17 +151,7 @@ private struct PlozzSurfaceModifier<SurfaceShape: InsettableShape>: ViewModifier
                     if level == .overlay {
                         PlozzDialogBackground().clipShape(shape)
                     } else {
-                        #if os(iOS)
-                        if opaqueGradient {
-                            NativeGradientCardFill(surface: cardSurface, fill: style.fill)
-                                .background(palette.raised.fill)
-                                .clipShape(shape)
-                        } else {
-                            shape.fill(style.fill)
-                        }
-                        #else
                         shape.fill(style.fill)
-                        #endif
                     }
                 }
                     .overlay {
@@ -201,8 +190,7 @@ private struct SettingsGroupSurface<SurfaceShape: InsettableShape>: ViewModifier
         #if os(iOS)
         content.modifier(PlozzSurfaceModifier(
             level: .raised, shape: shape,
-            surfaceOverride: gradientEnabled ? palette.gradientSurface : nil,
-            opaqueGradient: gradientEnabled && reduceTransparency
+            surfaceOverride: gradientEnabled && !reduceTransparency ? palette.gradientSurface : nil
         ))
         #else
         let translucent = gradientEnabled && !reduceTransparency

@@ -457,16 +457,23 @@ final class OfflineModePresentationTests: XCTestCase {
 
     private func revealOfflineToggle(in window: UIWindow) async throws {
         for _ in 0..<12 {
-            if let toggle = descendants(window).compactMap({ $0 as? UISwitch }).first(where: {
-                $0.accessibilityIdentifier == "offline-mode-toggle"
-                    && window.bounds.insetBy(dx: 0, dy: 80).contains($0.convert($0.bounds, to: window))
-            }) {
-                XCTAssertTrue(toggle.isOn)
-                return
+            // The offline toggle is the first switch in the list; SwiftUI's
+            // accessibility identifier lives in its accessibility tree rather
+            // than on the backing UISwitch.
+            if let toggle = descendants(window).compactMap({ $0 as? UISwitch }).first {
+                let frame = toggle.convert(toggle.bounds, to: window)
+                if window.bounds.insetBy(dx: 0, dy: 80).contains(frame) {
+                    XCTAssertTrue(toggle.isOn)
+                    return
+                }
             }
-            for scroll in descendants(window).compactMap({ $0 as? UIScrollView }) where scroll.contentSize.height > scroll.bounds.height {
-                let maximum = scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom
-                scroll.setContentOffset(CGPoint(x: 0, y: min(maximum, scroll.contentOffset.y + 180)), animated: false)
+            for scroll in descendants(window).compactMap({ $0 as? UIScrollView })
+            where scroll.contentSize.height > scroll.bounds.height {
+                let minimum = -scroll.adjustedContentInset.top
+                scroll.setContentOffset(
+                    CGPoint(x: 0, y: max(minimum, scroll.contentOffset.y - 180)),
+                    animated: false
+                )
             }
             await settle(window)
         }

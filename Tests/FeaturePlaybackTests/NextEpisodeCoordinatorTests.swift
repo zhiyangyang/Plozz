@@ -503,13 +503,17 @@ final class NextEpisodeCoordinatorTests: XCTestCase {
     func testUpNextMetaSeasonEpisodeAndRuntime() {
         let item = MediaItem(id: "e", title: "E", kind: .episode,
                              seasonNumber: 2, episodeNumber: 3, runtime: 48 * 60)
-        XCTAssertEqual(NextEpisodeCoordinator.upNextMeta(for: item), "S2 · E3 · 48m")
+        XCTAssertEqual(
+            NextEpisodeCoordinator.upNextMeta(for: item, locale: Locale(identifier: "en")),
+            "S2 · E3 · 48m"
+        )
     }
 
     func testUpNextRuntimeLabelHoursAndMinutes() {
-        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(48 * 60), "48m")
-        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(62 * 60), "1h 2m")
-        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(60 * 60), "1h")
+        let english = Locale(identifier: "en")
+        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(48 * 60, locale: english), "48m")
+        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(62 * 60, locale: english), "1h 2m")
+        XCTAssertEqual(NextEpisodeCoordinator.upNextRuntimeLabel(60 * 60, locale: english), "1h")
     }
 }
 

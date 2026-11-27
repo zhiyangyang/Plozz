@@ -148,7 +148,7 @@ final class PlexExtraResumeTests: XCTestCase {
         XCTAssertNil(finished.resumePosition)
     }
 
-    func testProviderUsesFallbackInItemExtrasTrailersAndPlaybackRequest() async throws {
+    func testProviderUsesFallbackInItemExtrasAndPlaybackRequest() async throws {
         let provider = PlexProvider(
             session: session(), localMediaContext: context(),
             durableStore: try DurableLocalStateStore(secureStore: InMemorySecureStore()), http: ExtraHTTP()
@@ -205,10 +205,10 @@ private actor ExtraHTTP: HTTPClient {
         if endpoint.path.contains("timeline") { timelineCount += 1 }
         if endpoint.path.contains("timeline"), timelineFailure { throw AppError.invalidResponse }
         let body = endpoint.path.contains("/library/metadata/") ? """
-        {"MediaContainer":{"Metadata":[{"ratingKey":"extra","type":"clip","title":"Trailer",
-        "extraType":1,"duration":45000,
+        {"MediaContainer":{"Metadata":[{"ratingKey":"extra","type":"clip","title":"Behind the Scenes",
+        "extraType":2,"duration":45000,
         "Media":[{"id":1,"container":"mp4","videoCodec":"h264","audioCodec":"aac",
-          "Part":[{"id":2,"key":"/library/parts/2/file.mp4","file":"/movies/trailer.mp4",
+          "Part":[{"id":2,"key":"/library/parts/2/file.mp4","file":"/movies/behind-the-scenes.mp4",
                    "container":"mp4","Stream":[]}]}]}]}}
         """ : "{}"
         return (Data(body.utf8), HTTPURLResponse(url: baseURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)

@@ -97,7 +97,6 @@ public struct BrowseFilterMenu<Content: View>: View {
 }
 
 public struct BrowseFilterLabel: View {
-    @Environment(\.locale) private var locale
     private let activeCount: Int
     private let summary: String
 
@@ -109,7 +108,7 @@ public struct BrowseFilterLabel: View {
     public var body: some View {
         ViewThatFits(in: .horizontal) {
             Label {
-                Text(verbatim: selection)
+                selection
             } icon: {
                 Image(systemName: symbolName)
             }
@@ -123,7 +122,7 @@ public struct BrowseFilterLabel: View {
                 .fixedSize()
             }
         }
-        .accessibilityLabel(Text("Filter: \(selection)"))
+        .accessibilityLabel(Text("Filter: ") + selection)
     }
 
     private var symbolName: String {
@@ -134,10 +133,10 @@ public struct BrowseFilterLabel: View {
         #endif
     }
 
-    private var selection: String {
-        if activeCount == 0 {
-            return String(localized: "All", locale: locale) // l10n:content — resolves the shared unfiltered choice
-        }
-        return summary
+    private var selection: Text {
+        // Keep the unfiltered choice as a `Text`: resolving it eagerly through
+        // `String(localized:locale:)` bypasses SwiftUI's key fallback when the
+        // catalog has no explicit source-language entry.
+        activeCount == 0 ? Text("All") : Text(verbatim: summary)
     }
 }

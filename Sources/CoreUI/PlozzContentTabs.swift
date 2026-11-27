@@ -67,9 +67,9 @@ public struct PlozzContentTabs<Option, ID: Hashable>: View {
             .onChange(of: selection, initial: true) { old, new in
                 guard let new else { return }
                 if old != new, old != nil, !reduceMotion {
-                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(new) }
+                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(new, anchor: .center) }
                 } else {
-                    proxy.scrollTo(new)
+                    proxy.scrollTo(new, anchor: .center)
                 }
             }
             .onChange(of: options.map { $0[keyPath: id] }) { _, _ in revealSelection(using: proxy) }
@@ -81,7 +81,7 @@ public struct PlozzContentTabs<Option, ID: Hashable>: View {
     }
 
     private func revealSelection(using proxy: ScrollViewProxy) {
-        if let selection { proxy.scrollTo(selection) }
+        if let selection { proxy.scrollTo(selection, anchor: .center) }
     }
 }
 #endif

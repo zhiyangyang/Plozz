@@ -6,11 +6,11 @@ final class TrackLabelingTests: XCTestCase {
     // MARK: language name resolution
 
     func testLanguageNameResolvesAlpha2AndAlpha3() {
-        XCTAssertEqual(TrackLabeling.languageName(forCode: "en"), "English")
-        XCTAssertEqual(TrackLabeling.languageName(forCode: "eng"), "English")
-        XCTAssertEqual(TrackLabeling.languageName(forCode: "fra"), "French")
-        XCTAssertEqual(TrackLabeling.languageName(forCode: "fre"), "French")
-        XCTAssertEqual(TrackLabeling.languageName(forCode: "es"), "Spanish")
+        XCTAssertEqual(TrackLabeling.languageName(forCode: "en", in: Locale(identifier: "en")), "English")
+        XCTAssertEqual(TrackLabeling.languageName(forCode: "eng", in: Locale(identifier: "en")), "English")
+        XCTAssertEqual(TrackLabeling.languageName(forCode: "fra", in: Locale(identifier: "en")), "French")
+        XCTAssertEqual(TrackLabeling.languageName(forCode: "fre", in: Locale(identifier: "en")), "French")
+        XCTAssertEqual(TrackLabeling.languageName(forCode: "es", in: Locale(identifier: "en")), "Spanish")
     }
 
     func testLanguageNameRejectsNilEmptyAndUnknown() {
@@ -144,7 +144,7 @@ final class TrackLabelingTests: XCTestCase {
             TrackLabeling.subtitleLabel(
                 displayTitle: "Track 3", sourceTitle: "Signs & Songs", language: nil, codec: "srt",
                 isForced: false, isImageBased: false, trackID: 3
-            ),
+            , locale: Locale(identifier: "en")),
             TrackLabel(base: .content("Signs & Songs"))
         )
         XCTAssertEqual(
@@ -245,7 +245,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "Track 3", language: "eng", codec: "subrip",
             isForced: false, isImageBased: false, trackID: 3
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("English")))
     }
 
@@ -253,7 +253,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "English", language: "en", codec: "subrip",
             isForced: true, isImageBased: false, trackID: 1
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("English"), qualifiers: [.forced]))
     }
 
@@ -261,7 +261,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "Spanish", language: "spa", codec: "pgssub",
             isForced: false, isImageBased: true, trackID: 4
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("Spanish"), qualifiers: [.format("PGS")]))
     }
 
@@ -269,7 +269,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "Track 8 (pgssub)", language: nil, codec: "pgssub",
             isForced: false, isImageBased: true, trackID: 8
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .trackNumber(8), qualifiers: [.format("PGS")]))
     }
 
@@ -277,7 +277,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "Track 2", language: nil, codec: "subrip",
             isForced: false, isImageBased: false, detectedLanguage: "es", trackID: 2
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("Spanish"), qualifiers: [.autoDetected]))
     }
 
@@ -285,7 +285,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "Track 2", language: "en", codec: "subrip",
             isForced: false, isImageBased: false, detectedLanguage: "es", trackID: 2
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("English")))
     }
 
@@ -293,7 +293,7 @@ final class TrackLabelingTests: XCTestCase {
         let label = TrackLabeling.subtitleLabel(
             displayTitle: "English (SDH)", language: "en", codec: "subrip",
             isForced: false, isImageBased: false, trackID: 5
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("English"), qualifiers: [.hearingImpaired]))
     }
 
@@ -309,7 +309,7 @@ final class TrackLabelingTests: XCTestCase {
             isForced: true, isImageBased: true,
             isHearingImpaired: true, isCommentary: true,
             detectedLanguage: "es", trackID: 9
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(
             base: .content("Spanish"),
             qualifiers: [.forced, .hearingImpaired, .commentary, .format("PGS"), .autoDetected]
@@ -409,16 +409,16 @@ final class TrackLabelingTests: XCTestCase {
     func testGeneratedAudioTitleUsesKnownFormatWithoutDefaultMarker() {
         for title in ["AC3 5.1 (Default)", "AC-3 - 5.1 (default)", "Dolby Digital 5.1", "AC3"] {
             XCTAssertEqual(
-                TrackLabeling.audioLabel(displayTitle: title, language: nil, codec: "ac3", channels: 6, trackID: 1),
+                TrackLabeling.audioLabel(displayTitle: title, language: nil, codec: "ac3", channels: 6, trackID: 1, locale: Locale(identifier: "en")),
                 TrackLabel(base: .content("Dolby Digital 5.1")), title
             )
         }
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "E-AC-3 5.1 (Default)", language: nil, codec: "e-ac-3", channels: 6, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "E-AC-3 5.1 (Default)", language: nil, codec: "e-ac-3", channels: 6, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("Dolby Digital+ 5.1"))
         )
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "AAC 2.0 (Default)", language: nil, codec: "aac", channels: 2, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "AAC 2.0 (Default)", language: nil, codec: "aac", channels: 2, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("AAC Stereo"))
         )
     }
@@ -443,20 +443,20 @@ final class TrackLabelingTests: XCTestCase {
     func testFormatCleanupDoesNotEraseCustomTitlesOrInventMissingFacts() {
         for title in ["Original theatrical 5.1", "Director's Default"] {
             XCTAssertEqual(
-                TrackLabeling.audioLabel(displayTitle: title, language: nil, codec: "ac3", channels: 6, trackID: 1),
+                TrackLabeling.audioLabel(displayTitle: title, language: nil, codec: "ac3", channels: 6, trackID: 1, locale: Locale(identifier: "en")),
                 TrackLabel(base: .content(title), qualifiers: [.format("Dolby Digital 5.1")])
             )
         }
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "AC3 5.1 Director's Mix", language: nil, codec: "ac3", channels: 6, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "AC3 5.1 Director's Mix", language: nil, codec: "ac3", channels: 6, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("AC3 5.1 Director's Mix"))
         )
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "AC3 5.1 (Default)", language: nil, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "AC3 5.1 (Default)", language: nil, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("AC3 5.1")), "Do not guess structured codec/channel facts from a title"
         )
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "English Commentary (Default)", language: "en", codec: "ac3", channels: 6, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "English Commentary (Default)", language: "en", codec: "ac3", channels: 6, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English Commentary"), qualifiers: [.format("Dolby Digital 5.1")])
         )
     }
@@ -464,7 +464,7 @@ final class TrackLabelingTests: XCTestCase {
     func testAudioLabelKeepsRichProviderTitle() {
         let label = TrackLabeling.audioLabel(
             displayTitle: "English - Dolby Digital - 5.1", language: "en", trackID: 1
-        )
+        , locale: Locale(identifier: "en"))
         XCTAssertEqual(label, TrackLabel(base: .content("English - Dolby Digital - 5.1")))
     }
 
@@ -584,21 +584,21 @@ final class TrackLabelingTests: XCTestCase {
             TrackLabeling.audioLabel(
                 displayTitle: "[HR] 5.1 Channels (Doc_Ramen)",
                 language: "ja", codec: "opus", channels: 6, trackID: 1
-            ),
+            , locale: Locale(identifier: "en")),
             TrackLabel(base: .content("Japanese"), qualifiers: [.format("Opus 5.1")])
         )
         XCTAssertEqual(
             TrackLabeling.audioLabel(
                 displayTitle: "[HR] 5.1 Channels (Doc_Ramen)",
                 language: "en", codec: "opus", channels: 6, trackID: 2
-            ),
+            , locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English"), qualifiers: [.format("Opus 5.1")])
         )
         XCTAssertEqual(
             TrackLabeling.audioLabel(
                 displayTitle: "[HR] 5.1 Channels (Doc_Ramen)",
                 language: "fr", codec: "opus", channels: 6, trackID: 3
-            ),
+            , locale: Locale(identifier: "en")),
             TrackLabel(base: .content("French"), qualifiers: [.format("Opus 5.1")])
         )
     }
@@ -607,7 +607,7 @@ final class TrackLabelingTests: XCTestCase {
         XCTAssertEqual(
             TrackLabeling.audioLabel(
                 displayTitle: "Japanese Commentary", language: "ja", codec: "aac", channels: 2, trackID: 1
-            ),
+            , locale: Locale(identifier: "en")),
             TrackLabel(base: .content("Japanese Commentary"), qualifiers: [.format("AAC Stereo")])
         )
     }
@@ -647,11 +647,11 @@ final class TrackLabelingTests: XCTestCase {
 
     func testAudioLabelReplacesGenericWithLanguage() {
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 2", language: "fra", trackID: 2),
+            TrackLabeling.audioLabel(displayTitle: "Track 2", language: "fra", trackID: 2, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("French"))
         )
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 2", language: nil, trackID: 2),
+            TrackLabeling.audioLabel(displayTitle: "Track 2", language: nil, trackID: 2, locale: Locale(identifier: "en")),
             TrackLabel(base: .trackNumber(2))
         )
     }
@@ -736,18 +736,18 @@ final class TrackLabelingTests: XCTestCase {
 
     func testAudioLabelAppendsFormatToGenericTrack() {
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 1", language: nil, codec: "dts", channels: 8, trackID: 1),
+            TrackLabeling.audioLabel(displayTitle: "Track 1", language: nil, codec: "dts", channels: 8, trackID: 1, locale: Locale(identifier: "en")),
             TrackLabel(base: .trackNumber(1), qualifiers: [.format("DTS 7.1")])
         )
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 3", language: "eng", codec: "ac3", channels: 6, trackID: 3),
+            TrackLabeling.audioLabel(displayTitle: "Track 3", language: "eng", codec: "ac3", channels: 6, trackID: 3, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English"), qualifiers: [.format("Dolby Digital 5.1")])
         )
     }
 
     func testAudioLabelAppendsCommentary() {
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 4", language: "eng", codec: "ac3", channels: 2, isCommentary: true, trackID: 4),
+            TrackLabeling.audioLabel(displayTitle: "Track 4", language: "eng", codec: "ac3", channels: 2, isCommentary: true, trackID: 4, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English"), qualifiers: [.format("Dolby Digital Stereo"), .commentary])
         )
     }
@@ -757,7 +757,7 @@ final class TrackLabelingTests: XCTestCase {
     /// format hint, then channel count, then Commentary.
     func testAudioLabelQualifierOrderWithUnnamedChannelCount() {
         XCTAssertEqual(
-            TrackLabeling.audioLabel(displayTitle: "Track 5", language: "eng", codec: "dts", channels: 10, isCommentary: true, trackID: 5),
+            TrackLabeling.audioLabel(displayTitle: "Track 5", language: "eng", codec: "dts", channels: 10, isCommentary: true, trackID: 5, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English"), qualifiers: [.format("DTS"), .channelCount(10), .commentary])
         )
     }
@@ -767,7 +767,7 @@ final class TrackLabelingTests: XCTestCase {
         XCTAssertEqual(
             TrackLabeling.subtitleLabel(displayTitle: "English", language: "eng", codec: "subrip",
                                         isForced: false, isImageBased: false,
-                                        isHearingImpaired: true, trackID: 3),
+                                        isHearingImpaired: true, trackID: 3, locale: Locale(identifier: "en")),
             TrackLabel(base: .content("English"), qualifiers: [.hearingImpaired])
         )
     }

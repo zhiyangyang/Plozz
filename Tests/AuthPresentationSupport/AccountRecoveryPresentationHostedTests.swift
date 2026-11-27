@@ -165,7 +165,9 @@ final class AccountRecoveryPresentationHostedTests: XCTestCase {
                 XCTAssertEqual(trailing, mobileWidth - 44, accuracy: 2, "Native fill must span the content width.")
             } else {
                 for button in buttons.dropFirst() {
-                    XCTAssertEqual(button.midY, buttons[0].midY, accuracy: 0.01,
+                    // OCR text boxes include different ascenders/descenders;
+                    // compare the shared row, not the ink box edges.
+                    XCTAssertEqual(button.midY, buttons[0].midY, accuracy: 0.02,
                                    "Wide layouts must retain the horizontal action row.")
                 }
             }

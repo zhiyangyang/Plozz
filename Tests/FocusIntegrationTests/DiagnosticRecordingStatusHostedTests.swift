@@ -43,7 +43,7 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
         }.first { $0.accessibilityIdentifier == "diagnostic-recording-status" })
         XCTAssertFalse(badge.window === window)
         XCTAssertGreaterThan(try XCTUnwrap(badge.window).windowLevel, window.windowLevel)
-        try await assertVisibleText("Preparing recording", in: scene)
+        try await assertVisibleText(String(localized: DiagnosticRecordingPhase.preparing.text), in: scene)
         let directory = try FileManager.default.url(
             for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: false
         )
@@ -101,15 +101,16 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
         XCTAssertNil(overlay.hitTest(CGPoint(x: 40, y: 40), with: nil))
         XCTAssertFalse(badge.canBecomeFocused)
         XCTAssertFalse(badge.isUserInteractionEnabled)
-        XCTAssertEqual(badge.accessibilityLabel, String(localized: DiagnosticRecordingPhase.recording.text))
-        XCTAssertEqual(badge.text, "  \u{25CF}  Recording  ")
+        let recordingText = String(localized: DiagnosticRecordingPhase.recording.text)
+        XCTAssertEqual(badge.accessibilityLabel, recordingText)
+        XCTAssertEqual(badge.text, "  \u{25CF}  \(recordingText)  ")
         XCTAssertEqual(
             badge.attributedText?.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? UIColor,
             .systemRed
         )
         XCTAssertTrue(overlay.bounds.contains(badge.convert(badge.bounds, to: overlay)))
         XCTAssertEqual(badge.layer.animation(forKey: "recording-expiry")?.duration, 15)
-        let screenshot = try await assertVisibleText("Recording", in: scene)
+        let screenshot = try await assertVisibleText(recordingText, in: scene)
         let attachment = XCTAttachment(image: screenshot)
         attachment.name = "Recording badge does not take focus"
         attachment.lifetime = .keepAlways
@@ -155,7 +156,7 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
             XCTAssertTrue(cover.isKeyWindow)
             XCTAssertNil(overlay.hitTest(overlay.bounds.origin, with: nil))
             XCTAssertEqual(controller.badge?.accessibilityLabel, String(localized: phase.text))
-            try await assertVisibleText(phase == .preparing ? "Preparing recording" : String(localized: phase.text), in: scene)
+            try await assertVisibleText(String(localized: phase.text), in: scene)
         }
         controller.clearBadge()
         XCTAssertNil(controller.overlayWindow)
@@ -170,11 +171,14 @@ final class DiagnosticRecordingStatusHostedTests: XCTestCase {
         while true {
             let image = compositedImage(in: scene)
             let request = VNRecognizeTextRequest()
-            request.recognitionLanguages = ["en-US"]
+            request.recognitionLanguages = ["zh-Hans", "en-US"]
             request.minimumTextHeight = 0.008
             try VNImageRequestHandler(cgImage: XCTUnwrap(image.cgImage)).perform([request])
             let text = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
-            if text.contains(expected) { return image }
+            // Vision drops spaces around a hyphen ("-") in the localized status.
+            let compactText = text.filter { !$0.isWhitespace }
+            let compactExpected = expected.filter { !$0.isWhitespace }
+            if compactText.contains(compactExpected) { return image }
             if ContinuousClock.now >= deadline {
                 let attachment = XCTAttachment(image: image)
                 attachment.name = "Last composited scene for \(expected)"
