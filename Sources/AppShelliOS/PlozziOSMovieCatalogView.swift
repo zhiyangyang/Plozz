@@ -70,7 +70,7 @@ struct PlozziOSMovieCatalogView: View {
             )
         }
         .background(AppBackground(palette: palette))
-        .navigationTitle("")
+        .navigationTitle(Text(verbatim: ""))
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.loadFirstPage() }
         .navigationDestination(item: $navigatedItem) { item in
@@ -95,7 +95,7 @@ struct PlozziOSMovieCatalogView: View {
                         horizontalPadding: gridHorizontalPadding
                     )
                     if model.totalCount > 0 {
-                        Text("\(model.scannedCount) / \(model.totalCount)")
+                        Text(verbatim: "\(model.scannedCount.formatted()) / \(model.totalCount.formatted())")
                             .font(.footnote.monospacedDigit())
                             .foregroundStyle(palette.secondaryText)
                             .padding(.horizontal, pageInset)
@@ -105,7 +105,7 @@ struct PlozziOSMovieCatalogView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ProgressView("Loading…")
                     if model.totalCount > 0 {
-                        Text("\(model.scannedCount) / \(model.totalCount)")
+                        Text(verbatim: "\(model.scannedCount.formatted()) / \(model.totalCount.formatted())")
                             .font(.footnote.monospacedDigit())
                             .foregroundStyle(palette.secondaryText)
                     }

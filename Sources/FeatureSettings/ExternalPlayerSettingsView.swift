@@ -189,7 +189,7 @@ private struct ExternalPlayerSupportSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Live TV and downloads play in Plozz.")
+            Text("Downloads play in Plozz.")
             if player == .custom {
                 Text("Non-WebDAV network shares and links needing passwords also play in Plozz.")
             } else {
@@ -207,7 +207,7 @@ private struct ExternalPlayerSupportSummary: View {
 private struct ExternalPlayerHelp: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Compatible library videos open in the selected app, including server-converted streams. Unsupported sources and Live TV play in Plozz.")
+            Text("Compatible library videos open in the selected app, including server-converted streams. Unsupported sources play in Plozz.")
             Text("Playable links may include server access tokens or network-share passwords. Only choose an app you trust.")
             Text("Native Player and Infuse 8.4.7 or later can return progress when their player closes. Plozz's controls, skip markers, and autoplay aren't available in another app.")
             Text("This choice stays on this device. Watch progress still belongs to the active viewer.")

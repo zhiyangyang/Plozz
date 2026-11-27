@@ -99,7 +99,9 @@ def phase_paths(repo: Path, scope: str) -> tuple[set[str], set[str]]:
                 product = dependency.get("product", dependency["package"])
                 dependencies[owner].update("package:" + n for n in products[product])
     def scheme_roots(name, *, tests=False):
-        scheme = spec["schemes"][name]
+        scheme = spec["schemes"].get(name)
+        if scheme is None:
+            return set()
         selected = set(scheme.get("build", {}).get("targets", {}))
         if tests:
             selected.update(
@@ -282,6 +284,7 @@ def extraction_lock(repo: Path) -> Iterator[None]:
 class ExtractionReceipt:
     def __init__(self, repo: Path, derived: Path, workspace: Path, arch: str):
         self.repo, self.derived, self.workspace, self.arch = repo, derived, workspace, arch
+        self.platforms = ["ios"]
         self.path = derived / ".plozz-full-extraction.json"
         self.catalog = repo / "App/Resources/Localizable.xcstrings"
         self.toolchain = toolchain_fingerprint(repo)
@@ -305,7 +308,7 @@ class ExtractionReceipt:
             output = output_fingerprint(self.derived, self.arch)
             return (
                 isinstance(recorded, dict) and recorded.get("schemaVersion") == 1
-                and recorded.get("platforms") == ["ios", "tvos"]
+                and recorded.get("platforms") == self.platforms
                 and recorded.get("inputs") == inputs
                 and recorded.get("packages") == package_workspace_fingerprint(self.repo, self.workspace)
                 and output is not None and recorded.get("output") == output
@@ -320,7 +323,7 @@ class ExtractionReceipt:
         if output is None:
             raise FreshnessError("No extraction output to record")
         value = {
-            "schemaVersion": 1, "platforms": ["ios", "tvos"], "inputs": inputs,
+            "schemaVersion": 1, "platforms": self.platforms, "inputs": inputs,
             "catalog": digest(read_stable(self.catalog)), "output": output,
             "packages": package_workspace_fingerprint(self.repo, self.workspace),
         }
