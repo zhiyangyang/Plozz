@@ -4,6 +4,7 @@ import FeatureAuth
 import FeatureHomeCore
 import MediaDownloads
 import MediaTransportCore
+import UserNotifications
 import SwiftUI
 @testable import AppShelliOS
 
@@ -77,7 +78,8 @@ struct DownloadsInteractionFixture: View {
             networkObserver: StaticDownloadNetworkObserver(),
             networkFileResolver: DownloadFixtureNetworkResolver(),
             providerKind: { _ in .emby }, preferredAudioLanguages: { _ in [] },
-            startsActive: false, activityScheduler: nil,
+            startsActive: true, activityScheduler: nil,
+            notificationClient: DownloadInteractionNotificationClient(),
             managedURLResolver: { _, _, _, _ in throw CancellationError() }
         ))
         if ProcessInfo.processInfo.arguments.contains("--download-unavailable") {
@@ -160,4 +162,12 @@ private struct DownloadFixtureNetworkResolver: MediaTransportNetworkFileResolvin
     func resolve(_ locator: NetworkFileLocator) async throws -> MediaTransportResolvedSource {
         throw CancellationError()
     }
+}
+
+@MainActor
+private final class DownloadInteractionNotificationClient: PlozziOSDownloadNotificationClient {
+    func authorizationStatus() async -> UNAuthorizationStatus { .denied }
+    func requestAuthorization() async throws -> Bool { false }
+    func existingIdentifiers() async -> Set<String> { [] }
+    func add(_ request: UNNotificationRequest) async throws {}
 }

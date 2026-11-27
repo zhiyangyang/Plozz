@@ -62,27 +62,34 @@ final class DownloadsInteractionTests: XCTestCase {
         }
     }
 
+    private func dismissNotificationPermissionIfNeeded() {
+        let alert = app.alerts.firstMatch
+        guard alert.waitForExistence(timeout: 2) else { return }
+        alert.buttons.firstMatch.tap()
+    }
+
     func testDownloadsHeadingAndActionsScrollTogether() {
         app.terminate()
         app.launchArguments = ["--downloads-interaction-fixture", "--download-scroll"]
         app.launch()
+        dismissNotificationPermissionIfNeeded()
         let heading = app.staticTexts["Downloads"].firstMatch
         XCTAssertTrue(heading.waitForExistence(timeout: 10))
         XCTAssertGreaterThan(heading.frame.height, 30)
         XCTAssertEqual(heading.label, "Downloads")
-        XCTAssertTrue(app.buttons["Download Settings"].isHittable)
+        XCTAssertTrue(app.buttons["gearshape"].isHittable)
         let settings = app.buttons["downloads-settings-avatar"]
         XCTAssertEqual(heading.frame.midY, settings.frame.midY, accuracy: 3)
-        XCTAssertEqual(heading.frame.midY, app.buttons["Download Settings"].frame.midY, accuracy: 3)
-        XCTAssertEqual(app.buttons["Download Settings"].frame.width, app.buttons["Download Settings"].frame.height, accuracy: 2)
-        XCTAssertEqual(app.buttons["Download Settings"].frame.height, 44, accuracy: 1)
+        XCTAssertEqual(heading.frame.midY, app.buttons["gearshape"].frame.midY, accuracy: 3)
+        XCTAssertEqual(app.buttons["gearshape"].frame.width, app.buttons["gearshape"].frame.height, accuracy: 2)
+        XCTAssertEqual(app.buttons["gearshape"].frame.height, 44, accuracy: 1)
         XCTAssertEqual(settings.frame.height, 44, accuracy: 1)
-        XCTAssertEqual(settings.frame.minX - app.buttons["Download Settings"].frame.maxX, 12, accuracy: 1)
+        XCTAssertEqual(settings.frame.minX - app.buttons["gearshape"].frame.maxX, 12, accuracy: 1)
         let header = XCTAttachment(screenshot: app.screenshot())
         header.name = "downloads-standard-header"
         header.lifetime = .keepAlways
         add(header)
-        app.buttons["Download Settings"].tap()
+        app.buttons["gearshape"].tap()
         XCTAssertTrue(app.switches["Use Cellular"].waitForExistence(timeout: 5))
         let back = app.buttons["BackButton"].exists
             ? app.buttons["BackButton"] : app.navigationBars.buttons.firstMatch
@@ -96,7 +103,7 @@ final class DownloadsInteractionTests: XCTestCase {
         let initialY = heading.frame.minY
         app.swipeUp()
         XCTAssertTrue(!heading.isHittable || heading.frame.minY < initialY - 30)
-        XCTAssertFalse(app.buttons["Download Settings"].isHittable)
+        XCTAssertFalse(app.buttons["gearshape"].isHittable)
         XCTAssertFalse(settings.isHittable)
     }
 
@@ -134,7 +141,7 @@ final class DownloadsInteractionTests: XCTestCase {
             XCTAssertTrue(heading.waitForExistence(timeout: 10))
             XCTAssertTrue(app.staticTexts[message].exists)
             XCTAssertLessThan(heading.frame.maxY, app.staticTexts[message].frame.minY)
-            XCTAssertTrue(app.buttons["Download Settings"].isHittable)
+            XCTAssertTrue(app.buttons["gearshape"].isHittable)
         }
     }
 
