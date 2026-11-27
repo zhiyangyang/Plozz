@@ -100,18 +100,10 @@ public protocol MediaProvider: Sendable {
     /// Resolve a user-imported external title without opening a playback engine.
     func externalMediaLink(for itemID: String, mediaSourceID: String?) async throws -> ExternalMediaLink
 
-    /// Trailers / preview clips for an item (movie or series).
-    ///
-    /// Returned items are ordinary playable `MediaItem`s whose `id` resolves to a
-    /// stream through this same provider's `playbackInfo(for:)`, so callers can
-    /// hand a trailer straight to the player like any other leaf. Empty when the
-    /// backend has no (playable) trailer for the item.
-
     /// Local, playable bonus videos attached to an item.
     ///
     /// Each extra is an ordinary provider item and must resolve through the same
-    /// playback path as its parent. Hosted/licensed online clips are excluded;
-    /// online trailers remain a separate hero fallback.
+    /// playback path as its parent. Hosted/licensed online clips are excluded.
     func extras(for itemID: String) async throws -> [MediaExtra]
 
     /// Children of a container (season → episodes, series → seasons, …).

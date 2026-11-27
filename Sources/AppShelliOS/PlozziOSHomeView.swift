@@ -193,11 +193,9 @@ struct PlozziOSHomeView: View {
     /// reading it; only the hero backdrop leaf observes `distance`, so pulling no
     /// longer invalidates every Home row on every scroll tick.
     @State private var heroPullModel = PlozziOSHomeHeroPullModel()
-    /// When each optimistic override was set. An override may shield the CTA from
-    /// an untracked (`.unknown`) poll only briefly — long enough to bridge the gap
-    /// until Seerr commits a freshly-created request — after which the authoritative
-    /// per-title lookup wins, so a request that actually failed can never stay
-    /// stuck on "Requested" forever.
+    /// When each optimistic watchlist override was set. An override may shield the
+    /// control only briefly — long enough to bridge an untracked (`.unknown`) poll —
+    /// after which the authoritative per-title lookup wins.
     @State private var watchlistIntentRevision = 0
     @State private var discoveryIdentityRevision = 0
     @State private var homePageIsVisible = false
@@ -689,7 +687,7 @@ struct PlozziOSHomeView: View {
         let heroStyle: HeroArtworkStyle = horizontalSizeClass == .compact
             ? .compactPortrait
             : .landscape
-        let trailerPauseThreshold = PlozziOSHeroMetrics.height(
+        let heroPauseThreshold = PlozziOSHeroMetrics.height(
             style: heroStyle,
             surfaceRole: .home,
             dynamicTypeSize: dynamicTypeSize,
@@ -726,7 +724,7 @@ struct PlozziOSHomeView: View {
                     exposureScopeID: ObjectIdentifier(viewModel),
                     identityIndexRevision: discoveryIdentityRevision,
                     // SwiftUI's onAppear runs while an interactive pop can still
-                    // be cancelled. Don't let Home take the detail trailer then.
+                    // be cancelled. Keep Home inactive until the detail page leaves.
                     isFrontmost: homeIsFrontmost && homePageIsVisible
                         && playbackRequest == nil,
                     pullModel: heroPullModel
@@ -814,7 +812,7 @@ struct PlozziOSHomeView: View {
                 isScrolling: homeIsScrolling, isLoading: viewModel.isRefreshing
             )
             .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > trailerPauseThreshold
+                geometry.contentOffset.y + geometry.contentInsets.top > heroPauseThreshold
             } action: { _, isPastHalfHero in
                 heroPullModel.isVisible = !isPastHalfHero
             }
@@ -841,8 +839,7 @@ struct PlozziOSHomeView: View {
     /// appears within a few seconds of the grab actually beginning.
     private static let featuredRefreshFast: Duration = .seconds(4)
     /// Relaxed cadence once every in-flight title is already downloading (its %
-    /// only needs coarse updates) or nothing is transitional, to avoid hammering
-    /// Seerr with per-title TMDB lookups indefinitely.
+    /// only needs coarse updates) or nothing is transitional.
     private static let featuredRefreshSlow: Duration = .seconds(20)
 
     private func warmHeroLogos(for items: [MediaItem]) async {
@@ -940,10 +937,8 @@ struct PlozziOSHomeView: View {
     }
 
 
-    /// One-tap Seerr request from the Home hero, mirroring the detail hero. When
-    /// the active profile explicitly requests as admin (and there are multiple
-    /// profiles), confirm that unrestricted identity first. Legacy or mismatched
-    /// user mappings go to the service's relink failure instead.
+    /// Gate the hero watchlist button until durable membership has loaded, so
+    /// the first tap cannot flip a title against an unknown baseline.
     private var isHeroWatchlistMembershipReady: Bool {
         let handler = appModel.mediaItemActionHandler
         return handler.isDurableWatchlistPresentationReady()
@@ -1273,11 +1268,9 @@ struct PlozziOSHomeHeroCarousel: View {
     /// FeatureHomeCore.
     @State private var seatedHeroIdentity: String?
     @State private var dwellStart = Date()
-    /// Seconds of this slide's dwell spent showing a trailer, which the countdown
-    /// does not charge for. Everything else is derived from `dwellStart` — the
-    /// same clock the paging gauge reads — so the two can never disagree, and
-    /// restarting the countdown task (which a changed item set requires) resumes
-    /// it rather than discarding the seconds already served.
+    /// Pointer-driven pause state for the dwell countdown. The gauge and the
+    /// countdown share `dwellStart`, so restarting the countdown task resumes it
+    /// rather than discarding the seconds already served.
     @State private var pointerActivity = HeroPointerActivity()
     /// The slide `dwellStart` was set for. `selectedItemID` and the dwell reset
     /// on separate passes, so the id is the only reliable way to tell whether
@@ -1591,8 +1584,7 @@ struct PlozziOSHomeHeroCarousel: View {
                     return
                 }
                 guard !Task.isCancelled else { return }
-                // Pointer time is removed on resume. Do not also count overlapping
-                // trailer time here, or the same pause would be subtracted twice.
+                // Pointer time is removed on resume.
                 if pointerActivity.isPaused { continue }
                 if countdownItemID != selectedItemID {
                     countdownItemID = selectedItemID

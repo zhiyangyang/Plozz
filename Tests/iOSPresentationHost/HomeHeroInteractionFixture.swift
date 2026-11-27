@@ -77,7 +77,6 @@ struct HomeHeroInteractionFixture: View {
     @State private var actions = HeroInteractionActions()
     @State private var playCount = 0
     @State private var settingsCount = 0
-    @State private var isMuted = true
     @State private var homePageIsVisible = false
     @State private var pinnedIDs = ""
     private var testsAutoAdvance: Bool {
@@ -209,17 +208,7 @@ struct HomeHeroInteractionFixture: View {
             )
             .toolbar {
                 if usesNativeChrome && !usesScrollingPageActions {
-                    if ProcessInfo.processInfo.arguments.contains("--hero-header-audio") && usesVerticalToolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            PlozziOSHeroAudioMuteToolbarButton(isMuted: true, onToggle: {})
-                        }
-                    }
-                    PlozziOSSettingsToolbarItem(leadingActions: {
-                        if ProcessInfo.processInfo.arguments.contains("--hero-header-audio") && !usesVerticalToolbar {
-                            PlozziOSHeroAudioMuteToolbarButton(isMuted: true, onToggle: {})
-                                .plozziOSPageAction()
-                        }
-                    }, action: {})
+                    PlozziOSSettingsToolbarItem(leadingActions: {}, action: {})
                 }
             }
         }
@@ -326,8 +315,6 @@ private final class HeroInteractionLookupGate {
 }
 
 private struct HeroInteractionProvider: MediaProvider {
-    static var hasDetailTrailer: Bool { ProcessInfo.processInfo.arguments.contains("--hero-detail-trailer") }
-    static let clip = MediaItem(id: "local-trailer", title: "Trailer", kind: .video, isExtra: true)
     let kind: ProviderKind
     var seriesLookup: HeroInteractionLookupGate?
     static let logoURL = URL(string: "https://hero.invalid/logo.png")!
@@ -350,8 +337,6 @@ private struct HeroInteractionProvider: MediaProvider {
             MediaItem(
                 id: "movie", title: "Hero Movie", kind: .movie,
                 overview: "A movie description in the Home hero.",
-                runtime: hasDetailTrailer ? 7_200 : nil,
-                resumePosition: hasDetailTrailer ? 600 : nil,
                 backdropURL: ProcessInfo.processInfo.arguments.contains("--hero-native-chrome") ? artworkURL : nil,
                 logoURL: ProcessInfo.processInfo.arguments.contains("--hero-logo") ? logoURL : nil
             ).taggingSource(ProviderKind.jellyfin.rawValue),
@@ -399,15 +384,8 @@ private struct HeroInteractionProvider: MediaProvider {
     }
     func children(of itemID: String) async throws -> [MediaItem] { [] }
     func search(query: String, limit: Int) async throws -> [MediaItem] { [] }
-    func trailers(for itemID: String) async throws -> [MediaItem] {
-        Self.hasDetailTrailer && itemID == "movie" ? [Self.clip] : []
-    }
     func playbackInfo(for itemID: String) async throws -> PlaybackRequest {
-        guard Self.hasDetailTrailer, itemID == Self.clip.id,
-              let url = Bundle.main.url(forResource: "live-continuity", withExtension: "mp4") else {
-            throw AppError.notFound
-        }
-        return PlaybackRequest(item: Self.clip, streamURL: url)
+        throw AppError.notFound
     }
     func reportPlayback(_ progress: PlaybackProgress, event: PlaybackEvent) async throws {}
     func imageURL(itemID: String, kind: ImageKind, maxWidth: Int?) -> URL? { nil }

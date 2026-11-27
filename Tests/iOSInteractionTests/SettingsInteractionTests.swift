@@ -502,27 +502,6 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertGreaterThan(brighter, 500, "Search must visibly light \(id) in the real sheet, not merely reveal it.")
     }
 
-    func testProtectedSearchResultOpensAfterPINWithoutLosingTheDestination() {
-        launch(settingsRoot: true, arguments: ["--kids-settings", "--parental-pin"])
-        let field = app.searchFields.firstMatch
-        if !field.waitForExistence(timeout: 2) { app.buttons["Search"].tap() }
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap()
-        field.typeText("included libraries")
-        let result = app.buttons["settings-search-result-profile-library-inclusion"]
-        XCTAssertTrue(result.waitForExistence(timeout: 5), app.debugDescription)
-        result.tap()
-        XCTAssertTrue(app.staticTexts["Enter the Parental PIN"].waitForExistence(timeout: 5))
-        for digit in ["1", "2", "3", "4"] { app.buttons[digit].tap() }
-        XCTAssertTrue(app.navigationBars["Libraries"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.staticTexts["Enter the Parental PIN"].exists)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            app.buttons["BackButton"].tap()
-        }
-        XCTAssertTrue(result.waitForExistence(timeout: 5), "Unlocking must not dismiss the searched destination.")
-        XCTAssertEqual(field.value as? String, "included libraries")
-    }
-
     func testPhoneSearchReturnRestoresKeyboardAndKeepsQueryWhenDismissed() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
         launchNavigation(directPresentation: true)
@@ -1227,7 +1206,7 @@ final class SettingsInteractionTests: XCTestCase {
             XCTAssertTrue(app.buttons["English"].waitForExistence(timeout: 3), app.debugDescription)
             app.buttons["English"].tap()
             XCTAssertTrue(categoryButton("Language").isHittable)
-            for title in ["Sources", "Profiles", "Parental PIN", "Metadata Providers", "Downloads"] {
+            for title in ["Sources", "Downloads"] {
                 let row = button(title)
                 reveal(row, settingsMenu: true)
                 XCTAssertTrue(row.isHittable)
@@ -1474,87 +1453,6 @@ final class SettingsInteractionTests: XCTestCase {
         selectCustomization(watching, expecting: "Use default")
         app.navigationBars["Customize labels"].buttons["BackButton"].tap()
         XCTAssertTrue(customize.waitForExistence(timeout: 3))
-    }
-
-    func testKidsLibrariesRemainGatedWithTheAlignedCategories() {
-        for arguments in [["--kids-settings", "--parental-pin"],
-                          ["--kids-settings", "--parental-pin", "--compact-settings"]] {
-            launch(settingsRoot: true, arguments: arguments)
-            XCTAssertTrue(categoryButton("Playback").exists)
-            XCTAssertFalse(categoryButton("Libraries").exists)
-            XCTAssertFalse(button("Sources").exists)
-            let library = button("Libraries")
-            app.scrollViews.firstMatch.swipeUp()
-            reveal(library, settingsMenu: true, fullyVisible: true)
-            library.tap()
-            XCTAssertTrue(app.staticTexts["Enter the Parental PIN"].waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(app.buttons["Add Source"].exists)
-            capture("settings-kids-parental-gate-\(arguments.joined())")
-            for digit in 0...9 {
-                let key = app.buttons[String(digit)]
-                XCTAssertTrue(key.isHittable, "Every PIN digit must remain tappable.")
-                XCTAssertEqual(key.frame.width, 74, accuracy: 1)
-                XCTAssertEqual(key.frame.height, 74, accuracy: 1)
-            }
-            let delete = app.buttons["Delete"]
-            XCTAssertTrue(delete.isHittable)
-            XCTAssertEqual(delete.frame.width, 164, accuracy: 1)
-            XCTAssertEqual(delete.frame.height, 74, accuracy: 1)
-            app.buttons["1"].tap()
-            app.buttons["9"].tap()
-            delete.tap()
-            for digit in ["2", "3", "4"] { app.buttons[digit].tap() }
-            XCTAssertTrue(app.navigationBars["Libraries"].waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(app.staticTexts["Enter the Parental PIN"].exists)
-            app.terminate()
-        }
-        launch(settingsRoot: true, arguments: ["--kids-settings"])
-        let library = categoryButton("Libraries")
-        reveal(library, settingsMenu: true)
-        library.tap()
-        XCTAssertTrue(app.navigationBars["Libraries"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.staticTexts["Enter the Parental PIN"].exists)
-    }
-
-    func testMetadataArtworkLinkReturnsWithoutStackingDuplicatePages() {
-        openSettingsPage("Metadata Providers", verifyTitleLayout: false)
-        let hadBackButton = app.navigationBars.buttons["BackButton"].exists
-        for _ in 0..<2 {
-            let artwork = app.buttons["metadata-artwork-preferences"]
-            XCTAssertTrue(artwork.waitForExistence(timeout: 5), app.debugDescription)
-            reveal(artwork)
-            artwork.tap()
-            XCTAssertTrue(app.navigationBars["Artwork"].waitForExistence(timeout: 5), app.debugDescription)
-            let metadata = app.buttons["artwork-metadata-providers"]
-            reveal(metadata)
-            metadata.tap()
-            XCTAssertTrue(app.navigationBars["Metadata Providers"].waitForExistence(timeout: 5))
-        }
-        XCTAssertEqual(app.navigationBars.buttons["BackButton"].exists, hadBackButton)
-        if hadBackButton {
-            app.navigationBars.buttons["BackButton"].tap()
-            XCTAssertFalse(app.navigationBars["Artwork"].exists)
-            XCTAssertFalse(app.navigationBars["Metadata Providers"].exists)
-        }
-    }
-
-    func testArtworkMetadataLinkReturnsToTheSameProfilePreferences() {
-        openSettingsPage("Appearance", verifyTitleLayout: false)
-        app.buttons["appearance-artwork"].tap()
-        XCTAssertTrue(app.navigationBars["Artwork"].waitForExistence(timeout: 5))
-        let library = app.buttons["artwork-preset-library"]
-        library.tap()
-        let metadata = app.buttons["artwork-metadata-providers"]
-        reveal(metadata)
-        metadata.tap()
-        XCTAssertTrue(app.navigationBars["Metadata Providers"].waitForExistence(timeout: 5))
-        let artwork = app.buttons["metadata-artwork-preferences"]
-        reveal(artwork)
-        artwork.tap()
-        XCTAssertTrue(app.navigationBars["Artwork"].waitForExistence(timeout: 5))
-        XCTAssertTrue(library.isSelected)
-        app.navigationBars.buttons["BackButton"].tap()
-        XCTAssertTrue(app.navigationBars["Appearance"].waitForExistence(timeout: 5))
     }
 
     func testThemeCardsAndMenusKeepSeparateActions() {
@@ -1908,19 +1806,11 @@ final class SettingsInteractionTests: XCTestCase {
         for title in [
             "Playback", "Subtitles", "Libraries", "Appearance", "Screens & Navigation",
             "Customize Home", "App navigation", "Detail Page", "Theme", "Spoiler Protection", "Circadian Mode",
-            "Profiles", "Sources", "Downloads", "Metadata Providers", "Help & Diagnostics", "Attributions"
+            "Sources", "Downloads", "Help & Diagnostics", "Attributions"
         ] {
             openSettingsPage(title)
             app.terminate()
         }
-    }
-
-    func testDetailRatingLinkDoesNotOpenItsNeighboringPicker() {
-        openSettingsPage("Detail Page")
-        let priority = app.buttons["Rating sources & order"]
-        XCTAssertTrue(priority.waitForExistence(timeout: 3), app.debugDescription)
-        priority.tap()
-        XCTAssertTrue(app.navigationBars["Rating sources & order"].waitForExistence(timeout: 3), app.debugDescription)
     }
 
     func testPlaybackIntervalMenusChangeOnlyTheirOwnSelection() {

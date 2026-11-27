@@ -848,7 +848,7 @@ public final class ItemDetailViewModel {
                 persistSnapshot()
                 await resumeTask
                 guard !Task.isCancelled, isCurrent() else { return }
-                // Trailers and ordinary enrichment remain on the existing load
+                // Ordinary enrichment remain on the existing load
                 // path. Optional server ratings run independently of completion.
                 await runRatingsAndExtras(
                     for: item,
@@ -858,7 +858,7 @@ public final class ItemDetailViewModel {
                 )
             } else {
                 // Leaf kinds (movie/episode/video): the hero IS the content, so
-                // publish it immediately, then load trailers/ratings off the
+                // publish it immediately, then load ratings off the
                 // critical path of first paint.
                 publish(Detail(
                     item: taggedItem,
@@ -874,7 +874,7 @@ public final class ItemDetailViewModel {
                 )
                 persistSnapshot()
                 // See container branch: speculative discovery is cancellable and
-                // NOT awaited (a navigate-away drops it). Trailers retain their
+                // NOT awaited (a navigate-away drops it). Enrichment retains its
                 // existing load path; optional server ratings never hold it open.
                 startSpeculativeEnrichment(for: item)
                 // A film has related titles too. This sat only in the container
@@ -979,9 +979,9 @@ public final class ItemDetailViewModel {
     /// completion and starve the next page's `provider.item` for the cooperative
     /// thread pool.
     ///
-    /// Trailers and external ratings are NOT started here: those resolve on the
+    /// External ratings are NOT started here: those resolve on the
     /// awaited `load()` path (see ``runRatingsAndExtras(for:)``) so that opening
-    /// a detail deterministically populates its Trailer button and rating badges,
+    /// a detail deterministically populates its rating badges,
     /// while this speculative discovery stays decoupled and droppable.
     private func startSpeculativeEnrichment(for item: MediaItem) {
         enrichmentItem = item
@@ -994,7 +994,7 @@ public final class ItemDetailViewModel {
             // Umbrella dwell gate: opening a page and immediately leaving (the
             // navigation-churn pattern) must fire ZERO speculative enrichment —
             // no cross-server search fan-out, no alternate-source fetch, no
-            // JavaScriptCore trailer extraction. All of that is work for a page the
+            // metadata extraction. All of that is work for a page the
             // user is actually looking at, not one they're tapping through. A short
             // cancellable wait here means a sub-second open→back does nothing at
             // all; the first-paint detail (driven by load(), not this task) has
@@ -1240,7 +1240,7 @@ public final class ItemDetailViewModel {
         )
     }
 
-    /// Cancels ALL off-critical-path enrichment (trailers, ratings, cross-server
+    /// Cancels ALL off-critical-path enrichment (ratings, cross-server
     /// discovery, alternate-source fetches) for this page. Called from the detail
     /// view's `onDisappear` — when the user navigates away the work must stop so
     /// it cannot keep occupying the cooperative thread pool and starve the NEXT
@@ -1287,7 +1287,7 @@ public final class ItemDetailViewModel {
     }
 
     /// Whether the loaded detail is still this `item` (guards against a stale
-    /// trailer resolution landing after the user navigated away / reloaded).
+    /// enrichment landing after the user navigated away / reloaded).
     private func isStillLoaded(_ item: MediaItem, sourceGeneration: UInt64) -> Bool {
         if self.sourceGeneration == sourceGeneration,
            case let .loaded(detail) = state,

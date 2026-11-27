@@ -2948,26 +2948,6 @@ private struct PlozziOSDetailCredits: View {
 
 }
 
-struct PlozziOSHeroAudioMuteToolbarButton: View {
-    let isMuted: Bool
-    let onToggle: () -> Void
-    private func label(isMuted: Bool) -> LocalizedStringResource {
-        isMuted ? "Unmute trailer" : "Mute trailer"
-    }
-
-    var body: some View {
-        Button(action: onToggle) {
-            Label {
-                Text(label(isMuted: isMuted))
-            } icon: {
-                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-            }
-        }
-        .accessibilityLabel(Text(label(isMuted: isMuted)))
-        .accessibilityIdentifier("trailer-mute")
-    }
-}
-
 struct PlozziOSHeroPagingIndicator: View {
     @Environment(\.themePalette) private var palette
     let itemIDs: [String]

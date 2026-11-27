@@ -5,7 +5,6 @@ import SwiftUI
 
 public enum TransientStatusPlacement: Hashable, Sendable {
     case root
-    case musicTransport
 }
 
 public struct TransientStatusMessage: Equatable, Sendable {
