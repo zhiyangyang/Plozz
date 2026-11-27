@@ -3,9 +3,8 @@ import SwiftUI
 import CoreModels
 
 /// Shared building blocks for the borderless ("Posters") `CardStyle` — the
-/// artwork-only look with **no** glass surface. Both the movie/show
-/// `PosterCardView` and the music `MusicCard` compose these so the two stay
-/// pixel-identical.
+/// artwork-only look with **no** glass surface. `PosterCardView` composes these
+/// shared building blocks.
 public extension View {
     /// The shared focus **halo** for artwork tiles — one theme-aware, translucent
     /// liquid-glass focus frame used by BOTH the circular artist/cast tiles and the

@@ -274,10 +274,8 @@ public struct ThemeOptionCard: View {
     }
 }
 
-/// A selectable "picture + label" card shared by the theme picker and the music
-/// player style picker, so both use identical sizing, focus/selection chrome
-/// (`ThemeCardButtonStyle`) and the compact/full geometry. The `swatch` closure
-/// supplies the preview graphic (e.g. `ThemeSwatch` or `MusicStyleSwatch`).
+/// A selectable "picture + label" card used by the theme picker. The `swatch`
+/// closure supplies the preview graphic (e.g. `ThemeSwatch`).
 ///
 /// The caller owns focus (apply `.focused(...)`) and selection state; tapping
 /// invokes `action`.

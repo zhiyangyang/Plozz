@@ -167,7 +167,7 @@ private struct WatchIndicatorMini: View {
 /// poster row whose corner mark lands on the finished title (`.watched`) or the
 /// new title (`.unwatched`), with an optional count on the in-progress series.
 /// Fills the caller's frame, so it scales for both the
-/// full and compact card sizes, mirroring `ThemeSwatch` / `MusicStyleSwatch`.
+/// full and compact card sizes, mirroring `ThemeSwatch`.
 public struct WatchStatusIndicatorSwatch: View {
     private let indicator: WatchStatusIndicator
     private let cornerRadius: CGFloat

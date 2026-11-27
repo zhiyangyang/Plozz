@@ -144,7 +144,7 @@ public struct PlozzMediaEdgeModifier: ViewModifier {
 }
 
 /// Custom fallback style for focusable browsing **cards** (Home's library
-/// shortcuts, Music tiles, genre/category cards). Replaces the platform's
+/// shortcuts, genre/category cards). Replaces the platform's
 /// default `.card` style — whose focus state paints a stark **white** plate —
 /// with Plozz's Strozz-ported liquid-glass focus surface: a subtle, theme-tinted
 /// lift that deepens on focus, draws a hairline border, and respects Reduce

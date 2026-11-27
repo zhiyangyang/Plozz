@@ -77,7 +77,7 @@ public enum HeroPagingGauge {
     /// Where a ramp stated earlier has reached by `now`.
     ///
     /// Used to keep the gauge monotonic. Partway through a slide its source can
-    /// change — a trailer begins and starts reporting its own clock from zero —
+    /// change and starts reporting its own clock from zero —
     /// and restating the ramp from that new source ran the bar backwards, which
     /// reads as a glitch rather than as new information. Deliberately computed
     /// from the stated ramp rather than read back from the layer: a layer only

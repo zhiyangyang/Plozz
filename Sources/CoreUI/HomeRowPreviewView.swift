@@ -3,7 +3,7 @@ import CoreModels
 import SwiftUI
 
 
-/// The Home presentation without routing, playback, trailers or context actions.
+/// The Home presentation without routing, playback or context actions.
 public struct HomeRowPreviewView: View {
     private let title: Text
     private let items: [MediaItem]

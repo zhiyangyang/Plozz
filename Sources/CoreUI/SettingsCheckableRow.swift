@@ -5,9 +5,9 @@ import CoreModels
 /// One focusable, checkable row for the Settings detail pane — a leading optional
 /// icon, a title, and a trailing checkmark shown when `isChecked`.
 ///
-/// Shared by both ``SettingsOptionList`` (single-select — Theme, Display Size,
-/// Music Player style) and ``SettingsCheckList`` (multi-select — the Customize
-/// Home row checklists), so the checkmark and focus-card look are identical
+/// Shared by both ``SettingsOptionList`` (single-select — Theme, Display Size)
+/// and ``SettingsCheckList`` (multi-select — the Customize Home row checklists),
+/// so the checkmark and focus-card look are identical
 /// everywhere and defined **once**. All heights come from the shared
 /// ``SettingsRowMetrics``, so at `.primary` prominence a checkable row is exactly
 /// as tall as a switch row on the same screen, and `.secondary` steps that down

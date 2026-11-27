@@ -9,8 +9,8 @@ import CoreModels
 /// generic art with the episode number so not even a blurred frame leaks. Both
 /// keep the title hidden until watched, shown as a redacted bar under each tile.
 ///
-/// Fabricated graphic (no real media, network or theme needed), like
-/// ``MusicStyleSwatch`` — it's a *picture* of each mode. Fills the caller's frame.
+/// Fabricated graphic (no real media, network or theme needed) — it's a
+/// *picture* of each mode. Fills the caller's frame.
 public struct SpoilerModeSwatch: View {
     private let mode: SpoilerSettings.Mode
     private let cornerRadius: CGFloat

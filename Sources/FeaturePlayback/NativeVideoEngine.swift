@@ -425,7 +425,7 @@ public final class NativeVideoEngine: VideoEngine {
         monitorForMissingVideo(item: item, request: request)
 
         // Auto-notify when this item plays through to its natural end so the
-        // owner can react (e.g. dismiss a finished trailer).
+        // owner can react.
         observeEndOfPlayback(item: item)
 
         // Inspect the *real* container video format as soon as it loads (in
@@ -1086,7 +1086,7 @@ public final class NativeVideoEngine: VideoEngine {
     }
 
     /// Observes the natural end of `item` so the owner can react (e.g. dismiss a
-    /// finished trailer). `didPlayToEndTimeNotification` fires only on a clean
+    /// finished playback). `didPlayToEndTimeNotification` fires only on a clean
     /// playthrough — never on a user-initiated stop or a failure — so it's a safe
     /// auto-dismiss trigger. Scoped to this specific item; removed in
     /// `teardownPlayer`.

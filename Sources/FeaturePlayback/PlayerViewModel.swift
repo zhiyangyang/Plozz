@@ -611,13 +611,8 @@ public final class PlayerViewModel {
     /// Persisted player preferences (e.g. last-used playback speed).
     private let preferencesStore: PlaybackPreferencesStoring
 
-    /// When `true`, the player dismisses itself once playback reaches the natural
-    /// end of the stream. Used for trailers, which should close when finished;
-    /// regular library playback leaves this `false`.
-    private let autoDismissOnEnd: Bool
-
     /// Episode the player will advance to when this one ends, and the neighbor
-    /// behind it — both `nil` for movies/trailers/last episode. Resolved once via
+    /// behind it — both `nil` for movies and the last episode. Resolved once via
     /// ``neighborResolver`` after load so the controls can offer next/previous
     /// mid-playback and so a clean playthrough auto-advances instead of dismissing.
     public private(set) var nextEpisode: MediaItem?
@@ -807,7 +802,6 @@ public final class PlayerViewModel {
             (any AuthenticatedHTTPResourceResolving)? = nil,
         capabilities: MediaCapabilities = .detected(),
         preferencesStore: PlaybackPreferencesStoring = PlaybackPreferencesStore(),
-        autoDismissOnEnd: Bool = false,
         neighborResolver: (@Sendable () async -> (previous: MediaItem?, next: MediaItem?))? = nil,
         playlistContext: VideoPlaylistPlaybackContext? = nil,
         seriesIDResolver: (@Sendable () async -> [String: String]?)? = nil,
@@ -850,7 +844,6 @@ public final class PlayerViewModel {
         self.authenticatedHTTPResolver = authenticatedHTTPResolver
         self.capabilities = capabilities
         self.preferencesStore = preferencesStore
-        self.autoDismissOnEnd = autoDismissOnEnd
         self.neighborResolver = neighborResolver
         self.playlistContext = playlistContext
         let browserItem = episodeItem ?? offlineItem
