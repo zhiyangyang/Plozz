@@ -532,31 +532,6 @@ public final class NativeVideoEngine: VideoEngine {
         return loader.makeAsset()
     }
 
-    /// Builds an `AVURLAsset` that pairs a **video-only** trailer stream with a
-    /// **separate audio-only** stream via a synthesized HLS master, so AVPlayer
-    /// muxes and syncs them itself (see ``TrailerAudioMuxComposer``). This unlocks
-    /// higher-quality (e.g. 1080p H.264) YouTube trailers, which are only offered
-    /// as adaptive video+audio tracks.
-    ///
-    /// The `EXTINF` needs the real media duration, which an online trailer item
-    /// doesn't carry — so read it directly from the video-only asset first (a
-    /// small metadata fetch: googlevideo fMP4 is faststart, so only the moov is
-    /// touched). Returns `nil` if the duration can't be read, so the caller falls
-    /// back to a plain asset rather than authoring a broken playlist.
-    /// Builds an `AVPlayerItem` that muxes a **video-only** trailer stream with a
-    /// **separate audio-only** stream using an `AVMutableComposition` (one video
-    /// track + one audio track), so AVPlayer plays higher-quality (e.g. 1080p
-    /// H.264) YouTube trailers — which are only offered as adaptive video+audio
-    /// tracks — natively and in sync.
-    ///
-    /// Why a composition and not an HLS wrap: googlevideo's adaptive tracks are
-    /// *fragmented* MP4; wrapping the whole file as one plain HLS segment (no
-    /// `EXT-X-MAP` init segment) makes AVPlayer stall and fail to decode. As bare
-    /// `AVURLAsset`s the same fMP4 reads natively, and a composition is the
-    /// standard way to pair a picture track with a separate sound track.
-    ///
-    /// Returns `nil` if either track can't be loaded/composed, so the caller falls
-    /// back to the progressive (audible) stream rather than a broken item.
     /// Milliseconds elapsed since `start`, for diagnostic timing.
     private static func ms(since start: Date) -> Int {
         Int(Date().timeIntervalSince(start) * 1000)

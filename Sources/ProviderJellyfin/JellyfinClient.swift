@@ -1319,7 +1319,7 @@ public struct JellyfinClient: Sendable {
         return info
     }
 
-    // MARK: Live TV
+    // MARK: Playback reporting
 
     func reportPlaybackProgress(
         _ progress: PlaybackProgress,

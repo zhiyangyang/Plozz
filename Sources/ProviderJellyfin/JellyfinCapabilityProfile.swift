@@ -47,8 +47,8 @@ public struct JellyfinCapabilityProfile: Encodable, Sendable, Equatable {
 // MARK: - Builders
 
 extension JellyfinCapabilityProfile {
-    /// Legacy Live TV/music default. On-demand requests replace this with the
-    /// selected quality's limit, or the provider's unlimited representation for Original.
+    /// Legacy default. On-demand requests replace this with the selected
+    /// quality's limit, or the provider's unlimited representation for Original.
     public static let defaultMaxBitrate = 120_000_000
 
     /// Advertise the linked engine's input formats when available. Native-only

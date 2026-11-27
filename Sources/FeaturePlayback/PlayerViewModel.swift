@@ -149,10 +149,9 @@ public final class PlayerViewModel {
         }
     }
 
-    /// Set to `true` when playback reaches its natural end *and* this player was
-    /// configured to auto-dismiss on completion (currently trailers). The view
-    /// observes this and dismisses itself. Ignored for regular library playback,
-    /// which keeps the finished frame on screen as before.
+    /// Set to `true` when playback should close itself after a natural end, a
+    /// disc-menu stop, or the end of a playlist. The full-screen player observes
+    /// this and dismisses.
     public private(set) var shouldDismiss = false
 
     /// Best available source range for this playback. Provider metadata is only
