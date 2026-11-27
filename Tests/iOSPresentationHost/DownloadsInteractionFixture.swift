@@ -78,7 +78,7 @@ struct DownloadsInteractionFixture: View {
             networkObserver: StaticDownloadNetworkObserver(),
             networkFileResolver: DownloadFixtureNetworkResolver(),
             providerKind: { _ in .emby }, preferredAudioLanguages: { _ in [] },
-            startsActive: true, activityScheduler: nil,
+            startsActive: false, activityScheduler: nil,
             notificationClient: DownloadInteractionNotificationClient(),
             managedURLResolver: { _, _, _, _ in throw CancellationError() }
         ))

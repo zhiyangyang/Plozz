@@ -35,14 +35,17 @@ final class DownloadsInteractionTests: XCTestCase {
             throw XCTSkip("This comparison requires a horizontal iPhone toolbar.")
         }
         XCTAssertEqual(reference.width, 44, accuracy: 1)
-        XCTAssertEqual(app.frame.maxX - reference.maxX, 10, accuracy: 2)
+        // Home uses a native toolbar in regular width. Native system spacing is not
+        // the scrolling page-header standard, so only compare controls of the same kind.
+        let homeUsesNativeToolbar = app.navigationBars.buttons["Settings"].exists
+        XCTAssertEqual(app.frame.maxX - reference.maxX, homeUsesNativeToolbar ? 10 : 20, accuracy: 2)
         let homeImage = XCTAttachment(screenshot: app.screenshot())
         homeImage.name = "page-header-Home"
         homeImage.lifetime = .keepAlways
         add(homeImage)
         for (name, arguments, identifier) in [
-            ("Downloads", ["--downloads-interaction-fixture"], "gearshape"),
-            ("Downloads-empty", ["--downloads-interaction-fixture", "--download-empty"], "gearshape")
+            ("Downloads", ["--downloads-interaction-fixture"], "downloads-settings-avatar"),
+            ("Downloads-empty", ["--downloads-interaction-fixture", "--download-empty"], "downloads-settings-avatar")
         ] {
             app.terminate()
             app.launchArguments = arguments
@@ -51,8 +54,11 @@ final class DownloadsInteractionTests: XCTestCase {
             XCTAssertTrue(profile.waitForExistence(timeout: 10), name)
             XCTAssertEqual(profile.frame.width, reference.width, accuracy: 1, name)
             XCTAssertEqual(profile.frame.height, reference.height, accuracy: 1, name)
-            XCTAssertEqual(profile.frame.midX, reference.midX, accuracy: 1, name)
-            XCTAssertEqual(profile.frame.midY, reference.midY, accuracy: 1, name)
+            XCTAssertEqual(app.frame.maxX - profile.frame.maxX, 20, accuracy: 2, name)
+            if !homeUsesNativeToolbar {
+                XCTAssertEqual(profile.frame.midX, reference.midX, accuracy: 1, name)
+                XCTAssertEqual(profile.frame.midY, reference.midY, accuracy: 1, name)
+            }
             let image = XCTAttachment(screenshot: app.screenshot())
             image.name = "page-header-\(name)"
             image.lifetime = .keepAlways
@@ -335,11 +341,12 @@ final class DownloadsInteractionTests: XCTestCase {
         XCTAssertFalse(app.buttons["download-open-in"].exists, "Show menus must not export multiple files.")
         XCTAssertFalse(showPage("Andor").exists, "Opening the menu must not navigate.")
         app.buttons["Pause Show"].tap()
-        XCTAssertTrue(app.staticTexts["Downloads"].exists)
+        XCTAssertFalse(showPage("Andor").exists, "Pausing must not navigate.")
         for _ in 0..<8 {
             if show.isHittable { break }
             app.swipeDown()
         }
+        XCTAssertTrue(app.staticTexts["Downloads"].waitForExistence(timeout: 3))
         show.tap()
         XCTAssertTrue(showPage("Andor").waitForExistence(timeout: 3), app.debugDescription)
         XCTAssertTrue(app.staticTexts["Season 2"].exists)
