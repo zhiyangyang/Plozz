@@ -145076,7 +145076,14 @@
       }
     },
     "Add episodes to your library to download them." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "将单集添加到媒体库后即可下载。"
+          }
+        }
+      }
     },
     "Add guide" : {
       "extractionState" : "stale",
@@ -184886,7 +184893,14 @@
       }
     },
     "Automatic Sign-In" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "自动登录"
+          }
+        }
+      }
     },
     "Automatic channel" : {
       "extractionState" : "stale",
@@ -270956,7 +270970,14 @@
       }
     },
     "Compatible library videos open in the selected app, including server-converted streams. Unsupported sources play in Plozz." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "兼容的媒体库视频会在所选 App 中打开，包括服务器转换后的媒体流。不支持的来源会在 Plozz 中播放。"
+          }
+        }
+      }
     },
     "Completed: %@ of %@" : {
       "comment" : "Compact download Live Activity completion count. First placeholder is the localized number fully finished; second is the total. Keep an explicit completion label, including when zero have finished. This is not the current download's position.",
@@ -275628,7 +275649,14 @@
       }
     },
     "Connect a media server or network share." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "连接媒体服务器或网络共享。"
+          }
+        }
+      }
     },
     "Connect a media server, network share, or IPTV provider." : {
       "extractionState" : "stale",
@@ -344781,7 +344809,14 @@
       }
     },
     "Discover is unavailable. Check your metadata settings." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "发现功能不可用。请检查元数据设置。"
+          }
+        }
+      }
     },
     "Discover is unavailable. Connect Seerr or check your metadata settings." : {
       "extractionState" : "stale",
@@ -366761,7 +366796,14 @@
       }
     },
     "Downloads play in Plozz." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "已下载内容会在 Plozz 中播放。"
+          }
+        }
+      }
     },
     "Downloads use original quality. Network-share downloads continue while Plozz is open; Jellyfin, Emby, and Plex downloads can continue in the background." : {
       "extractionState" : "stale",
@@ -410391,7 +410433,14 @@
       }
     },
     "Filter: " : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "筛选： "
+          }
+        }
+      }
     },
     "Filter: %@" : {
       "extractionState" : "stale",
@@ -519532,7 +519581,14 @@
       }
     },
     "Loading details" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "正在加载详情"
+          }
+        }
+      }
     },
     "Loading details…" : {
       "comment" : "Progress indicator on the iOS/iPadOS item detail screen while the detail page is loading.",
@@ -553929,8 +553985,8 @@
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "其他类似"
+            "state" : "needs_review",
+            "value" : "更多类似内容"
           }
         }
       }
@@ -883725,7 +883781,14 @@
       }
     },
     "Sign in automatically on this device." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "在此设备上自动登录。"
+          }
+        }
+      }
     },
     "Sign in online once on this device to use this profile offline." : {
       "localizations" : {
@@ -1188299,7 +1188362,14 @@
       }
     },
     "hero banner carousel content source include exclude enable disable" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "主横幅 横幅 轮播 内容 来源 包含 排除 启用 禁用"
+          }
+        }
+      }
     },
     "hero banner carousel featured content source include exclude enable disable" : {
       "extractionState" : "stale",
@@ -1195363,7 +1195433,14 @@
       }
     },
     "hide watched completed finished hero" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "隐藏 已观看 已完成 已看完 主横幅"
+          }
+        }
+      }
     },
     "hide watched completed finished hero discovery" : {
       "extractionState" : "stale",
@@ -1220228,7 +1220305,14 @@
       }
     },
     "movie show details review scores" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "电影 剧集 详情 评分 影评评分"
+          }
+        }
+      }
     },
     "movie show details review scores trailer theme music" : {
       "extractionState" : "stale",
@@ -1244516,6 +1244600,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Incorrect PIN. Try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "PIN 码不正确。请重试。"
           }
         }
       }
