@@ -173,7 +173,7 @@ final class AetherReleaseIntegrationTests: XCTestCase {
         ))
     }
 
-    func testInPlayerUpscalingExcludesPreviewDiscMenusAndSeparateAudio() {
+    func testInPlayerUpscalingExcludesPreviewAndDiscMenus() {
         var request = PlaybackRequest(
             item: MediaItem(id: "fixture", title: "Fixture", kind: .movie),
             streamURL: URL(string: "https://fixture.invalid/movie.mkv")!
@@ -185,8 +185,7 @@ final class AetherReleaseIntegrationTests: XCTestCase {
         request.discPlayback = .openMenu
         XCTAssertFalse(PlozzigenVideoEngine.supportsVideoUpscalingChanges(for: request))
         request.discPlayback = .playVideo
-        request.externalAudioURL = URL(string: "https://fixture.invalid/audio.m4a")!
-        XCTAssertFalse(PlozzigenVideoEngine.supportsVideoUpscalingChanges(for: request))
+        XCTAssertTrue(PlozzigenVideoEngine.supportsVideoUpscalingChanges(for: request))
     }
 
     func testUpscalingSelectionReachesOnDemandAndLiveOptionsWithoutChangingOtherPolicies() {
@@ -251,8 +250,7 @@ final class AetherReleaseIntegrationTests: XCTestCase {
                 request.discPlayback = .openMenu
                 XCTAssertFalse(liveEngine.onDemandLoadOptions(for: request).upscalesLowResolutionVideo)
                 request.discPlayback = .playVideo
-                request.externalAudioURL = URL(string: "https://media.example/audio.m4a")!
-                XCTAssertFalse(liveEngine.onDemandLoadOptions(for: request).upscalesLowResolutionVideo)
+                XCTAssertTrue(liveEngine.onDemandLoadOptions(for: request).upscalesLowResolutionVideo)
             }
         }
     }
@@ -316,7 +314,7 @@ final class AetherReleaseIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    func testFELConversionExcludesPreviewSeparateAudioAndDiscMenus() throws {
+    func testFELConversionExcludesPreviewAndDiscMenus() throws {
         let engine = try PlozzigenVideoEngine()
         defer { engine.stop() }
         var request = PlaybackRequest(
@@ -325,10 +323,6 @@ final class AetherReleaseIntegrationTests: XCTestCase {
         )
         request.dolbyVisionFELConversion = true
         XCTAssertTrue(engine.onDemandLoadOptions(for: request).foldsDolbyVisionFEL)
-        request.externalAudioURL = URL(string: "https://media.example/audio.m4a")!
-        XCTAssertFalse(PlozzigenVideoEngine.supportsFELConversion(for: request))
-        XCTAssertFalse(engine.onDemandLoadOptions(for: request).foldsDolbyVisionFEL)
-        request.externalAudioURL = nil
         request.suppressOrdinaryWatchReporting = true
         XCTAssertFalse(engine.onDemandLoadOptions(for: request).foldsDolbyVisionFEL)
         request.suppressOrdinaryWatchReporting = false

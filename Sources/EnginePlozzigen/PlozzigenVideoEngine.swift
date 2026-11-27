@@ -418,7 +418,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     nonisolated static func supportsVideoUpscalingChanges(for request: PlaybackRequest) -> Bool {
-        !request.suppressOrdinaryWatchReporting && request.externalAudioURL == nil
+        !request.suppressOrdinaryWatchReporting
             && request.discPlayback != .openMenu
             && request.playbackSource?.requiresNetworkFileResolver != true
     }
@@ -1101,7 +1101,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
     }
 
     nonisolated static func supportsFELConversion(for request: PlaybackRequest) -> Bool {
-        !request.suppressOrdinaryWatchReporting && request.externalAudioURL == nil
+        !request.suppressOrdinaryWatchReporting
             && request.discPlayback != .openMenu
     }
 
@@ -1121,7 +1121,7 @@ public final class PlozzigenVideoEngine: VideoEngine, LiveChannelEngine {
             losslessAudioEnabled: losslessAudioPreference(),
             dolbyVisionFELConversion: request.dolbyVisionFELConversion
                 && Self.supportsFELConversion(for: request),
-            videoUpscaling: request.discPlayback == .openMenu || request.externalAudioURL != nil
+            videoUpscaling: request.discPlayback == .openMenu
                 ? .off : ContentClassifier.videoUpscaling(
                     request.videoUpscaling ?? videoUpscalingPreference(), for: request.item
                 ),

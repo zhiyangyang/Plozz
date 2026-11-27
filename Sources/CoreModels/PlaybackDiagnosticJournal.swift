@@ -12,7 +12,7 @@ public final class PlaybackDiagnosticJournal: @unchecked Sendable {
         case releaseStarted, releaseFinished, failureEvidence, mediaServicesRetry
     }
     public enum Source: String, Codable, Sendable {
-        case unknown, serverFile, serverHLS, localFile, assetPackage, networkFile, separateAudio
+        case unknown, serverFile, serverHLS, localFile, assetPackage, networkFile
     }
     public enum Phase: String, Codable, Sendable {
         case idle, loading, playing, paused, seeking, rebuffering, stalled, ended, failed
@@ -102,7 +102,6 @@ public final class PlaybackDiagnosticJournal: @unchecked Sendable {
             self.content = content
             self.engine = engine
             if let source { self.source = source }
-            else if request?.externalAudioURL != nil { self.source = .separateAudio }
             else if request?.playbackSource?.requiresNetworkFileResolver == true { self.source = .networkFile }
             else if let url = request?.streamURL, url.isFileURL {
                 self.source = url.pathExtension.lowercased() == "movpkg" ? .assetPackage : .localFile

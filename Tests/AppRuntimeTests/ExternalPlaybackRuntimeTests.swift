@@ -250,23 +250,17 @@ final class ExternalPlaybackRuntimeTests: XCTestCase {
         }
     }
 
-    func testSourceRestrictionsFallBackAndReleaseRejectedStreamingSessions() async throws {
-        for mode in 0..<4 {
+    func testSourceRestrictionsFallBackWithoutChangingTheSelection() async throws {
+        for streamURL in [
+            URL(fileURLWithPath: "/video.mkv"),
+            URL(string: "http://127.0.0.1/video")!
+        ] {
             let fixture = ExternalPlaybackFixture()
             defer { fixture.cleanup() }
-            switch mode {
-            case 0: fixture.request.streamURL = URL(fileURLWithPath: "/video.mkv")
-            case 1: fixture.request.streamURL = URL(string: "http://127.0.0.1/video")
-            case 2: fixture.request.externalAudioURL = fixture.media
-            default:
-                fixture.request.externalAudioURL = fixture.media
-                fixture.request.playSessionID = "ordinary-conversion"
-                fixture.request.deliveryMode = .remux
-            }
+            fixture.request.streamURL = streamURL
             let opened = try await fixture.launch()
             XCTAssertFalse(opened)
             XCTAssertTrue(fixture.opened.isEmpty)
-            XCTAssertEqual(fixture.releasedSessions, mode == 3 ? 1 : 0)
             XCTAssertNil(fixture.runtime.error)
         }
     }

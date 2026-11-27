@@ -387,13 +387,6 @@ public struct PlaybackRequest: Hashable, Sendable {
     /// Legacy resolved media stream URL (HLS or direct file) while managed
     /// providers migrate to typed authenticated-HTTP locators.
     public var streamURL: URL?
-    /// An optional *separate* audio track to be muxed with `streamURL` at playback
-    /// time. Used for adaptive sources whose video and audio are delivered as two
-    /// distinct streams (e.g. a high-resolution YouTube DASH trailer: `streamURL`
-    /// is video-only, this is the companion audio). Only the **Plozzigen**
-    /// engine can combine two bare URLs, so a request that sets this must be
-    /// routed there; `nil` for ordinary single-file/HLS playback.
-    public var externalAudioURL: URL?
     /// Opaque session identifier used when reporting progress back to the server.
     public var playSessionID: String?
     public var audioTracks: [MediaTrack]
@@ -473,7 +466,6 @@ public struct PlaybackRequest: Hashable, Sendable {
     public init(
         item: MediaItem,
         streamURL: URL,
-        externalAudioURL: URL? = nil,
         playSessionID: String? = nil,
         audioTracks: [MediaTrack] = [],
         subtitleTracks: [MediaTrack] = [],
@@ -491,7 +483,6 @@ public struct PlaybackRequest: Hashable, Sendable {
         self.item = item
         self.playbackSource = nil
         self.streamURL = streamURL
-        self.externalAudioURL = externalAudioURL
         self.playSessionID = playSessionID
         self.audioTracks = audioTracks
         self.subtitleTracks = subtitleTracks
@@ -511,7 +502,6 @@ public struct PlaybackRequest: Hashable, Sendable {
     public init(
         item: MediaItem,
         playbackSource: PlaybackSource,
-        externalAudioURL: URL? = nil,
         playSessionID: String? = nil,
         audioTracks: [MediaTrack] = [],
         subtitleTracks: [MediaTrack] = [],
@@ -529,7 +519,6 @@ public struct PlaybackRequest: Hashable, Sendable {
         self.item = item
         self.playbackSource = playbackSource
         self.streamURL = nil
-        self.externalAudioURL = externalAudioURL
         self.playSessionID = playSessionID
         self.audioTracks = audioTracks
         self.subtitleTracks = subtitleTracks

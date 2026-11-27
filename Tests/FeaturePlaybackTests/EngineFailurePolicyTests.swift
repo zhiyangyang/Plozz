@@ -18,7 +18,6 @@ final class EngineFailurePolicyTests: XCTestCase {
         hasRequest: Bool = true,
         isNetworkFile: Bool = false,
         isTranscoding: Bool = false,
-        hasExternalAudio: Bool = false,
         currentEngineKind: PlaybackEngineKind = .native,
         alternateEngineKind: PlaybackEngineKind? = .plozzigen,
         resume: TimeInterval = 0,
@@ -29,7 +28,6 @@ final class EngineFailurePolicyTests: XCTestCase {
             hasRequest: hasRequest,
             isNetworkFile: isNetworkFile,
             isTranscoding: isTranscoding,
-            hasExternalAudio: hasExternalAudio,
             currentEngineKind: currentEngineKind,
             alternateEngineKind: alternateEngineKind,
             resume: resume,
@@ -59,7 +57,7 @@ final class EngineFailurePolicyTests: XCTestCase {
             var state = EngineFallbackState()
             let action = EngineFailurePolicy.decide(
                 tokenMatches: true, hasRequest: true, isNetworkFile: false,
-                isTranscoding: false, hasExternalAudio: false, currentEngineKind: kind,
+                isTranscoding: false, currentEngineKind: kind,
                 alternateEngineKind: kind == .native ? .plozzigen : .native, resume: 125,
                 allowsCompatibilityFallback: false, state: &state
             )
@@ -78,7 +76,7 @@ final class EngineFailurePolicyTests: XCTestCase {
                     EngineFailurePolicy.decide(
                         tokenMatches: tokenMatches, hasRequest: hasRequest,
                         isNetworkFile: kind == .plozzigen, isTranscoding: transcoding,
-                        hasExternalAudio: true, currentEngineKind: kind,
+                        currentEngineKind: kind,
                         alternateEngineKind: kind == .native ? .plozzigen : .native,
                         resume: 0.5, allowsCompatibilityFallback: false,
                         mediaServicesReset: true, state: &state
@@ -143,16 +141,6 @@ final class EngineFailurePolicyTests: XCTestCase {
         // The second failure must not swap again — it escalates to a transcode.
         let second = decide(currentEngineKind: .plozzigen, alternateEngineKind: .native, resume: 30, state: &state)
         XCTAssertEqual(second, .forceServerTranscode(resume: 30))
-    }
-
-    func testAdaptiveSourceSkipsNativeSwap() {
-        var state = EngineFallbackState()
-        // External audio track → only the hybrid engine can mux it; a native swap
-        // would play silent video, so the swap is skipped and we go to transcode.
-        let action = decide(hasExternalAudio: true, currentEngineKind: .plozzigen,
-                            alternateEngineKind: .native, resume: 5, state: &state)
-        XCTAssertEqual(action, .forceServerTranscode(resume: 5))
-        XCTAssertFalse(state.hasTriedAlternateEngine)
     }
 
     func testNoAlternateEngineFallsThroughToTranscode() {
@@ -228,21 +216,21 @@ final class EngineFailurePolicyTests: XCTestCase {
         var state = EngineFallbackState()
         let native = EngineFailurePolicy.decide(
             tokenMatches: true, hasRequest: true, isNetworkFile: false,
-            isTranscoding: false, hasExternalAudio: false, currentEngineKind: .native,
+            isTranscoding: false, currentEngineKind: .native,
             alternateEngineKind: .plozzigen, resume: 60,
             allowsCompatibilityFallback: failure.allowsCodecFallback, state: &state
         )
         XCTAssertEqual(native, .swapAlternate(kind: .plozzigen, resume: 60))
         let alternate = EngineFailurePolicy.decide(
             tokenMatches: true, hasRequest: true, isNetworkFile: false,
-            isTranscoding: false, hasExternalAudio: false, currentEngineKind: .plozzigen,
+            isTranscoding: false, currentEngineKind: .plozzigen,
             alternateEngineKind: .native, resume: 60,
             allowsCompatibilityFallback: failure.allowsCodecFallback, state: &state
         )
         XCTAssertEqual(alternate, .forceServerTranscode(resume: 60))
         let converted = EngineFailurePolicy.decide(
             tokenMatches: true, hasRequest: true, isNetworkFile: false,
-            isTranscoding: true, hasExternalAudio: false, currentEngineKind: .native,
+            isTranscoding: true, currentEngineKind: .native,
             alternateEngineKind: .plozzigen, resume: 60,
             allowsCompatibilityFallback: failure.allowsCodecFallback, state: &state
         )

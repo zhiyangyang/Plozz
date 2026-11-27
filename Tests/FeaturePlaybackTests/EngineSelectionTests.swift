@@ -72,12 +72,6 @@ final class EngineSelectionTests: XCTestCase {
         XCTAssertEqual(EngineSelection.route(request: request(), plozzigenAvailable: false), .native)
     }
 
-    func testSeparateTrailerAudioKeepsItsNativeComposition() {
-        var value = request()
-        value.externalAudioURL = URL(string: "https://example.test/audio.m4a")!
-        XCTAssertEqual(EngineSelection.route(request: value, plozzigenAvailable: true), .native)
-    }
-
     func testDownloadedFilesUseAetherButMissingAssetPackageStaysNative() {
         for suffix in ["mp4", "mkv", "ts"] {
             let value = request(url: URL(fileURLWithPath: "/downloads/movie.\(suffix)"))

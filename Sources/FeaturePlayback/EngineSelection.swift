@@ -18,11 +18,6 @@ enum EngineSelection {
             // AVAsset resource loader cannot be attached to Aether's URL load.
             return .native
         }
-        if request.externalAudioURL != nil {
-            // Separate trailer audio is an AVComposition, not Aether's single
-            // URL/IOReader input.
-            return .native
-        }
         if let url = request.streamURL, url.isFileURL,
            url.pathExtension.lowercased() == "movpkg" {
             // AVAssetDownload packages are OS-managed assets. Legacy progressive

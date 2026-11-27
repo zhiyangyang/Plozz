@@ -1717,8 +1717,7 @@ public final class PlayerViewModel {
     /// The rewrite swaps only the *source*: it moves the local file into the legacy
     /// `streamURL` field — the direct-play field BOTH engines already consume —
     /// clears every network/managed source (`playbackSource`, `originalFileSource`,
-    /// `externalAudioURL`, `localRemuxSource`), and marks it a non-manifest direct
-    /// play. All other
+    /// `localRemuxSource`), and marks it a non-manifest direct play. All other
     /// resolved facts (item, tracks, start position, source metadata used for
     /// engine routing) are preserved, so engine selection stays consistent with a
     /// direct-played copy of the same media.
@@ -1732,7 +1731,6 @@ public final class PlayerViewModel {
         rewritten.playbackSource = nil
         rewritten.originalFileSource = nil
         rewritten.scrubStillSource = nil
-        rewritten.externalAudioURL = nil
         rewritten.localRemuxSource = nil
         rewritten.streamingOptions = nil
         rewritten.streamingSessionID = nil
@@ -2075,7 +2073,7 @@ public final class PlayerViewModel {
         let preference = preference ?? videoUpscalingOverride ?? playbackSettings.videoUpscaling
         let selection = ContentClassifier.videoUpscaling(preference, for: request.item)
         guard preference == .automatic, selection == .standard,
-              request.discPlayback != .openMenu, request.externalAudioURL == nil,
+              request.discPlayback != .openMenu,
               request.item.kind == .episode, let seriesID = request.item.seriesID,
               !seriesID.isEmpty else { return selection }
         let provider = provider

@@ -340,7 +340,7 @@ public final class ExternalPlaybackRuntime {
         var preparedRelay: ExternalPlaybackRelay?
         do {
             try checkCurrent()
-            guard request.externalAudioURL == nil, !request.suppressOrdinaryWatchReporting else {
+            guard !request.suppressOrdinaryWatchReporting else {
                 throw ExternalPlayerError.unsupportedSource
             }
             let allowPassword = provider.kind == .mediaShare && request.sourceProvider == .mediaShare

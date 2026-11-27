@@ -56,8 +56,6 @@ enum EngineFailurePolicy {
     ///   - isNetworkFile: the source is a typed network file (SMB/WebDAV) — only
     ///     Plozzigen may reinterpret it; native URL loaders must never touch it.
     ///   - isTranscoding: the current attempt is already a server transcode.
-    ///   - hasExternalAudio: a native AVComposition pairs separate trailer audio;
-    ///     Aether's single-source input must not replace that composition.
     ///   - resume: the position to resume the retry at.
     ///   - state: the once-only guards, mutated as each branch fires.
     static func decide(
@@ -65,7 +63,6 @@ enum EngineFailurePolicy {
         hasRequest: Bool,
         isNetworkFile: Bool,
         isTranscoding: Bool,
-        hasExternalAudio: Bool,
         currentEngineKind: PlaybackEngineKind,
         alternateEngineKind: PlaybackEngineKind?,
         resume: TimeInterval,
@@ -93,7 +90,7 @@ enum EngineFailurePolicy {
         // Retain one compatibility recovery, not a second format router.
         // Native asset exceptions are chosen before load; this recovery is not
         // available to transcodes and never admits a typed network file.
-        if !isTranscoding, !state.hasTriedAlternateEngine, !hasExternalAudio,
+        if !isTranscoding, !state.hasTriedAlternateEngine,
            let alternate = alternateEngineKind,
            !(alternate == .native && isNetworkFile) {
             state.hasTriedAlternateEngine = true
@@ -470,7 +467,6 @@ final class EngineHandoffCoordinator {
             hasRequest: request != nil,
             isNetworkFile: isNetworkFile,
             isTranscoding: request?.isTranscoding ?? false,
-            hasExternalAudio: request?.externalAudioURL != nil,
             currentEngineKind: currentEngineKind,
             alternateEngineKind: alternateEngineKind,
             resume: resume,
