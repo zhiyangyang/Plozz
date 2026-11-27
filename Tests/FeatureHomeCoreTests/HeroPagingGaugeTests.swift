@@ -79,10 +79,9 @@ final class HeroPagingGaugeTests: XCTestCase {
         XCTAssertEqual(layer.bounds.width, trackWidth)
     }
 
-    /// A trailer starting mid-slide swaps the gauge's source and reports its own
-    /// clock from zero. Restating the ramp from there ran the bar backwards,
-    /// which reads as a glitch. Projecting where the stated ramp has reached
-    /// keeps it moving forward.
+    /// A source swap mid-slide reports its clock from zero. Restating the ramp
+    /// from there ran the bar backwards, which reads as a glitch. Projecting
+    /// where the stated ramp has reached keeps it moving forward.
     func testAStatedRampProjectsForwardOverTime() {
         let start = Date()
         let quarter = HeroPagingGauge.projectedFraction(
@@ -112,22 +111,6 @@ final class HeroPagingGaugeTests: XCTestCase {
             ),
             0.4,
             accuracy: 0.001
-        )
-    }
-
-    /// The scenario Brandon hit: a slide is partway through its dwell when a
-    /// trailer begins and reports ~0. Taking the greater of the two keeps the
-    /// bar where it is instead of snapping back to the start.
-    func testATrailerStartingMidSlideCannotRewindTheBar() {
-        let start = Date()
-        let projected = HeroPagingGauge.projectedFraction(
-            from: 0.3, started: start, remaining: 10, now: start.addingTimeInterval(4)
-        )
-        let trailerReports: CGFloat = 0.0
-        XCTAssertGreaterThan(
-            max(trailerReports, projected),
-            trailerReports,
-            "the gauge must not restart when the source changes mid-slide"
         )
     }
 

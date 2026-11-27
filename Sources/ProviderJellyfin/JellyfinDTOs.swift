@@ -216,18 +216,6 @@ struct BaseItemDto: Decodable {
     /// Number of children (episodes for a season, seasons for a series, …).
     let ChildCount: Int?
 
-    /// Online trailer links the server resolved from its own metadata provider
-    /// (e.g. YouTube watch URLs). Present only when `RemoteTrailers` is requested
-    /// in `Fields`. These let Plozz surface official trailers with no client-side
-    /// metadata key — the key lives on the user's own server.
-    let RemoteTrailers: [MediaUrlDto]?
-}
-
-/// A named external media link from `BaseItemDto.RemoteTrailers` — typically a
-/// YouTube watch URL for an official trailer.
-struct MediaUrlDto: Decodable {
-    let Url: String?
-    let Name: String?
 }
 
 /// A Jellyfin `{ Name, Id }` reference pair (used for artists, genres, …).

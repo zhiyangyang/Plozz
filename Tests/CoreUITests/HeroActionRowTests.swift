@@ -13,7 +13,7 @@ final class HeroActionRowTests: XCTestCase {
     private func row(
         progress: Double,
         fontSize: CGFloat,
-        labelledTrailer: Bool,
+        labelledAction: Bool,
         stacksVertically: Bool = false
     ) -> some View {
         HeroActionRow(stacksVertically: stacksVertically) {
@@ -21,8 +21,8 @@ final class HeroActionRowTests: XCTestCase {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(.gray.opacity(0.2), in: Capsule())
-            if labelledTrailer {
-                Label("Trailer", systemImage: "film.fill")
+            if labelledAction {
+                Label("Extra", systemImage: "film.fill")
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     .background(.gray.opacity(0.2), in: Capsule())
@@ -39,14 +39,14 @@ final class HeroActionRowTests: XCTestCase {
 
     private func adaptiveRow(progress: Double, fontSize: CGFloat) -> some View {
         ViewThatFits(in: .horizontal) {
-            row(progress: progress, fontSize: fontSize, labelledTrailer: true)
-            row(progress: progress, fontSize: fontSize, labelledTrailer: false)
-            row(progress: progress, fontSize: fontSize, labelledTrailer: false, stacksVertically: true)
+            row(progress: progress, fontSize: fontSize, labelledAction: true)
+            row(progress: progress, fontSize: fontSize, labelledAction: false)
+            row(progress: progress, fontSize: fontSize, labelledAction: false, stacksVertically: true)
         }
     }
 
     func testInlineCandidateReportsReadableWidthInsteadOfCompressingLabels() {
-        let candidate = row(progress: 0.64, fontSize: 17, labelledTrailer: true)
+        let candidate = row(progress: 0.64, fontSize: 17, labelledAction: true)
         let ideal = size(of: candidate)
         let constrained = size(of: candidate, width: 276)
         XCTAssertGreaterThan(ideal.width, 276)
@@ -54,10 +54,10 @@ final class HeroActionRowTests: XCTestCase {
         XCTAssertEqual(constrained.height, ideal.height, accuracy: 0.5)
     }
 
-    func testTrailerBecomesAnIconBeforePercentageIsCompressed() {
+    func testActionBecomesAnIconBeforePercentageIsCompressed() {
         for progress in [0.0, 0.01, 0.64, 0.99, 1.0] {
-            let compact = size(of: row(progress: progress, fontSize: 17, labelledTrailer: false))
-            let labelled = size(of: row(progress: progress, fontSize: 17, labelledTrailer: true))
+            let compact = size(of: row(progress: progress, fontSize: 17, labelledAction: false))
+            let labelled = size(of: row(progress: progress, fontSize: 17, labelledAction: true))
             let width = (compact.width + labelled.width) / 2
             let actual = size(of: adaptiveRow(progress: progress, fontSize: 17), width: width)
             XCTAssertEqual(actual.width, compact.width, accuracy: 0.5)
