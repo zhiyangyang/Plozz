@@ -47,16 +47,12 @@ playback entitlement to lose.
 
 | Claim | Runtime effect when a profile cannot grant it |
 | --- | --- |
-| `aps-environment`, `com.apple.developer.aps-environment` | CloudKit silent pushes stop; sync falls back to foreground |
-| `com.apple.developer.ubiquity-kvstore-identifier` | Sync & Setup presence beacon stops |
-| `com.apple.developer.icloud-container-identifiers` / `-services` | Device-local only; `CloudConfigSyncService` checks entitlement proof first and never traps |
-| `com.apple.developer.associated-domains` | `applinks:plozz.app` / QR pairing into the app stops |
-| `com.apple.security.application-groups` (tvOS) | Top Shelf stays empty; `TopShelfStore` guards the nil container |
-| `com.apple.developer.user-management` (tvOS) | Household keychain falls back per system user |
+| `aps-environment`, `com.apple.developer.aps-environment` | Push notifications stop |
+| `com.apple.developer.associated-domains` | `applinks:plozz.app` routing stops |
 
 None of these are in the playback path. A free Personal Team profile cannot
-grant iCloud, push, App Groups or Associated Domains; those features are simply
-absent and the code paths above degrade as listed.
+grant push notifications or Associated Domains; those features are simply absent
+and the code paths above degrade as listed.
 
 ## What Feather does
 
@@ -80,9 +76,8 @@ Consequences for this app:
   uses. zsign writes the profile's wildcard `application-identifier`; the app still
   installs, launches, reads its credentials and loads Home/library rows from servers
   — observed on a real install. What a wildcard cannot carry is the capability set:
-  App Groups, iCloud/CloudKit, push, Associated Domains, and the Top Shelf's shared
-  container. Those degrade as listed above; the viewer's library, playback and
-  progress do not.
+  push notifications and Associated Domains. Those degrade as listed above; the
+  viewer's library, playback and progress do not.
 - An **explicit App ID** is only required if you need one of those capabilities.
   If you use one, its bundle id must be exactly `com.thatcube.Plozz.selfbuild`.
 - Do not change the bundle id in the signer. `BGTaskSchedulerPermittedIdentifiers`
@@ -117,7 +112,6 @@ If the alert was dismissed, or the grant belongs to the old signature:
 2. Enable "Plozz Self-build".
 3. Retry playback.
 
-tvOS has no Local Network privacy gate, so this does not apply there.
 
 ## Verifying a build
 
@@ -138,9 +132,9 @@ the Developer Mode panel above.
 
 ## Residual risk
 
-- A free Personal Team profile expires after 7 days and cannot grant iCloud,
-  push, App Groups or Associated Domains; sync, notifications, universal links
-  and Top Shelf are unavailable by design.
+- A free Personal Team profile expires after 7 days and cannot grant push
+  notifications or Associated Domains; notifications and universal links are
+  unavailable by design.
 - If Apple revokes the certificate, previously installed apps stop launching.
 - Whether a specific server advertises a LAN stream URL while the app connected
   over the internet (the common case for a public Jellyfin/Emby address) decides

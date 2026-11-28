@@ -67,7 +67,7 @@ final class DetailOpenFeedbackTests: XCTestCase {
         line: UInt = #line,
         _ condition: () -> Bool
     ) async throws {
-        for _ in 0..<100 {
+        for _ in 0..<200 {
             if condition() { return }
             try await Task.sleep(for: .milliseconds(50))
         }

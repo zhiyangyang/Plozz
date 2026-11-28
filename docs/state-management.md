@@ -1,7 +1,8 @@
-# State management and cross-platform coordination
+# State management and coordination
 
-Plozz shares feature logic across tvOS and iOS/iPadOS, but lifecycle and
-presentation differ. Give cross-screen coordination a named owner; keep
+Plozz runs on iPad. Feature logic and presentation share one lifecycle; give
+cross-screen coordination a named owner and keep view-local presentation state
+local. Give cross-screen coordination a named owner; keep
 view-local presentation state local rather than introducing a coordinator for
 every control.
 
@@ -34,15 +35,15 @@ platform thresholds, or provider refresh policy.
    The view supplies its stable identity, not its timing.
 6. **Build a deterministic harness.** Use a fake clock and synthetic lifecycle
    transitions. Do not rely on UI timing or wall-clock sleeps.
-7. **Test every platform profile.** The same scenario matrix should run for
-   tvOS and iOS behavior.
+7. **Test the compact and regular iPad layouts.** The same scenario matrix
+   should cover both window widths.
 8. **Update the owning module README** when behavior or invariants change.
 
 ## Content refresh coordinator
 
 `ContentRefreshCoordinator` in `FeatureHomeCore` is the reference implementation.
 
-- `ContentRefreshProfile` owns the tvOS/iOS timing and action mapping.
+- `ContentRefreshProfile` owns the timing and action mapping.
 - `ContentRefreshSurfaceID` identifies the content. Each mounted page owns a
   separate registration, so repeated pushes of the same title remain distinct.
 - Profile changes invalidate pending requests and re-register retained pages.
