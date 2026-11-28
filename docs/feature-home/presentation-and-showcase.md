@@ -13,10 +13,10 @@ catalog across playback states and locale changes on a retained pill.
 Home text sizing applies to both SwiftUI and persistent UIKit foregrounds.
 Detail Page, Showcase, and library Recommended have independent profile-scoped sizes.
 Title fallbacks, descriptions, metadata, and badge details scale together;
-artwork sizing and action controls remain independent. On Apple TV, Detail Page
-text sizing also scales the episode titles and three-line synopses below episode
-artwork, including loading placeholders; other row/card labels remain independent.
-Compact mobile detail badges use their natural height when fully visible, with
+artwork sizing and action controls remain independent. Detail Page text sizing
+also scales the episode titles and synopses below episode artwork, including
+loading placeholders; other row/card labels remain independent.
+Compact detail badges use their natural height when fully visible, with
 8-point padding above and below in addition to the normal metadata and action-stack gaps.
 Overflow disclosures retain their 44-point tap target.
 Episode synopses use the same font size and line spacing as hero descriptions at
@@ -27,14 +27,12 @@ restores the delayed focus-only reveal. Hidden labels and spoiler protection
 still apply; label visibility presets do not reset this independent preference.
 Home's text column can use the same wider budget as an enlarged logo, even at
 default Text size. Smaller logos retain the original reading width; changing
-Text size alone never widens it. Both TV foreground renderers share this rule,
-and mobile Home remains capped by its available screen width. Apple TV Detail
-descriptions can grow to the live facts/badges row's width, within the shared
-reading-width limit and the space reserved for right-side credits. Showcase
+Text size alone never widens it. Home remains capped by its available screen
+width. Detail descriptions can grow to the live facts/badges row's width, within
+the shared reading-width limit and the space reserved for right-side credits. Showcase
 and Recommended keep their existing column widths.
-Apple TV descriptions default to 24pt with 3pt additional line spacing; the
-slider spans 18–36pt. Detail descriptions stay capped at four lines, while Home
-may gain a fourth line when enlarged. Mobile typography is unchanged. Their scrims
+Detail descriptions stay capped at four lines, while Home may gain a fourth line
+when enlarged. The text-size slider spans 18–36pt. Their scrims
 extend upward by the larger of the requested logo growth and description-height
 growth, without weakening default coverage or resizing the artwork.
 Showcase and Recommended keep their row positions and description budgets.
@@ -59,7 +57,7 @@ Shared typography and future app-wide scale composition are owned by
   three on larger phones, and a 28% preview at standard density. Wider windows add columns;
   per-profile display-size choices scale the result. Loaded cards and placeholders
   share `PlozziOSHomeRailLayout`, and their artwork starts on the heading keyline
-  after subtracting each card style's internal inset. Smaller mobile artwork uses
+  after subtracting each card style's internal inset. Smaller artwork uses
   proportionate corners and a 20pt minimum watched badge, without shrinking folder
   navigation badges. Continue Watching geometry and library grid columns are unchanged.
 
@@ -86,9 +84,9 @@ Shared typography and future app-wide scale composition are owned by
   Showcase is presentation context within Home or library Recommended, not a new
   override scope; destination scopes clear that context and hosting boundaries forward it.
   Home, Recommended, Browse, Collections, Playlists, Search, Watchlist, related titles,
-  episodes, extras, and filmography resolve the same policy on iOS and tvOS.
+  episodes, extras, and filmography resolve the same policy.
   Explicit episode overrides, including previously persisted ones, are honored.
-  On TV, the episode title moves down on focus and back up on exit in every
+  The episode title does not shift when a card gains focus in every
   focus style, including System; the synopsis uses a delayed reveal only when
   **Only show descriptions on focus** is enabled.
   Loading captions use the same motion without changing row geometry, and
@@ -113,7 +111,7 @@ Shared typography and future app-wide scale composition are owned by
 
 ## Mobile row spacing
 
-- **Shared mobile row rhythm** — Home, library recommendations, search groups,
+- **Shared row rhythm** — Home, library recommendations, search groups,
   related titles, extras (including loading/failure), and cast use
   `PlozziOSMediaSection`: native Dynamic Type `title3` semibold headings, a 12pt
   heading-to-artwork layout gap, and 32pt between sections. Mobile media surfaces
@@ -121,7 +119,7 @@ Shared typography and future app-wide scale composition are owned by
   clearance does not add invisible vertical padding, and framed artwork shares
   the same vertical keylines as borderless posters. Normal-size headings truncate
   at the tail; accessibility sizes wrap. Card sizing, caption preferences, native
-  page titles and tvOS typography remain separate from this shared section style.
+  page titles and typography remain separate from this shared section style.
 
 ## Showcase
 
@@ -268,8 +266,7 @@ hero, or detaching the cue clears its arrival history.
 It is informational, never an additional focus stop. Deeper rows retain ordinary navigation.
 Row translation uses additive compositor animations so reversing direction retains
 the in-flight motion. Artwork planes crossfade; Reduce Motion uses the same
-destinations without animation. Carousel dwell and trailers suspend while rows
-are active. Settings exposes Hero independently from Classic/Showcase row
+destinations without animation. Carousel dwell suspends while rows are active. Settings exposes Hero independently from Classic/Showcase row
 style. Fresh profiles use both Hero and Showcase; saved styles and disabled
 heroes retain their previous behavior. Blobs without a style field keep the old
 carousel layout rather than adopting the new-profile default.
@@ -314,7 +311,7 @@ from the authenticated parent-series record. The server's series tagline/synopsi
 is shown without episode spoiler masking; episode prose is never substituted
 when that series text is absent. The original episode overview, playback route,
 and watch state remain intact. Detail pages retain episode-specific spoiler rules.
-This description policy is shared by Showcase, the TV carousel, and mobile Home.
+This description policy is shared by Showcase and the Home carousel.
 
 `FocusHeroHomeView` keeps focus-driven movement and hero updates outside the
 row-building view. Posters use the profile's full normal poster dimensions.
@@ -395,7 +392,7 @@ keeps its existing fill treatment.
 Landscape heroes check usable library and online backdrops before accepting a
 portrait or square fallback. Source preference still chooses between landscape
 images; a cached online miss and its poster fallback cannot hide a server backdrop.
-Poster-only titles retain artwork, and mobile's explicitly compact portrait heroes
+Poster-only titles retain artwork, and the compact portrait hero
 keep their existing selection policy. Preview, handoff, and resolved-image memo
 identities preserve that distinction.
 Crossfade is the only Showcase backdrop transition. The retired slide preference

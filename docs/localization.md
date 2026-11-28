@@ -236,8 +236,8 @@ rather than reading the process-wide one.
 At a UIKit string boundary, resolve a `LocalizedStringResource` whose `locale`
 is the current SwiftUI environment locale. Passing `locale` directly to
 `String(localized:locale:)` controls formatting, not the lookup language.
-For example, the Seerr account chooser resolves
-`String(localized: LocalizedStringResource("Request as", locale: locale))`
+For example, the server account chooser resolves
+`String(localized: LocalizedStringResource("Sign in as", locale: locale))`
 when presenting, so its labels follow the active profile's language.
 
 ## Verifying
@@ -332,9 +332,7 @@ caller and false for the others:
 | Declaration | Marked | Actually |
 |---|---|---|
 | `HomeRowsGroupCard.title` | "library name from the server" | 2 of 3 callers passed our copy |
-| `MediaRequestActionResult.failure(message:)` | "Seerr server text" | 4 of 5 callers passed our copy |
 | `InfoPanelView.infoActionButton(title:)` | "playback diagnostic values" | all 5 callers passed our copy |
-| `SeerDetailView.row(title:subtitle:)` | "Seerr user name and detail" | 1 of 2 callers passed our copy |
 | `AutoSkipNotice.label` | "metadata from the server" | it was always our wording |
 
 So before marking a parameter as content, **check every call site**. If some

@@ -122,7 +122,7 @@ cleared single-source progress. These checks complement platform builds; they
 are not physical-device playback evidence.
 
 `DetailSelectionInteractionTests` complements those model checks with real
-detail views and native remote/touch input on TV, iPhone, and iPad. The fixture
+detail views and native touch input on iPad. The fixture
 uses distinct provider item IDs and colliding file IDs: movie and series tests
 switch from Plex to Jellyfin, choose the smaller version, then assert the exact
 account/item/file delivered by Play. The series handoff must be an episode,
@@ -184,15 +184,15 @@ for timing scope and scrolling limitations.
 
 ## Pending primary action
 
-During an iPhone swipe back, detail follows the finger while the Home hero and
+During an iPad swipe back, detail follows the finger while the Home hero and
 rows slide back into place together. With horizontal navigation bars, the system
 Back button fades in place; Home’s profile and audio controls still scroll away
 with its content. Only the
-page that owns the trailer displays video. Home does not restart its carousel
-or claim playback until the return finishes. Cancelling leaves the detail
-trailer playing and restores Back.
+page that owns playback displays video. Home does not restart its carousel or
+claim playback until the return finishes. Cancelling leaves the detail's active
+playback state and restores Back.
 
-On iPhone, the detail artwork uses Home's responsive portrait height and mirrored
+On iPad, the detail artwork uses Home's responsive portrait height and mirrored
 continuation, with the title at its lower edge. Metadata and actions grow below
 the artwork; they must not be squeezed into its fixed height. Series seasons
 remain directly below the complete header. Cast & Crew precedes Related. Related
@@ -235,7 +235,7 @@ same confirmed show does not restart the logo fade or hide the badge.
 A conflicting identity cannot reuse the logo or announcement, and a confirmed
 empty schedule clears the announcement.
 
-tvOS detail entry keeps the real primary action focusable while its play target
+Detail entry keeps the primary action focusable while its play target
 loads. An early press queues one activation, replacing the icon with a spinner
 without resizing the button. Readiness consumes that intent once through the
 normal playback callback; a pending series request opens the normal season
@@ -290,7 +290,7 @@ records on both platforms; error dialogs, playback routing and timeouts are unch
   own strict gate. Providers with complete detail inventories incur no extra fetch.
   Series heroes enrich the playable episode's ordinary metadata. Explicit
   mobile source/version actions use that episode even while
-  the hero shows the series' artwork and description, matching tvOS. Choosing a
+  the hero shows the series' artwork and description. Choosing a
   version therefore remembers the episode/series preference, not a container file.
   A confirmed no-stream result from explicit detail discovery replaces Play with
   `No streams found` on both platforms. It rechecks the selected source without
@@ -341,9 +341,9 @@ records on both platforms; error dialogs, playback routing and timeouts are unch
   backdrop, logo, overview, ratings, cast, and Play/Resume button. Works
   for movies, episodes, and people.
   Home and detail Play/Resume buttons use the compact `S1 E22` episode label on
-  TV and mobile. Episode metadata elsewhere retains its existing punctuation.
+  iPad. Episode metadata elsewhere retains its existing punctuation.
   Explicit episode entries retain that episode as the hero's watched-action
-  target. The opening card selects identity, not ongoing watch state: TV and
+  target. The opening card selects identity, not ongoing watch state: the app
   mobile resolve the loaded episode with live resume data, never reapplying the
   original card's watched flag after a toggle.
   Playback resume reconciliation excludes sources of another media kind. A
@@ -357,38 +357,37 @@ records on both platforms; error dialogs, playback routing and timeouts are unch
   keep the breadcrumb immediately eligible for focus.
   Page ownership is identity-based, not an appearance-callback counter: repeated
   appearances and late departures cannot hide a different detail or give it the
-  previous movie's trailer. A confirmed cancelled cinematic Back restores the page that
+  previous page's playback state. A confirmed cancelled cinematic Back restores the page that
   remains on the real navigation stack, removes its cover/input guard, and keeps
   its controls focusable. Older transition completions cannot finish a newer pop.
   Returning to a retained page restores its cached artwork palette without a
   second crossfade after the cinematic cover lifts. Ordinary artwork changes
   still crossfade, and hidden pages still release their displayed-artwork owner.
   The bounded debug handoff journal records page membership, return outcomes,
-  and hashed trailer ownership so an intermittent failure can be inspected
+  and hashed playback ownership so an intermittent failure can be inspected
   without restarting the affected app.
 
 ## Series
 
 - **Series** — `SeriesDetailView` + `SeriesResume` provide one stable
-  series header, focus-driven season tabs and an episode rail. On TV and mobile,
+  series header, focus-driven season tabs and an episode rail. On iPad,
   the header describes and rates the show, not the selected or resume episode;
   missing series metadata never falls back to episode prose or scores.
   Home, library, Search, Related, Continue Watching, season/context-menu and
   deep-link entry retain their episode/season selection without changing that
   subject, including the first paint while parent metadata is loading.
   Episode descriptions stay in the browser; explicit Episode Info pages retain
-  their own synopsis and ratings. On Apple TV, Episode Info uses the same
+  their own synopsis and ratings. Episode Info uses the same
   prepared thumbnail as the rail, including series art in spoiler-placeholder
   mode. Play/Resume, versions and watched
-  actions still target the selected episode, while Watchlist and Trailer target
-  the series. No series-versus-episode setting is needed.
+  actions still target the selected episode, while Watchlist targets the series. No series-versus-episode setting is needed.
   Season lists publish independently of the server resume lookup on both
   platforms. "Go to Show" retains the episode's season and can load its rail
   while resume is pending; entries without an explicit season still wait for
   resume before settling the opening episode. A failed initial show request
   exposes the existing retry state instead of leaving a bare seed loading.
   Refresh failures retain a previously loaded season list.
-  On tvOS, opening an individual episode from Home or Search starts at the hero
+  Opening an individual episode from Home or Search starts at the hero
   with Play focused, just like opening the show. The episode's source, season,
   and prepared rail target are retained; the rail does not claim initial focus
   or bypass the cinematic entrance. Returning from a child page retains the

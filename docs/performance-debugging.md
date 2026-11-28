@@ -1,5 +1,9 @@
 # Performance Debugging Playbook (iPadOS)
 
+> **iPad-only fork:** this playbook keeps historical case studies for methodology.
+> Live TV, IPTV, Seerr and Apple TV sections describe removed or out-of-scope
+> upstream surfaces; use the iPad path and current playback diagnostics instead.
+
 A field guide for diagnosing **slowness, freezes, blank/no-artwork hangs, memory
 crashes, UI jank, and focus-navigation lag** in Plozz on a real iPad. Written
 so any agent or contributor can re-run the same process from scratch. It captures

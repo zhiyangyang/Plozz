@@ -62,10 +62,10 @@ backgrounds/reactivates the app or pushes/pops another page, then checks the
 rendered progress and episode Play target. Only the provider and absence
 threshold are substituted; actual UIKit/SwiftUI lifecycle delivery is exercised.
 `ContentRefreshSurfaceHostedTests` separately covers request cancellation on
-cover, background, profile reset, identity change, and unmount on both platforms.
+cover, background, profile reset, identity change, and unmount.
 The deterministic coordinator suite owns the exact production timing boundaries.
 
-`LiveContentRefreshInteractionTests` is a separate opt-in tvOS simulator smoke
+`LiveContentRefreshInteractionTests` is a separate opt-in iPad simulator smoke
 test for Plex and Jellyfin. It mounts production Home/detail views with real
 providers, backgrounds the host, changes the dedicated test user's history
 through an independent client, and waits the production 15-second Home or
@@ -101,7 +101,7 @@ optimization changes duplicate equality work, not Continue Watching membership.
 Passing a controlled live-server case does not resolve a report about another
 server, user, series, or device; the reporter's exact missing title still needs
 to be traced through Resume, Next Up, curation and presentation.
-The current-branch check passed on iPhone and iPad simulators (Xcode 27.2,
+The current-branch check passed on iPad simulators (Xcode 27.2,
 iOS 26.2), including retained-model advancement, both fresh-load phases and
 the negative controls. Local evidence:
 `live-home-rows-9d2fd88f9d834092a3337de45d1faf98`. This was not a run of the
@@ -167,7 +167,7 @@ restored pending suppression, later playback, newer server playback before retry
 new local playback replacing a queued removal, and season/show cascades. It does
 not automate menu gestures or decode video.
 
-The episode-action and newer-playback cases passed on iPhone and iPad simulators.
+The episode-action and newer-playback cases passed on iPad simulators.
 The expanded checks also exposed a separate server behavior: the
 registered internal Jellyfin endpoint (advertising version 12.3.0) acknowledged
 both legacy and modern whole-season/show watched endpoints without changing the
@@ -194,17 +194,17 @@ partially applied bulk action are not an atomic per-episode transaction.
 The live cascade case now also restores the durable action after a failed write
 before checking all affected episodes and subsequent playback recovery.
 
-Earlier leaf-reset verification passed all six selected hosted cases across
-iPhone and iPad, with zero skips:
-`live-home-rows-400633da102745d3aa739d400834f6f3`. The broader tvOS package run
+Earlier leaf-reset verification passed all six selected hosted cases on iPad,
+with zero skips:
+`live-home-rows-400633da102745d3aa739d400834f6f3`. The broader package run
 recorded 4,648 passes, 15 skips and one pre-existing Home row visibility failure
 (`HomePresentationRowTests.testRetainedNativeRowsImmediatelyHonorDisabledLibraryAndItemVisibility`).
 All seven server-playback delivery regressions and all 16 Home pending-outbox
 regressions passed. Package evidence:
 `.build/private-no-clean-tests/9cf60bb0519f4185a0eecd6c22385bd1`.
 
-The container repair passed all eight selected hosted cases across iPhone and
-iPad, with zero skips, including watched/unwatched season and show actions
+The container repair passed all eight selected hosted cases on iPad, with zero
+skips, including watched/unwatched season and show actions
 restored from the durable queue, independent checks of all eight fixture episodes,
 and subsequent playback returning to Home. Evidence:
 `live-home-rows-5ce3a7096fa544459c2e08e00ce65468`.

@@ -2,325 +2,11 @@
 
 [Home task map](../../Sources/FeatureHome/README.md#where-to-look-first)
 
-On iPhone and iPad, switching profiles shows the incoming profile's ready hero
+On iPad, switching profiles shows the incoming profile's ready hero
 or rows immediately. Only a Home that was visible without any media fades in
 its first content, together over 350 ms. Skeletons and page controls remain
 visible while waiting. Refreshing, scrolling and returning from detail or
 playback do not start another fade. Reduce Motion skips the animation.
-
-## Upcoming and Coming Soon
-
-`UpcomingFeedLoader` builds the personal release agenda from the active profile's
-authorized accounts, resolved universal watchlist and own Seerr requests. It reads
-watched series across paged provider libraries, including caught-up shows, and
-uses the complete Resume/Next Up feed to include a first unfinished episode and
-history missing from a series container. It omits optional parent-recency reads,
-not feed membership; Upcoming orders by release date rather than playback recency.
-Ordinary Continue Watching keeps its existing recency enrichment. Shows qualify
-through viewing history, watchlisting, or a personal request; untouched library
-shows do not qualify. Movies come from Continue Watching, the watchlist, and
-personal requests. Overlapping interests merge into one release and remain
-independently filterable. The household request list is never used. Seerr is optional.
-Sources with no movie, series, or mixed video libraries do not contribute viewing
-history or history failures. Live-only IPTV and music-only catalogues can still
-contribute watchlisted or personally requested titles. Library discovery failures
-remain failures rather than being mistaken for a successfully empty catalogue.
-
-Upcoming hides automatically when the active profile has no eligible movie or
-series library, saved show/movie, or configured Seerr connection. This is a navigation
-default, not a content restriction: explicitly showing Upcoming in the navigation
-arranger overrides it, including for live-TV-only profiles. Library discovery
-failures retain remembered libraries; an unresolved media server keeps the tab
-available rather than treating an outage as an empty catalogue. Empty release
-results never determine navigation visibility.
-
-An empty agenda briefly explains which shows and movies appear, mentioning requests
-only when Seerr is connected. A failed initial refresh offers Retry instead of
-claiming there are no releases. Filters and hidden titles have their own empty state with the
-corresponding reset or restore actions. These states are shared by TV and mobile.
-Feed scope versioning invalidates older movie-only watchlist/request snapshots.
-
-Dates come through the existing metadata providers: TVmaze/TheTVDB episode
-listings, AniList's next episode, and regional TMDB movie release events. A
-calendar query has a separate cache identity and cannot replace the detail
-page's next-episode record with yesterday's episode. No announcement is treated
-as proof of library ownership or playability; cards open existing title details.
-Movies have one entry, on their first announced digital release date in the
-device region. Theatrical, premiere, broadcast, and physical-disc dates neither
-create cards nor substitute for an unknown digital date. Later digital entries
-do not reintroduce an already-released movie. Movie dates are omitted when no
-device region is available. There are no release-type filters or repetitive
-movie-release labels; episode cards retain season/episode information.
-
-The current window is 30 days back through 90 days ahead. TV displays Today
-onward, omitting past days from both the agenda and calendar selection. It starts at Today,
-preferring the first release card over the toolbar. Today-onward
-eligibility also determines TV empty and retry states, so historical releases
-cannot suppress them. Full-width native date
-focus sections bridge the gap from the right-aligned calendar and filter controls
-to sparse release rows without remembering one target across the whole agenda.
-TV date sections reuse Home's `MediaRowSection`, responsive portrait sizing,
-caption preferences, and focus-clearance metrics while retaining their wrapping grids.
-Date headings use Today, Tomorrow, and (in mobile history) Yesterday; other dates
-include the weekday and month, adding the year when it differs from the current year.
-The TV calendar aligns uniform date and month-arrow controls on shared keylines,
-marks today's bold number with a dot, gives selection a subtle native background,
-and uses a single-line
-month heading. Selecting a date scrolls after the sheet dismisses, retaining all
-earlier future releases; reduced motion disables the scroll animation.
-Phone and tablet retain scrollable history, with
-native date-target scroll positioning keeping Today in place when progressive
-results insert older dates. The final date occupies at least
-the viewport height so any selected date can align below the native toolbar without
-being clamped to the bottom of its history.
-On mobile, Today holds entry into history until a deliberate 432-point pull,
-capped at 85% of the usable scroll viewport height so release stays reachable
-on phones and smaller windows. The elastic curve requires 1.2 times the original
-finger travel for the same deflection.
-A continuous rubber-band curve gives the agenda visible initial movement and
-progressively stronger resistance, reaching up to about 75 points before release.
-The entire agenda moves together; artwork, row spacing and date geometry are
-not distorted. Seven distance milestones deliver increasingly strong weighted
-haptics, followed by one distinct pop at the release threshold. Holding still
-or retreating within that pull does not repeat the milestones; returning fully
-to Today rearms the next pull. Feedback follows distance, not touch pressure.
-After the pop, a short spring releases another 24 points of stored tension while
-finger tracking continues 1:1, including reversals. Neither resistance nor
-snapping reattaches mid-gesture. A shorter pull springs back to Today, and
-momentum cannot bypass the unreleased boundary from the future side.
-An approach from later dates stops at Today, including while the finger remains
-down and during fast momentum. That gesture cannot unlock history: lift and
-start a new deliberate pull from Today. Further travel against the stop is
-discarded so reversing back toward later dates responds immediately. Arrival
-feedback fires once, without repeating when the native target later settles.
-Releasing within 48 points of Today also settles there unless it is a fast
-pass-through fling. `ScrollTargetBehavior`
-selects Today before native deceleration begins, using the actual release position
-even when its projected destination is farther away. A moderate approach whose
-projected destination is within the same range also catches Today.
-Layout may query the behavior while the finger is down,
-so movement invalidates that provisional choice. Only the release decision stays
-fixed during deceleration; a swipe after tab reselection must remain free to leave Today.
-There is no second per-frame scroll driver racing the scroll view's release. Native release velocity is
-converted from points/ms to the policy's points/s.
-Deliberate released pulls, ordinary future scrolling, existing history scrolling,
-and calendar jumps remain available. Native outer-edge bounce is unchanged.
-Mobile date sections keep their headers mounted in one stable date list, including
-an empty Today, so changing the selection does not reparent sections or remove
-the detent while scrolling through history or future dates. The final date reserves
-enough height to align it at the top, including dates with no releases.
-Poster grids remain lazy. Initial alignment
-uses the selected date rather than an interim scroll-position report from layout.
-The typed `ScrollPosition` relinquishes programmatic positioning when interaction
-begins; an older date command must not move the viewport during the drag.
-The page-scoped adapter observes native content-offset changes without replacing
-SwiftUI's scroll delegate; VoiceOver and Switch Control scrolling bypass it.
-Target selection exchanges locked value snapshots with the native adapter rather
-than accessing UIKit from the nonisolated behavior. A held pull's return commits
-that native target once, stopping deceleration, and animates an equal-and-opposite
-additive translation of the agenda's content host back to zero. The viewport
-bounds, native scroll-edge blur and scroll indicators are not animated with the
-content. The compositor owns the spring, without per-frame SwiftUI updates or
-moving the layout's Today anchor. A new touch converts the content host's current
-presentation translation back into the native offset; navigation, relayout, detach
-and app deactivation cancel the owned animation. Regrabbing a return preserves
-its unbroken hold. Gesture setup recovers the touch-down position from native
-translation when SwiftUI's interaction phase arrives after the first movement;
-those initial points must not incorrectly classify a Today pull as history.
-Lifting a re-touch without dragging resumes the interrupted return silently.
-Every new interacting phase owns a fresh gesture, even when a touch interrupts
-deceleration without a tracking callback. Tracking saves the visible origin,
-not the recognizer's still-stale translation from the previous gesture. Released
-displacements and targets never carry into the next touch.
-A single shared selection
-haptic fires when the return actually finishes, not when its model offset is
-committed and not after a deliberate pop.
-Positioning, calendar jumps, cancelled catches, and repeated layout callbacks do
-not emit feedback.
-Ordinary approach deceleration remains system-owned. Reduce Motion skips the
-elastic animations and makes explicit date navigation nonanimated.
-Reselecting Upcoming in native or opaque navigation animates its visible agenda
-back to Today from either direction, including repeated taps after scrolling away.
-The page issues one animated typed date-position command, not a competing native
-offset animation or a second unanimated selection observer. Calendar input uses
-the same animated handoff, including taps on the already-selected date after
-scrolling away. A cancellable, latest-request-only task lets a newly inserted
-empty date mount before issuing its scroll command. New user gestures cancel
-pending date commands, and initial width alignment cannot overwrite navigation.
-The latest selection replaces the previous scroll destination.
-Interrupted
-elastic motion is picked up at its rendered position before navigation begins.
-The shell resolves the visible scroll owner before invoking this page-local reset; detail pages and
-other tabs retain their usual scroll-to-top behavior.
-Same-day, same-season episodes form one card without episode-title spoilers.
-Filters are page-local; hidden titles persist per profile and also affect Home.
-Media type lives inside Filters, rather than in a separate segmented control.
-On TV, the Upcoming title, Calendar and Filters scroll with the week strip and
-date rails; native focus brings the header back into view. On mobile, Calendar
-and Filters remain in the native navigation toolbar while the agenda scrolls,
-without a duplicate page title. The shared
-active-profile Settings control sits separately to their right, both in the
-Upcoming tab and when opened from Coming Soon.
-The partial-refresh footer applies to the entire feed, not the final date:
-it preserves Retry when history, requests, or release-date lookups fail, even
-when other sources supplied usable releases.
-The tab shell keeps its appearance bridge inside `NavigationStack`, so UIKit can recognize the
-stack and merge its inline-large toolbar into the iPad tab-bar line. Wrapping the
-stack in that bridge's background breaks the merge even when the bridge is inactive.
-Content insets belong to the agenda, not the scroll viewport. Content scrolls
-behind the native toolbar using the system's soft scroll-edge effect on iOS 26+.
-There is no additional material, gradient mask, or full-width background overlay:
-stacking one over the native edge obscures rows and tints the page background.
-The system owns the transition's blur and opacity; reduced transparency retains
-the shell's existing fallback. On wide, regular-size mobile layouts with enough
-height, a native month calendar sits beside the agenda and stays fixed while it
-scrolls. Calendar in the toolbar minimizes or reopens it, returning the space to
-the poster grid; this is page-local presentation state, not a saved preference.
-Selecting a date scrolls the agenda without dismissing the side calendar.
-The inline picker has no additional leading padding, so the visible poster-to-calendar
-gutter matches the agenda's outer page inset rather than stacking both paddings.
-Phone and narrow iPad layouts use the same native picker in a content-sized
-popover anchored to Calendar; selecting a date closes that popover. Resizing
-preserves the selected date and manual minimization, and widening dismisses any
-open popover. TV uses native secondary glass controls
-below the selected navigation chrome.
-Upcoming date headings use the shared rail typography. Each date uses standard
-poster cards with shared captions, artwork, and focus behavior. Mobile fits whole
-columns to the actual agenda width after the calendar and shared page insets,
-resizing the artwork itself while retaining the normal visible card gaps.
-Compact layouts use Home's responsive poster sizes as the grid's starting point,
-fitting three whole posters across standard-width phones instead of two oversized
-cards. Smaller phones, density preferences, and wider windows retain responsive sizing.
-Every date uses the same column widths, including sparse dates and partial final
-rows. On TV, each date is one horizontally scrolling poster rail, using Home's
-shared `MediaRowScroll` layout and focus-lift clearance. Date rails live in a lazy
-vertical stack, matching Home's scrolling structure. Release IDs remain the card
-identity, preserving separate releases of the same title, episode captions, and
-Hide title actions. Episode numbers or grouped episode counts appear in the
-poster's subtitle, without extra containers
-or changes to the underlying detail-navigation item. Coming Soon uses full-size landscape
-media cards on both platforms, with the shared Home headings, spacing, captions
-and mobile row footprint. Dates and episode information use the shared artwork
-status cue rather than a separate compact-row design.
-
-On TV, a seven-day calendar sits above the date rails and scrolls away with them.
-Initial entry focuses the selected day so the strip remains visible.
-Week arrows browse across month/year boundaries without changing the agenda.
-Choosing a date jumps to that date without filtering other releases, handing
-native focus to the first release on or after it. If no later release exists,
-the page returns to its header and focuses Calendar, with the chosen week visible.
-The full month picker remains available and synchronizes the displayed week.
-Week starts follow the system calendar; unavailable dates and week directions
-are disabled. Calendar arithmetic preserves local dates across daylight-saving changes.
-Both TV calendars mark selection with a subtle neutral background. The week
-strip labels the current date Today instead of placing a dot against its lower
-edge; the month picker retains its bold date and dot. Week arrows use the same
-native secondary Liquid Glass style at rest and in focus, without a borderless
-style overriding it. Their regular-weight SF chevrons use a tall, narrow profile.
-The buttons trim spacing on the pointed side for optical balance, mirrored in
-right-to-left layouts.
-The selection background sits beneath the native control;
-actual focus retains the much stronger native highlight and contrasting text.
-
-The presentation hosts support `--upcoming-capture-fixture` (Upcoming) and
-`--upcoming-capture-fixture --capture-home` (the production Home screen with
-Continue Watching, Coming Soon and Recently Added). These previews use sample
-dates/history and public artwork, not a signed-in account; Home's hero is disabled.
-Mobile previews mount the production `PlozziOSTabShell`, including its navigation
-and appearance bridges, with a seeded feed loader rather than live release lookup.
-`--capture-dense` puts five shows on one date and checks rendered poster spacing,
-phone wrapping, and single/grouped episode captions.
-`--capture-progressive` exercises centered initial loading, first publication,
-and subsequent insertion of thirty days of history; Today must remain immediately
-below the toolbar. Explicit phase gates separate loading, first-publication, and
-completed renders, including when a shell refresh coalesces.
-`--capture-thirty` instead places thirty uniquely numbered sample cards on Today,
-reusing the fixture artwork. Its scrolled capture reaches the last card and the
-following date; its minimized capture retains Today to compare the same date.
-On TV, combine it with `--capture-many-days` to exercise horizontal traversal on
-a busy date followed by Down/Up traversal through seventeen offscreen dates.
-They also support
-`--capture-scrolled`, `--capture-calendar` and
-`--capture-selection` to exercise pinned controls, the real calendar presentation
-and the appropriate inline/popover behavior after choosing a date.
-`--capture-calendar-collapsed` checks hide/reopen, recovered poster width and date
-retention, ending minimized. `--capture-calendar-resize` additionally checks the
-narrow popover and its dismissal when returning to a wide layout.
-Add `--capture-opaque` to the scrolled capture
-to check the app's reduced-transparency fallback. Add `--capture-edge-comparison`
-to save same-position native-window renders with only the system's top edge effect
-enabled and disabled (`tmp/upcoming-edge-enabled.png` and `tmp/upcoming-edge-disabled.png`).
-Add `--capture-landscape` to an
-action capture to render a 1194-by-834 native test window with the sidebar collapsed;
-this checks wide layout, not device rotation. That render is saved to
-`tmp/upcoming-landscape.png` in the presentation host's data container.
-`--capture-narrow` instead renders a 700-by-900 iPad window to
-`tmp/upcoming-narrow.png`, exercising the compact-calendar fallback.
-
-`HomeViewModel.upcoming` owns the shared feed. Profile, account, credential and
-request-connection changes invalidate in-flight results. Viewing/watchlist
-mutations and request attempts refresh the feed; foreground entry checks freshness
-instead of invalidating a fresh result. The retained feed model observes watchlist
-changes, cache restoration and request completion even when its tab is absent.
-Request completion from a disconnected service is ignored. tvOS gates network
-refreshes, not invalidation, on tab visibility. Opening
-Upcoming reuses Home's existing work and data, checking freshness rather than
-unconditionally restarting it.
-An off-main, bounded disk snapshot restores releases across model recreation and
-app relaunch before network work. Cache identity includes the profile, accounts,
-credential revisions, server users, request identity/server, language and region;
-process-local request-connection revisions remain runtime fences, not disk keys.
-Authorization is checked before and after hydration. Artwork credentials are
-removed before persistence and rebuilt through the current action handler.
-Snapshots older than seven days are ignored; stale usable data remains visible
-while refreshing, and successful empty responses replace prior records.
-Initial loading is centered in the agenda viewport. Once cards are available,
-refreshing does not add a spinner; recoverable source errors follow the cards
-rather than displacing the first date.
-Episode calendars and personal-movie loading run independently, publishing each
-completed title while the rest continue. Calendar concurrency remains bounded;
-returning and recently watched series are checked first without omitting older
-or ended series. Same-scope changes finish useful in-flight work and coalesce
-into a follow-up refresh using the latest inputs. Successful unchanged feeds
-remain fresh for six hours; partial/error results have a one-minute automatic-retry
-cooldown, with a new local day also requiring refresh, while explicit Retry bypasses it.
-Calendar provider results also expire within six hours, rather than retaining the
-longer artwork/text cache lifetime.
-A failed source is reported and its
-previous same-scope entries remain available rather than turning an outage into
-a successful empty agenda.
-Successful empty full-calendar listings retain their completeness in the provider
-cache and stop unnecessary fallback; a single-next-episode source still permits
-full-calendar fallback. A successful single-next response cannot mask a failed
-full-calendar request; complete listings, including empty ones, replace partial
-next-episode answers. TVmaze reuses a known show ID and does not fetch unused
-cadence metadata for calendar requests. An authoritative unmatched title means
-no announced dates, not a source outage. Transport, decoding, listing, and
-fallback failures remain distinguishable from that result.
-Unavailable listings are not cached as authoritative negatives, so Retry
-can recover subject to the provider's existing outage cooldown.
-
-Coming Soon is an ordinary Home row, enabled by default while respecting explicit
-hiding, renaming and saved ordering. It previews the next announced event per
-title, at most 20 cards, independently of agenda filters. Its See All action
-opens Upcoming even when that destination is hidden from primary navigation.
-The destination participates in all TV navigation styles and mobile's existing
-tab/More/sidebar arrangement. The TV Home row uses the shared native media rail,
-including Showcase card-focus reporting and the standard browse action.
-
-`UpcomingScheduleTests` includes an opt-in public TVmaze listing comparison
-(`PLOZZ_UPCOMING_LIVE=1`). It checks the production calendar path against the full
-episode listing, including the history window, without media-server credentials.
-The deterministic runtime tests separately cover provider paging, first-episode
-history, personal interests, progressive publication, scope cancellation,
-coalesced refreshes and partial-source retention. `UpcomingLivePerformanceTests`
-uses an explicitly authorized ephemeral internal-server broker to measure first
-content, first upcoming content, full completion, repeat visits, disk restoration and real request
-counts against production Jellyfin/Plex providers and metadata. These are
-data-publication timings, not rendered-frame or physical-device measurements.
-Both dedicated identities must have watched returning shows with announced
-future episodes: an empty future feed cannot pass as fast loading. Repeat
-visits must preserve the feed without additional server requests.
 
 ## History diagnostics
 
@@ -350,7 +36,7 @@ invisible sizing content does not shimmer or enter the accessibility tree.
 Long status messages can scroll inside the reserved row instead of expanding
 the page. Browse headings reserve chevron space before their action is available;
 only actionable headings are buttons, with the native 44-point touch target.
-Library, featured, Continue Watching, and Live TV rows use their own geometry.
+Library, featured and Continue Watching rows use their own geometry.
 
 On iPad, landscape Continue Watching fits complete cards and matches the next
 poster card's visible peek at the same viewport width. Standard density uses
@@ -358,7 +44,7 @@ four cards in wide windows, three at intermediate widths, and two in narrow
 windows. Density and larger text can change that count to retain readable cards.
 Series-artwork and episode-thumbnail modes share this width policy, including
 their loading and reserved footprints. Poster-layout Continue Watching, other
-poster and landscape rails, iPhone sizing, and Mac's existing fitting policy are
+poster and landscape rails, compact sizing, and Mac's existing fitting policy are
 unchanged.
 
 Mobile landscape playback chips give up the play glyph before compressing their
@@ -511,7 +197,7 @@ failure does not replace a successful history response with that failure.
 ## History failures
 
 Home Continue Watching failures use the existing Details / Try Again actions on
-TV (including focus-following layouts), iPhone and iPad. The report follows the
+iPad. The report follows the
 same failed source as the visible error and retains bounded, task-scoped HTTP,
 decoding, paging and transport evidence. Retry/success clears stale reports;
 cancelled or superseded requests cannot publish diagnostics into another load.
@@ -521,7 +207,7 @@ server addresses, credentials, media IDs/titles or response bodies.
 ## Row customization
 
 - **Home row customization** — Settings > Screens & Navigation > Customize Home > Rows
-  uses the same arrangement editor on TV, iPhone and iPad. Tap a row to configure
+  uses the same arrangement editor. Tap a row to configure
   it, Edit to reorder or remove it, or Add row to choose a collection or another existing feed.
   Layout/Hero and Card labels have separate destinations. Rows from different
   libraries can be interleaved, reordered or hidden, including the Libraries
@@ -536,7 +222,7 @@ server addresses, credentials, media IDs/titles or response bodies.
   It adapts to source changes until a manual row edit freezes a **Custom arrangement**. Choosing Match server
   again resumes adaptation. **Combined rows** starts with cross-library rows
   regardless of source count. Existing legacy arrangements remain unchanged.
-  Both presets put **Libraries** last among visible rows, after Live TV and any
+  Both presets put **Libraries** last among visible rows, after any
   newly discovered default rows, even when the server lists Libraries first.
   Custom row positions and hidden Libraries choices remain unchanged.
   Global rows say **All libraries**; native server and library rows identify their
@@ -555,12 +241,11 @@ server addresses, credentials, media IDs/titles or response bodies.
   with that specific episode's information and playback target in the hero and
   its season selected. Only the explicit **Go to Episode** action opens the
   standalone episode page.
-  Artwork, progress overlays, context menus and Live TV tuning are unchanged.
+  Artwork, progress overlays and context menus are unchanged.
   Library Recommended rows retain their existing detail navigation.
-  On Apple TV, the remote's center button follows this choice, while Play/Pause
-  always starts the focused Continue Watching item through the normal playback
-  path. Play/Pause never opens details, including when **Open details** is selected.
-  Normal resume/restart and version-choice prompts still apply.
+  The card's primary action follows this choice; a separate Play/Pause control
+  starts the Continue Watching item through the normal playback path. Normal
+  resume/restart and version-choice prompts still apply.
   It uses the provider's combined resume/next-episode feed without changing the
   preset, library exclusions, or other row choices. Separate Next Up rows are
   neither requested nor presented while merged; the arranger omits them rather
@@ -587,7 +272,7 @@ server addresses, credentials, media IDs/titles or response bodies.
   indicators use the same minimum, so brief plays still look unstarted. A
   percentage-only item uses its runtime when available; without either a position
   or duration, its reported progress is retained. Unstarted Next Up episodes
-  remain eligible; trailers never enter the row or propagate watch state to their
+  remain eligible; extras never enter the row or propagate watch state to their
   parent title. The same policy covers optimistic updates, queued-write overlays,
   cached content, library/server rows, and their browse grids. Grid filtering
   preserves raw provider continuation offsets.
@@ -613,7 +298,7 @@ server addresses, credentials, media IDs/titles or response bodies.
   profile without disabling or reordering the row. Titles appear automatically
   when available; loading placeholders and real failures remain visible. New
   row identities retain their messages, and the row's editor can restore a
-  dismissed message. tvOS Showcase omits confirmed-empty rows automatically,
+  dismissed message. Showcase omits confirmed-empty rows automatically,
   without saving dismissals or changing other Home layouts.
   Customize Home shares the same completed-load
   evidence, distinguishing typed failures, empty results, and saved sections
@@ -729,11 +414,10 @@ server addresses, credentials, media IDs/titles or response bodies.
   and this does not add support for third-party plugins with separate watchlist storage.
   Featured is available only for authored collection rows. Large artwork cards
   place the title logo (or text fallback) and real metadata at the lower left.
-  On tvOS, Classic rows retain these large cards with or without the Home hero.
-  Showcase and Hero + Showcase instead render standard poster cards, leaving
-  the focused title's artwork and metadata to Showcase. This presentation-only
-  adaptation preserves the saved Featured preference, row order, and contents;
-  iPhone and iPad continue to use large Featured cards.
+  Showcase and Hero + Showcase render standard poster cards, leaving the
+  focused title's artwork and metadata to Showcase. This presentation-only
+  adaptation preserves the saved Featured preference, row order and contents;
+  other layouts continue to use large Featured cards.
   TV rows reuse the standard media-row heading and See all action, with the same
   pinned-navigation keyline, leading fade and card-slot parking as ordinary rows.
   System-focus Featured cards share the image-based native poster renderer.
@@ -760,23 +444,9 @@ server addresses, credentials, media IDs/titles or response bodies.
   Full-bleed Home artwork preserves the measured trailing title-safe inset for
   row actions. Remote-driven coverage checks resting painted sizes after rapid
   navigation; simulator rendering is not proof of physical remote-tilt behavior.
-  The focused TV card or settled visible mobile card can play a supported
-  local/server trailer, using the profile's Home trailer enable/mute preferences.
-  A shared coordinator arbitrates visible rails and borrows the existing hero
-  player; it never creates per-card players or performs online trailer extraction.
-  Scrolling away, navigation, backgrounding, source changes and full playback
-  cancel the preview. Reduce Motion keeps the cards static. Missing or failed
-  trailers retain artwork. Mixed feeds, filters and library-page placement are
-  not part of this slice. Home omits
-  unselected row-family requests and stops a recommendation family after all its
-  known rows are hidden. The separate library Recommended screen and Showcase's
-  optional external Discover row are not redefined by these Home preferences.
-  Provider live channels are not part of Home's Continue Watching, Classic or
-  Showcase layouts; playback routing is shared with other remote sources.
-
 ## Home loading
 
-On iPhone and iPad, the loading and loaded Home layouts share the hero visibility
+On iPad, the loading and loaded Home layouts share the hero visibility
 gate. Disabling the hero or deselecting all its sources removes both the carousel
 and its placeholder, including the reserved height. Only an active hero extends
 under the top safe area; a rows-only Home keeps its first row below navigation.
@@ -788,8 +458,8 @@ The Home artwork, legibility scrim, and dissolve mask share window-wide bounds,
 including behind native side chrome. The title, actions, paging, and touch targets
 retain their safe-area layout; extending the artwork does not extend hit testing.
 On devices using a native vertical toolbar, root pages keep the profile/settings
-avatar in that rail, including Search and Live TV. The system's toolbar-edge
-environment selects this layout; ordinary iPhone and iPad placement is unchanged.
+avatar in that rail, including Search. The system's toolbar-edge
+environment selects this layout; ordinary placement is unchanged.
 The titleless Home hero explicitly keeps that native rail visible.
 
 Library cards preserve server-supplied cover artwork. Missing covers use a stable,
@@ -979,7 +649,7 @@ not every unchanged server completion; live source lookup closures remain live.
 Showcase keeps its first-row anchor while that row loads; a lower row finishing
 does not choose focus or scroll the page. Its leading loading card has a visible
 progress indicator and can hold focus without making the other skeletons
-interactive. Its hero stays empty, even if cached Live TV cards are available
+interactive. Its hero stays empty, even if cached rows are available
 after the waiting slots; returning to that slot also cancels any delayed title
 from the previous row. The waiting card uses the loaded cards' shared focus treatment:
 native TVUIKit for System, lighting/lift for Highlight, and glass for Outline.

@@ -1,5 +1,9 @@
 # Playback Engine Architecture
 
+> **iPad-only fork:** Live TV, IPTV and multiview sections below document removed
+> upstream features. The on-demand video, subtitle, PiP and engine-selection
+> material remains current.
+
 Plozz uses two playback engines, automatically selected per-item based on
 container, codecs, and subtitle requirements. The goal is maximum format coverage
 with the best possible quality (Dolby Vision, spatial audio, full-timeline seek).

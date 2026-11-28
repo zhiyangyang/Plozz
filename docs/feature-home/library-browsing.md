@@ -10,7 +10,7 @@ All + Name sorting, without a new setting or toolbar control. The shared
 behavior; background indexing, recommendations, filtered/sorted inventories and
 collection members continue to request individual items. Provider adapters own
 their native policy; unsupported sources do not infer collections from titles.
-Existing collection cards open the same paged member route on TV and mobile.
+Existing collection cards open the same paged member route on iPad.
 
 Combined libraries merge each source's native mixed result. Collection identity
 stays account-scoped, even for two users on one physical server, and title-index
@@ -22,13 +22,12 @@ library scan is added to ordinary paging.
 
 ## Browsing Home rows
 
-Media rows have a title-chevron action on iPhone/iPad and a trailing **See all**
-card on Apple TV. The TV action is a separate native control, not a synthetic
-media item, and follows the rail's poster, landscape, or featured geometry.
-All TV Home layouts retain the complete `HomePresentationRow` source when
-opening the shared browser. Libraries and Live TV keep their existing navigation.
+Media rows have a title-chevron action on iPad. It is a separate native control,
+not a synthetic media item, and follows the rail's poster, landscape, or featured
+geometry. Home layouts retain the complete `HomePresentationRow` source when
+opening the shared browser. Libraries keep their existing navigation.
 Expanded grids of collection covers retain the resolved Auto, Posters, or
-Landscape cover layout on TV and mobile. Movie, show, episode, and mixed-content
+Landscape cover layout on iPad. Movie, show, episode, and mixed-content
 grids use normal posters; they do not inherit Continue Watching's special layout
 or a custom collection-member row's Landscape/Featured presentation.
 Landscape collection-cover grids use wider columns; sorting, filtering, and
@@ -47,13 +46,13 @@ uncapped Continue Watching snapshots, have no redundant browse action.
 On Mac, successfully loaded media rows with more than ten titles offer the
 title-chevron action even when the entire row is already loaded. This threshold
 changes only the heading action; it does not shorten the rail or change its fetch
-limit. Rows with ten or fewer titles, loading/failed rows, Libraries, and Live TV
-have no new action. Mac Related headings follow the same threshold and open all
+limit. Rows with ten or fewer titles, loading/failed rows and Libraries have no
+new action. Mac Related headings follow the same threshold and open all
 currently resolved related titles in the same grid, preserving their order,
 continuation cues, detail navigation, and profile/account scope.
 Watchlist previews the first 20 titles in its existing Home order. When there
 are more, TV pushes the existing Watchlist view beneath Home rather than switching
-top-level destinations. Mobile retains its existing Watchlist destination handoff,
+top-level destinations. The app retains its existing Watchlist destination handoff,
 temporarily admitting a hidden navigation entry without changing the saved layout.
 Both reuse the full profile-scoped Watchlist and its saved sorting/filtering
 preferences instead of creating a separate row browser.
@@ -62,7 +61,7 @@ the first grid item actually receives native focus. This also covers delayed
 loads and nested Watchlist; empty and failed loads release the controls. Once
 entered, ordinary directional navigation and detail-return focus stay native.
 The shared row browser's sort and filter menus sit at the trailing end of the
-TV heading and in the top-right navigation toolbar on iPhone/iPad. Mobile uses
+iPad heading and in the top-right navigation toolbar.
 a native inline navigation title rather than a second large content heading;
 long titles truncate to fit alongside Back and the menus. Watchlist
 and library grids use that same mobile toolbar placement, keeping supported
@@ -71,7 +70,7 @@ content header.
 Library Browse places Filter before Sort on both platforms, keeping Sort at the
 trailing end of the query controls.
 
-Mobile row-browser destinations capture only the app model and resolved layout
+Row-browser destinations capture only the app model and resolved layout
 inputs. Capturing the entire Home view causes a navigation update loop on iOS 18
 inside the production tab shell; standalone Home navigation does not reproduce
 it. Keep the shell-backed Films heading regression when changing this boundary.
@@ -155,8 +154,8 @@ are destination-local and do not change the Home row's settings or order.
   All Libraries keeps reachable sources when capability preparation, query facets,
   inventory discovery, or duplicate-card hydration encounters an unavailable source.
   Its provider and query implementation live in `FeatureHomeCore` and are shared
-  by tvOS and iPhone/iPad. Mobile uses the existing native library grid, sort and
-  filter controls, with a separate profile-scoped browse preference key. Combined
+  by iPad. The app uses the existing native library grid, sort and filter
+  controls, with a separate profile-scoped browse preference key. Combined
   cards use unified detail routing, not a synthetic provider as their playback
   source. Profile/account changes or a changed library source set replace retained
   browse state; ordinary discovery reordering does not.
@@ -193,7 +192,7 @@ are destination-local and do not change the Home row's settings or order.
   library-scoped Continue Watching and Recently Added plus native Plex hubs
   or Jellyfin/Emby movie recommendation categories. TV uses Showcase, showing
   its mode tabs only while the first row is active; mobile uses touch-sized rows.
-  iPhone and iPad keep Recommended, Browse, Collections, and Playlists in a
+  iPad keeps Recommended, Browse, Collections, and Playlists in a
   horizontally scrolling tab strip, limited to the provider's capabilities.
   `LibraryPresentationSettings` shares tab order/visibility and TV logo size
   across libraries, independently of Home and detail pages. Recommended row
@@ -202,7 +201,7 @@ are destination-local and do not change the Home row's settings or order.
   unavailable rows and unsupported tabs retain saved intent. Browse remains
   accessible when no preferred tab is supported. Collection/playlist member
   routes remain plain Browse destinations.
-  Mobile Home's no-account and connected-but-empty states share
+  Home's no-account and connected-but-empty states share
   `PlozziOSHomeEmptyState`: the small blue Plozz mascot without its wordmark, a state-specific explanation,
   and one native **Add Source** action. Only the no-account state also offers
   device transfer. Both remain scrollable at large text sizes and in landscape;
@@ -212,7 +211,7 @@ are destination-local and do not change the Home row's settings or order.
   Tabs retain their identity through loading, empty, and failure states and
   reveal the selected mode without compressing every label into a segmented
   control. At accessibility sizes, an individual tab still fits the viewport.
-  Mobile controls scroll with the page; Filter and the current Sort occupy a
+  Controls scroll with the page; Filter and the current Sort occupy a
   separate line instead of competing with the tabs. Row headings, artwork, grids,
   and scan banners share the mobile page keyline (22pt compact, 36pt regular).
   Mode changes reset to the padded page's true top, keeping both the tabs and
@@ -226,10 +225,10 @@ are destination-local and do not change the Home row's settings or order.
   watch recency before limiting the row. Watch changes
   refresh recommendations on return (or while visible), retaining the current
   rows during the request and rejecting snapshots predating another watch change.
-  On tvOS, changing tabs keeps the focused mode control
-  mounted while replacing content below it. A stable layout container owns the
-  top inset across Recommended, Browse, Collections, and Playlists (a transparent
-  `Group` would attach the inset to each replaceable content branch).
+  Changing tabs keeps the mode control mounted while replacing content below it.
+  A stable layout container owns the top inset across Recommended, Browse,
+  Collections, and Playlists (a transparent `Group` would attach the inset to
+  each replaceable content branch).
   Library pages discard the native container's top-bar inset and reserve only
   screen-safe spacing plus clearance for the native sidebar's visible page button.
   The outer focus host and Recommended content both break out at the trailing
@@ -248,8 +247,7 @@ are destination-local and do not change the Home row's settings or order.
   scrolling rail; there is no separate Jump to letter button.
   Without mode tabs, the library/share display name occupies the left of the
   same header, with controls on the right; it does not add a focus target.
-  A persistent tvOS focus owner encloses the header and grid, preserving
-  the selected tab's focus identity as content changes. The content slot stays full-height
+  The content slot stays full-height
   during loading, keeping the header in place and query progress vertically
   centered below it. Scan progress remains in the grid. Its hosting view is
   constrained to the collection's supplementary header, which alone owns the
@@ -295,9 +293,9 @@ are destination-local and do not change the Home row's settings or order.
   App-authored recommendation headings retain localization resources through
   caching and source qualification, so language changes update existing rows
   without changing their identities. Provider-authored headings stay verbatim.
-  On tvOS, library tabs, Filter, and Sort move with the grid instead of staying
-  over the posters. Their native controls remain mounted during query changes
-  so returning to the top and changing filters or modes preserves focus.
+  Library tabs, Filter, and Sort move with the grid. Their native controls remain
+  mounted during query changes so returning to the top and changing filters or
+  modes preserves state.
   The native grid's viewport spans the full screen vertically, with content
   insets preserving the header and bottom spacing. Disabling clipping alone
   does not prevent UIKit from hiding artwork at an inset viewport boundary;
@@ -347,7 +345,7 @@ are destination-local and do not change the Home row's settings or order.
   provider advertises those capabilities. File shares and collection/playlist
   members continue to open in Browse. Plex, Jellyfin, and Emby discover existing video
   playlists by actual member/library intersection; a mixed playlist appears
-  in each matching library but opens with its full authored order. Music
-  playlists remain in `MusicProvider`. Unsupported sources (including Silo)
+  in each matching library but opens with its full authored order. Unsupported
+  sources (including Silo)
   do not advertise a video-playlist mode. Snapshots are bound to the provider
   account and refreshed on the first page, not during poster scrolling.
