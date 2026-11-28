@@ -110,7 +110,7 @@ of the process uploading a recovered crash.
 The `PLZLTVSYNC` local log uses the same non-secret vocabulary.
 
 Manual **Send to Developer** reports additionally attach the persistent,
-Release-capable [Live TV source journal](live-tv-prototype.md#diagnosing-disappearing-sources).
+Release-capable playback source journal.
 This is separate from automatic Sentry events and the in-memory performance
 snapshot below. It captures pseudonymous source/account/profile transitions and
 a fresh source-storage snapshot so a disappearing source can be distinguished

@@ -771,11 +771,8 @@ server addresses, credentials, media IDs/titles or response bodies.
   unselected row-family requests and stops a recommendation family after all its
   known rows are hidden. The separate library Recommended screen and Showcase's
   optional external Discover row are not redefined by these Home preferences.
-  Live TV contributes typed cached channel cards only to its own optional row,
-  never to Continue Watching, including Classic and Showcase layouts. Recent
-  channel history remains available on the Live TV page. Cache bounds,
-  authorization and managed tuning are documented in
-  [Live TV](../live-tv-prototype.md).
+  Provider live channels are not part of Home's Continue Watching, Classic or
+  Showcase layouts; playback routing is shared with other remote sources.
 
 ## Home loading
 

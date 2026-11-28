@@ -1,13 +1,11 @@
 # Screenshots and media credits
 
-The README uses selected published App Store artwork: Home on Apple TV,
-offline downloads on iPhone, and Live TV on iPad. Each image highlights a
-different feature, with real app captures in promotional layouts. Local, content-versioned
-JPEG copies keep the gallery independent of Apple's image URLs.
-[App Store image records](assets/app-store/provenance.json) retain the source
-URLs, retrieval date, dimensions and hashes. These are Apple-hosted derivatives,
-not new captures or submission-sized originals; no local retouching was applied.
-The older raw-capture records below do not establish the app revision of these
+The README currently has no inline screenshots. Any future published capture
+must use an isolated build and reviewed media. [App Store image
+records](assets/app-store/provenance.json) retain source URLs, retrieval dates,
+dimensions and hashes for older published derivatives; they are not new
+captures or submission-sized originals. No local retouching was applied.
+The older raw-capture records below do not establish the app revision of those
 newer captures.
 
 The retained raw simulator screenshots show Home and library views using a
@@ -98,18 +96,3 @@ README JPEGs are not submission-sized originals. Confirm the final screenshots
 match the intended submission build, and obtain design approval before
 localization, upload or submission. Asset records do not guarantee legal
 clearance or App Store approval.
-
-## Channel identity theme comparison
-
-`PlozzChannelIdentityCaptureTests/testNativeBylineThemes` in
-`PlozzHomeFixtureTests` captures the Byline artwork in Light, Dark, and Black using
-the production tvOS guide, sidebar, hero, and focus components. Run this selected
-test on an owned Apple TV 4K simulator. The fixture uses identical sample
-channels, category moods, a fixed schedule, and the same focused programme for
-all images.
-
-The fixture-only `PLOZZ_CHANNEL_IDENTITY_THEME` launch environment selects
-`light`, `dark`, or `black`. These are native simulator captures, not physical-TV
-captures or a configured user's library. The saved
-`assets/plozz-oled-icon-concept.svg` and matching PNG are separate icon
-explorations, not shipping assets.

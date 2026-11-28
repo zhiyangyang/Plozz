@@ -761,10 +761,11 @@ ffmpeg -i chapters.mp4 -map 0:v -map_chapters 0 -c copy chapters.mkv
 ffmpeg -i chapters.mp4 -map 0:v -map_chapters -1 -c copy -movflags +faststart no-chapters.mp4
 ```
 
-## IPTV live streams
+## Live-stream routing
 
-The [IPTV troubleshooting history](iptv-history.md) links earlier routing,
-redirect and cancellation repairs, including approaches that later changed.
+Provider live streams use the same transport selection as other remote playback.
+Redirect and cancellation handling is covered by the transport and playback
+tests; there is no separate IPTV troubleshooting history to consult.
 
 IPTV playlist URLs can declare live output as `ts` or `m3u8` while publishing
 extensionless channel URLs. The provider carries that declaration into its

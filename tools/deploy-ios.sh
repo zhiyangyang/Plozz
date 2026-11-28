@@ -12,7 +12,6 @@
 #   tools/deploy-ios.sh --unoptimized   # debugger-oriented build (-Onone)
 #   tools/deploy-ios.sh --no-build      # reinstall the latest built app
 #   tools/deploy-ios.sh --regen         # regenerate the Xcode project first
-#   tools/deploy-ios.sh --metadata-keys # explicitly include TMDb/OMDb keys
 #   tools/deploy-ios.sh --branded       # install a SEPARATE per-branch app
 #                                       #   ("Plozz <branch-slug>") side-by-side
 #                                       #   with the canonical one
@@ -56,14 +55,6 @@ NO_BUILD=0
 # Normal deploys bake a fresh build number without rerunning XcodeGen. Full
 # regeneration is reserved for --regen, branded builds, or a missing project.
 REGEN=0
-# Metadata provider keys ship on EVERY platform. iOS used to blank them by
-# default, which silently left iPhone and iPad with no provider that covers
-# films (TheTVDB and TMDb are the only two; the keyless sources are anime- or
-# TV-only and Wikipedia's API withholds non-free images), so half a mainstream
-# library rendered blank there while the Apple TV — whose script has no such
-# override — looked perfect. Parity with tvOS is the default; --keyless opts out
-# for a deliberate no-key test build.
-INCLUDE_METADATA_KEYS=1
 BRANDED=0
 
 for arg in "$@"; do
@@ -76,8 +67,6 @@ for arg in "$@"; do
     --regen) REGEN=1 ;;
     --no-regen) REGEN=0 ;;
     --branded) BRANDED=1 ;;
-    --metadata-keys) INCLUDE_METADATA_KEYS=1 ;;
-    --keyless) INCLUDE_METADATA_KEYS=0 ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown flag: $arg (try --help)" >&2; exit 2 ;;
   esac
@@ -154,10 +143,6 @@ if [[ -f "$ASC_KEY_PATH" ]]; then
 fi
 
 BUILD_SETTING_OVERRIDES=("SWIFT_OPTIMIZATION_LEVEL=$OPTIMIZATION_LEVEL")
-if [[ "$INCLUDE_METADATA_KEYS" != "1" ]]; then
-  # Only when --keyless is passed explicitly, to exercise the no-key path.
-  BUILD_SETTING_OVERRIDES+=("TMDB_BEARER_TOKEN=" "OMDB_API_KEY=")
-fi
 
 if [[ "$NO_BUILD" != "1" ]]; then
   if [[ "$REGEN" == "1" || ! -f "$PROJECT/project.pbxproj" ]]; then
@@ -288,33 +273,6 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/I
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Info.plist")"
 codesign --verify --deep --strict "$APP_PATH"
 
-# Verify the build carries what was asked for. The failure this catches is
-# silent at runtime: a provider without its key returns nothing forever, with no
-# error and no log line.
-TMDB_VALUE="$(
-  /usr/libexec/PlistBuddy -c 'Print :TMDBBearerToken' \
-    "$APP_PATH/Info.plist" 2>/dev/null || true
-)"
-TVDB_VALUE="$(
-  /usr/libexec/PlistBuddy -c 'Print :TVDBAPIKey' \
-    "$APP_PATH/Info.plist" 2>/dev/null || true
-)"
-if [[ "$INCLUDE_METADATA_KEYS" == "1" ]]; then
-  if [[ -z "$TVDB_VALUE" ]]; then
-    echo "✗ TVDBAPIKey is empty — films will have no poster source." >&2
-    echo "  Check TVDB_API_KEY in Config/Secrets.local.xcconfig." >&2
-    exit 1
-  fi
-  if [[ -z "$TMDB_VALUE" ]]; then
-    echo "✗ TMDBBearerToken is empty — films lose their primary poster source." >&2
-    echo "  Check TMDB_BEARER_TOKEN in Config/Secrets.local.xcconfig." >&2
-    exit 1
-  fi
-elif [[ -n "$TMDB_VALUE" ]]; then
-  echo "✗ Expected a --keyless build, but TMDBBearerToken is populated." >&2
-  exit 1
-fi
-
 echo "✓ Build $BUILD ready ($(du -sh "$APP_PATH" | awk '{print $1}'))."
 
 # --- Provisioning pre-flight -------------------------------------------------
@@ -326,8 +284,7 @@ echo "✓ Build $BUILD ready ($(du -sh "$APP_PATH" | awk '{print $1}'))."
 #
 # …which names neither the device nor the profile, and reads like a signing or
 # trust problem rather than "this UDID isn't in the profile". Checking here costs
-# milliseconds and turns it into an actionable message. Same spirit as the
-# metadata-key verification above: catch the silent/cryptic case at build time.
+# milliseconds and turns it into an actionable message. Same spirit as the build-time checks above: catch the silent/cryptic case early.
 if [[ ${#TARGET_UDIDS[@]} -gt 0 && -f "$APP_PATH/embedded.mobileprovision" ]]; then
   PROFILE_PLIST="$(mktemp -t plozz-profile)"
   if security cms -D -i "$APP_PATH/embedded.mobileprovision" > "$PROFILE_PLIST" 2>/dev/null; then

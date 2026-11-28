@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>AniListClientID</key>
-	<string>$(ANILIST_CLIENT_ID)</string>
-	<key>AniListClientSecret</key>
-	<string>$(ANILIST_CLIENT_SECRET)</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).downloads.*</string>
@@ -48,12 +44,6 @@
 		<string>infuse</string>
 		<string>vlc-x-callback</string>
 	</array>
-	<key>LastFmAPIKey</key>
-	<string>$(LASTFM_API_KEY)</string>
-	<key>LastFmSharedSecret</key>
-	<string>$(LASTFM_SHARED_SECRET)</string>
-	<key>MALClientID</key>
-	<string>$(MAL_CLIENT_ID)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -70,8 +60,6 @@
 	<string>Plozz uses your local network to discover media servers and network shares.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Plozz uses device motion to follow your phone's landscape direction during playback.</string>
-	<key>OMDBAPIKey</key>
-	<string>$(OMDB_API_KEY)</string>
 	<key>PlozzDevelopmentFeature</key>
 	<string>$(PLOZZ_DEV_FEATURE)</string>
 	<key>PlozzReleaseChannel</key>
@@ -80,16 +68,6 @@
 	<string>$(PLOZZ_RELEASE_ID)</string>
 	<key>PlozzReleaseVersion</key>
 	<string>$(PLOZZ_RELEASE_VERSION)</string>
-	<key>SimklClientID</key>
-	<string>$(SIMKL_CLIENT_ID)</string>
-	<key>TMDBBearerToken</key>
-	<string>$(TMDB_BEARER_TOKEN)</string>
-	<key>TMDBProxyBaseURL</key>
-	<string>$(TMDB_PROXY_BASE_URL)</string>
-	<key>TVDBAPIKey</key>
-	<string>$(TVDB_API_KEY)</string>
-	<key>TraktClientID</key>
-	<string>$(TRAKT_CLIENT_ID)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Bungee-Regular.ttf</string>
@@ -139,7 +117,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>WetrakrClientID</key>
-	<string>$(WETRAKR_CLIENT_ID)</string>
 </dict>
 </plist>
