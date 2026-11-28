@@ -1,6 +1,7 @@
 #if os(iOS)
 import CoreModels
 import CoreUI
+import FeatureAuth
 import Observation
 import SwiftUI
 import UIKit
@@ -20,7 +21,9 @@ final class HomeCardRoutingTests: XCTestCase {
     }
 
     func testActivationReadsCurrentIndexWithoutOverridingDetailEditionOrContainer() {
-        let app = PlozziOSAppModel()
+        let app = PlozziOSAppModel(
+            accountStore: AccountStore(secureStore: InMemorySecureStore())
+        )
         let item = MediaItem(id: "original", title: "Movie", kind: .movie, providerIDs: ["tmdb": "123"])
         func publish(_ id: String) {
             app.identityIndex.identitySnapshotStore.update(IdentityIndexSnapshot(byIdentity: [
