@@ -17,16 +17,16 @@ essentially no copy of their own. That matters because of an asymmetry:
 
 So the app reads from one place, but the toolchain writes to ~46. Plozz resolves
 this by keeping **one app-owned catalog**, `App/Resources/Localizable.xcstrings`,
-referenced by both the tvOS and iOS app targets, and bridging the gap with
+referenced by the iPad app target, and bridging the gap with
 `tools/l10n-sync.py`.
 
 Consequences worth internalising:
 
 - A string written in `FeatureSettings` is translated in the **app** catalog. Do not
   add per-module `.xcstrings` files.
-- Both app targets reference the **same** catalog file, so tvOS and iOS cannot drift.
-- The **Top Shelf extension is a separate bundle and process.** Its strings do *not*
-  belong in the app catalog and are excluded by the sync tool.
+- The app target and every Swift package resolve against the same catalog.
+- Removed targets must not leave platform-specific copy or extraction receipts in
+  the catalog; the sync tool prunes stale keys from the current iOS source.
 
 ## Adding or changing a string
 
@@ -34,16 +34,16 @@ Consequences worth internalising:
 2. Run `tools/l10n-sync.py`.
 3. Commit the Swift change **and** the updated catalog together.
 
-That is the whole loop. The sync tool builds both platforms with extraction
+That is the whole loop. The sync tool builds the iPad target with extraction
 enabled, collects the `.stringsdata`, and hands them to Apple's
 `xcrun xcstringstool sync`, which owns the catalog itself.
 
 ```sh
-tools/l10n-sync.py                 # build both platforms, sync the catalog
+tools/l10n-sync.py                 # build the iPad target, sync the catalog
 tools/l10n-sync.py --check         # fail if the catalog is out of date (CI)
 tools/l10n-sync.py --check --reuse-if-unchanged # reuse proven identical full extraction
 tools/l10n-sync.py --no-build      # reuse the last extraction build (fast iteration)
-tools/l10n-sync.py --platform tvos # faster partial run; never prunes (see below)
+tools/l10n-sync.py --platform ios  # force the current platform
 ```
 
 `--reuse-if-unchanged` skips only the two extraction builds, never catalog sync or
@@ -90,12 +90,12 @@ point.
 `run-tests.sh`, fastlane or CI builds. Shipping builds need only the checked-in
 catalog; extraction metadata is pure build cost there.
 
-### Stale strings and platform coverage
+### Stale strings and source coverage
 
-A tvOS build cannot see iOS-only copy, and vice versa. If stale marking ran from a
-single-platform build it would prune the other platform's strings. So the tool
-builds **both** platforms by default and only allows stale marking when it has the
-full union; `--platform` forces stale marking off.
+The iPad app is the only remaining app target. Stale marking must run from a
+complete extraction of that target, never from a partial build or an old
+`.stringsdata` snapshot. `--platform ios` is a faster explicit run; inspecting
+only one package target is not a substitute for the app extraction.
 
 ## Writing strings
 
@@ -130,8 +130,7 @@ concatenation.
 
 This is the rule most likely to cause a subtle bug. If a view's `Identifiable` id
 (or `Hashable` conformance) derives from displayed text, switching language changes
-SwiftUI identity, which tears down and rebuilds the view — dropping tvOS focus
-mid-browse. `SearchSection` shows the shape to copy: a `Kind` enum is the identity,
+SwiftUI identity, which tears down and rebuilds the view and discards its state. `SearchSection` shows the shape to copy: a `Kind` enum is the identity,
 and `title` is a computed `LocalizedStringResource` derived from it.
 
 ### Distinguish app copy from content
@@ -219,7 +218,7 @@ system language, which kills and restarts the process.
 
 The setting is stored **per profile** (`AppLanguageSettingsStore`, scoped exactly
 like every other settings store), so one household member can read Plozz in
-Spanish while another keeps English on the same Apple TV.
+Spanish while another keeps English on the same iPad.
 
 ### What it deliberately does not change
 
@@ -229,7 +228,6 @@ Spanish while another keeps English on the same Apple TV.
 | Audio / subtitle track languages | A German UI does not imply German audio — they are separate settings on purpose |
 | Dates, numbers, sort order | Those follow the device REGION, which the override preserves |
 | AVKit player chrome, permission prompts | System-drawn; they follow the device language and no in-app setting can change that |
-| Top Shelf | A separate bundle **and** a separate process |
 
 `.environment(\.locale,)` also does **not** change `Locale.current`. Any non-view
 code that formats, compares or sorts text must be handed a locale explicitly
@@ -390,7 +388,7 @@ tools/deploy-ios.sh --ipad --branded --pseudo       # en-XA: accented and length
 tools/deploy-ios.sh --ipad --branded --pseudo-rtl   # ar-XB: the above, plus mirrored
 ```
 
-On iPhone/iPad `tools/deploy-ios.sh` installs but doesn't launch, so pass the
+On iPad `tools/deploy-ios.sh` installs but doesn't launch, so pass the
 arguments to the launch yourself:
 
 ```sh
@@ -407,8 +405,8 @@ What to look for:
   check that finds copy the guard cannot: a `String` built at runtime, a string
   in a module nobody audited, text baked into an image.
 - **Text that clips or truncates.** German and Finnish run 30–40% longer than
-  English; `en-XA` approximates that. tvOS focus rows and the tab bar are the
-  usual casualties.
+  English; `en-XA` approximates that. The tab bar, settings rows and long server
+  names are the usual casualties.
 - **Under `ar-XB`, anything that doesn't mirror.** That is a hard-coded
   `.leading`/`.trailing` assumption, or a chevron pointing the wrong way.
 
@@ -430,7 +428,6 @@ translator handed a flat string has nowhere to put the others.
   catalog: stale marking, plural/device variations, translation states and comments.
   A bespoke merger silently destroys them.
 - Do not add per-module `.xcstrings` files.
-- Do not put Top Shelf strings in the app catalog.
 - Do not enable extraction on normal developer, test, or archive builds.
 - Do not use localized text as `Identifiable`/`Hashable` identity.
 - Do not persist a `LocalizedStringResource` just because it is `Codable`.

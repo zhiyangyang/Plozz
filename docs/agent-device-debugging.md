@@ -25,7 +25,7 @@ covers observation and capture only.
   (`hasPersistedSnapshot`, `isRestoringSnapshot`, `hasExplicitSeasonSelection`)
   so a capture can prove the behaviour.
 - **A screenshot burst is not a measurement.** `devicectl` costs ~2.4 s per
-  screenshot and screen recording is unavailable on current iPhones. Use
+  screenshot and screen recording may be unavailable on some devices. Use
   in-app telemetry for timing questions and screenshots only for appearance.
 
 ## Simulator lanes
@@ -161,10 +161,8 @@ another build/capture cycle.
 - **Unit/logic:** `swift test` for the affected package targets.
 - **UI:** `xcodebuild test -scheme <hosted scheme> -destination
   'platform=iOS Simulator,id=<UDID>'`. Hosted flows that need `XCUIRemote` or a
-  tvOS simulator ≥ 18 cannot run on every host; say so instead of calling a
-  focused run a full pass.
-- **tvOS compile:** `-destination 'generic/platform=tvOS Simulator'
-  CODE_SIGNING_ALLOWED=NO` — a compile check only, not a hosted test pass.
+  specific simulator runtime cannot run on every host; say so instead of calling
+  a focused run a full pass.
 - **Package resolution:** a pin that is only a branch tip upstream cannot be
   fetched by SHA. Fetch the branch and check the package workspace out at the
   commit, or SwiftPM fails with `Couldn't check out revision …`.

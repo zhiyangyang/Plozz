@@ -14,7 +14,7 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable {
     /// A local network media share (SMB today). Deliberately **second-class**:
     /// there's no server doing library management, metadata, or watch-state, so
     /// Plozz scans the files itself and synthesises everything a first-class
-    /// backend would hand us. See docs/media-share-proposal.md.
+    /// backend would hand us.
     case mediaShare
 
     public var displayName: String {  // l10n:content — brand/format name (Jellyfin/Emby/Plex), never translated; "Media Share" is grouped in for a uniform type

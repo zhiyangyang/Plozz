@@ -24,8 +24,7 @@ restores the saved preference.
 
 The initial rollout still has known gaps: offline library filter controls are
 not exposed, reconstructed series lack full parent metadata, and a downloaded
-series can disappear from Watchlist after profile/mode transitions. The
-Discover/Live TV placeholder chrome and Search introduction also need follow-up.
+series can disappear from Watchlist after profile or offline-mode transitions.
 These are not a completed verification of the full offline experience.
 
 ### Behavior

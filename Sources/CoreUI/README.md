@@ -1,5 +1,10 @@
 # CoreUI
 
+> **iPad-only fork:** this module now serves the iPad app. Older paragraphs that
+> mention tvOS focus, Apple TV workspaces, Top Shelf, trailers or removed
+> providers are historical context unless the linked symbol still exists in
+> `Sources/CoreUI`; do not reintroduce a platform branch for them.
+
 `SettingsAdjustmentFocusScope` optionally reports `onEditingEnded(cancelled:)`.
 Arrow release commits an adjustment; focus loss, disappearance, app deactivation
 and recognizer cancellation discard pending input. Swipes default to one step;
@@ -151,7 +156,7 @@ It forwards public presentation values, not the presenting host's private focus
 environment. Its scoped transfer flag distinguishes reparenting from removal;
 playback may ignore disappearance during that transfer only while still active
 and authorized. Deactivation, authorization loss and teardown must still retire
-playback. Live TV uses it for the entire Multiview workspace, including its guide.
+playback.
 Full-bleed callers must ignore the outer container safe area so the retained
 host receives the physical canvas; content still owns its control-safe insets.
 The transparent full-screen container must already be presented before moving
@@ -389,14 +394,6 @@ Omitting `onLight` lets the owning button supply the indicator tint. The mobile
 hero style uses its disabled-surface foreground for disabled native glass,
 rather than retaining the inverted ink of an enabled prominent button.
 
-`TrailerActionButtonLabel` always renders icon-only on TV and mobile, preserving
-the destination description for accessibility regardless of available width.
-`TrailerActionIcon` keeps the film symbol for server files and adds a small
-outgoing arrow for external YouTube links. The arrow's surrounding stroke removes
-symbol pixels transparently, rather than painting a badge or background color,
-so native glass, focus, light/dark appearances, and reduced transparency still
-come from the existing button styles.
-
 The tvOS detail entrance checks cancellation after every timed reveal. A sleep
 that expired before cancellation can still be waiting for the main actor; it
 must not overwrite a finished entrance and hide already-visible controls.
@@ -437,9 +434,6 @@ to 21 visual ticks. `onDirectionalAdjustment` lets a caller own TV hold accelera
 and release/cancellation handling while retaining the stepper's single native focus
 target and input scope. Dense numeric values can reserve width using representative
 extremes through `reservingValueWidth(for:)` rather than hidden labels for every stop.
-`ThemeMusicPreviewControlling` is the Settings-to-runtime
-preview seam; it carries ownership, availability, and errors without coupling
-Settings to the Home feature or a concrete audio player.
 The shared TV adjustment scope defaults to its standard hold-repeat speed.
 `settingsAdjustmentRepeatSpeed` lets dense percentage controls opt into faster
 repeat without changing their single-press increment or other settings controls.
@@ -493,10 +487,10 @@ Detailed keeps the existing play/progress/text overlay; Progress only uses the
 shared white progress bar without that overlay. Other cards are unaffected.
 The previously stored portrait-only preference is retained.
 
-`MediaRowView.onPlay` optionally gives each media card a tvOS Play/Pause shortcut,
-independent of Select and without preparing a detail transition. Home Continue
-Watching supplies its existing playback callback for either selection preference.
-Other rows, loading placeholders and Live TV cards retain their own behavior.
+`MediaRowView.onPlay` optionally gives each media card a direct Play/Pause
+action, independent of opening detail. Home Continue Watching supplies its
+existing playback callback; other rows and loading placeholders retain their own
+behavior.
 
 Continue Watching portrait cards reuse `PosterCardView` at ordinary 2:3 poster
 dimensions. Detailed starts with the complete poster above a bottom reflection 10% of
@@ -642,16 +636,15 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   native actions and optional Details sheet. Hosts own retry and dismissal; the error surface owns
   its dark palette without changing browsing themes. Its opaque themed surface
   stays legible over video without depending on glass or motion.
-  `PlaybackDiagnosticDetailsView` is shared by on-demand playback, Live TV and
-  IPTV setup. It renders and shares only the structured `PlaybackDiagnosticReport`,
-  including app/OS identity; it is not the continuously sampled diagnostics HUD.
+  `PlaybackDiagnosticDetailsView` is shared by on-demand playback. It renders and
+  shares only the structured `PlaybackDiagnosticReport`, including app/OS
+  identity; it is not the continuously sampled diagnostics HUD.
   Library recommendation and browse failures reuse this sheet through `ContentFailureActions`
   and `ContentStateView.errorReport`. Their structured report identifies failed
   sections and safe response-decoding/paging/transport facts while retaining browsing themes and
   already-loaded content; no playback-specific full-screen chrome is imposed.
   On iPhone and iPad, every diagnostic sheet uses a centered native inline
-  "Details" title and a leading icon-only Close button, including the Live TV
-  guide's diagnostics destination. tvOS retains its existing heading and Done action.
+  "Details" title and a leading icon-only Close button.
 
 - **Touch hero actions** — `HeroActionRow` preserves readable intrinsic widths
   before falling back to a vertical arrangement. `TouchHeroActionButtonStyle`
@@ -743,8 +736,8 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   liquid backgrounds and player-menu marquees also stop their decorative motion.
   Native focus feedback and meaningful playback/countdown progress remain available.
 
-- **First-use choices** — `FirstUseChoiceView` shares the Live TV preview and
-  playback-version introduction heading, native actions, and Settings reminder.
+- **First-use choices** — `FirstUseChoiceView` shares the playback-version
+  introduction heading, native actions, and Settings reminder.
   Hosts own persistence and cancellation; dismissing a version prompt never
   records a mode. Mobile uses a vertically stacked, scrolling adaptation.
   The shared prompt supplies the palette's accent tint to its native controls,
@@ -1202,7 +1195,7 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   changes neither the nearest-first queue nor the full-image fallback ladder.
 - **Grouped settings interactions** — `SettingsSectionGroup` uses explicit
   native switch toggles and menu pickers on iOS/iPadOS. Standalone mobile
-  settings/Live TV controls and the shared `SettingsSwitchToggleStyle` also
+  settings controls and the shared `SettingsSwitchToggleStyle` also
   use the system switch; do not draw a replacement track or knob, wrap the
   toggle in a button, or override its native animation/accessibility.
   The switch alone clears inherited tint so monochrome page accents do not
@@ -1316,8 +1309,7 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   Unchanged inputs reuse the existing result without another lookup.
   Library-first and metadata-provider-first
   presets initialize source choices for Home, Continue Watching, Browse,
-  Search, Watchlist, Details, Episodes, Playback, Music, Top Shelf, and Downloads
-  where available. Editing a view enters Custom mode; choosing any preset
+  Search, Watchlist, Details, Episodes, Playback and Downloads where available. Editing a view enters Custom mode; choosing any preset
   replaces the whole configuration. The shared editing and presentation contract
   lives in [FeatureSettings](../FeatureSettings/README.md#invariants). Cards retains
   card presentation controls, not app-wide artwork policy. Missing artwork can
@@ -1372,10 +1364,9 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   settings change replaces the image selection, not ordinary focus movement.
   A fallback is stable for that appearance, not a promise that an online source
   has no image. Playback system art receives an explicit snapshot.
-  Top Shelf exports resolved images into its shared container. Downloads capture
-  the selected artwork when queued; existing offline artwork is not re-fetched
-  after a settings change. Clip-specific extra thumbnails, people, channel
-  branding, and spoiler protection retain their separate semantics.
+  Downloads capture the selected artwork when queued; existing offline artwork
+  is not re-fetched after a settings change. Clip-specific extra thumbnails,
+  people and spoiler protection retain their separate semantics.
   When card captions are hidden, folder and missing-art placeholders carry the
   existing spoiler-safe title inside the artwork slot. Loaded art remains
   label-free, visible captions are not duplicated, and loading/failure never
@@ -1767,8 +1758,8 @@ Density, Dynamic Type, and the minimum height follow the same shared metric.
   gentle halo and bounded colour-preserving tone lift in both page themes.
   Contrast sampling follows the resolved artwork, accounts for its aspect-fill
   crop and the existing bottom scrim, and reuses the decoded card image and
-  bounded sampler cache; trailer frames are not analysed.
-- **Showcase logo contrast** — tvOS Showcase can lift dark coloured lettering
+  bounded sampler cache.
+- **Showcase logo contrast** — Showcase can lift dark coloured lettering
   while preserving hue, saturation, white highlights, and transparency. Brightening
   stops at the available colour headroom; it never mixes in white to force a
   contrast target. A smaller useful improvement is preferred to washed-out colour,

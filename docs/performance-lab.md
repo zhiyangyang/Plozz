@@ -1,10 +1,12 @@
 # Simulator performance lab
 
 > **iPad-only fork:** the performance lab targets iPad simulators. Apple TV
-> scenarios and focus-host targets described in older sections were removed.
+> scenarios, focus-host targets, and older iPhone/TV baselines in this document
+> are historical methodology, not current gates. Re-measure on the iPad before
+> using a number for a decision.
 
-Use this for the agent-driven optimization loop without installing on an Apple
-TV, iPhone, or iPad. It complements [physical profiling](performance-debugging.md),
+Use this for the agent-driven optimization loop without installing on a physical
+iPad. It complements [physical profiling](performance-debugging.md),
 not a replacement for device-specific evidence. No cloud account, real media
 server, credential, or external model service is required.
 The separately authorized `home-jellyfin-live` investigation below is the
@@ -28,8 +30,8 @@ same toolchain for both sides of a comparison.
 
 ```sh
 export GIT_CONFIG_PARAMETERS="'safe.bareRepository=all'"
-python3 tools/performance.py run --platform tvOS --sim-id "$PLOZZ_SIM_ID" --suite core
-python3 tools/performance.py run --platform tvOS --sim-id "$PLOZZ_SIM_ID" --suite matrix
+python3 tools/performance.py run --platform iOS --sim-id "$PLOZZ_SIM_ID" --suite core
+python3 tools/performance.py run --platform iOS --sim-id "$PLOZZ_SIM_ID" --suite matrix
 python3 tools/performance.py run --platform iOS --sim-id "$PLOZZ_IOS_SIM_ID" --suite ui
 ```
 
@@ -39,7 +41,7 @@ requesting a platform-incompatible scenario fails before a build starts.
 For a bounded investigation, select one or more scenario names instead of a suite:
 
 ```sh
-python3 tools/performance.py run --platform tvOS --sim-id "$PLOZZ_SIM_ID" \
+python3 tools/performance.py run --platform iOS --sim-id "$PLOZZ_SIM_ID" \
   --scenario sync-unchanged library-unchanged
 ```
 
@@ -89,8 +91,8 @@ sides. Server/network variability can outweigh small latency changes; request
 counts and deterministic concurrency regressions are separate evidence. A stock
 Jellyfin result does not reproduce an API-compatible bridge or a remote VPS.
 
-For actual tvOS Home rendering and native remote navigation, use the same
-authorized broker with `profile --workload jellyfin-home --platform tvOS
+For actual iPad Home rendering and native navigation, use the same
+authorized broker with `profile --workload jellyfin-home --platform iOS
 --sim-id <owned UUID>`. The fixture waits for the profiler and UI driver before
 starting Home; login is setup, not part of the load timing. It mounts production
 `HomeView`, its normal progressive load, and real server artwork, with concurrent

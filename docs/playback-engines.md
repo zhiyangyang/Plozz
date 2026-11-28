@@ -1445,12 +1445,12 @@ retention assertions; they do not establish physical-device frame pacing.
 
 ## AirPlay 2 / HomePod Audio Recovery
 
-Native and Aether's AVPlayer-backed routes use `AVPlayer` +
-`AVAudioSession`, so they can encounter the **AirPlay 2 / HomePod silent-drop**
-that was root-caused and fixed for music. The cure (a full audio-session
-deactivate→reactivate cycle — `setActive(true)` alone is a no-op), plus what
-did/didn't work and how to port it to video seek/route-change handling, is
-documented in **[airplay-audio-recovery.md](./airplay-audio-recovery.md)**.
+Native and Aether's `AVPlayer` routes share `AVAudioSession`. A HomePod or
+stereo pair used as the iPad's output can go silent while AVPlayer still reports
+playing, with no interruption or route change. The recovery that works is a full
+audio-session deactivate → reactivate cycle; `setActive(true)` alone is a no-op.
+Keep diagnostics on the existing secret-safe playback log and do not react to
+`routeConfigurationChange` churn.
 
 ## Source Code References
 

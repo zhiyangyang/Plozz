@@ -7,8 +7,7 @@ is `Package.swift`, `project.yml`, and CI.
 ## Repository layout
 
 ```text
-App/Plozz/              tvOS app shell
-App/PlozziOS/           iOS app shell
+App/PlozziOS/           iPad app shell
 Sources/CoreModels/     pure domain models, policies, protocols
 Sources/CoreNetworking/ HTTP, endpoints, secret-safe logging
 Sources/CoreUI/         shared presentation and environment keys
@@ -16,8 +15,7 @@ Sources/Provider*/      provider clients and MediaProvider conformers
 Sources/Feature*Core/   feature state models, coordinators, pure logic
 Sources/Feature*/       SwiftUI views for that feature
 Sources/AppRuntime/     process-scoped services and lifecycle
-Sources/AppShell/       tvOS composition root
-Sources/AppShelliOS/    iOS composition root
+Sources/AppShelliOS/    iPad composition root
 Tests/<Module>Tests/    module tests
 Tests/TestSupport*/     shared fixtures, harnesses, network doubles
 docs/ tools/
@@ -74,8 +72,7 @@ docs/ tools/
 - Avoid `GeometryReader` when a newer layout primitive works. Do not refactor
   existing uses gratuitously.
 - Add `#Preview` where the target is previewable and the view renders in
-  isolation. tvOS-only or fixture-dependent views may document the hosted
-  fixture instead.
+  isolation. Fixture-dependent views may document the hosted fixture instead.
 - Move view logic into view models or coordinators. Views register, render, and
   call typed actions.
 

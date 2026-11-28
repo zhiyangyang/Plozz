@@ -117,7 +117,7 @@ A revisit cache is only free if it is small. Two rules, both enforced here:
   rest on demand.
 - **Size budgets by device.** `ArtworkMemoryBudget` and `DetailSnapshotCache.budget`
   both tier on `physicalMemory` (192 MB decoded artwork / 800 entries on ≥2.5 GB,
-  96 MB / 300 entries below). The smallest supported Apple TV has 3 GB; a
+  96 MB / 300 entries below). The smallest supported iPad has 3 GB; a
   phone-sized cache is not something a low-RAM device should pay for on every prune
   scan and decode.
 
@@ -154,8 +154,8 @@ loading and reveal behavior stable:
   policy. It does not release the destination's source-ownership gate.
   Landscape detail seeds must be landscape; compact portrait detail can reuse
   Home's portrait artwork and its shared reflection/crop.
-- Reserve every asynchronously resolved action slot (trailer, versions, menu)
-  from the first frame so the primary Play action never moves.
+- Reserve every asynchronously resolved action slot (versions, menu, secondary
+  detail actions) from the first frame so the primary Play action never moves.
 - Mobile detail crossfades the Play placeholder to its resolved label over
   0.15 seconds, retaining the placeholder's layout footprint rather than
   shrinking the button on resolution. Longer Resume or episode information may

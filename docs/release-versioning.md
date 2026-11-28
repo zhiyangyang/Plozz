@@ -46,7 +46,6 @@ python3 tools/release-notes.py identity
 # After authoring/reviewing and committing the actual release entry:
 python3 tools/release-notes.py identity --release-id release/045 --build 45
 python3 tools/release-notes.py validate --release-id release/045 --version 2026.9.25 --build 45
-python3 tools/release-notes.py render --release-id release/045 --platform tvOS
 python3 tools/release-notes.py render --release-id release/045 --platform iOS
 ```
 
@@ -56,11 +55,11 @@ Each intended distribution gets its own entry, notes, and build number. Retries
 reuse that exact identity; Git pushes and local builds do not allocate releases.
 Do not add a new entry merely to compile or merge code.
 The distribution lane uses the selected catalog build verbatim and rejects
-collisions or older values on either platform within the Apple version series.
+collisions or older values within the Apple version series.
 An archive without a selected release defaults to the next whole-number build.
 
-Platform-specific notes use `{"text": "...", "platforms": ["tvOS"]}` or `["iOS"]`;
-plain strings apply to both. New-format rendered notes begin with the public
+Platform notes use `{"text": "...", "platforms": ["iOS"]}`; plain strings apply
+to the iPad build. New-format rendered notes begin with the public
 Plozz date and build so testers can identify the release even while TestFlight's
 Apple version is unchanged. For an empty platform, review the beta lane's exact fallback:
 

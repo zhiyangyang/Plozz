@@ -14,8 +14,8 @@ workloads, configuration matrices, baselines, native Home navigation sampling
 playbook owns attribution and physical confirmation, not a requirement to deploy
 every experimental edit.
 
-> Golden rule: **get ground truth before changing code.** tvOS performance bugs
-> are almost always the opposite of what they look like. "No artwork" was never an
+> Golden rule: **get ground truth before changing code.** Performance bugs are
+> almost always the opposite of what they look like. "No artwork" was never an
 > artwork bug; it was JavaScriptCore garbage collection pinning every core. "The
 > whole app is laggy" was a single SwiftUI view re-rendering 4×/second. Measure
 > first, theorise second.
@@ -29,13 +29,13 @@ spins", "drops frames"** — or any **live-instance count that climbs and never
 falls** (the diagnostics overlay's `Players N · AVPlayer M`), which is a retain
 cycle: jump straight to §10.
 
-**Focus missing until the next remote press, or landing on the wrong control?**
-Start with [tvOS focus handoffs](#tvos-focus-handoffs-searchsidebar), not a CPU trace.
+**Focus missing, or landing on the wrong control?** Measure the actual focus
+result and presented frames, not a successful build or a state assignment.
 
-Most of this playbook was written against the Apple TV, but it applies to
-**iPhone and iPad too** — the July 2026 leak in §10 was iOS-only. For a physical
-failure, reproduce on the affected device, measure with the watchdog and/or
-`xctrace`, aggregate the trace, name the subsystem, fix the source and re-measure.
+The playbook retains older case studies for methodology, but the app now ships
+on iPad only. For a physical failure, reproduce on the affected iPad, measure
+with the watchdog and/or `xctrace`, aggregate the trace, name the subsystem, fix
+the source and re-measure.
 For device-free optimization, follow the simulator lab's equivalent measured
 loop and reserve hardware-specific confirmation for a checkpoint. Do not change
 code on a hunch before a measurement names the culprit.
@@ -231,7 +231,7 @@ crash-reporting consent and limited to one warning per category per reporter
 lifecycle. These measurements diagnose an unavailable input; a screenshot of the
 generic import error alone cannot establish which limit was reached.
 
-Automatic IPTV setup reports are enabled for **all TestFlight builds**, including
+Automatic setup reports are enabled for **all TestFlight builds**, including
 hotfixes, and local Debug verification, never App Store builds. There is no
 build-number allowlist or automatic build-based expiry; retire the investigation
 explicitly once the setup issues are resolved. This is not a remote configuration
@@ -1580,130 +1580,6 @@ Use `ShareFolderNavigationTests` in `PlozzHomeFixtureTests` for the deterministi
 comparison. XCTest performs an eight-press warmup before the measured eight
 presses. Preserve actual input timestamps and metrics; command round-trip time
 and a passing functional test are not substitutes for presented-frame timing.
-
-### tvOS focus handoffs (Search/sidebar)
-
-- **Measure the focus result, not the request.** Enable `PLZHFOCUS_STDOUT=1`;
-  compare `UIFocusSystem.focusedItem`, its frame and `canBecomeFocused`, then the
-  visible highlight. A successful build or `FocusState` assignment proves neither.
-- **Request through the shared native owner.** Native Search and nested library
-  hosts can retain focus after leaf-only requests. `NavigationRailFocusHost`
-  temporarily prefers the exact target and requests the update from the owner
-  containing both current and requested focus. Confirm the actual focused item.
-  Opening navigation does not need to disable and re-enable the entire page;
-  retain the disabled-content gate only while a different destination is pending.
-  Keep rail interaction state inside that hosting boundary, not above it:
-  opening must not replace the whole hosted root or forward a newly captured
-  environment through the stationary page. Actual content and environment
-  changes still update the host. The native owner's focus flag is updated
-  independently from the rail's observed focus state.
-- **Return to real Search content.** `SearchPageFocusObserver` checks ownership by
-  the native Search controller, not screen coordinates alone: outgoing Home
-  content can occupy the same rectangle. Keep the capsule gated until entry.
-  Distinguish results-edge navigation from keyboard/cursor movement.
-- **Selecting a destination is not presentation completion.** Pinned navigation
-  retains its real focused row while `NavigationDestinationFocusHandoff` waits
-  for the requested page's appearance and a rendered frame. Supply the identity
-  the content actually depicts, not a requested identity that still shows old
-  content. Older/cancelled callbacks must not release a newer request. Do not
-  replace this with an immediate focus clear or a fixed loading delay.
-- **Closing pinned navigation restores its source.** Capture the real focused item
-  before opening navigation; retain it weakly and reject detached, hidden, disabled,
-  or no-longer-visible targets. Veto spatial Right while navigation owns focus so
-  the existing boundary observer requests restoration instead of choosing Browse
-  or a nearby card. The shared
-  `NavigationRailFocusHost` supplies the preferred target and requests the update:
-  UIKit ignores requests from a leaf or nested library host that does not contain
-  current focus. A removed source falls back to the page's entry preference;
-  switching destinations clears the source and uses the presentation fence above.
-  Query each native container once, including visible nested controller roots:
-  window queries alone omitted the share library's real header. Exclude every
-  candidate owned by the rail and centered in a rail label, not just one
-  minimum-area match. A nested page's controls can overlap the expanded labels
-  without belonging to the rail; compare native ownership before excluding them. Scrolled
-  rows overlap Profile and can have identical areas; virtual items can also be
-  recreated between queries. The physical failure explicitly requested a rail
-  item as page content, then moved again when the rail became disabled. Cross the
-  newly enabled page's render commit before resolving its content target.
-- **Keep pinned page content in its own native focus section.** Without that
-  boundary, SwiftUI can omit both native buttons and nested scroll content from
-  its focus-container query while the rail's section owns focus. A visible
-  empty-state action is still useful page content; missing media must not trap
-  focus in navigation. Finish a mounted entry region's native-layout handoff for
-  explicit destination selection as well as startup. This continuation is only
-  for rendered layout; data-loading regions still wait for readiness notifications.
-  `EmptyPinnedNavigationTests` exercises the real Live TV welcome cards and
-  Settings categories, cold starts, Right/Select returns, and inactive retained
-  Live TV while switching back to Home.
-- **New-page entry prefers useful content.** `navigationEntryFocus` declares
-  content and fallback regions without changing ordinary directional navigation.
-  Libraries prefer their cards; Music prefers Recently Played, then Playlists.
-  Apply the preference to cards rather than scan banners or Now Playing header
-  accessories. Idle/loading pages declare a pending region; region changes wake
-  the active request after rendering, without polling or focusing a header first.
-  Empty/error states clear pending and use the remaining visible controls.
-  Cancellation removes the observer, and a valid captured source still wins
-  when closing navigation on the same page.
-  Native library cells also supply a weak exact focus item. If every visible
-  content region has one, resolve the first eligible card without enumerating
-  the window's unrelated focus containers. Revalidate attachment, visibility,
-  clipping, enabled state, ownership and viewport each time; mixed native/virtual
-  regions retain full discovery. This adds no preloading or idle observer.
-  A hosted share-library comparison reduced this lookup from roughly 3.4 ms
-  to 0.2 ms; that isolates lookup work, not physical-device page-load latency.
-- **Nested hosts must observe enabled-state changes.** Forwarding
-  `context.environment` alone did not subscribe `NativeLibraryFocusHost` to
-  `isEnabled`. A library could keep disabled controls after a shell gate
-  cleared. Explicitly observe and forward `isEnabled`; retain the regression
-  that holds the gate disabled with unchanged content before re-enabling it.
-- **Pinned expansion changes horizontal geometry only.** Both states use the
-  expanded panel's physical vertical inset. Interpolating vertical padding moved
-  every row by 36pt in the hosted reproduction. Reveal offscreen destinations with
-  minimal scrolling, not an unconditional centered jump; already-visible rows
-  must retain their vertical positions when an opening request repeats.
-  Each pending native-focus generation owns its reveal; do not also scroll for
-  the shell's opening token. Initial selection and destination-list changes
-  still reveal the selected destination independently.
-- **Do not copy a hosting tree's private accessibility environment.** A whole
-  `environment(\.self, ...)` bridge can leave a visibly rendered page absent from
-  the accessibility tree. Adding a containment accessibility modifier alone does
-  not repair it. Use `copyHostedPresentation(from:)` and explicitly forward the
-  host's required observable models and ambient media context. Cover profile
-  context changes as well as enabled-state changes across nested hosts.
-- **Test destination selection separately from roundtrips.** For the physical
-  pinned-navigation workload, `PLOZZ_PINNED_ENTER_LIBRARY=1` explicitly starts on
-  Home, opens navigation, and selects the requested matching library. Use
-  `PLOZZ_PINNED_LIBRARY_LABEL` and zero-based `PLOZZ_PINNED_LIBRARY_INDEX` when
-  providers have duplicate names. `PLOZZ_PINNED_ENTRY_SOURCE_LABEL` selects an
-  already-open source instead of Home. Require automatic page presentation,
-  navigation closure, and the expected header focus before six open/close pairs.
-  Share pages use `PLOZZ_PINNED_CONTENT_CONTROL='Browse Files'`, not Recommended;
-  exclude the disabled same-named rail button from that query.
-- **Measure menu animation separately.** `PLOZZ_PINNED_MEASURE_OPEN=1` runs three
-  native hitch/CPU measurements plus XCTest's warm-up. Only Left and a 600ms
-  settling interval are measured; accessibility assertions and Right resets are
-  outside each interval. Validate exported native metrics, not just successful
-  focus. The controlled Movies investigation recorded one 16.7ms hitch per
-  opening initially, then zero on the unchanged build and on two subsequent
-  shared-owner runs. A final installed-build repeat returned `[0, 1, 1]`
-  hitches, about 16.7ms each when present; intermittent hitches remain.
-  Sampled main-thread work across four openings was 1.114s before and 1.224s
-  after, with cloud publication also present in the latter.
-  This does not establish an aggregate CPU improvement or eliminate first-use
-  stutter; warm zero-hitch runs are not proof that app performance is flawless.
-- **Native Sidebar needs its own content gate.** `NativeSidebarFocusDestination`
-  excludes inactive and not-yet-presented tab content without replacing native
-  chrome. Final focus alone is not sufficient evidence: check the whole handoff
-  and keep incoming/outgoing diagnostic regions distinct when tabs share a host.
-- **Avoid false diagnostics.** Unhosted package tests have no window scene/focus
-  system; use them for policy/geometry, not end-to-end focus proof.
-  **`UIFocusDebugger` is LLDB-only:** calling it from app code throws
-  `NSInternalInconsistencyException` and crashes.
-- **Short trials, not repeated user chores.** After one failed hypothesis, compare
-  isolated, launch-selected candidates in one authorized build; automate the same
-  handoff, record pass/fail, repeat the winner, then remove the trial driver.
-  Confirm both opening and returning on hardware. Keep authorized `--console`
-  captures alive: ending the launching process can terminate the app.
 
 ### Performance traps
 

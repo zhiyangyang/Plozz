@@ -3,9 +3,9 @@ import AVFoundation
 import CoreNetworking
 import Foundation
 
-/// AirPlay 2 audio for video: a HomePod (or stereo pair) used as the Apple TV's
-/// speakers can go silent while `AVPlayer` keeps reporting it is playing, with no
-/// interruption, route change or stall to react to (`docs/airplay-audio-recovery.md`).
+/// AirPlay 2 audio for video: a HomePod (or stereo pair) can go silent while
+/// `AVPlayer` keeps reporting it is playing, with no interruption, route change or
+/// stall to react to. See `docs/playback-engines.md`.
 enum AirPlayAudioSession {
     /// Whether the session's output is an AirPlay route.
     static var isActiveRoute: Bool {

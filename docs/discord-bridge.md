@@ -128,8 +128,8 @@ existing sources and make vote totals incomplete.
 
 ### Forum tags and posting templates
 
-Both forums use optional device tags (`Apple TV`, `iPhone`, `iPad`) and media-source
-tags (`Plex`, `Jellyfin`, `Emby`, `Silo`, `Network shares`, `IPTV`). Members can select
+Both forums use an optional device tag (`iPad`) and media-source tags (`Plex`,
+`Jellyfin`, `Emby`, `Silo`, `Network shares`). Members can select
 the relevant device and source without a mandatory-tag barrier. These describe
 the report, not its status; the bridge's issue link shows GitHub's open/closed
 state. Tags do not change matching, assign priority, or automatically become
@@ -172,8 +172,8 @@ This manual-only mode uses the existing Discord bot secret, no model or GitHub
 write token, and does not change the issue bridge or release-announcement schedule.
 
 The guide includes the public beta invitation, `https://plozz.app/testflight/`,
-an App Store fallback, beta reliability/expiry, Apple TV joining steps and the
-public bug-report notice. `TESTFLIGHT_GUIDE` in `tools/discord-bridge.py` owns
+an App Store fallback, beta reliability/expiry, iPad joining steps and the public
+bug-report notice. `TESTFLIGHT_GUIDE` in `tools/discord-bridge.py` owns
 its content. The bot finds one existing `testflight` channel in the configured
 Plozz server, verifies its identity and effective send/embed/history permissions,
 before posting. It never creates a channel. Ordinary publication works with the
@@ -463,7 +463,7 @@ Use the [commit trailer](../.github/CONTRIBUTING.md#commit-issue-references) onl
 when an issue is fully resolved. A non-closing `Refs #123` alone never enrolls an
 issue. The watcher reads declarations from `main` and verified available release
 tags, so an intentionally distributed branch release is supported too. Tagged
-code is never executed. New declarations use `TestFlight-Issue: 123 [tvOS,iOS]`,
+code is never executed. New declarations use `TestFlight-Issue: 123 [iOS]`,
 with `Refs #123` separately. The old closing-keyword trailer is read only for
 compatibility. A terminal, blank-separated `Copilot-Session` UUID footer from
 older clients is recognized without rewriting history; prose or examples outside

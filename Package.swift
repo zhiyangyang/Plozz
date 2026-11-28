@@ -337,7 +337,7 @@ let package = Package(
         // app treats it like Plex/Jellyfin. Runtime browsing/scanning use injected
         // MediaTransportCore sessions; SMBClient remains here only for setup-time
         // SMB discovery/share enumeration. Playback still flows through
-        // EnginePlozzigen's existing SMB path. See docs/media-share-proposal.md.
+        // EnginePlozzigen's existing SMB path.
         .target(
             name: "ProviderShare",
             dependencies: [

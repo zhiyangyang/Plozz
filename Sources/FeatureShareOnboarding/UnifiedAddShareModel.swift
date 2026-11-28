@@ -108,8 +108,7 @@ public enum MediaShareOnboardingResult: Equatable {
 }
 
 
-/// Drives the ONE unified "Add a Media Share" flow for every transport, as
-/// approved in `docs/discovery-ux-proposal.md`:
+/// Drives the ONE unified "Add a Media Share" flow for every transport:
 ///
 ///  1. **Choose device** — devices discovered on the LAN (all transports, grouped
 ///     per box, with a curated port sweep filling in non-advertised doors), plus

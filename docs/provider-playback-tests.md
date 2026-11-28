@@ -33,7 +33,7 @@ with H.264 output; unsupported resolution/codec choices remain explicit.
    access token. Its access grant must remain valid for the bounded run; the
    harness refuses refresh rather than rotate a credential without durably
    updating its Keychain owner. Do not clone a live household pairing.
-4. Choose an explicitly owned iOS or tvOS simulator. All servers must be reachable
+4. Choose an explicitly owned iPad simulator. All servers must be reachable
    from it. A VPN, Local Network permission, unsupported server setting, or missing
    subscription can make a live run fail; none is treated as a passing skip.
 5. Start with `codecs: ["h264"]` for every provider. Silo also accepts the
@@ -76,7 +76,7 @@ streams, real video-frame/audio decoding, seek/pause/resume and cleanup. It repo
 HTTP service is owned by the invocation and closed on success/failure; its
 pre-encoded streams do not validate an actual server encoder or subscription.
 
-`StreamingBufferingHostedTests` in the iOS/tvOS presentation test targets
+`StreamingBufferingHostedTests` in the iPad presentation test target
 separately delays the second segment of a synthetic H.264/AAC VOD stream by
 20 seconds. It requires actual decoded frames and recovery at more than 90%
 of the selected speed once the remaining segments are available, including a

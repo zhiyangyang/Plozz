@@ -6,7 +6,7 @@ language every other module speaks.
 ## Responsibility
 
 - Domain value types: `MediaItem`, `MediaLibrary`, `MediaServer`,
-  `UserSession`, `Account`, `Profile`, `MusicTrack`, `Person`, etc.
+  `UserSession`, `Account`, `Profile`, `Person`, etc.
 - `MediaItem` retains optional confirmed original language, series production
   status and whole-title catalog season/episode totals. These are independent
   of local ownership, unwatched counts, schedules and playable audio languages.
@@ -22,9 +22,6 @@ language every other module speaks.
   independent of HTTP/decode traffic. UI observers must hold a current Home
   observation token; replacement and opt-out reject late samples. The recorder
   does not schedule sampling or emit events.
-- `ThemeMusicVolume` persists a bounded 0–1 gain per profile. Legacy named levels
-  decode to their original gain; only the old `"off"` token triggers the paired
-  background-mode migration, not a new numeric zero.
 - `PlaybackReadAhead` and `LivePlaybackBuffer` are independent device-local
   network/storage preferences, not profile settings. Both default to Automatic
   and are excluded from profile transfer. `EngineSessionCache` carries active
@@ -35,10 +32,8 @@ language every other module speaks.
   profile changes and transfers. The audio bridge reads it for each new load;
   missing source-channel metadata does not downgrade the chosen output mode.
 - `PlaybackDiagnosticReport` supplies privacy-safe failure Details for on-demand
-  playback, Live TV and IPTV setup. Preserve typed reasons and numeric causes,
-  distinguish preparation/opening/playback, and never export raw error text.
-  Non-video live responses use fixed HTML/JSON/XML/empty classifications and
-  factual messages, not response snippets or inferred credential expiry.
+  playback. Preserve typed reasons and numeric causes, distinguish
+  preparation/opening/playback, and never export raw error text.
 - `PlaybackDiagnosticJournal` retains up to 256 recent events / 128 KiB for 48
   hours, plus the last three failed attempts independently (64 events / 64 KiB
   each; the combined persisted journal is capped at 384 KiB). Failure snapshots
@@ -66,7 +61,7 @@ language every other module speaks.
   performance timings. It holds no query or account content and clears on opt-out;
   see [retention and coverage](../FeatureSearch/README.md#diagnostic-submissions).
 - `HTTPDate` shares HTTP timestamp parsing/formatting and strict `Retry-After`
-  interpretation across HTTP media transports and IPTV. Consumers convert
+  interpretation across HTTP media transports. Consumers convert
   finite retry delays to monotonic deadlines; malformed headers remain unknown,
   not permission to retry immediately.
 - Subtitle behaviour + appearance model: `SubtitleBehavior`, `SubtitleStyle`,
@@ -248,8 +243,7 @@ editing without creating a second identity or storage format. Global, native
 server, and library row IDs remain account/library qualified; provider-authored
 titles are display content, never identifiers. `LibraryHomeRowKind.available`
 and `MediaProvider` retain Jellyfin, Emby, Plex, Silo and share capability
-differences. Live TV remains its existing typed channel-shortcut section,
-with tuning and authorization owned by the Live TV runtime.
+differences. Provider live channels are not a Home row.
 
 Add/remove/reorder validate against the current editable catalog, then use
 `HomeLibraryVisibility.applyRows`. This preserves unavailable IDs, merged-away
@@ -300,46 +294,6 @@ accounts. Profile-local providers, including downloaded-media projections, bypas
 both cache reads and writes so they cannot replace the server's full inventory.
 See [Libraries behavior](../FeatureSettings/README.md#responsibility) for
 refresh, error, and storage limits.
-
-## Profile deletion and namespace ownership
-
-Transferable preferences use byte-stable sync values. JSON object keys and
-Hero's set-valued `randomLibraryKeys` are canonicalized on capture and apply,
-including legacy blobs. User-ordered arrays such as Hero sources and unknown
-fields retain their meaning; native preferred-version dictionaries stay
-dictionaries rather than becoming JSON data.
-
-Any profile may be deleted while at least one remains. Both cloud adapters apply
-the original/default profile's deletion and omit deleted profiles, membership and
-settings from capture, allowing the existing durable sync ledger to delete their
-CloudKit records. A deletion arriving before the remaining profile records holds
-a persisted, non-publishing placeholder until a replacement arrives or is added;
-`profilesForSync` excludes it so a restart cannot recreate the deleted record.
-Live TV and media-state captures also exclude `pendingSyncedDeletionProfileIDs`,
-including preserved fallback records, without erasing the temporary local data.
-Live TV's persisted profile-removal markers apply only while the profile remains
-absent from the current roster. A restored profile supersedes an older marker in
-both portable state and playlist-source sync; merely opening an unconfigured
-device must not delete its peer's sources. Pending-deletion placeholders remain
-excluded. Profile removal callers update the roster in the same synchronous
-lifecycle operation as recording the removal.
-The revisioned household Parental PIN moves to the first surviving profile rather
-than disappearing with its former anchor.
-
-Legacy unnamespaced settings have a recorded owner. Retain that former owner's
-stored ID after deletion, even though the live `rootNamespaceOwnerID` is nil.
-Erasing this marker reruns migration on launch and hands the deleted profile's
-settings and Live TV source storage to another profile. Survivor namespaces never
-change because the roster is reordered or its first entry is deleted.
-
-The shared CloudKit inventory repair also heals deletions missed by an older
-incremental cursor. Inventory absence alone never authorizes removal: only an
-explicit per-record `unknownItem` can remove an unchanged, previously synced
-entry. New uploads, dirty edits, pending local deletions, and changes made during
-verification are retained. Repair is fenced by engine, iCloud account, and
-channel authority; it uses the normal persisted ledger and profile apply path.
-Startup and foreground checks are throttled only after a complete repair, while
-manual Sync Now checks the inventory without that throttle.
 
 ## Version picker facts
 
@@ -503,22 +457,6 @@ device, outside `PlaybackSettings` and `ProfileSettingsTransfer`. Profile change
 sync and transfer must not overwrite this local storage/network choice.
 Missing or invalid values use `PlaybackReadAhead.default` (Automatic); invalid
 persisted values are logged without their contents.
-
-## Season request status
-
-Season request labels distinguish approved requests awaiting a known future
-season premiere from Seerr's generic processing state. `SeasonRequestPresentation`
-and per-season statuses share the calendar-day policy, independent of the release
-badge. Pending approval, missing dates, release-day/past premieres, failures,
-declines, library coverage, and download-queue evidence never claim that release
-is the only remaining wait. Seerr's existing TV detail response supplies the
-premiere date; this presentation needs no additional metadata requests.
-TV and touch heroes use "S1 Requested · Unreleased" to keep the confirmation and
-release state in one label. Mobile detail heroes move secondary actions into
-the existing overflow menu before falling back to primary buttons above a
-wrapping row of the secondary icons.
-That stacked layout restores direct access to the icons, keeping a menu only
-for source/version selection or file browsing; the status does not gain a subtitle.
 
 ## Watch-state replay identity
 

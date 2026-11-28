@@ -9,9 +9,8 @@
 > toward a focused iPad player for media servers and network shares.
 
 **Free and open source. No ads or paywalls.** Enjoy your movies and shows in one
-app built for iPad. Connect **Emby, Jellyfin, Plex and Silo**, play directly from
-**SMB, WebDAV, NFS, SFTP and FTP shares**, and keep your setup in sync with
-**iCloud**.
+app built for iPad. Connect **Emby, Jellyfin, Plex and Silo**, or play directly
+from **SMB, WebDAV, NFS, SFTP and FTP shares**.
 
 <p align="center">
   <a href="https://apps.apple.com/app/plozz-player/id6782668147"><img src="docs/assets/app-store-badge.svg" alt="Download Plozz Player on the App Store" width="180" /></a>
@@ -84,17 +83,6 @@ Your file, device, display and speakers all affect playback. TrueHD and DTS-HD M
 play as regular surround audio, not height channels or bitstream passthrough.
 Some formats need more processing power; server conversion can change picture
 and sound quality. [Format details and limits](https://plozz.app/formats/).
-
-## Your setup, on every device
-
-<p>
-  <a href="https://docs.plozz.app/profiles-and-sync/"><img src="docs/assets/integrations/icloud.png" height="40" alt="iCloud sync" /></a>
-</p>
-
-**iCloud sync** keeps server connections and supported app settings together
-across your devices. Your media files and downloads don't move between devices.
-You may need to sign in again, depending on the service; Silo needs approval on
-each device. [Sync controls and limits](https://docs.plozz.app/profiles-and-sync/).
 
 ## Make it yours
 
