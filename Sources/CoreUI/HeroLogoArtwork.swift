@@ -326,6 +326,21 @@ public struct DisplayedHeroLogo {
 struct DetailLogoVisit: Hashable {
     let scope: String
     let subject: String
+    var providerIDs: [String: String] = [:]
+
+    /// A missing external ID is unknown, not a conflict: an episode's sparse seed
+    /// can gain IDs once the series loads. Two known, different IDs are a
+    /// different work and must not replay the other one's wordmark.
+    func canRetain(from other: DetailLogoVisit) -> Bool {
+        guard scope == other.scope, subject == other.subject else { return false }
+        for (key, value) in providerIDs {
+            if let previous = other.providerIDs[key], previous != value { return false }
+        }
+        for (key, value) in other.providerIDs {
+            if let current = providerIDs[key], current != value { return false }
+        }
+        return true
+    }
 }
 
 extension EnvironmentValues {
@@ -333,8 +348,12 @@ extension EnvironmentValues {
 }
 
 public extension View {
-    func detailHeroLogoVisit(scope: String, subject: String) -> some View {
-        environment(\.detailLogoVisit, DetailLogoVisit(scope: scope, subject: subject))
+    func detailHeroLogoVisit(
+        scope: String, subject: String, providerIDs: [String: String] = [:]
+    ) -> some View {
+        environment(\.detailLogoVisit, DetailLogoVisit(
+            scope: scope, subject: subject, providerIDs: providerIDs
+        ))
     }
 }
 
@@ -431,8 +450,14 @@ enum HeroLogoMemo {
 
     fileprivate static func replay(for key: Key, visit: DetailLogoVisit?) -> ProcessedLogo? {
         guard let visit else { return nil }
-        if let entry = entries[key], entry.visit == visit { return entry.logo }
-        for previous in order.reversed() where entries[previous]?.visit == visit && key.canRetainImage(from: previous) {
+        if let entry = entries[key] {
+            if entry.visit?.canRetain(from: visit) == true { return entry.logo }
+        }
+        for previous in order.reversed() where entries[previous]?.visit?.canRetain(from: visit) == true {
+            // A snapshot can prepare the logo before the live detail item has any
+            // artwork references. The visit identifies the subject in that case;
+            // once live references exist, the normal identity guard must still pass.
+            guard key.references.isEmpty || key.canRetainImage(from: previous) else { continue }
             return entries[previous]?.logo
         }
         return nil

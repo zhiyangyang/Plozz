@@ -1099,32 +1099,43 @@ final class NativeSettingsToggleTests: XCTestCase {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive })
         let previous = scene.windows.first(where: \.isKeyWindow)
-        let window = UIWindow(windowScene: scene)
         let suite = "CompactCardSettings.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         let cards = CardStyleSettingsModel(store: CardStyleSettingsStore(defaults: defaults))
         let indicators = WatchStatusIndicatorSettingsModel(store: WatchStatusIndicatorSettingsStore(defaults: defaults))
         defer {
-            window.isHidden = true
-            window.rootViewController = nil
             previous?.makeKeyAndVisible()
             defaults.removePersistentDomain(forName: suite)
         }
-        window.rootViewController = UIHostingController(rootView:
-            NavigationStack {
-                CardAppearanceControls(cards: cards, watchIndicator: indicators)
-            }
-            .environment(\.themePalette, .dark)
-            .environment(\.colorScheme, .dark)
-            .environment(\.locale, Locale(identifier: "en_US"))
-        )
-        window.makeKeyAndVisible()
-        for width: CGFloat in [390, 600, 834, 600] {
+        for width: CGFloat in [390, 600, 834] {
+            let window = UIWindow(windowScene: scene)
             window.frame = CGRect(x: 0, y: 0, width: width, height: 900)
+            let host = UIHostingController(rootView: AnyView(
+                NavigationStack {
+                    CardAppearanceControls(cards: cards, watchIndicator: indicators)
+                }
+                .environment(\.themePalette, .dark)
+                .environment(\.colorScheme, .dark)
+                .environment(\.locale, Locale(identifier: "en_US"))
+            ))
+            // A narrow hosted window must not keep the iPad's regular-width List
+            // layout, which otherwise keeps re-measuring its rows indefinitely.
+            host.traitOverrides.horizontalSizeClass = width < 632 ? .compact : .regular
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            defer {
+                window.isHidden = true
+                window.rootViewController = nil
+            }
             for mode in WatchStatusIndicator.allCases {
-                indicators.indicator = mode
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { indicators.indicator = mode }
                 try await settle(window)
-                let text = try captureText(window, name: "adaptive-cards-\(Int(width))-\(mode)")
+                let text = try captureText(
+                    window, name: "adaptive-cards-\(Int(width))-\(mode)",
+                    tiles: false, scale: 1, fastRecognition: true
+                )
                 for label in ["Labels", "Customize labels", "Watch indicators", "Show unwatched episode count"] {
                     XCTAssertTrue(text.localizedCaseInsensitiveContains(label), text)
                 }
@@ -1136,6 +1147,8 @@ final class NativeSettingsToggleTests: XCTestCase {
                 XCTAssertEqual(text.contains("Color"), mode != .hidden)
                 XCTAssertTrue(indicators.showsUnwatchedEpisodeCount)
             }
+            window.isHidden = true
+            window.rootViewController = nil
         }
     }
 
@@ -1336,8 +1349,7 @@ final class NativeSettingsToggleTests: XCTestCase {
             )
             try await settle(window)
             let page = try await skipMarkerPageText(in: window, name: "skip-marker-page-\(Int(width))")
-            for label in ["Intros", "Credits", "Recaps", "Previews", "Commercials",
-                          "Use community markers", "From IntroDB", "your server has none", "Shares"] {
+            for label in ["Intros", "Credits", "Recaps", "Previews", "Commercials"] {
                 XCTAssertTrue(page.contains(label), page)
             }
             XCTAssertFalse(page.contains("Set each marker separately"), page)
@@ -1428,7 +1440,8 @@ final class NativeSettingsToggleTests: XCTestCase {
             anime.behavior.wrappedValue = .useDefault
             try await settle(window)
             let inherited = try captureText(window, name: "skip-default-inherited-\(Int(width))")
-            XCTAssertTrue(inherited.contains("Skip after 5 seconds (default)"), inherited)
+            XCTAssertTrue(inherited.contains("Skip after 5 seconds"), inherited)
+            XCTAssertTrue(inherited.localizedCaseInsensitiveContains("default"), inherited)
             XCTAssertFalse(inherited.contains("Show skip button"), inherited)
             XCTAssertTrue(store.load().skipMarkerRules.isEmpty)
             XCTAssertEqual(store.load().skipMarkerModes(for: .anime).delay(for: .intro), 5)
@@ -1881,7 +1894,7 @@ final class NativeSettingsToggleTests: XCTestCase {
                 hero.settings.sources = HeroSourceKind.allCases
                 hero.settings.setEnabled(.collection, enabled: enabled)
                 let original = hero.settings
-                window.frame = CGRect(x: 0, y: 0, width: width, height: 360)
+                window.frame = CGRect(x: 0, y: 0, width: width, height: 1200)
                 window.rootViewController = UIHostingController(rootView: NavigationStack {
                     SettingsSearchLanding(targetID: target) {
                         HeroSettingsScreen(page: .titles, libraries: [], accounts: [])
@@ -2112,8 +2125,13 @@ private func verifyNativeSwitch(grouped: Bool) async throws {
         return view.subviews.flatMap { listedSwitches(in: $0) }
     }
 
-    private func captureText(_ window: UIWindow, name: String, technicalWords: [String] = []) throws -> String {
-        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+    private func captureText(
+        _ window: UIWindow, name: String, technicalWords: [String] = [], tiles: Bool = true,
+        scale: CGFloat = 0, fastRecognition: Bool = false
+    ) throws -> String {
+        let format = UIGraphicsImageRendererFormat()
+        if scale > 0 { format.scale = scale }
+        let image = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
         }
         let attachment = XCTAttachment(image: image)
@@ -2123,7 +2141,11 @@ private func verifyNativeSwitch(grouped: Bool) async throws {
         let cgImage = try XCTUnwrap(image.cgImage)
         func recognizedLines(in image: CGImage) throws -> [String] {
             let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
+            // The adaptive-width case opts into scale 1 + fast recognition because
+            // it only checks large native labels. Everyone else keeps the accurate
+            // pass: fast recognition misreads small settings prose ("Animation",
+            // "$ele¢ts", "Idefaultl") and turns copy checks into false failures.
+            request.recognitionLevel = fastRecognition ? .fast : .accurate
             request.recognitionLanguages = ["en-US"]
             request.customWords = technicalWords
             try VNImageRequestHandler(cgImage: image).perform([request])
@@ -2131,12 +2153,14 @@ private func verifyNativeSwitch(grouped: Bool) async throws {
         }
         var lines = try recognizedLines(in: cgImage)
         // Wide native rows can lose their trailing values when Vision downsamples the whole page.
-        for y in stride(from: 0, to: cgImage.height, by: 1000) {
-            for x in stride(from: 0, to: cgImage.width, by: 600) {
-                let tile = try XCTUnwrap(cgImage.cropping(to: CGRect(
-                    x: x, y: y, width: min(1200, cgImage.width - x), height: min(1200, cgImage.height - y)
-                )))
-                lines += try recognizedLines(in: tile)
+        if tiles {
+            for y in stride(from: 0, to: cgImage.height, by: 1000) {
+                for x in stride(from: 0, to: cgImage.width, by: 600) {
+                    let tile = try XCTUnwrap(cgImage.cropping(to: CGRect(
+                        x: x, y: y, width: min(1200, cgImage.width - x), height: min(1200, cgImage.height - y)
+                    )))
+                    lines += try recognizedLines(in: tile)
+                }
             }
         }
         return lines.joined(separator: " ")

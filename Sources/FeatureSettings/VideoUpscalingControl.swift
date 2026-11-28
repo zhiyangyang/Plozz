@@ -20,11 +20,22 @@ public struct VideoUpscalingControl: View {
     }
 
     private var picker: some View {
-        Picker("Video upscaling", selection: $selection) {
-            ForEach(VideoUpscaling.allCases, id: \.self) {
-                Text($0.title).tag($0)
+        SettingsControlMenu {
+            ForEach(VideoUpscaling.allCases, id: \.self) { option in
+                Button {
+                    selection = option
+                } label: {
+                    if option == selection {
+                        Label(option.title, systemImage: "checkmark")
+                    } else {
+                        Text(option.title)
+                    }
+                }
             }
+        } label: {
+            SettingsMenuLabel("Video upscaling", value: selection.title)
         }
+        .accessibilityIdentifier("video-upscaling-picker")
     }
 }
 #endif

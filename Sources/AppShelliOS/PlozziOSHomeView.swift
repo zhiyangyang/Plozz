@@ -2892,6 +2892,9 @@ struct PlozziOSHomeMediaRail: View {
         // about to be swiped to. Per-card `.onAppear` still fills late enrichment.
         return PlozziOSArtworkPrefetchIdentity(
             itemIDs: items.map(\.stablePresentationID),
+            seriesArtworkIDs: items.map {
+                "\($0.seriesID ?? "|")|\($0.seriesPosterURL?.absoluteString ?? "")|\($0.fallbackArtworkURL?.absoluteString ?? "")"
+            },
             logoScope: detailLogoScope, language: locale.identifier,
             isPortrait: style == .poster,
             showsSeriesArtwork: showsSeriesArtwork,
@@ -3032,6 +3035,10 @@ struct PlozziOSHomeMediaRail: View {
 
 private struct PlozziOSArtworkPrefetchIdentity: Equatable {
     let itemIDs: [String]
+    /// Series/parent artwork can change without changing the card's own id
+    /// (episode→series metadata enrichment, or a corrected fallback). Those
+    /// changes must restart the series-artwork prefetch, but watch state must not.
+    let seriesArtworkIDs: [String]
     let logoScope: String?
     let language: String
     let isPortrait: Bool

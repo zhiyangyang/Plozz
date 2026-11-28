@@ -17,7 +17,7 @@ final class NativePictureInPictureHostedTests: XCTestCase {
         engine.onTracksChanged = { changes += 1 }
         await engine.load(request: .init(
             item: .init(id: "local-audio", title: "Synthetic video", kind: .movie),
-            streamURL: folder.appendingPathComponent("live-continuity.mp4")
+            streamURL: folder.appendingPathComponent("embedded.mp4")
         ), startPosition: 0)
         try await waitUntil { engine.audioTracks.count == 1 }
         let track = try XCTUnwrap(engine.audioTracks.first)

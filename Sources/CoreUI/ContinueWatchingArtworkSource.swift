@@ -95,7 +95,7 @@ public struct ContinueWatchingArtworkSource: Sendable {
         guard let scope, item.kind == .movie || item.kind == .series
                 || (item.kind == .episode && item.seriesID != nil) else { return nil }
         let subject = item.kind == .episode ? ArtworkSubject.seriesArtworkItem(for: item) : item
-        return DetailLogoVisit(scope: scope, subject: subject.stablePresentationID)
+        return DetailLogoVisit(scope: scope, subject: subject.stablePresentationID, providerIDs: subject.providerIDs)
     }
 
     @MainActor

@@ -615,7 +615,7 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
                     // The hero now underlaps the fixture's entire top inset. Its
                     // overlaid avatar replaces the rows-only 44pt action row.
                     let inset = try XCTUnwrap(window.rootViewController?.view.safeAreaInsets.top)
-                    let reserved = addedHeight + inset + 44
+                    let reserved = addedHeight + inset
                     let expected = PlozziOSHeroMetrics.height(
                         style: .compactPortrait, surfaceRole: .home, dynamicTypeSize: .large,
                         containerHeight: window.bounds.height
@@ -788,6 +788,7 @@ final class HomeHeroVisibilityPresentationTests: XCTestCase {
         let host = UIHostingController(rootView: content
             .environment(\.horizontalSizeClass, sizeClass)
             .environment(\.dynamicTypeSize, .large)
+            .environment(\.locale, Locale(identifier: "en_US"))
             .environment(\.plozziOSHeroContainerHeight, size.height)
             .environment(\.themePalette, colorScheme == .dark ? ThemePalette.dark : .light))
         host.additionalSafeAreaInsets.top = 44

@@ -33,6 +33,14 @@ public struct ArtworkPresentationPolicy: Equatable, Sendable {
             + "|artwork-language:\(logoLanguage)"
     }
 
+    /// Compatibility for artwork already decoded on an adjacent surface. A Home
+    /// card's bitmap remains valid for the detail stage: the subject and effective
+    /// preference must match, but the placement legitimately changes.
+    public var seedIdentity: String {
+        "preference:\(settings.preference(in: area).rawValue)"
+            + "|artwork-language:\(logoLanguage)"
+    }
+
     public func forArea(_ area: ArtworkArea) -> Self {
         Self(area: area, settings: settings, placement: placement, logoLanguage: logoLanguage)
     }

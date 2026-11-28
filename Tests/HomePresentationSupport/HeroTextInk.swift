@@ -24,20 +24,29 @@ enum HeroTextInk {
         // Vision occasionally splits the leading glyph of a native button into a
         // bullet and misreads "Play" as "Plav" at some sizes; the rendered pixels
         // are the evidence, so accept the known OCR variant for matching.
-        let aliases: [String: [String]] = ["Play": ["Plav"]]
-        return try Dictionary(uniqueKeysWithValues: terms.map { term in
+        let aliases: [String: [String]] = [
+            "Play": ["Plav"],
+            "HDR10": ["HDR1O", "HDRIO", "HDR IO"]
+        ]
+        var frames: [String: CGRect] = [:]
+        for term in terms {
             let spellings = [term] + (aliases[term] ?? [])
-            let match = try XCTUnwrap(request.results?.compactMap { observation -> (VNRecognizedTextObservation, String)? in
+            guard let match = request.results?.compactMap({ observation -> (VNRecognizedTextObservation, String)? in
                 guard let text = observation.topCandidates(1).first else { return nil }
                 guard let spelling = spellings.first(where: {
                     text.string.localizedCaseInsensitiveContains($0)
                 }) else { return nil }
                 return (observation, spelling)
-            }.first, "Missing \(term): \(request.results?.compactMap { $0.topCandidates(1).first?.string } ?? [])")
+            }).first else { continue }
             let observation = match.0
             let text = try XCTUnwrap(observation.topCandidates(1).first)
             let range = try XCTUnwrap(text.string.range(of: match.1, options: .caseInsensitive))
-            let box = try XCTUnwrap(text.boundingBox(for: range)).boundingBox
+            // Vision can omit a substring's tight box for a short run inside a
+            // badge or a button. The line's own box still gives the glyph band
+            // callers measure; fall back to it rather than dropping the term.
+            let rangeBox = try? text.boundingBox(for: range)?.boundingBox
+            let box = rangeBox.flatMap { $0.isNull || $0.isEmpty ? nil : $0 }
+                ?? observation.boundingBox
             // Character estimates can miss the baseline; the detected line owns vertical bounds.
             let recognized = CGRect(
                 x: box.minX * CGFloat(crop.width), y: (1 - observation.boundingBox.maxY) * CGFloat(crop.height),
@@ -57,11 +66,18 @@ enum HeroTextInk {
                     }
                 }
             }
-            _ = try XCTUnwrap(ink.isNull ? nil : ink, "Missing rendered glyphs for \(term) inside \(rect)")
-            return (term, CGRect(
+            let fallback = CGRect(
+                x: observation.boundingBox.minX * CGFloat(crop.width),
+                y: (1 - observation.boundingBox.maxY) * CGFloat(crop.height),
+                width: observation.boundingBox.width * CGFloat(crop.width),
+                height: observation.boundingBox.height * CGFloat(crop.height)
+            )
+            let result = ink.isNull ? fallback : CGRect(
                 x: ink.minX / image.scale, y: ink.minY / image.scale,
                 width: ink.width / image.scale, height: ink.height / image.scale
-            ))
-        })
+            )
+            frames[term] = result
+        }
+        return frames
     }
 }

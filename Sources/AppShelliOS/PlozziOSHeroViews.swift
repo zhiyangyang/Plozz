@@ -424,7 +424,7 @@ struct PlozziOSHeroArtworkSeed {
     ) -> UIImage? {
         guard let artwork, subjectID == item.stablePresentationID,
               self.profileID == profileID,
-              self.policy.identity == policy.identity,
+              self.policy.seedIdentity == policy.seedIdentity,
               self.policy.settings.preference(in: self.policy.area) == policy.settings.preference(in: policy.area),
               self.policy.logoLanguage == policy.logoLanguage,
               style == .compactPortrait || artwork.isLandscape else { return nil }
@@ -2658,7 +2658,7 @@ struct PlozziOSHeroMetadata: View {
                         maxHeight: logoBox.height,
                         // Never replace a provisional text title with a late logo.
                         // Logo resolution does not gate the page's actions.
-                        presentationPolicy: mode == .detail ? .detailEntrance : .whenResolved,
+                        presentationPolicy: mode == .detail ? .detailEntrance : .whenReady,
                         alignment: style == .compactPortrait ? .center : .leading
                     ) {
                         Text(titlePresentation.title)
@@ -3079,7 +3079,9 @@ private struct PlozziOSReflectedHeroStage<
             .environment(\.plozziOSHeroFitsLandscapeArtwork, sidebarGeometry.isVisible && coveredWidth > 0)
             .onChange(of: locallyCoveredWidth, initial: true) {
                 _, locallyCoveredWidth in
-                guard !ignoresGlobalCover else { return }
+                // A zero here means "this stage is not itself inset"; it must not
+                // erase a sidebar width reported by the owning probe.
+                guard !ignoresGlobalCover, locallyCoveredWidth > 1 else { return }
                 sidebarGeometry.recordCoveredWidth(locallyCoveredWidth)
             }
             .overlay {
