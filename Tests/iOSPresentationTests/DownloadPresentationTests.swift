@@ -331,7 +331,7 @@ final class DownloadPresentationTests: XCTestCase {
         await model.refreshSubtitles(saved)
         XCTAssertEqual(String(localized: try XCTUnwrap(presenter.message?.text)),
                        String(localized: "Subtitles updated."))
-        XCTAssertEqual(model.records.first?.subtitleStatus, .saved)
+        try await waitUntil { model.records.first?.subtitleStatus == .saved }
         XCTAssertTrue(model.subtitleState.refreshing.isEmpty)
         model.beginProfileTransition()
         await model.quiesceForProfileSwitch()
@@ -473,12 +473,12 @@ final class DownloadPresentationTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         let preference = UserDefaults.standard.object(forKey: OfflineMode.preferenceKey)
-        let policy = OfflineMode.shared.isEnabled
         UserDefaults.standard.set(false, forKey: OfflineMode.preferenceKey)
         OfflineMode.shared.setEnabled(false)
         addTeardownBlock {
+            // Never restore a leaked "offline" policy into the next suite.
             UserDefaults.standard.set(preference, forKey: OfflineMode.preferenceKey)
-            OfflineMode.shared.setEnabled(policy)
+            OfflineMode.shared.setEnabled(false)
         }
     }
 
